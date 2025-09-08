@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: agenticcp-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: agenticcp
+      MYSQL_USER: agenticcp
+      MYSQL_PASSWORD: agenticcppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - agenticcp-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agenticcp-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: agenticcp
+      SPRING_DATASOURCE_PASSWORD: agenticcppassword
+    depends_on:
+      - mysql
+    networks:
+      - agenticcp-network
+    volumes:
+      - ./logs:/app/logs
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: agenticcp-phpmyadmin
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: agenticcp
+      PMA_PASSWORD: agenticcppassword
+    depends_on:
+      - mysql
+    networks:
+      - agenticcp-network
+
+volumes:
+  mysql_data:
+
+networks:
+  agenticcp-network:
+    driver: bridge
