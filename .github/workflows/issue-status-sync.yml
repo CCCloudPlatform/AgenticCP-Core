@@ -1,0 +1,237 @@
+name: Issue Status Sync
+
+on:
+  issues:
+    types: [labeled, unlabeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  sync-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync Issue Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const issueNumber = issue.number;
+            const owner = issue.owner;
+            const repo = issue.repo;
+            
+            // 이슈 정보 가져오기
+            const issueData = await github.rest.issues.get({
+              owner: owner,
+              repo: repo,
+              issue_number: issueNumber
+            });
+            
+            const labels = issueData.data.labels.map(label => label.name);
+            console.log(`Processing issue #${issueNumber} with labels: ${labels.join(', ')}`);
+            
+            // 상태 라벨 동기화
+            if (labels.includes('done')) {
+              // done 라벨이 있으면 다른 진행 상태 라벨 제거
+              const statusLabels = ['needs-triage', 'ready-for-work', 'in-progress', 'in-review', 'blocked'];
+              for (const statusLabel of statusLabels) {
+                if (labels.includes(statusLabel)) {
+                  await github.rest.issues.removeLabel({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: issueNumber,
+                    name: statusLabel
+                  }).catch(() => {});
+                  console.log(`Removed ${statusLabel} label from issue #${issueNumber}`);
+                }
+              }
+            } else if (labels.includes('in-review')) {
+              // in-review 라벨이 있으면 in-progress 라벨 제거
+              if (labels.includes('in-progress')) {
+                await github.rest.issues.removeLabel({
+                  owner: owner,
+                  repo: repo,
+                  issue_number: issueNumber,
+                  name: 'in-progress'
+                }).catch(() => {});
+                console.log(`Removed in-progress label from issue #${issueNumber}`);
+              }
+            } else if (labels.includes('in-progress')) {
+              // in-progress 라벨이 있으면 needs-triage, ready-for-work 라벨 제거
+              const previousStatusLabels = ['needs-triage', 'ready-for-work'];
+              for (const statusLabel of previousStatusLabels) {
+                if (labels.includes(statusLabel)) {
+                  await github.rest.issues.removeLabel({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: issueNumber,
+                    name: statusLabel
+                  }).catch(() => {});
+                  console.log(`Removed ${statusLabel} label from issue #${issueNumber}`);
+                }
+              }
+            } else if (labels.includes('ready-for-work')) {
+              // ready-for-work 라벨이 있으면 needs-triage 라벨 제거
+              if (labels.includes('needs-triage')) {
+                await github.rest.issues.removeLabel({
+                  owner: owner,
+                  repo: repo,
+                  issue_number: issueNumber,
+                  name: 'needs-triage'
+                }).catch(() => {});
+                console.log(`Removed needs-triage label from issue #${issueNumber}`);
+              }
+            }
+
+      - name: Update Child Issues Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const issueNumber = issue.number;
+            const owner = issue.owner;
+            const repo = issue.repo;
+            
+            // 이슈 정보 가져오기
+            const issueData = await github.rest.issues.get({
+              owner: owner,
+              repo: repo,
+              issue_number: issueNumber
+            });
+            
+            const labels = issueData.data.labels.map(label => label.name);
+            const issueBody = issueData.data.body || '';
+            
+            // Epic이 in-progress로 변경되면 하위 UserStory들을 ready-for-work로 변경
+            if (labels.includes('epic') && labels.includes('in-progress')) {
+              const userStoryMatches = issueBody.match(/UserStory:\s*#(\d+)/gi);
+              if (userStoryMatches) {
+                for (const match of userStoryMatches) {
+                  const userStoryNumber = parseInt(match.match(/#(\d+)/)[1]);
+                  
+                  await github.rest.issues.addLabels({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: userStoryNumber,
+                    labels: ['ready-for-work']
+                  });
+                  
+                  await github.rest.issues.removeLabel({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: userStoryNumber,
+                    name: 'needs-triage'
+                  }).catch(() => {});
+                  
+                  console.log(`Updated UserStory #${userStoryNumber} to ready-for-work`);
+                }
+              }
+            }
+            
+            // UserStory가 in-progress로 변경되면 하위 Feature들을 ready-for-work로 변경
+            if (labels.includes('user-story') && labels.includes('in-progress')) {
+              const featureMatches = issueBody.match(/Feature:\s*#(\d+)/gi);
+              if (featureMatches) {
+                for (const match of featureMatches) {
+                  const featureNumber = parseInt(match.match(/#(\d+)/)[1]);
+                  
+                  await github.rest.issues.addLabels({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: featureNumber,
+                    labels: ['ready-for-work']
+                  });
+                  
+                  await github.rest.issues.removeLabel({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: featureNumber,
+                    name: 'needs-triage'
+                  }).catch(() => {});
+                  
+                  console.log(`Updated Feature #${featureNumber} to ready-for-work`);
+                }
+              }
+            }
+            
+            // Feature가 in-progress로 변경되면 하위 Task들을 ready-for-work로 변경
+            if (labels.includes('feature') && labels.includes('in-progress')) {
+              const taskMatches = issueBody.match(/Task:\s*#(\d+)/gi);
+              if (taskMatches) {
+                for (const match of taskMatches) {
+                  const taskNumber = parseInt(match.match(/#(\d+)/)[1]);
+                  
+                  await github.rest.issues.addLabels({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: taskNumber,
+                    labels: ['ready-for-work']
+                  });
+                  
+                  await github.rest.issues.removeLabel({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: taskNumber,
+                    name: 'needs-triage'
+                  }).catch(() => {});
+                  
+                  console.log(`Updated Task #${taskNumber} to ready-for-work`);
+                }
+              }
+            }
+
+      - name: Handle Status Comments
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const comment = context.payload.comment;
+            const commentBody = comment.body.toLowerCase();
+            
+            // 상태 변경 댓글 처리
+            if (commentBody.includes('/status')) {
+              const issueNumber = issue.number;
+              const owner = issue.owner;
+              const repo = issue.repo;
+              
+              // 댓글에서 상태 추출
+              let newStatus = '';
+              if (commentBody.includes('needs-triage')) newStatus = 'needs-triage';
+              else if (commentBody.includes('ready-for-work')) newStatus = 'ready-for-work';
+              else if (commentBody.includes('in-progress')) newStatus = 'in-progress';
+              else if (commentBody.includes('in-review')) newStatus = 'in-review';
+              else if (commentBody.includes('done')) newStatus = 'done';
+              else if (commentBody.includes('blocked')) newStatus = 'blocked';
+              else if (commentBody.includes('cancelled')) newStatus = 'cancelled';
+              
+              if (newStatus) {
+                // 기존 상태 라벨 제거
+                const statusLabels = ['needs-triage', 'ready-for-work', 'in-progress', 'in-review', 'done', 'blocked', 'cancelled'];
+                for (const statusLabel of statusLabels) {
+                  await github.rest.issues.removeLabel({
+                    owner: owner,
+                    repo: repo,
+                    issue_number: issueNumber,
+                    name: statusLabel
+                  }).catch(() => {});
+                }
+                
+                // 새 상태 라벨 추가
+                await github.rest.issues.addLabels({
+                  owner: owner,
+                  repo: repo,
+                  issue_number: issueNumber,
+                  labels: [newStatus]
+                });
+                
+                console.log(`Updated issue #${issueNumber} status to ${newStatus}`);
+                
+                // 상태 변경 확인 댓글 추가
+                await github.rest.issues.createComment({
+                  owner: owner,
+                  repo: repo,
+                  issue_number: issueNumber,
+                  body: `✅ 이슈 상태가 **${newStatus}**로 변경되었습니다.`
+                });
+              }
+            }
