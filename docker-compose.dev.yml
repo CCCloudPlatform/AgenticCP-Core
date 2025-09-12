@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0.33
+    container_name: agenticcp-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: agenticcp
+      MYSQL_USER: agenticcp
+      MYSQL_PASSWORD: agenticcppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - agenticcp-dev-network
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2
+    container_name: agenticcp-phpmyadmin-dev
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: agenticcp
+      PMA_PASSWORD: agenticcppassword
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - agenticcp-dev-network
+
+volumes:
+  mysql_data_dev:
+
+networks:
+  agenticcp-dev-network:
+    driver: bridge

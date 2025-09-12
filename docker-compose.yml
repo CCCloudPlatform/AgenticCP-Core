@@ -1,10 +1,10 @@
-version: '3.8'
+version: '3.9'
 
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.33
     container_name: agenticcp-mysql
-    restart: always
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: agenticcp
@@ -18,13 +18,17 @@ services:
     networks:
       - agenticcp-network
     command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: agenticcp-app
-    restart: always
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
@@ -33,16 +37,25 @@ services:
       SPRING_DATASOURCE_USERNAME: agenticcp
       SPRING_DATASOURCE_PASSWORD: agenticcppassword
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - agenticcp-network
     volumes:
       - ./logs:/app/logs
+      # 개발용: 소스코드 실시간 반영 (선택사항)
+      # - ./src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+    image: phpmyadmin/phpmyadmin:5.2
     container_name: agenticcp-phpmyadmin
-    restart: always
+    restart: unless-stopped
     ports:
       - "8081:80"
     environment:
@@ -51,7 +64,8 @@ services:
       PMA_USER: agenticcp
       PMA_PASSWORD: agenticcppassword
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - agenticcp-network
 

@@ -23,8 +23,9 @@ ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     is_active = VALUES(is_active);
 
--- 인덱스 생성
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
-CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+-- 인덱스 생성 (MySQL 8.0에서는 IF NOT EXISTS 지원 안함)
+-- JPA가 자동으로 인덱스를 생성하므로 주석 처리
+-- CREATE INDEX idx_users_username ON users(username);
+-- CREATE INDEX idx_users_email ON users(email);
+-- CREATE INDEX idx_users_active ON users(is_active);
+-- CREATE INDEX idx_users_created_at ON users(created_at);

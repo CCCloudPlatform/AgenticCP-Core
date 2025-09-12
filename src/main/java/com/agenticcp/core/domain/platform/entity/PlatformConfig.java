@@ -1,0 +1,44 @@
+package com.agenticcp.core.domain.platform.entity;
+
+import com.agenticcp.core.common.entity.BaseEntity;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "platform_configs")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PlatformConfig extends BaseEntity {
+
+    @Column(name = "config_key", nullable = false, unique = true)
+    private String configKey;
+
+    @Column(name = "config_value", columnDefinition = "TEXT")
+    private String configValue;
+
+    @Column(name = "config_type")
+    @Enumerated(EnumType.STRING)
+    private ConfigType configType;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "is_encrypted")
+    private Boolean isEncrypted = false;
+
+    @Column(name = "is_system")
+    private Boolean isSystem = false;
+
+    public enum ConfigType {
+        STRING,
+        NUMBER,
+        BOOLEAN,
+        JSON,
+        ENCRYPTED
+    }
+}

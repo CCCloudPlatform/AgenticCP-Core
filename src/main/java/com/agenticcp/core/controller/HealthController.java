@@ -1,5 +1,6 @@
 package com.agenticcp.core.controller;
 
+import com.agenticcp.core.common.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,26 +11,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/health")
+@RequestMapping("/api/health")
 public class HealthController {
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> health() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
         response.put("timestamp", LocalDateTime.now());
         response.put("application", "AgenticCP-Core");
         response.put("version", "1.0.0");
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/ready")
-    public ResponseEntity<Map<String, Object>> readiness() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> readiness() {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "READY");
         response.put("timestamp", LocalDateTime.now());
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
