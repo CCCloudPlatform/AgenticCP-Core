@@ -9,7 +9,7 @@ body:
     attributes:
       label: 상위 Feature
       description: 이 Task가 속한 Feature를 링크하세요
-      placeholder: Feature: #
+      placeholder: "Feature: #"
     validations:
       required: true
   - type: input
@@ -17,7 +17,7 @@ body:
     attributes:
       label: Task 제목
       description: Task의 제목을 명확하게 작성하세요
-      placeholder: Task 제목을 입력하세요
+      placeholder: "Task 제목을 입력하세요"
     validations:
       required: true
   - type: textarea
@@ -25,7 +25,7 @@ body:
     attributes:
       label: Task 설명
       description: Task에 대한 상세한 설명을 작성하세요
-      placeholder: Task에 대한 상세한 설명을 입력하세요
+      placeholder: "Task에 대한 상세한 설명을 입력하세요"
     validations:
       required: true
   - type: checkboxes
@@ -74,19 +74,19 @@ body:
     attributes:
       label: 기타 기술
       description: 기타 사용할 기술이 있다면 입력하세요
-      placeholder: 기타 기술을 입력하세요
+      placeholder: "기타 기술을 입력하세요"
   - type: textarea
     id: implementation-method
     attributes:
       label: 구현 방법
       description: 구체적인 구현 방법을 설명하세요
-      placeholder: 구현 방법을 입력하세요
+      placeholder: "구현 방법을 입력하세요"
   - type: textarea
     id: code-example
     attributes:
       label: 코드 예시
       description: 구현할 코드의 예시를 작성하세요
-      placeholder: 코드 예시를 입력하세요
+      placeholder: "코드 예시를 입력하세요"
   - type: checkboxes
     id: estimated-time
     attributes:
@@ -112,7 +112,7 @@ body:
     attributes:
       label: 예상 완료 일정
       description: 예상 완료 일정을 입력하세요
-      placeholder: YYYY-MM-DD 형식으로 입력하세요
+      placeholder: "YYYY-MM-DD 형식으로 입력하세요"
   - type: checkboxes
     id: unit-tests
     attributes:
@@ -136,58 +136,58 @@ body:
     attributes:
       label: 테스트 케이스
       description: 테스트 케이스 예시를 작성하세요
-      placeholder: @Test public void testMethodName() { ... }
+      placeholder: "@Test public void testMethodName() { ... }"
   - type: textarea
     id: related-tasks
     attributes:
       label: 관련 Task
       description: 관련된 다른 Task들을 링크하세요
-      placeholder: 관련 Task들을 링크하세요
+      placeholder: "관련 Task들을 링크하세요"
   - type: textarea
     id: dependencies
     attributes:
       label: 의존성
       description: 다른 Task나 외부 의존성이 있다면 작성하세요
-      placeholder: 의존성을 입력하세요
+      placeholder: "의존성을 입력하세요"
   - type: textarea
     id: reference-docs
     attributes:
       label: 참고 문서
       description: 관련 문서나 스펙을 링크하세요
-      placeholder: 참고 문서를 링크하세요
+      placeholder: "참고 문서를 링크하세요"
   - type: textarea
     id: constraints
     attributes:
       label: 제약사항
       description: 기술적, 비즈니스적 제약사항이 있다면 작성하세요
-      placeholder: 제약사항을 입력하세요
+      placeholder: "제약사항을 입력하세요"
   - type: textarea
     id: risks
     attributes:
       label: 리스크
       description: 예상되는 리스크와 대응 방안을 작성하세요
-      placeholder: 리스크와 대응 방안을 입력하세요
+      placeholder: "리스크와 대응 방안을 입력하세요"
   - type: textarea
     id: performance-considerations
     attributes:
       label: 성능 고려사항
       description: 성능 관련 고려사항이 있다면 작성하세요
-      placeholder: 성능 고려사항을 입력하세요
+      placeholder: "성능 고려사항을 입력하세요"
   - type: textarea
     id: security-considerations
     attributes:
       label: 보안 고려사항
       description: 보안 관련 고려사항이 있다면 작성하세요
-      placeholder: 보안 고려사항을 입력하세요
+      placeholder: "보안 고려사항을 입력하세요"
   - type: textarea
     id: code-review-points
     attributes:
       label: 코드 리뷰 포인트
       description: 코드 리뷰 시 중점적으로 확인할 사항들을 작성하세요
-      placeholder: 코드 리뷰 포인트를 입력하세요
+      placeholder: "코드 리뷰 포인트를 입력하세요"
   - type: textarea
     id: additional-notes
     attributes:
       label: 비고
       description: 기타 참고사항이 있다면 작성하세요
-      placeholder: 기타 참고사항을 입력하세요
+      placeholder: "기타 참고사항을 입력하세요"

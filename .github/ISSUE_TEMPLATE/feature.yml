@@ -9,7 +9,7 @@ body:
     attributes:
       label: 상위 UserStory
       description: 이 Feature가 속한 UserStory를 링크하세요
-      placeholder: UserStory: #
+      placeholder: "UserStory: #"
     validations:
       required: true
   - type: input
@@ -17,7 +17,7 @@ body:
     attributes:
       label: Feature 제목
       description: Feature의 제목을 명확하게 작성하세요
-      placeholder: Feature 제목을 입력하세요
+      placeholder: "Feature 제목을 입력하세요"
     validations:
       required: true
   - type: textarea
@@ -25,7 +25,7 @@ body:
     attributes:
       label: Feature 설명
       description: Feature에 대한 상세한 설명을 작성하세요
-      placeholder: Feature에 대한 상세한 설명을 입력하세요
+      placeholder: "Feature에 대한 상세한 설명을 입력하세요"
     validations:
       required: true
   - type: checkboxes
@@ -71,7 +71,7 @@ body:
     attributes:
       label: 기타 기술
       description: 기타 사용할 기술이 있다면 입력하세요
-      placeholder: 기타 기술을 입력하세요
+      placeholder: "기타 기술을 입력하세요"
   - type: checkboxes
     id: estimated-time
     attributes:
@@ -97,52 +97,52 @@ body:
     attributes:
       label: 예상 완료 일정
       description: 예상 완료 일정을 입력하세요
-      placeholder: YYYY-MM-DD 형식으로 입력하세요
+      placeholder: "YYYY-MM-DD 형식으로 입력하세요"
   - type: textarea
     id: architecture-considerations
     attributes:
       label: 아키텍처 고려사항
       description: 구현 시 고려해야 할 아키텍처 사항들을 작성하세요
-      placeholder: 아키텍처 고려사항을 입력하세요
+      placeholder: "아키텍처 고려사항을 입력하세요"
   - type: textarea
     id: test-plan
     attributes:
       label: 테스트 계획
       description: 테스트 계획을 작성하세요
-      placeholder: 단위 테스트, 통합 테스트, 성능 테스트 계획을 입력하세요
+      placeholder: "단위 테스트, 통합 테스트, 성능 테스트 계획을 입력하세요"
   - type: textarea
     id: related-issues
     attributes:
       label: 관련 이슈
       description: 관련된 다른 이슈들을 링크하세요
-      placeholder: 관련 이슈들을 링크하세요
+      placeholder: "관련 이슈들을 링크하세요"
   - type: textarea
     id: constraints
     attributes:
       label: 제약사항
       description: 기술적, 비즈니스적 제약사항이 있다면 작성하세요
-      placeholder: 제약사항을 입력하세요
+      placeholder: "제약사항을 입력하세요"
   - type: textarea
     id: risks
     attributes:
       label: 리스크
       description: 예상되는 리스크와 대응 방안을 작성하세요
-      placeholder: 리스크와 대응 방안을 입력하세요
+      placeholder: "리스크와 대응 방안을 입력하세요"
   - type: textarea
     id: performance-requirements
     attributes:
       label: 성능 요구사항
       description: 성능 관련 요구사항이 있다면 작성하세요
-      placeholder: 성능 요구사항을 입력하세요
+      placeholder: "성능 요구사항을 입력하세요"
   - type: textarea
     id: security-considerations
     attributes:
       label: 보안 고려사항
       description: 보안 관련 고려사항이 있다면 작성하세요
-      placeholder: 보안 고려사항을 입력하세요
+      placeholder: "보안 고려사항을 입력하세요"
   - type: textarea
     id: additional-notes
     attributes:
       label: 비고
       description: 기타 참고사항이 있다면 작성하세요
-      placeholder: 기타 참고사항을 입력하세요
+      placeholder: "기타 참고사항을 입력하세요"
