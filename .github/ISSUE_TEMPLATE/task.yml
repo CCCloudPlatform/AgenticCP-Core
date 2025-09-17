@@ -4,130 +4,190 @@ title: '[TASK] '
 labels: ['task', 'needs-triage']
 assignees: []
 body:
-  - type: markdown
+  - type: input
+    id: feature-link
     attributes:
-      value: |
-        ## 📋 Task 개요
-
-        ### 상위 Feature
-        <!-- 이 Task가 속한 Feature를 링크하세요 -->
-        - Feature: #
-
-        ### Task 제목
-        <!-- Task의 제목을 명확하게 작성하세요 -->
-
-        ### Task 설명
-        <!-- Task에 대한 상세한 설명을 작성하세요 -->
-
-        ## 🎯 작업 요구사항
-
-        ### 구체적인 작업 내용
-        - [ ] 
-        - [ ] 
-        - [ ] 
-
-        ### 구현할 파일/클래스
-        <!-- 구현하거나 수정할 파일들을 나열하세요 -->
-        - [ ] `src/main/java/.../Controller.java`
-        - [ ] `src/main/java/.../Service.java`
-        - [ ] `src/main/java/.../Repository.java`
-        - [ ] `src/main/java/.../Entity.java`
-        - [ ] `src/main/java/.../DTO.java`
-        - [ ] `src/test/java/.../Test.java`
-
-        ### API 엔드포인트
-        <!-- 구현할 API 엔드포인트를 작성하세요 -->
-        - [ ] `GET /api/...` - 
-        - [ ] `POST /api/...` - 
-        - [ ] `PUT /api/...` - 
-        - [ ] `DELETE /api/...` - 
-
-        ## 🔧 기술적 구현 세부사항
-
-        ### 사용할 기술
-        - [ ] Spring Boot
-        - [ ] Spring Data JPA
-        - [ ] Spring Security
-        - [ ] AWS SDK
-        - [ ] 기타: 
-
-        ### 구현 방법
-        <!-- 구체적인 구현 방법을 설명하세요 -->
-
-        ### 코드 예시
-        ```java
-        // 구현할 코드의 예시를 작성하세요
-        ```
-
-        ## 📊 추정 및 일정
-
-        ### 예상 작업 시간
-        - [ ] 30분-1시간
-        - [ ] 1-2시간
-        - [ ] 2-4시간
-        - [ ] 4-8시간
-        - [ ] 1-2일
-
-        ### 우선순위
-        - [ ] 높음 (P0)
-        - [ ] 중간 (P1)
-        - [ ] 낮음 (P2)
-
-        ### 예상 완료 일정
-        <!-- 예상 완료 일정을 작성하세요 -->
-
-        ## 🧪 테스트 계획
-
-        ### 단위 테스트
-        - [ ] 메서드별 테스트
-        - [ ] 예외 상황 테스트
-        - [ ] 경계값 테스트
-
-        ### 통합 테스트
-        - [ ] API 테스트
-        - [ ] 데이터베이스 테스트
-        - [ ] 외부 서비스 테스트
-
-        ### 테스트 케이스
-        ```java
-        @Test
-        public void testMethodName() {
-            // Given
-            // When
-            // Then
-        }
-        ```
-
-        ## 🔗 관련 이슈
-
-        ### 상위 Feature
-        <!-- 상위 Feature를 링크하세요 -->
-
-        ### 관련 Task
-        <!-- 관련된 다른 Task들을 링크하세요 -->
-
-        ### 의존성
-        <!-- 다른 Task나 외부 의존성이 있다면 작성하세요 -->
-
-        ### 참고 문서
-        <!-- 관련 문서나 스펙을 링크하세요 -->
-
-        ## 📝 추가 정보
-
-        ### 제약사항
-        <!-- 기술적, 비즈니스적 제약사항이 있다면 작성하세요 -->
-
-        ### 리스크
-        <!-- 예상되는 리스크와 대응 방안을 작성하세요 -->
-
-        ### 성능 고려사항
-        <!-- 성능 관련 고려사항이 있다면 작성하세요 -->
-
-        ### 보안 고려사항
-        <!-- 보안 관련 고려사항이 있다면 작성하세요 -->
-
-        ### 코드 리뷰 포인트
-        <!-- 코드 리뷰 시 중점적으로 확인할 사항들을 작성하세요 -->
-
-        ### 비고
-        <!-- 기타 참고사항이 있다면 작성하세요 -->
+      label: 상위 Feature
+      description: 이 Task가 속한 Feature를 링크하세요
+      placeholder: Feature: #
+    validations:
+      required: true
+  - type: input
+    id: task-title
+    attributes:
+      label: Task 제목
+      description: Task의 제목을 명확하게 작성하세요
+      placeholder: Task 제목을 입력하세요
+    validations:
+      required: true
+  - type: textarea
+    id: task-description
+    attributes:
+      label: Task 설명
+      description: Task에 대한 상세한 설명을 작성하세요
+      placeholder: Task에 대한 상세한 설명을 입력하세요
+    validations:
+      required: true
+  - type: checkboxes
+    id: work-items
+    attributes:
+      label: 구체적인 작업 내용
+      description: 구체적인 작업 내용을 선택하세요
+      options:
+        - label: 작업 1
+        - label: 작업 2
+        - label: 작업 3
+  - type: checkboxes
+    id: files-to-implement
+    attributes:
+      label: 구현할 파일/클래스
+      description: 구현하거나 수정할 파일들을 선택하세요
+      options:
+        - label: Controller.java
+        - label: Service.java
+        - label: Repository.java
+        - label: Entity.java
+        - label: DTO.java
+        - label: Test.java
+  - type: checkboxes
+    id: api-endpoints
+    attributes:
+      label: API 엔드포인트
+      description: 구현할 API 엔드포인트를 선택하세요
+      options:
+        - label: GET /api/...
+        - label: POST /api/...
+        - label: PUT /api/...
+        - label: DELETE /api/...
+  - type: checkboxes
+    id: tech-stack
+    attributes:
+      label: 사용할 기술
+      description: 사용할 기술을 선택하세요
+      options:
+        - label: Spring Boot
+        - label: Spring Data JPA
+        - label: Spring Security
+        - label: AWS SDK
+  - type: input
+    id: other-tech
+    attributes:
+      label: 기타 기술
+      description: 기타 사용할 기술이 있다면 입력하세요
+      placeholder: 기타 기술을 입력하세요
+  - type: textarea
+    id: implementation-method
+    attributes:
+      label: 구현 방법
+      description: 구체적인 구현 방법을 설명하세요
+      placeholder: 구현 방법을 입력하세요
+  - type: textarea
+    id: code-example
+    attributes:
+      label: 코드 예시
+      description: 구현할 코드의 예시를 작성하세요
+      placeholder: 코드 예시를 입력하세요
+  - type: checkboxes
+    id: estimated-time
+    attributes:
+      label: 예상 작업 시간
+      description: 예상 작업 시간을 선택하세요
+      options:
+        - label: 30분-1시간
+        - label: 1-2시간
+        - label: 2-4시간
+        - label: 4-8시간
+        - label: 1-2일
+  - type: checkboxes
+    id: priority
+    attributes:
+      label: 우선순위
+      description: 우선순위를 선택하세요
+      options:
+        - label: 높음 (P0)
+        - label: 중간 (P1)
+        - label: 낮음 (P2)
+  - type: input
+    id: completion-date
+    attributes:
+      label: 예상 완료 일정
+      description: 예상 완료 일정을 입력하세요
+      placeholder: YYYY-MM-DD 형식으로 입력하세요
+  - type: checkboxes
+    id: unit-tests
+    attributes:
+      label: 단위 테스트
+      description: 단위 테스트 계획을 선택하세요
+      options:
+        - label: 메서드별 테스트
+        - label: 예외 상황 테스트
+        - label: 경계값 테스트
+  - type: checkboxes
+    id: integration-tests
+    attributes:
+      label: 통합 테스트
+      description: 통합 테스트 계획을 선택하세요
+      options:
+        - label: API 테스트
+        - label: 데이터베이스 테스트
+        - label: 외부 서비스 테스트
+  - type: textarea
+    id: test-cases
+    attributes:
+      label: 테스트 케이스
+      description: 테스트 케이스 예시를 작성하세요
+      placeholder: @Test public void testMethodName() { ... }
+  - type: textarea
+    id: related-tasks
+    attributes:
+      label: 관련 Task
+      description: 관련된 다른 Task들을 링크하세요
+      placeholder: 관련 Task들을 링크하세요
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 의존성
+      description: 다른 Task나 외부 의존성이 있다면 작성하세요
+      placeholder: 의존성을 입력하세요
+  - type: textarea
+    id: reference-docs
+    attributes:
+      label: 참고 문서
+      description: 관련 문서나 스펙을 링크하세요
+      placeholder: 참고 문서를 링크하세요
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약사항
+      description: 기술적, 비즈니스적 제약사항이 있다면 작성하세요
+      placeholder: 제약사항을 입력하세요
+  - type: textarea
+    id: risks
+    attributes:
+      label: 리스크
+      description: 예상되는 리스크와 대응 방안을 작성하세요
+      placeholder: 리스크와 대응 방안을 입력하세요
+  - type: textarea
+    id: performance-considerations
+    attributes:
+      label: 성능 고려사항
+      description: 성능 관련 고려사항이 있다면 작성하세요
+      placeholder: 성능 고려사항을 입력하세요
+  - type: textarea
+    id: security-considerations
+    attributes:
+      label: 보안 고려사항
+      description: 보안 관련 고려사항이 있다면 작성하세요
+      placeholder: 보안 고려사항을 입력하세요
+  - type: textarea
+    id: code-review-points
+    attributes:
+      label: 코드 리뷰 포인트
+      description: 코드 리뷰 시 중점적으로 확인할 사항들을 작성하세요
+      placeholder: 코드 리뷰 포인트를 입력하세요
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: 비고
+      description: 기타 참고사항이 있다면 작성하세요
+      placeholder: 기타 참고사항을 입력하세요

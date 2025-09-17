@@ -4,109 +4,162 @@ title: '[USER-STORY] '
 labels: ['user-story', 'needs-triage']
 assignees: []
 body:
-  - type: markdown
+  - type: input
+    id: epic-link
     attributes:
-      value: |
-        ## 📋 UserStory 개요
-
-        ### Epic
-        <!-- 이 UserStory가 속한 Epic을 링크하세요 -->
-        - Epic: #
-
-        ### UserStory 제목
-        <!-- UserStory의 제목을 명확하게 작성하세요 -->
-
-        ### UserStory 설명
-        ```
-        As a [사용자 역할]
-        I want [원하는 기능]
-        So that [얻고자 하는 가치/목적]
-        ```
-
-        ### 상세 설명
-        <!-- UserStory에 대한 상세한 설명을 작성하세요 -->
-
-        ## 🎯 수용 기준 (Acceptance Criteria)
-
-        ### 기능적 요구사항
-        - [ ] 
-        - [ ] 
-        - [ ] 
-
-        ### 비기능적 요구사항
-        - [ ] 
-        - [ ] 
-        - [ ] 
-
-        ### 예외 상황
-        - [ ] 
-        - [ ] 
-
-        ## 📊 추정 및 일정
-
-        ### Story Point
-        - [ ] 1 SP (30분-1시간)
-        - [ ] 2 SP (1-2시간)
-        - [ ] 3 SP (2-4시간)
-        - [ ] 5 SP (4-8시간)
-        - [ ] 8 SP (1-2일)
-        - [ ] 13 SP (2-3일)
-        - [ ] 21 SP (3-5일) - 분할 필요
-
-        ### 우선순위
-        - [ ] 높음 (P0)
-        - [ ] 중간 (P1)
-        - [ ] 낮음 (P2)
-
-        ### 예상 완료 일정
-        <!-- 예상 완료 일정을 작성하세요 -->
-
-        ## 🔧 구현 계획
-
-        ### 포함할 Feature 목록
-        <!-- 이 UserStory를 구현하기 위한 Feature들을 나열하세요 -->
-        - [ ] Feature 1: 
-        - [ ] Feature 2: 
-        - [ ] Feature 3: 
-
-        ### 기술적 고려사항
-        <!-- 구현 시 고려해야 할 기술적 사항들을 작성하세요 -->
-
-        ### 의존성
-        <!-- 다른 UserStory나 외부 의존성이 있다면 작성하세요 -->
-
-        ## 🧪 테스트 계획
-
-        ### 단위 테스트
-        - [ ] 
-        - [ ] 
-
-        ### 통합 테스트
-        - [ ] 
-        - [ ] 
-
-        ### 사용자 테스트
-        - [ ] 
-        - [ ] 
-
-        ## 🔗 관련 이슈
-
-        ### 상위 Epic
-        <!-- 상위 Epic을 링크하세요 -->
-
-        ### 관련 UserStory
-        <!-- 관련된 다른 UserStory들을 링크하세요 -->
-
-        ### 참고 문서
-        <!-- 관련 문서나 스펙을 링크하세요 -->
-
-        ## 📝 추가 정보
-
-        ### 제약사항
-        <!-- 기술적, 비즈니스적 제약사항이 있다면 작성하세요 -->
-
-        ### 리스크
-        <!-- 예상되는 리스크와 대응 방안을 작성하세요 -->
-
-        ### 비고
-        <!-- 기타 참고사항이 있다면 작성하세요 -->
+      label: Epic
+      description: 이 UserStory가 속한 Epic을 링크하세요
+      placeholder: Epic: #
+    validations:
+      required: true
+  - type: input
+    id: userstory-title
+    attributes:
+      label: UserStory 제목
+      description: UserStory의 제목을 명확하게 작성하세요
+      placeholder: UserStory 제목을 입력하세요
+    validations:
+      required: true
+  - type: textarea
+    id: userstory-description
+    attributes:
+      label: UserStory 설명
+      description: As a [사용자 역할] I want [원하는 기능] So that [얻고자 하는 가치/목적] 형식으로 작성하세요
+      placeholder: As a [사용자 역할]&#10;I want [원하는 기능]&#10;So that [얻고자 하는 가치/목적]
+    validations:
+      required: true
+  - type: textarea
+    id: detailed-description
+    attributes:
+      label: 상세 설명
+      description: UserStory에 대한 상세한 설명을 작성하세요
+      placeholder: UserStory에 대한 상세한 설명을 입력하세요
+  - type: checkboxes
+    id: functional-requirements
+    attributes:
+      label: 기능적 요구사항
+      description: 기능적 요구사항을 선택하세요
+      options:
+        - label: 요구사항 1
+        - label: 요구사항 2
+        - label: 요구사항 3
+  - type: checkboxes
+    id: non-functional-requirements
+    attributes:
+      label: 비기능적 요구사항
+      description: 비기능적 요구사항을 선택하세요
+      options:
+        - label: 요구사항 1
+        - label: 요구사항 2
+        - label: 요구사항 3
+  - type: checkboxes
+    id: exception-scenarios
+    attributes:
+      label: 예외 상황
+      description: 예외 상황을 선택하세요
+      options:
+        - label: 예외 상황 1
+        - label: 예외 상황 2
+  - type: checkboxes
+    id: story-points
+    attributes:
+      label: Story Point
+      description: Story Point를 선택하세요
+      options:
+        - label: 1 SP (30분-1시간)
+        - label: 2 SP (1-2시간)
+        - label: 3 SP (2-4시간)
+        - label: 5 SP (4-8시간)
+        - label: 8 SP (1-2일)
+        - label: 13 SP (2-3일)
+        - label: 21 SP (3-5일) - 분할 필요
+  - type: checkboxes
+    id: priority
+    attributes:
+      label: 우선순위
+      description: 우선순위를 선택하세요
+      options:
+        - label: 높음 (P0)
+        - label: 중간 (P1)
+        - label: 낮음 (P2)
+  - type: input
+    id: completion-date
+    attributes:
+      label: 예상 완료 일정
+      description: 예상 완료 일정을 입력하세요
+      placeholder: YYYY-MM-DD 형식으로 입력하세요
+  - type: checkboxes
+    id: features
+    attributes:
+      label: 포함할 Feature 목록
+      description: 이 UserStory를 구현하기 위한 Feature들을 선택하세요
+      options:
+        - label: Feature 1
+        - label: Feature 2
+        - label: Feature 3
+  - type: textarea
+    id: technical-considerations
+    attributes:
+      label: 기술적 고려사항
+      description: 구현 시 고려해야 할 기술적 사항들을 작성하세요
+      placeholder: 기술적 고려사항을 입력하세요
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 의존성
+      description: 다른 UserStory나 외부 의존성이 있다면 작성하세요
+      placeholder: 의존성을 입력하세요
+  - type: checkboxes
+    id: unit-tests
+    attributes:
+      label: 단위 테스트
+      description: 단위 테스트 계획을 선택하세요
+      options:
+        - label: 단위 테스트 1
+        - label: 단위 테스트 2
+  - type: checkboxes
+    id: integration-tests
+    attributes:
+      label: 통합 테스트
+      description: 통합 테스트 계획을 선택하세요
+      options:
+        - label: 통합 테스트 1
+        - label: 통합 테스트 2
+  - type: checkboxes
+    id: user-tests
+    attributes:
+      label: 사용자 테스트
+      description: 사용자 테스트 계획을 선택하세요
+      options:
+        - label: 사용자 테스트 1
+        - label: 사용자 테스트 2
+  - type: textarea
+    id: related-userstories
+    attributes:
+      label: 관련 UserStory
+      description: 관련된 다른 UserStory들을 링크하세요
+      placeholder: 관련 UserStory들을 링크하세요
+  - type: textarea
+    id: reference-docs
+    attributes:
+      label: 참고 문서
+      description: 관련 문서나 스펙을 링크하세요
+      placeholder: 참고 문서를 링크하세요
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약사항
+      description: 기술적, 비즈니스적 제약사항이 있다면 작성하세요
+      placeholder: 제약사항을 입력하세요
+  - type: textarea
+    id: risks
+    attributes:
+      label: 리스크
+      description: 예상되는 리스크와 대응 방안을 작성하세요
+      placeholder: 리스크와 대응 방안을 입력하세요
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: 비고
+      description: 기타 참고사항이 있다면 작성하세요
+      placeholder: 기타 참고사항을 입력하세요

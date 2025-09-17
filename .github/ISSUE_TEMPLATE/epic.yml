@@ -4,69 +4,101 @@ title: '[EPIC] '
 labels: ['epic', 'needs-triage']
 assignees: []
 body:
-  - type: markdown
+  - type: input
+    id: epic-title
     attributes:
-      value: |
-        ## 📋 Epic 개요
-
-        ### Epic 제목
-        <!-- Epic의 제목을 명확하게 작성하세요 -->
-
-        ### 비즈니스 목표
-        <!-- 이 Epic이 달성하고자 하는 비즈니스 목표를 설명하세요 -->
-
-        ### 포함할 UserStory 목록
-        <!-- 이 Epic에 포함될 UserStory들을 나열하세요 -->
-        - [ ] UserStory 1: 
-        - [ ] UserStory 2: 
-        - [ ] UserStory 3: 
-
-        ## 🎯 성공 기준
-
-        ### 기능적 요구사항
-        - [ ] 
-        - [ ] 
-        - [ ] 
-
-        ### 비기능적 요구사항
-        - [ ] 
-        - [ ] 
-        - [ ] 
-
-        ## 📊 추정 및 일정
-
-        ### 예상 Story Point
-        - [ ] 1-5 SP (소규모)
-        - [ ] 6-13 SP (중간)
-        - [ ] 14-21 SP (대규모)
-        - [ ] 21+ SP (매우 대규모 - 분할 필요)
-
-        ### 예상 완료 일정
-        <!-- 예상 완료 일정을 작성하세요 -->
-
-        ### 우선순위
-        - [ ] 높음 (P0)
-        - [ ] 중간 (P1)
-        - [ ] 낮음 (P2)
-
-        ## 🔗 관련 이슈
-
-        ### 상위 Epic
-        <!-- 상위 Epic이 있다면 링크하세요 -->
-
-        ### 관련 Epic
-        <!-- 관련된 다른 Epic들을 링크하세요 -->
-
-        ### 참고 문서
-        <!-- 관련 문서나 스펙을 링크하세요 -->
-
-        ## 📝 추가 정보
-
-        ### 제약사항
-        <!-- 기술적, 비즈니스적 제약사항이 있다면 작성하세요 -->
-
-        ### 리스크
-        <!-- 예상되는 리스크와 대응 방안을 작성하세요 -->
-
-        ### 의존성
-        <!-- 다른 Epic이나 외부 의존성이 있다면 작성하세요 -->
+      label: Epic 제목
+      description: Epic의 제목을 명확하게 작성하세요
+      placeholder: Epic 제목을 입력하세요
+    validations:
+      required: true
+  - type: textarea
+    id: business-goals
+    attributes:
+      label: 비즈니스 목표
+      description: 이 Epic이 달성하고자 하는 비즈니스 목표를 설명하세요
+      placeholder: 비즈니스 목표를 입력하세요
+    validations:
+      required: true
+  - type: checkboxes
+    id: userstories
+    attributes:
+      label: 포함할 UserStory 목록
+      description: 이 Epic에 포함될 UserStory들을 선택하세요
+      options:
+        - label: UserStory 1
+        - label: UserStory 2
+        - label: UserStory 3
+  - type: checkboxes
+    id: functional-requirements
+    attributes:
+      label: 기능적 요구사항
+      description: 기능적 요구사항을 선택하세요
+      options:
+        - label: 요구사항 1
+        - label: 요구사항 2
+        - label: 요구사항 3
+  - type: checkboxes
+    id: non-functional-requirements
+    attributes:
+      label: 비기능적 요구사항
+      description: 비기능적 요구사항을 선택하세요
+      options:
+        - label: 요구사항 1
+        - label: 요구사항 2
+        - label: 요구사항 3
+  - type: checkboxes
+    id: story-points
+    attributes:
+      label: 예상 Story Point
+      description: 예상 Story Point를 선택하세요
+      options:
+        - label: 1-5 SP (소규모)
+        - label: 6-13 SP (중간)
+        - label: 14-21 SP (대규모)
+        - label: 21+ SP (매우 대규모 - 분할 필요)
+  - type: input
+    id: completion-date
+    attributes:
+      label: 예상 완료 일정
+      description: 예상 완료 일정을 입력하세요
+      placeholder: YYYY-MM-DD 형식으로 입력하세요
+  - type: checkboxes
+    id: priority
+    attributes:
+      label: 우선순위
+      description: 우선순위를 선택하세요
+      options:
+        - label: 높음 (P0)
+        - label: 중간 (P1)
+        - label: 낮음 (P2)
+  - type: textarea
+    id: related-epics
+    attributes:
+      label: 관련 Epic
+      description: 관련된 다른 Epic들을 링크하세요
+      placeholder: 관련 Epic들을 링크하세요
+  - type: textarea
+    id: reference-docs
+    attributes:
+      label: 참고 문서
+      description: 관련 문서나 스펙을 링크하세요
+      placeholder: 참고 문서를 링크하세요
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약사항
+      description: 기술적, 비즈니스적 제약사항이 있다면 작성하세요
+      placeholder: 제약사항을 입력하세요
+  - type: textarea
+    id: risks
+    attributes:
+      label: 리스크
+      description: 예상되는 리스크와 대응 방안을 작성하세요
+      placeholder: 리스크와 대응 방안을 입력하세요
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 의존성
+      description: 다른 Epic이나 외부 의존성이 있다면 작성하세요
+      placeholder: 의존성을 입력하세요

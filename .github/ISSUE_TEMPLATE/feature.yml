@@ -4,121 +4,145 @@ title: '[FEATURE] '
 labels: ['feature', 'needs-triage']
 assignees: []
 body:
-  - type: markdown
+  - type: input
+    id: userstory-link
     attributes:
-      value: |
-        ## 📋 Feature 개요
-
-        ### 상위 UserStory
-        <!-- 이 Feature가 속한 UserStory를 링크하세요 -->
-        - UserStory: #
-
-        ### Feature 제목
-        <!-- Feature의 제목을 명확하게 작성하세요 -->
-
-        ### Feature 설명
-        <!-- Feature에 대한 상세한 설명을 작성하세요 -->
-
-        ## 🎯 기능 요구사항
-
-        ### 주요 기능
-        - [ ] 
-        - [ ] 
-        - [ ] 
-
-        ### API 엔드포인트
-        <!-- 구현할 API 엔드포인트들을 나열하세요 -->
-        - [ ] `GET /api/...` - 
-        - [ ] `POST /api/...` - 
-        - [ ] `PUT /api/...` - 
-        - [ ] `DELETE /api/...` - 
-
-        ### 데이터 모델
-        <!-- 관련된 엔티티나 DTO를 나열하세요 -->
-        - [ ] Entity: 
-        - [ ] DTO: 
-        - [ ] Repository: 
-
-        ## 🔧 기술적 구현 계획
-
-        ### 포함할 Task 목록
-        <!-- 이 Feature를 구현하기 위한 Task들을 나열하세요 -->
-        - [ ] Task 1: 
-        - [ ] Task 2: 
-        - [ ] Task 3: 
-
-        ### 기술 스택
-        <!-- 사용할 기술 스택을 나열하세요 -->
-        - [ ] Spring Boot
-        - [ ] Spring Data JPA
-        - [ ] Spring Security
-        - [ ] AWS SDK
-        - [ ] 기타: 
-
-        ### 아키텍처 고려사항
-        <!-- 구현 시 고려해야 할 아키텍처 사항들을 작성하세요 -->
-
-        ## 📊 추정 및 일정
-
-        ### 예상 작업 시간
-        - [ ] 1-2시간
-        - [ ] 3-4시간
-        - [ ] 5-8시간
-        - [ ] 1-2일
-        - [ ] 3-5일
-
-        ### 우선순위
-        - [ ] 높음 (P0)
-        - [ ] 중간 (P1)
-        - [ ] 낮음 (P2)
-
-        ### 예상 완료 일정
-        <!-- 예상 완료 일정을 작성하세요 -->
-
-        ## 🧪 테스트 계획
-
-        ### 단위 테스트
-        - [ ] Service 테스트
-        - [ ] Controller 테스트
-        - [ ] Repository 테스트
-
-        ### 통합 테스트
-        - [ ] API 통합 테스트
-        - [ ] 데이터베이스 통합 테스트
-        - [ ] 외부 서비스 통합 테스트
-
-        ### 성능 테스트
-        - [ ] 응답 시간 테스트
-        - [ ] 부하 테스트
-        - [ ] 메모리 사용량 테스트
-
-        ## 🔗 관련 이슈
-
-        ### 상위 UserStory
-        <!-- 상위 UserStory를 링크하세요 -->
-
-        ### 관련 Feature
-        <!-- 관련된 다른 Feature들을 링크하세요 -->
-
-        ### 의존성
-        <!-- 다른 Feature나 외부 의존성이 있다면 작성하세요 -->
-
-        ### 참고 문서
-        <!-- 관련 문서나 스펙을 링크하세요 -->
-
-        ## 📝 추가 정보
-
-        ### 제약사항
-        <!-- 기술적, 비즈니스적 제약사항이 있다면 작성하세요 -->
-
-        ### 리스크
-        <!-- 예상되는 리스크와 대응 방안을 작성하세요 -->
-
-        ### 성능 요구사항
-        <!-- 성능 관련 요구사항이 있다면 작성하세요 -->
-
-        ### 보안 고려사항
-        <!-- 보안 관련 고려사항이 있다면 작성하세요 -->
-
-        ### 비고
-        <!-- 기타 참고사항이 있다면 작성하세요 -->
+      label: 상위 UserStory
+      description: 이 Feature가 속한 UserStory를 링크하세요
+      placeholder: UserStory: #
+    validations:
+      required: true
+  - type: input
+    id: feature-title
+    attributes:
+      label: Feature 제목
+      description: Feature의 제목을 명확하게 작성하세요
+      placeholder: Feature 제목을 입력하세요
+    validations:
+      required: true
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature 설명
+      description: Feature에 대한 상세한 설명을 작성하세요
+      placeholder: Feature에 대한 상세한 설명을 입력하세요
+    validations:
+      required: true
+  - type: checkboxes
+    id: main-features
+    attributes:
+      label: 주요 기능
+      description: 구현할 주요 기능들을 선택하세요
+      options:
+        - label: 기능 1
+        - label: 기능 2
+        - label: 기능 3
+  - type: checkboxes
+    id: api-endpoints
+    attributes:
+      label: API 엔드포인트
+      description: 구현할 API 엔드포인트들을 선택하세요
+      options:
+        - label: GET /api/...
+        - label: POST /api/...
+        - label: PUT /api/...
+        - label: DELETE /api/...
+  - type: checkboxes
+    id: data-models
+    attributes:
+      label: 데이터 모델
+      description: 관련된 엔티티나 DTO를 선택하세요
+      options:
+        - label: Entity
+        - label: DTO
+        - label: Repository
+  - type: checkboxes
+    id: tech-stack
+    attributes:
+      label: 기술 스택
+      description: 사용할 기술 스택을 선택하세요
+      options:
+        - label: Spring Boot
+        - label: Spring Data JPA
+        - label: Spring Security
+        - label: AWS SDK
+  - type: input
+    id: other-tech
+    attributes:
+      label: 기타 기술
+      description: 기타 사용할 기술이 있다면 입력하세요
+      placeholder: 기타 기술을 입력하세요
+  - type: checkboxes
+    id: estimated-time
+    attributes:
+      label: 예상 작업 시간
+      description: 예상 작업 시간을 선택하세요
+      options:
+        - label: 1-2시간
+        - label: 3-4시간
+        - label: 5-8시간
+        - label: 1-2일
+        - label: 3-5일
+  - type: checkboxes
+    id: priority
+    attributes:
+      label: 우선순위
+      description: 우선순위를 선택하세요
+      options:
+        - label: 높음 (P0)
+        - label: 중간 (P1)
+        - label: 낮음 (P2)
+  - type: input
+    id: completion-date
+    attributes:
+      label: 예상 완료 일정
+      description: 예상 완료 일정을 입력하세요
+      placeholder: YYYY-MM-DD 형식으로 입력하세요
+  - type: textarea
+    id: architecture-considerations
+    attributes:
+      label: 아키텍처 고려사항
+      description: 구현 시 고려해야 할 아키텍처 사항들을 작성하세요
+      placeholder: 아키텍처 고려사항을 입력하세요
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: 테스트 계획
+      description: 테스트 계획을 작성하세요
+      placeholder: 단위 테스트, 통합 테스트, 성능 테스트 계획을 입력하세요
+  - type: textarea
+    id: related-issues
+    attributes:
+      label: 관련 이슈
+      description: 관련된 다른 이슈들을 링크하세요
+      placeholder: 관련 이슈들을 링크하세요
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약사항
+      description: 기술적, 비즈니스적 제약사항이 있다면 작성하세요
+      placeholder: 제약사항을 입력하세요
+  - type: textarea
+    id: risks
+    attributes:
+      label: 리스크
+      description: 예상되는 리스크와 대응 방안을 작성하세요
+      placeholder: 리스크와 대응 방안을 입력하세요
+  - type: textarea
+    id: performance-requirements
+    attributes:
+      label: 성능 요구사항
+      description: 성능 관련 요구사항이 있다면 작성하세요
+      placeholder: 성능 요구사항을 입력하세요
+  - type: textarea
+    id: security-considerations
+    attributes:
+      label: 보안 고려사항
+      description: 보안 관련 고려사항이 있다면 작성하세요
+      placeholder: 보안 고려사항을 입력하세요
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: 비고
+      description: 기타 참고사항이 있다면 작성하세요
+      placeholder: 기타 참고사항을 입력하세요
