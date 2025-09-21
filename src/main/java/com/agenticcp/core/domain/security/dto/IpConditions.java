@@ -128,11 +128,10 @@ public class IpConditions {
             
             String[] parts = cidr.split("/");
             String networkIp = parts[0];
-            // int prefixLength = Integer.parseInt(parts[1]); // TODO: 실제 CIDR 매칭 로직 구현 시 사용
+            int prefixLength = Integer.parseInt(parts[1]);
             
-            // TODO: 실제 CIDR 매칭 로직 구현
-            // 현재는 단순 문자열 비교로 대체
-            return ip.startsWith(networkIp.substring(0, networkIp.lastIndexOf('.')));
+            // 실제 CIDR 매칭 로직 구현
+            return isIpInCidr(ip, networkIp, prefixLength);
             
         } catch (Exception e) {
             return false;
@@ -185,5 +184,54 @@ public class IpConditions {
         }
         
         return true; // 허용 지역이 없으면 기본적으로 허용
+    }
+    
+    /**
+     * IP 주소가 CIDR 블록에 포함되는지 확인
+     * 
+     * @param ip 확인할 IP 주소
+     * @param networkIp 네트워크 IP 주소
+     * @param prefixLength 프리픽스 길이
+     * @return CIDR 블록에 포함되면 true, 그렇지 않으면 false
+     */
+    private boolean isIpInCidr(String ip, String networkIp, int prefixLength) {
+        try {
+            // IP 주소를 32비트 정수로 변환
+            long ipLong = ipToLong(ip);
+            long networkLong = ipToLong(networkIp);
+            
+            // 서브넷 마스크 생성
+            long mask = (0xFFFFFFFFL << (32 - prefixLength)) & 0xFFFFFFFFL;
+            
+            // 네트워크 주소와 IP 주소를 마스크와 AND 연산하여 비교
+            return (ipLong & mask) == (networkLong & mask);
+            
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * IP 주소 문자열을 32비트 long 값으로 변환
+     * 
+     * @param ip IP 주소 문자열 (예: "192.168.1.1")
+     * @return 32비트 long 값
+     */
+    private long ipToLong(String ip) {
+        String[] parts = ip.split("\\.");
+        if (parts.length != 4) {
+            throw new IllegalArgumentException("Invalid IP address format: " + ip);
+        }
+        
+        long result = 0;
+        for (int i = 0; i < 4; i++) {
+            int octet = Integer.parseInt(parts[i]);
+            if (octet < 0 || octet > 255) {
+                throw new IllegalArgumentException("Invalid IP address octet: " + octet);
+            }
+            result = (result << 8) + octet;
+        }
+        
+        return result;
     }
 }

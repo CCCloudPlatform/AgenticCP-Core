@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Objects;
+import java.time.LocalDateTime;
 
 /**
  * 사용자 조건 데이터 전송 객체
@@ -239,8 +241,144 @@ public class UserConditions {
      * @return 조건을 만족하면 true, 그렇지 않으면 false
      */
     private boolean evaluateAttributeCondition(UserAttributeCondition condition, Object value) {
-        // TODO: 실제 속성 조건 평가 로직 구현
-        // 현재는 단순 문자열 비교로 대체
-        return condition.getValue().toString().equals(value.toString());
+        if (condition == null || value == null) {
+            return false;
+        }
+        
+        Object expectedValue = condition.getValue();
+        if (expectedValue == null) {
+            return false;
+        }
+        
+        // 연산자에 따른 평가
+        String operator = condition.getOperator();
+        if ("EQ".equals(operator) || "EQUALS".equals(operator)) {
+            return compareValues(expectedValue, value) == 0;
+        } else if ("NE".equals(operator) || "NOT_EQUALS".equals(operator)) {
+            return compareValues(expectedValue, value) != 0;
+        } else if ("CONTAINS".equals(operator)) {
+            return value.toString().contains(expectedValue.toString());
+        } else if ("NOT_CONTAINS".equals(operator)) {
+            return !value.toString().contains(expectedValue.toString());
+        } else if ("STARTS_WITH".equals(operator)) {
+            return value.toString().startsWith(expectedValue.toString());
+        } else if ("ENDS_WITH".equals(operator)) {
+            return value.toString().endsWith(expectedValue.toString());
+        } else if ("REGEX".equals(operator)) {
+            try {
+                return value.toString().matches(expectedValue.toString());
+            } catch (Exception e) {
+                return false; // 잘못된 정규식
+            }
+        } else if ("IN".equals(operator)) {
+            // 배열이나 리스트에서 값이 포함되는지 확인
+            return isValueInCollection(expectedValue, value);
+        } else if ("NOT_IN".equals(operator)) {
+            // 배열이나 리스트에서 값이 포함되지 않는지 확인
+            return !isValueInCollection(expectedValue, value);
+        } else if ("GT".equals(operator) || "GREATER_THAN".equals(operator)) {
+            return compareValues(expectedValue, value) < 0;
+        } else if ("LT".equals(operator) || "LESS_THAN".equals(operator)) {
+            return compareValues(expectedValue, value) > 0;
+        } else if ("GTE".equals(operator) || "GREATER_THAN_OR_EQUAL".equals(operator)) {
+            return compareValues(expectedValue, value) <= 0;
+        } else if ("LTE".equals(operator) || "LESS_THAN_OR_EQUAL".equals(operator)) {
+            return compareValues(expectedValue, value) >= 0;
+        } else if ("IS_NULL".equals(operator)) {
+            return value == null;
+        } else if ("IS_NOT_NULL".equals(operator)) {
+            return value != null;
+        } else if ("IS_EMPTY".equals(operator)) {
+            return isEmpty(value);
+        } else if ("IS_NOT_EMPTY".equals(operator)) {
+            return !isEmpty(value);
+        } else {
+            return false;
+        }
+    }
+    
+    /**
+     * 값 비교 (숫자, 날짜, 문자열 지원)
+     */
+    private int compareValues(Object expected, Object actual) {
+        try {
+            // 숫자 비교
+            if (expected instanceof Number && actual instanceof Number) {
+                double expectedNum = ((Number) expected).doubleValue();
+                double actualNum = ((Number) actual).doubleValue();
+                return Double.compare(expectedNum, actualNum);
+            }
+            
+            // 날짜 비교
+            if (expected instanceof LocalDateTime && actual instanceof LocalDateTime) {
+                return ((LocalDateTime) expected).compareTo((LocalDateTime) actual);
+            }
+            
+            // 문자열 비교
+            return expected.toString().compareTo(actual.toString());
+            
+        } catch (Exception e) {
+            return expected.toString().compareTo(actual.toString());
+        }
+    }
+    
+    /**
+     * 컬렉션에서 값이 포함되는지 확인
+     */
+    private boolean isValueInCollection(Object collection, Object value) {
+        try {
+            if (collection instanceof java.util.Collection) {
+                return ((java.util.Collection<?>) collection).contains(value);
+            }
+            
+            if (collection instanceof Object[]) {
+                Object[] array = (Object[]) collection;
+                for (Object item : array) {
+                    if (Objects.equals(item, value)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            if (collection instanceof String) {
+                // 쉼표로 구분된 문자열 처리
+                String[] values = collection.toString().split(",");
+                for (String v : values) {
+                    if (v.trim().equals(value.toString())) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * 값이 비어있는지 확인
+     */
+    private boolean isEmpty(Object value) {
+        if (value == null) {
+            return true;
+        }
+        
+        if (value instanceof String) {
+            return ((String) value).trim().isEmpty();
+        }
+        
+        if (value instanceof java.util.Collection) {
+            return ((java.util.Collection<?>) value).isEmpty();
+        }
+        
+        if (value instanceof Object[]) {
+            return ((Object[]) value).length == 0;
+        }
+        
+        return false;
     }
 }
