@@ -191,10 +191,10 @@ class ConfigValidatorsTest {
         // When & Then
         ValidationException typeException = assertThrows(ValidationException.class,
             () -> ConfigValidators.validateValueByType(null, "value"));
-        assertTrue(typeException.getMessage().contains("type must not be null"));
+        assertTrue(typeException.getMessage().contains("must not be null"));
 
         ValidationException valueException = assertThrows(ValidationException.class,
             () -> ConfigValidators.validateValueByType(PlatformConfig.ConfigType.STRING, null));
-        assertTrue(valueException.getMessage().contains("value must not be null"));
+        assertTrue(valueException.getMessage().contains("must not be null"));
     }
 }

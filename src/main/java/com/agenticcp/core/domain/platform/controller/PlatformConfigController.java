@@ -40,21 +40,19 @@ public class PlatformConfigController {
             @RequestParam(required = false) Boolean isSystem,
             @PageableDefault Pageable pageable) {
         Page<PlatformConfig> configs = platformConfigService.getFilteredConfigs(configKeyPattern, configType, isSystem, pageable);
-        Page<PlatformConfigDtos.Response> responses = configs.map(pc -> PlatformConfigDtos.Response.of(pc, true));
+        Page<PlatformConfigDtos.Response> responses = configs.map(pc -> PlatformConfigDtos.Response.of(pc));
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
     /**
      * 설정 키로 단건을 조회합니다.
-     * showSecret=false(기본)이면 ENCRYPTED 값은 마스킹됩니다.
      */
     @GetMapping("/{configKey}")
     @Operation(summary = "특정 플랫폼 설정 조회")
     public ResponseEntity<ApiResponse<PlatformConfigDtos.Response>> getConfigByKey(
-            @PathVariable String configKey,
-            @RequestParam(defaultValue = "false") boolean showSecret) {
+            @PathVariable String configKey) {
         return platformConfigService.getConfigByKey(configKey)
-                .map(config -> ResponseEntity.ok(ApiResponse.success(PlatformConfigDtos.Response.of(config, !showSecret))))
+                .map(config -> ResponseEntity.ok(ApiResponse.success(PlatformConfigDtos.Response.of(config))))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -67,7 +65,7 @@ public class PlatformConfigController {
             @PathVariable PlatformConfig.ConfigType configType,
             @PageableDefault Pageable pageable) {
         Page<PlatformConfig> configs = platformConfigService.getConfigsByType(configType, pageable);
-        Page<PlatformConfigDtos.Response> responses = configs.map(pc -> PlatformConfigDtos.Response.of(pc, true));
+        Page<PlatformConfigDtos.Response> responses = configs.map(pc -> PlatformConfigDtos.Response.of(pc));
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -78,7 +76,7 @@ public class PlatformConfigController {
     @Operation(summary = "시스템 설정 조회")
     public ResponseEntity<ApiResponse<Page<PlatformConfigDtos.Response>>> getSystemConfigs(@PageableDefault Pageable pageable) {
         Page<PlatformConfig> configs = platformConfigService.getSystemConfigs(pageable);
-        Page<PlatformConfigDtos.Response> responses = configs.map(pc -> PlatformConfigDtos.Response.of(pc, true));
+        Page<PlatformConfigDtos.Response> responses = configs.map(pc -> PlatformConfigDtos.Response.of(pc));
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
@@ -94,11 +92,12 @@ public class PlatformConfigController {
                 .configType(request.getType())
                 .configValue(request.getValue())
                 .isSystem(Boolean.TRUE.equals(request.getIsSystem()))
+                .isEncrypted(request.getType() == PlatformConfig.ConfigType.ENCRYPTED)
                 .description(request.getDescription())
                 .build();
         PlatformConfig createdConfig = platformConfigService.createConfig(toCreate);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(PlatformConfigDtos.Response.of(createdConfig, true), "플랫폼 설정이 생성되었습니다."));
+                .body(ApiResponse.success(PlatformConfigDtos.Response.of(createdConfig), "플랫폼 설정이 생성되었습니다."));
     }
 
     /**
@@ -115,7 +114,7 @@ public class PlatformConfigController {
                 .description(request.getDescription())
                 .build();
         PlatformConfig updatedConfig = platformConfigService.updateConfig(configKey, toUpdate);
-        return ResponseEntity.ok(ApiResponse.success(PlatformConfigDtos.Response.of(updatedConfig, true), "플랫폼 설정이 수정되었습니다."));
+        return ResponseEntity.ok(ApiResponse.success(PlatformConfigDtos.Response.of(updatedConfig), "플랫폼 설정이 수정되었습니다."));
     }
 
     /**

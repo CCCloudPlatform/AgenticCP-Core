@@ -49,14 +49,11 @@ public class PlatformConfigDtos {
         private Boolean isSystem;
         private String description;
 
-        /** 엔티티를 응답 DTO로 변환. maskSecret=true면 ENCRYPTED 값을 마스킹 */
-        public static Response of(PlatformConfig pc, boolean maskSecret) {
-            String resolvedValue = pc.getIsEncrypted() == Boolean.TRUE && maskSecret && pc.getConfigValue() != null
-                    ? "******"
-                    : pc.getConfigValue();
+        /** 엔티티를 응답 DTO로 변환 */
+        public static Response of(PlatformConfig pc) {
             return Response.builder()
                     .key(pc.getConfigKey())
-                    .value(resolvedValue)
+                    .value(pc.getConfigValue())
                     .type(pc.getConfigType())
                     .isEncrypted(pc.getIsEncrypted())
                     .isSystem(pc.getIsSystem())

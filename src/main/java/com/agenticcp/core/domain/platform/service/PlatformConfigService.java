@@ -59,14 +59,11 @@ public class PlatformConfigService {
         return platformConfigRepository.findFilteredConfigs(configKeyPattern, configType, isSystem, pageable);
     }
 
-    /** 생성: 키 정책 및 타입-값 일치 검증, ENCRYPTED 빈값 금지 */
+    /** 생성: 키 정책 및 타입-값 일치 검증 */
     @Transactional
     public PlatformConfig createConfig(PlatformConfig platformConfig) {
         ConfigValidators.validateKeyPolicy(platformConfig.getConfigKey());
         ConfigValidators.validateValueByType(platformConfig.getConfigType(), platformConfig.getConfigValue());
-        if (platformConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED && (platformConfig.getConfigValue() == null || platformConfig.getConfigValue().isBlank())) {
-            throw new ValidationException("value", "encrypted value must not be blank");
-        }
         log.info("Creating platform config: {}", platformConfig.getConfigKey());
         return platformConfigRepository.save(platformConfig);
     }
@@ -79,7 +76,7 @@ public class PlatformConfigService {
         existingConfig.setConfigValue(updatedConfig.getConfigValue());
         existingConfig.setConfigType(updatedConfig.getConfigType());
         existingConfig.setDescription(updatedConfig.getDescription());
-        existingConfig.setIsEncrypted(updatedConfig.getIsEncrypted());
+        existingConfig.setIsEncrypted(updatedConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED);
         
         log.info("Updating platform config: {}", configKey);
         return platformConfigRepository.save(existingConfig);

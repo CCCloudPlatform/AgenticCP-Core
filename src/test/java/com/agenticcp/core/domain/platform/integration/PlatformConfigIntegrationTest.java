@@ -120,16 +120,10 @@ class PlatformConfigIntegrationTest {
         assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(Objects.requireNonNull(createResponse.getBody()).isSuccess()).isTrue();
 
-        // 2. 마스킹된 값으로 조회 (기본)
+        // 2. ENCRYPTED 설정 조회
         ResponseEntity<ApiResponse> getResponse = restTemplate.getForEntity(baseUrl + "/secret.config", ApiResponse.class);
         assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(Objects.requireNonNull(getResponse.getBody()).isSuccess()).isTrue();
-
-        // 3. 평문으로 조회 (showSecret=true)
-        ResponseEntity<ApiResponse> getSecretResponse = restTemplate.getForEntity(
-                baseUrl + "/secret.config?showSecret=true", ApiResponse.class);
-        assertThat(getSecretResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(Objects.requireNonNull(getSecretResponse.getBody()).isSuccess()).isTrue();
     }
 
     @Test
