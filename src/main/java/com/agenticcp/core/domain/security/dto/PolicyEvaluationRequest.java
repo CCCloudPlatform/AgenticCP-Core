@@ -25,6 +25,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class PolicyEvaluationRequest {
     
     /**
@@ -81,7 +82,7 @@ public class PolicyEvaluationRequest {
      * 정책 평가 시점
      */
     @NotNull(message = "요청 시간은 필수입니다")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
     
@@ -141,7 +142,7 @@ public class PolicyEvaluationRequest {
      * 요청 만료 시간
      * 이 시간 이후에는 요청이 무효화됨
      */
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime expiresAt;
     
     /**

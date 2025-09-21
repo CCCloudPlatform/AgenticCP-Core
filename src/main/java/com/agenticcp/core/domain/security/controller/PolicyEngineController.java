@@ -24,7 +24,7 @@ import java.util.Map;
  * @since 2024-01-01
  */
 @RestController
-@RequestMapping("/api/v1/security/policy")
+@RequestMapping("/v1/security/policy")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

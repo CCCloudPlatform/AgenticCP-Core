@@ -93,6 +93,29 @@ public class PolicyJsonParser {
     }
     
     /**
+     * 정책 평가 요청 JSON을 PolicyEvaluationRequest 객체로 파싱
+     * 
+     * @param requestJson 정책 평가 요청 JSON
+     * @return PolicyEvaluationRequest 객체
+     */
+    public PolicyEvaluationRequest parsePolicyEvaluationRequest(String requestJson) {
+        if (requestJson == null || requestJson.trim().isEmpty()) {
+            log.debug("정책 평가 요청 JSON이 비어있습니다");
+            return PolicyEvaluationRequest.builder().build();
+        }
+        
+        try {
+            PolicyEvaluationRequest request = objectMapper.readValue(requestJson, PolicyEvaluationRequest.class);
+            log.debug("정책 평가 요청 파싱 완료: resourceType={}, action={}, userId={}", 
+                request.getResourceType(), request.getAction(), request.getUserId());
+            return request;
+        } catch (JsonProcessingException e) {
+            log.error("정책 평가 요청 JSON 파싱 실패: {}", e.getMessage(), e);
+            return PolicyEvaluationRequest.builder().build();
+        }
+    }
+    
+    /**
      * PolicyRules 객체를 JSON으로 변환
      * 
      * @param rules PolicyRules 객체

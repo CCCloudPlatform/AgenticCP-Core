@@ -278,6 +278,79 @@ class PolicyJsonParserTest {
     }
     
     @Nested
+    @DisplayName("ISO 8601 날짜/시간 파싱 테스트")
+    class Iso8601DateTimeParsingTest {
+        
+        @Test
+        @DisplayName("ISO 8601 형식의 timestamp 파싱")
+        void parseIso8601Timestamp_ValidFormat_ReturnsPolicyEvaluationRequest() {
+            // Given
+            String requestJson = """
+                {
+                    "resourceType": "EC2_INSTANCE",
+                    "resourceId": "i-1234567890abcdef0",
+                    "action": "START",
+                    "userId": "user123",
+                    "tenantKey": "tenant1",
+                    "clientIp": "192.168.1.1",
+                    "timestamp": "2025-09-21T14:02:01.664Z"
+                }
+                """;
+            
+            // When
+            PolicyEvaluationRequest result = policyJsonParser.parsePolicyEvaluationRequest(requestJson);
+            
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getResourceType()).isEqualTo("EC2_INSTANCE");
+            assertThat(result.getResourceId()).isEqualTo("i-1234567890abcdef0");
+            assertThat(result.getAction()).isEqualTo("START");
+            assertThat(result.getUserId()).isEqualTo("user123");
+            assertThat(result.getTenantKey()).isEqualTo("tenant1");
+            assertThat(result.getClientIp()).isEqualTo("192.168.1.1");
+            assertThat(result.getTimestamp()).isNotNull();
+            // timestamp가 정상적으로 파싱되었는지 확인
+            assertThat(result.getTimestamp().getYear()).isEqualTo(2025);
+            assertThat(result.getTimestamp().getMonthValue()).isEqualTo(9);
+            assertThat(result.getTimestamp().getDayOfMonth()).isEqualTo(21);
+            assertThat(result.getTimestamp().getHour()).isEqualTo(14);
+            assertThat(result.getTimestamp().getMinute()).isEqualTo(2);
+            assertThat(result.getTimestamp().getSecond()).isEqualTo(1);
+        }
+        
+        @Test
+        @DisplayName("ISO 8601 형식의 expiresAt 파싱")
+        void parseIso8601ExpiresAt_ValidFormat_ReturnsPolicyEvaluationRequest() {
+            // Given
+            String requestJson = """
+                {
+                    "resourceType": "S3_BUCKET",
+                    "resourceId": "my-bucket",
+                    "action": "DELETE",
+                    "userId": "user456",
+                    "tenantKey": "tenant2",
+                    "clientIp": "10.0.0.1",
+                    "timestamp": "2025-09-21T14:02:01.664Z",
+                    "expiresAt": "2025-09-21T15:02:01.664Z"
+                }
+                """;
+            
+            // When
+            PolicyEvaluationRequest result = policyJsonParser.parsePolicyEvaluationRequest(requestJson);
+            
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getExpiresAt()).isNotNull();
+            assertThat(result.getExpiresAt().getYear()).isEqualTo(2025);
+            assertThat(result.getExpiresAt().getMonthValue()).isEqualTo(9);
+            assertThat(result.getExpiresAt().getDayOfMonth()).isEqualTo(21);
+            assertThat(result.getExpiresAt().getHour()).isEqualTo(15);
+            assertThat(result.getExpiresAt().getMinute()).isEqualTo(2);
+            assertThat(result.getExpiresAt().getSecond()).isEqualTo(1);
+        }
+    }
+    
+    @Nested
     @DisplayName("JSON 변환 테스트")
     class JsonConversionTest {
         
