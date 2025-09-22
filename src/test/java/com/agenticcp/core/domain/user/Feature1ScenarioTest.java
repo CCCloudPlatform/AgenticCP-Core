@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.*;
 /**
  * Feature 1 시나리오 테스트
  * 
+ * 관련 이슈: #13 - https://github.com/your-org/AgenticCP-Core/issues/13
+ * 
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2024-01-01
