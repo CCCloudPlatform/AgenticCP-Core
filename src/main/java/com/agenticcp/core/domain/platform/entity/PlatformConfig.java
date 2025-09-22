@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "platform_configs")
 @Data
 @Builder
+@lombok.EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 public class PlatformConfig extends BaseEntity {
@@ -29,10 +30,14 @@ public class PlatformConfig extends BaseEntity {
     private String description;
 
     @Column(name = "is_encrypted")
+    @lombok.Builder.Default
     private Boolean isEncrypted = false;
 
     @Column(name = "is_system")
+    @lombok.Builder.Default
     private Boolean isSystem = false;
+
+    // 버전 컬럼은 ERD에 없으므로 사용하지 않음
 
     public enum ConfigType {
         STRING,
