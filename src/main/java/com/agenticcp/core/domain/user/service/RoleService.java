@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.user.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
@@ -49,7 +50,10 @@ public class RoleService {
      */
     public List<Role> getAllRoles() {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return roleRepository.findByTenantWithPermissions(currentTenant);
+        log.info("[RoleService] getAllRoles - tenantKey={}", LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Role> result = roleRepository.findByTenantWithPermissions(currentTenant);
+        log.info("[RoleService] getAllRoles - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -59,7 +63,10 @@ public class RoleService {
      * @return 역할 목록
      */
     public List<Role> getRolesByTenant(String tenantKey) {
-        return roleRepository.findByTenantKey(tenantKey);
+        log.info("[RoleService] getRolesByTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenantKey));
+        List<Role> result = roleRepository.findByTenantKey(tenantKey);
+        log.info("[RoleService] getRolesByTenant - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(tenantKey));
+        return result;
     }
     
     /**
@@ -70,7 +77,10 @@ public class RoleService {
      */
     public Optional<Role> getRoleByKey(String roleKey) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return roleRepository.findByRoleKeyAndTenantWithPermissions(roleKey, currentTenant);
+        log.info("[RoleService] getRoleByKey - roleKey={} tenantKey={}", LogMaskingUtils.mask(roleKey, 2, 2), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        Optional<Role> result = roleRepository.findByRoleKeyAndTenantWithPermissions(roleKey, currentTenant);
+        log.info("[RoleService] getRoleByKey - found={} roleKey={} tenantKey={}", result.isPresent(), LogMaskingUtils.mask(roleKey, 2, 2), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -81,8 +91,11 @@ public class RoleService {
      * @throws ResourceNotFoundException 역할을 찾을 수 없는 경우
      */
     public Role getRoleByKeyOrThrow(String roleKey) {
-        return getRoleByKey(roleKey)
+        log.info("[RoleService] getRoleByKeyOrThrow - roleKey={}", LogMaskingUtils.mask(roleKey, 2, 2));
+        Role role = getRoleByKey(roleKey)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "roleKey", roleKey));
+        log.info("[RoleService] getRoleByKeyOrThrow - success roleKey={}", LogMaskingUtils.mask(roleKey, 2, 2));
+        return role;
     }
     
     /**
@@ -92,7 +105,10 @@ public class RoleService {
      */
     public List<Role> getActiveRoles() {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return roleRepository.findActiveRolesByTenant(currentTenant, Status.ACTIVE);
+        log.info("[RoleService] getActiveRoles - tenantKey={}", LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Role> result = roleRepository.findActiveRolesByTenant(currentTenant, Status.ACTIVE);
+        log.info("[RoleService] getActiveRoles - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -102,7 +118,10 @@ public class RoleService {
      */
     public List<Role> getSystemRoles() {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return roleRepository.findSystemRolesByTenant(currentTenant, true);
+        log.info("[RoleService] getSystemRoles - tenantKey={}", LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Role> result = roleRepository.findSystemRolesByTenant(currentTenant, true);
+        log.info("[RoleService] getSystemRoles - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -112,7 +131,10 @@ public class RoleService {
      */
     public List<Role> getDefaultRoles() {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return roleRepository.findDefaultRolesByTenant(currentTenant, true);
+        log.info("[RoleService] getDefaultRoles - tenantKey={}", LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Role> result = roleRepository.findDefaultRolesByTenant(currentTenant, true);
+        log.info("[RoleService] getDefaultRoles - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -123,7 +145,10 @@ public class RoleService {
      */
     public List<Role> searchRoles(String keyword) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return roleRepository.searchRolesByTenant(keyword, currentTenant);
+        log.info("[RoleService] searchRoles - keyword={} tenantKey={}", LogMaskingUtils.mask(keyword, 2, 1), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Role> result = roleRepository.searchRolesByTenant(keyword, currentTenant);
+        log.info("[RoleService] searchRoles - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -135,6 +160,11 @@ public class RoleService {
     @Transactional
     public Role createRole(CreateRoleRequest request) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
+        log.info("[RoleService] createRole - tenantKey={} roleKey={} isSystem={} priority={}",
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()),
+                LogMaskingUtils.mask(request.getRoleKey(), 2, 2),
+                request.getIsSystem(),
+                request.getPriority());
         
         // 역할 키 중복 확인
         if (roleRepository.existsByRoleKeyAndTenant(request.getRoleKey(), currentTenant)) {
@@ -163,7 +193,9 @@ public class RoleService {
         // 캐시 무효화
         evictRoleCache();
         
-        log.info("Role created: {} in tenant: {}", savedRole.getRoleKey(), currentTenant.getTenantKey());
+        log.info("[RoleService] createRole - success roleKey={} tenantKey={}",
+                LogMaskingUtils.mask(savedRole.getRoleKey(), 2, 2),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         // 권한 포함하여 다시 로드해 반환
         return roleRepository.findByIdAndTenantWithPermissions(savedRole.getId(), currentTenant)
                 .orElse(savedRole);
@@ -178,6 +210,11 @@ public class RoleService {
      */
     @Transactional
     public Role updateRole(String roleKey, UpdateRoleRequest request) {
+        log.info("[RoleService] updateRole - roleKey={} fields=[name:{}, desc:set?{}, priority:{}]",
+                LogMaskingUtils.mask(roleKey, 2, 2),
+                request.getRoleName(),
+                request.getDescription() != null,
+                request.getPriority());
         Role role = getRoleByKeyOrThrow(roleKey);
         
         // 시스템 역할 수정 제한
@@ -206,7 +243,9 @@ public class RoleService {
         // 캐시 무효화
         evictRoleCache();
         
-        log.info("Role updated: {} in tenant: {}", roleKey, role.getTenant().getTenantKey());
+        log.info("[RoleService] updateRole - success roleKey={} tenantKey={}",
+                LogMaskingUtils.mask(roleKey, 2, 2),
+                LogMaskingUtils.maskTenantKey(role.getTenant().getTenantKey()));
         return updatedRole;
     }
     
@@ -217,6 +256,7 @@ public class RoleService {
      */
     @Transactional
     public void deleteRole(String roleKey) {
+        log.info("[RoleService] deleteRole - roleKey={}", LogMaskingUtils.mask(roleKey, 2, 2));
         Role role = getRoleByKeyOrThrow(roleKey);
         
         // 시스템 역할 삭제 방지
@@ -242,7 +282,9 @@ public class RoleService {
         // 캐시 무효화
         evictRoleCache();
         
-        log.info("Role deleted: {} in tenant: {}", roleKey, role.getTenant().getTenantKey());
+        log.info("[RoleService] deleteRole - success roleKey={} tenantKey={}",
+                LogMaskingUtils.mask(roleKey, 2, 2),
+                LogMaskingUtils.maskTenantKey(role.getTenant().getTenantKey()));
     }
     
     /**
@@ -254,6 +296,10 @@ public class RoleService {
     @Transactional
     public void assignPermissionsToRole(Long roleId, List<String> permissionKeys) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
+        log.info("[RoleService] assignPermissionsToRole - roleId={} permissionKeys={} tenantKey={}",
+                roleId,
+                permissionKeys == null ? 0 : permissionKeys.size(),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
@@ -275,7 +321,9 @@ public class RoleService {
         // 사용자 권한 캐시 무효화
         evictUserPermissionCache();
         
-        log.info("Permissions assigned to role: {} in tenant: {}", role.getRoleKey(), currentTenant.getTenantKey());
+        log.info("[RoleService] assignPermissionsToRole - success roleKey={} tenantKey={}",
+                LogMaskingUtils.mask(role.getRoleKey(), 2, 2),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
     }
     
     /**
@@ -298,6 +346,10 @@ public class RoleService {
     @Transactional
     public void removePermissionFromRole(Long roleId, String permissionKey) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
+        log.info("[RoleService] removePermissionFromRole - roleId={} permissionKey={} tenantKey={}",
+                roleId,
+                LogMaskingUtils.mask(permissionKey, 2, 2),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
@@ -325,7 +377,9 @@ public class RoleService {
         // 사용자 권한 캐시 무효화
         evictUserPermissionCache();
         
-        log.info("Permission removed from role: {} in tenant: {}", role.getRoleKey(), currentTenant.getTenantKey());
+        log.info("[RoleService] removePermissionFromRole - success roleKey={} tenantKey={}",
+                LogMaskingUtils.mask(role.getRoleKey(), 2, 2),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
     }
     
     /**

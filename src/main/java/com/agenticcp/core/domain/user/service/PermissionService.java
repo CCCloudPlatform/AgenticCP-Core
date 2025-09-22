@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.user.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
@@ -45,7 +46,10 @@ public class PermissionService {
      */
     public List<Permission> getAllPermissions() {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findByTenant(currentTenant);
+        log.info("[PermissionService] getAllPermissions - tenantKey={}", LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.findByTenant(currentTenant);
+        log.info("[PermissionService] getAllPermissions - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -55,7 +59,10 @@ public class PermissionService {
      * @return 권한 목록
      */
     public List<Permission> getPermissionsByTenant(String tenantKey) {
-        return permissionRepository.findByTenantKey(tenantKey);
+        log.info("[PermissionService] getPermissionsByTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenantKey));
+        List<Permission> result = permissionRepository.findByTenantKey(tenantKey);
+        log.info("[PermissionService] getPermissionsByTenant - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(tenantKey));
+        return result;
     }
     
     /**
@@ -66,7 +73,15 @@ public class PermissionService {
      */
     public Optional<Permission> getPermissionByKey(String permissionKey) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findByPermissionKeyAndTenant(permissionKey, currentTenant);
+        log.info("[PermissionService] getPermissionByKey - permissionKey={} tenantKey={}",
+                LogMaskingUtils.maskPermissionKey(permissionKey),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        Optional<Permission> result = permissionRepository.findByPermissionKeyAndTenant(permissionKey, currentTenant);
+        log.info("[PermissionService] getPermissionByKey - found={} permissionKey={} tenantKey={}",
+                result.isPresent(),
+                LogMaskingUtils.maskPermissionKey(permissionKey),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -77,8 +92,11 @@ public class PermissionService {
      * @throws ResourceNotFoundException 권한을 찾을 수 없는 경우
      */
     public Permission getPermissionByKeyOrThrow(String permissionKey) {
-        return getPermissionByKey(permissionKey)
+        log.info("[PermissionService] getPermissionByKeyOrThrow - permissionKey={}", LogMaskingUtils.maskPermissionKey(permissionKey));
+        Permission permission = getPermissionByKey(permissionKey)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", "permissionKey", permissionKey));
+        log.info("[PermissionService] getPermissionByKeyOrThrow - success permissionKey={}", LogMaskingUtils.maskPermissionKey(permissionKey));
+        return permission;
     }
     
     /**
@@ -88,7 +106,10 @@ public class PermissionService {
      */
     public List<Permission> getActivePermissions() {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findActivePermissionsByTenant(currentTenant, Status.ACTIVE);
+        log.info("[PermissionService] getActivePermissions - tenantKey={}", LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.findActivePermissionsByTenant(currentTenant, Status.ACTIVE);
+        log.info("[PermissionService] getActivePermissions - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -98,9 +119,12 @@ public class PermissionService {
      */
     public List<Permission> getSystemPermissions() {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findByTenant(currentTenant).stream()
+        log.info("[PermissionService] getSystemPermissions - tenantKey={}", LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.findByTenant(currentTenant).stream()
                 .filter(permission -> Boolean.TRUE.equals(permission.getIsSystem()))
                 .collect(Collectors.toList());
+        log.info("[PermissionService] getSystemPermissions - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -111,7 +135,10 @@ public class PermissionService {
      */
     public List<Permission> getPermissionsByCategory(String category) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findByTenantAndCategory(currentTenant, category);
+        log.info("[PermissionService] getPermissionsByCategory - category={} tenantKey={}", category, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.findByTenantAndCategory(currentTenant, category);
+        log.info("[PermissionService] getPermissionsByCategory - success count={} category={} tenantKey={}", result.size(), category, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -122,9 +149,12 @@ public class PermissionService {
      */
     public List<Permission> getPermissionsByResource(String resource) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findByTenant(currentTenant).stream()
+        log.info("[PermissionService] getPermissionsByResource - resource={} tenantKey={}", resource, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.findByTenant(currentTenant).stream()
                 .filter(permission -> resource.equals(permission.getResource()))
                 .collect(Collectors.toList());
+        log.info("[PermissionService] getPermissionsByResource - success count={} resource={} tenantKey={}", result.size(), resource, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -135,9 +165,12 @@ public class PermissionService {
      */
     public List<Permission> getPermissionsByAction(String action) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findByTenant(currentTenant).stream()
+        log.info("[PermissionService] getPermissionsByAction - action={} tenantKey={}", action, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.findByTenant(currentTenant).stream()
                 .filter(permission -> action.equals(permission.getAction()))
                 .collect(Collectors.toList());
+        log.info("[PermissionService] getPermissionsByAction - success count={} action={} tenantKey={}", result.size(), action, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -149,7 +182,10 @@ public class PermissionService {
      */
     public List<Permission> getPermissionsByResourceAndAction(String resource, String action) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.findByTenantAndResourceAndAction(currentTenant, resource, action);
+        log.info("[PermissionService] getPermissionsByResourceAndAction - resource={} action={} tenantKey={}", resource, action, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.findByTenantAndResourceAndAction(currentTenant, resource, action);
+        log.info("[PermissionService] getPermissionsByResourceAndAction - success count={} resource={} action={} tenantKey={}", result.size(), resource, action, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -160,7 +196,10 @@ public class PermissionService {
      */
     public List<Permission> searchPermissions(String keyword) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        return permissionRepository.searchPermissionsByTenant(keyword, currentTenant);
+        log.info("[PermissionService] searchPermissions - keyword={} tenantKey={}", LogMaskingUtils.mask(keyword, 2, 1), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        List<Permission> result = permissionRepository.searchPermissionsByTenant(keyword, currentTenant);
+        log.info("[PermissionService] searchPermissions - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        return result;
     }
     
     /**
@@ -172,6 +211,13 @@ public class PermissionService {
     @Transactional
     public Permission createPermission(CreatePermissionRequest request) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
+        log.info("[PermissionService] createPermission - tenantKey={} permissionKey={} resource={} action={} category={} priority={}",
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()),
+                LogMaskingUtils.maskPermissionKey(request.getPermissionKey()),
+                request.getResource(),
+                request.getAction(),
+                request.getCategory(),
+                request.getPriority());
         
         // 권한 키 중복 확인
         if (permissionRepository.existsByPermissionKeyAndTenant(request.getPermissionKey(), currentTenant)) {
@@ -197,7 +243,9 @@ public class PermissionService {
         // 캐시 무효화
         evictPermissionCache();
         
-        log.info("Permission created: {} in tenant: {}", savedPermission.getPermissionKey(), currentTenant.getTenantKey());
+        log.info("[PermissionService] createPermission - success permissionKey={} tenantKey={}",
+                LogMaskingUtils.maskPermissionKey(savedPermission.getPermissionKey()),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         return savedPermission;
     }
     
@@ -210,6 +258,14 @@ public class PermissionService {
      */
     @Transactional
     public Permission updatePermission(String permissionKey, UpdatePermissionRequest request) {
+        log.info("[PermissionService] updatePermission - permissionKey={} fields=[name:{}, desc:set?{}, resource:{}, action:{}, category:{}, priority:{}]",
+                LogMaskingUtils.maskPermissionKey(permissionKey),
+                request.getPermissionName(),
+                request.getDescription() != null,
+                request.getResource(),
+                request.getAction(),
+                request.getCategory(),
+                request.getPriority());
         Permission permission = getPermissionByKeyOrThrow(permissionKey);
         
         // 시스템 권한 수정 제한
@@ -243,7 +299,9 @@ public class PermissionService {
         evictPermissionCache();
         evictUserPermissionCache();
         
-        log.info("Permission updated: {} in tenant: {}", permissionKey, permission.getTenant().getTenantKey());
+        log.info("[PermissionService] updatePermission - success permissionKey={} tenantKey={}",
+                LogMaskingUtils.maskPermissionKey(permissionKey),
+                LogMaskingUtils.maskTenantKey(permission.getTenant().getTenantKey()));
         return updatedPermission;
     }
     
@@ -254,6 +312,7 @@ public class PermissionService {
      */
     @Transactional
     public void deletePermission(String permissionKey) {
+        log.info("[PermissionService] deletePermission - permissionKey={}", LogMaskingUtils.maskPermissionKey(permissionKey));
         Permission permission = getPermissionByKeyOrThrow(permissionKey);
         
         // 시스템 권한 삭제 방지
@@ -275,7 +334,9 @@ public class PermissionService {
         evictPermissionCache();
         evictUserPermissionCache();
         
-        log.info("Permission deleted: {} in tenant: {}", permissionKey, permission.getTenant().getTenantKey());
+        log.info("[PermissionService] deletePermission - success permissionKey={} tenantKey={}",
+                LogMaskingUtils.maskPermissionKey(permissionKey),
+                LogMaskingUtils.maskTenantKey(permission.getTenant().getTenantKey()));
     }
     
     /**
