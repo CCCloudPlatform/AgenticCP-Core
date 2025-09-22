@@ -1,16 +1,25 @@
 package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.common.exception.ValidationException;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
+import com.agenticcp.core.domain.platform.validation.ConfigValidators;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
+/**
+ * PlatformConfig 도메인의 비즈니스 로직을 담당.
+ * - 조회: 전체/타입별/시스템 설정 페이징 조회
+ * - 단건: 키로 조회
+ * - 생성/수정/삭제: 타입별 검증 및 정책(시스템 설정 삭제 금지) 적용
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -19,37 +28,54 @@ public class PlatformConfigService {
 
     private final PlatformConfigRepository platformConfigRepository;
 
-    public List<PlatformConfig> getAllConfigs() {
-        return platformConfigRepository.findAllActive();
+    /** 전체 설정 페이징 조회 */
+    public Page<PlatformConfig> getAllConfigs(Pageable pageable) {
+        return platformConfigRepository.findAll(pageable);
     }
 
+    /** 키로 단건 조회 */
     public Optional<PlatformConfig> getConfigByKey(String configKey) {
         return platformConfigRepository.findByConfigKey(configKey);
     }
 
+    /** 키로 단건 조회(없으면 404 예외) */
     public PlatformConfig getConfigByKeyOrThrow(String configKey) {
         return platformConfigRepository.findByConfigKey(configKey)
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformConfig", "configKey", configKey));
     }
 
-    public List<PlatformConfig> getConfigsByType(PlatformConfig.ConfigType configType) {
-        return platformConfigRepository.findByConfigType(configType);
+    /** 타입별 페이징 조회 */
+    public Page<PlatformConfig> getConfigsByType(PlatformConfig.ConfigType configType, Pageable pageable) {
+        return platformConfigRepository.findByConfigType(configType, pageable);
     }
 
-    public List<PlatformConfig> getSystemConfigs() {
-        return platformConfigRepository.findByIsSystem(true);
+    /** 시스템 설정만 페이징 조회 */
+    public Page<PlatformConfig> getSystemConfigs(Pageable pageable) {
+        return platformConfigRepository.findByIsSystem(true, pageable);
     }
 
+    /** 필터링된 설정 페이징 조회 */
+    public Page<PlatformConfig> getFilteredConfigs(String configKeyPattern, PlatformConfig.ConfigType configType, Boolean isSystem, Pageable pageable) {
+        return platformConfigRepository.findFilteredConfigs(configKeyPattern, configType, isSystem, pageable);
+    }
+
+    /** 생성: 키 정책 및 타입-값 일치 검증, ENCRYPTED 빈값 금지 */
     @Transactional
     public PlatformConfig createConfig(PlatformConfig platformConfig) {
+        ConfigValidators.validateKeyPolicy(platformConfig.getConfigKey());
+        ConfigValidators.validateValueByType(platformConfig.getConfigType(), platformConfig.getConfigValue());
+        if (platformConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED && (platformConfig.getConfigValue() == null || platformConfig.getConfigValue().isBlank())) {
+            throw new ValidationException("value", "encrypted value must not be blank");
+        }
         log.info("Creating platform config: {}", platformConfig.getConfigKey());
         return platformConfigRepository.save(platformConfig);
     }
 
+    /** 수정: 타입-값 일치 검증 후 갱신 */
     @Transactional
     public PlatformConfig updateConfig(String configKey, PlatformConfig updatedConfig) {
         PlatformConfig existingConfig = getConfigByKeyOrThrow(configKey);
-        
+        ConfigValidators.validateValueByType(updatedConfig.getConfigType(), updatedConfig.getConfigValue());
         existingConfig.setConfigValue(updatedConfig.getConfigValue());
         existingConfig.setConfigType(updatedConfig.getConfigType());
         existingConfig.setDescription(updatedConfig.getDescription());
@@ -59,9 +85,13 @@ public class PlatformConfigService {
         return platformConfigRepository.save(existingConfig);
     }
 
+    /** 삭제: 시스템 설정은 삭제 금지(소프트 삭제만) */
     @Transactional
     public void deleteConfig(String configKey) {
         PlatformConfig config = getConfigByKeyOrThrow(configKey);
+        if (Boolean.TRUE.equals(config.getIsSystem())) {
+            throw new ValidationException("configKey", "system config cannot be deleted");
+        }
         config.setIsDeleted(true);
         platformConfigRepository.save(config);
         log.info("Soft deleted platform config: {}", configKey);
