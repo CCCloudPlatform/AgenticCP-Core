@@ -30,7 +30,8 @@ public class OpenApiConfig {
                                 .name("MIT License")
                                 .url("https://opensource.org/licenses/MIT")))
                 .servers(List.of(
-                        new Server().url("http://localhost:8080/api").description("개발 서버"),
+                        // 컨텍스트 경로는 컨트롤러에서 /api를 포함하므로, 서버 URL은 루트로 지정
+                        new Server().url("/").description("개발 서버"),
                         new Server().url("https://api.agenticcp.com").description("프로덕션 서버")
                 ))
                 .components(new Components()

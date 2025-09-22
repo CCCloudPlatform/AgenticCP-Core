@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.common.exception.ValidationException;
+import com.agenticcp.core.domain.platform.util.LoggingUtils;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidators;
@@ -19,6 +20,7 @@ import java.util.Optional;
  * - 조회: 전체/타입별/시스템 설정 페이징 조회
  * - 단건: 키로 조회
  * - 생성/수정/삭제: 타입별 검증 및 정책(시스템 설정 삭제 금지) 적용
+ * - 로깅: 민감한 값은 마스킹하여 로그 출력
  */
 @Slf4j
 @Service
@@ -59,45 +61,86 @@ public class PlatformConfigService {
         return platformConfigRepository.findFilteredConfigs(configKeyPattern, configType, isSystem, pageable);
     }
 
-    /** 생성: 키 정책 및 타입-값 일치 검증 */
+    /** 생성: 키 정책 및 타입-값 일치 검증, 로깅 시 민감 값 마스킹 */
     @Transactional
     public PlatformConfig createConfig(PlatformConfig platformConfig) {
         ConfigValidators.validateKeyPolicy(platformConfig.getConfigKey());
         ConfigValidators.validateValueByType(platformConfig.getConfigType(), platformConfig.getConfigValue());
-        log.info("Creating platform config: {}", platformConfig.getConfigKey());
-        return platformConfigRepository.save(platformConfig);
+        
+        // 로깅 시 민감 값 마스킹
+        log.info("Creating platform config: {} = {}", 
+            platformConfig.getConfigKey(), 
+            LoggingUtils.maskSensitiveValue(platformConfig));
+        
+        PlatformConfig savedConfig = platformConfigRepository.save(platformConfig);
+        
+        // 저장 후에도 마스킹된 로그 출력
+        log.info("Successfully created platform config: {}", 
+            LoggingUtils.formatConfigForLogging(savedConfig));
+        
+        return savedConfig;
     }
 
-    /** 수정: 타입-값 일치 검증 후 갱신 */
+    /** 수정: 타입-값 일치 검증 후 갱신, 로깅 시 민감 값 마스킹 */
     @Transactional
     public PlatformConfig updateConfig(String configKey, PlatformConfig updatedConfig) {
         PlatformConfig existingConfig = getConfigByKeyOrThrow(configKey);
         ConfigValidators.validateValueByType(updatedConfig.getConfigType(), updatedConfig.getConfigValue());
+        
+        // 기존 값 로깅 (마스킹)
+        log.info("Updating platform config: {} from {} to {}", 
+            configKey,
+            LoggingUtils.maskSensitiveValue(existingConfig),
+            LoggingUtils.maskSensitiveValue(updatedConfig));
+        
         existingConfig.setConfigValue(updatedConfig.getConfigValue());
         existingConfig.setConfigType(updatedConfig.getConfigType());
         existingConfig.setDescription(updatedConfig.getDescription());
         existingConfig.setIsEncrypted(updatedConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED);
         
-        log.info("Updating platform config: {}", configKey);
-        return platformConfigRepository.save(existingConfig);
+        PlatformConfig savedConfig = platformConfigRepository.save(existingConfig);
+        
+        // 수정 후 마스킹된 로그 출력
+        log.info("Successfully updated platform config: {}", 
+            LoggingUtils.formatConfigForLogging(savedConfig));
+        
+        return savedConfig;
     }
 
-    /** 삭제: 시스템 설정은 삭제 금지(소프트 삭제만) */
+    /** 삭제: 시스템 설정은 삭제 금지(소프트 삭제만), 로깅 시 민감 값 마스킹 */
     @Transactional
     public void deleteConfig(String configKey) {
         PlatformConfig config = getConfigByKeyOrThrow(configKey);
+        
         if (Boolean.TRUE.equals(config.getIsSystem())) {
+            log.warn("Attempted to delete system config: {} = {}", 
+                configKey, 
+                LoggingUtils.maskSensitiveValue(config));
             throw new ValidationException("configKey", "system config cannot be deleted");
         }
+        
+        // 삭제 전 마스킹된 로그 출력
+        log.info("Soft deleting platform config: {} = {}", 
+            configKey, 
+            LoggingUtils.maskSensitiveValue(config));
+        
         config.setIsDeleted(true);
         platformConfigRepository.save(config);
-        log.info("Soft deleted platform config: {}", configKey);
+        
+        log.info("Successfully soft deleted platform config: {}", configKey);
     }
 
     @Transactional
     public void hardDeleteConfig(String configKey) {
         PlatformConfig config = getConfigByKeyOrThrow(configKey);
+        
+        // 하드 삭제 전 마스킹된 로그 출력
+        log.info("Hard deleting platform config: {} = {}", 
+            configKey, 
+            LoggingUtils.maskSensitiveValue(config));
+        
         platformConfigRepository.delete(config);
-        log.info("Hard deleted platform config: {}", configKey);
+        
+        log.info("Successfully hard deleted platform config: {}", configKey);
     }
 }

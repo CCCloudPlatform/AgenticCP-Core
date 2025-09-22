@@ -22,7 +22,7 @@ public class PlatformConfigDtos {
         private String key;
         @NotNull
         private PlatformConfig.ConfigType type;
-        @NotNull
+        @NotBlank
         private String value;
         private Boolean isSystem = false;
         private String description;
@@ -33,7 +33,7 @@ public class PlatformConfigDtos {
     public static class UpdateRequest {
         @NotNull
         private PlatformConfig.ConfigType type;
-        @NotNull
+        @NotBlank
         private String value;
         private String description;
     }

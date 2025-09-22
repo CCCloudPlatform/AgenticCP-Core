@@ -1,6 +1,5 @@
 #!/bin/bash
-
-# AgenticCP-Core 개발 환경 시작 스크립트
+# AgenticCP-Core 개발 환경 시작 스크립트 (Linux/Mac)
 
 echo "🚀 AgenticCP-Core 개발 환경을 시작합니다..."
 
@@ -18,7 +17,7 @@ docker-compose -f docker-compose.dev.yml ps
 
 # MySQL 연결 확인
 echo "🔗 MySQL 연결을 확인합니다..."
-until docker-compose -f docker-compose.dev.yml exec mysql mysqladmin ping -h localhost --silent; do
+while ! docker-compose -f docker-compose.dev.yml exec mysql mysqladmin ping -h localhost --silent; do
     echo "MySQL이 시작될 때까지 대기 중..."
     sleep 2
 done
