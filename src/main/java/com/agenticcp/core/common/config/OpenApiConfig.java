@@ -50,10 +50,17 @@ public class OpenApiConfig {
                                 .in(SecurityScheme.In.HEADER)
                                 .name("X-API-Key")
                                 .description("API 키를 입력하세요")
+                        )
+                        .addSecuritySchemes("tenantKey", new SecurityScheme()
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.HEADER)
+                                .name("X-Tenant-Key")
+                                .description("요청 테넌트를 지정하는 헤더 (예: test-tenant)")
                         ))
                 .addSecurityItem(new SecurityRequirement()
                         .addList("bearerAuth")
                         .addList("basicAuth")
-                        .addList("apiKey"));
+                        .addList("apiKey")
+                        .addList("tenantKey"));
     }
 }
