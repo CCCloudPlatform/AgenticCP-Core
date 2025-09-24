@@ -5,6 +5,7 @@ import com.agenticcp.core.domain.security.entity.SecurityPolicy;
 import com.agenticcp.core.domain.security.repository.SecurityPolicyRepository;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 보안 정책 관리 서비스
+ *
+ * 보안 정책의 조회/생성/수정/활성화/비활성화 및 통계 관련 기능을 제공합니다.
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -23,28 +32,46 @@ public class SecurityPolicyService {
     private final SecurityPolicyRepository securityPolicyRepository;
 
     public List<SecurityPolicy> getAllPolicies() {
-        return securityPolicyRepository.findAll();
+        log.info("[SecurityPolicyService] getAllPolicies");
+        List<SecurityPolicy> result = securityPolicyRepository.findAll();
+        log.info("[SecurityPolicyService] getAllPolicies - success count={}", result.size());
+        return result;
     }
 
     public List<SecurityPolicy> getActivePolicies() {
-        return securityPolicyRepository.findActivePolicies(Status.ACTIVE);
+        log.info("[SecurityPolicyService] getActivePolicies");
+        List<SecurityPolicy> result = securityPolicyRepository.findActivePolicies(Status.ACTIVE);
+        log.info("[SecurityPolicyService] getActivePolicies - success count={}", result.size());
+        return result;
     }
 
     public Optional<SecurityPolicy> getPolicyByKey(String policyKey) {
-        return securityPolicyRepository.findByPolicyKey(policyKey);
+        log.info("[SecurityPolicyService] getPolicyByKey - policyKey={}", LogMaskingUtils.mask(policyKey, 2, 2));
+        Optional<SecurityPolicy> result = securityPolicyRepository.findByPolicyKey(policyKey);
+        log.info("[SecurityPolicyService] getPolicyByKey - found={} policyKey={}", result.isPresent(), LogMaskingUtils.mask(policyKey, 2, 2));
+        return result;
     }
 
     public SecurityPolicy getPolicyByKeyOrThrow(String policyKey) {
-        return securityPolicyRepository.findByPolicyKey(policyKey)
+        log.info("[SecurityPolicyService] getPolicyByKeyOrThrow - policyKey={}", LogMaskingUtils.mask(policyKey, 2, 2));
+        SecurityPolicy policy = securityPolicyRepository.findByPolicyKey(policyKey)
                 .orElseThrow(() -> new ResourceNotFoundException("SecurityPolicy", "policyKey", policyKey));
+        log.info("[SecurityPolicyService] getPolicyByKeyOrThrow - success policyKey={}", LogMaskingUtils.mask(policyKey, 2, 2));
+        return policy;
     }
 
     public List<SecurityPolicy> getPoliciesByTenant(Tenant tenant) {
-        return securityPolicyRepository.findByTenant(tenant);
+        log.info("[SecurityPolicyService] getPoliciesByTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        List<SecurityPolicy> result = securityPolicyRepository.findByTenant(tenant);
+        log.info("[SecurityPolicyService] getPoliciesByTenant - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        return result;
     }
 
     public List<SecurityPolicy> getActivePoliciesByTenant(Tenant tenant) {
-        return securityPolicyRepository.findActivePoliciesByTenant(tenant, Status.ACTIVE);
+        log.info("[SecurityPolicyService] getActivePoliciesByTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        List<SecurityPolicy> result = securityPolicyRepository.findActivePoliciesByTenant(tenant, Status.ACTIVE);
+        log.info("[SecurityPolicyService] getActivePoliciesByTenant - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        return result;
     }
 
     public List<SecurityPolicy> getPoliciesByType(SecurityPolicy.PolicyType policyType) {

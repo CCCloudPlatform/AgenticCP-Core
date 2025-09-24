@@ -39,6 +39,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - agenticcp-network
     volumes:
@@ -46,11 +48,25 @@ services:
       # 개발용: 소스코드 실시간 반영 (선택사항)
       # - ./src:/app/src
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  redis:
+    image: redis:7
+    container_name: agenticcp-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - agenticcp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:5.2
