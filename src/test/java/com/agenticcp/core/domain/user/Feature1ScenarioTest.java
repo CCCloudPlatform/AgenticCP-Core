@@ -9,6 +9,7 @@ import com.agenticcp.core.domain.user.entity.Role;
 import com.agenticcp.core.domain.user.repository.PermissionRepository;
 import com.agenticcp.core.domain.user.repository.RoleRepository;
 import com.agenticcp.core.domain.user.service.RoleService;
+import com.agenticcp.core.domain.user.enums.RoleErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -152,7 +153,7 @@ public class Feature1ScenarioTest {
         // Then: "시스템 역할은 삭제할 수 없습니다" 오류 반환
         assertThatThrownBy(() -> roleService.deleteRole(systemRole.getRoleKey()))
                 .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessage("시스템 역할은 삭제할 수 없습니다");
+                .hasMessage(RoleErrorCode.SYSTEM_ROLE_NOT_DELETABLE.getMessage());
         
         // 시스템 역할이 삭제되지 않았는지 확인
         Optional<Role> notDeletedRole = roleRepository.findByRoleKey(systemRole.getRoleKey());
@@ -172,7 +173,7 @@ public class Feature1ScenarioTest {
         // Then: "기본 역할은 삭제할 수 없습니다" 오류 반환
         assertThatThrownBy(() -> roleService.deleteRole(defaultRole.getRoleKey()))
                 .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessage("기본 역할은 삭제할 수 없습니다");
+                .hasMessage(RoleErrorCode.DEFAULT_ROLE_NOT_DELETABLE.getMessage());
     }
     
     /**
