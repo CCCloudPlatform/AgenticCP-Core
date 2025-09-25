@@ -1,0 +1,132 @@
+---
+globs: *Entity.java
+alwaysApply: false
+---
+# AgenticCP Entity 작성 규칙
+
+## 기본 구조
+```java
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = "profiles")
+public class User {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @NotBlank @Size(min = 2, max = 50)
+    @Column(name = "username", unique = true, nullable = false, length = 50)
+    private String username;
+    
+    @NotBlank @Email @Size(max = 255)
+    @Column(name = "email", unique = true, nullable = false, length = 255)
+    private String email;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+    
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+    
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<UserProfile> profiles = new ArrayList<>();
+    
+    // 비즈니스 메서드
+    public void activate() { this.status = UserStatus.ACTIVE; }
+    public boolean isActive() { return UserStatus.ACTIVE.equals(this.status); }
+}
+```
+
+## 필수 규칙
+- **테이블명**: snake_case (`users`, `user_profiles`)
+- **컬럼명**: snake_case (`created_at`, `tenant_id`)
+- **인덱스**: 자주 조회되는 컬럼에 `@Index` 정의
+- **멀티테넌트**: 모든 엔티티에 `tenantId` 필드 필수
+- **검증**: Bean Validation 어노테이션 사용 (`@NotBlank`, `@Email`, `@Size`)
+- **연관관계**: `FetchType.LAZY` 기본, `@ToString(exclude = "관계필드")`
+- **타임스탬프**: `@CreationTimestamp`, `@UpdateTimestamp` 사용
+
+## 금지사항
+- `FetchType.EAGER` 사용 금지 (N+1 문제)
+- `@ToString`에서 연관관계 필드 제외 필수
+- 복잡한 비즈니스 로직은 Service 계층으로
+- 하드코딩된 문자열 사용 금지
+# AgenticCP Entity 작성 규칙
+
+## 기본 구조
+```java
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = "profiles")
+public class User {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @NotBlank @Size(min = 2, max = 50)
+    @Column(name = "username", unique = true, nullable = false, length = 50)
+    private String username;
+    
+    @NotBlank @Email @Size(max = 255)
+    @Column(name = "email", unique = true, nullable = false, length = 255)
+    private String email;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+    
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+    
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<UserProfile> profiles = new ArrayList<>();
+    
+    // 비즈니스 메서드
+    public void activate() { this.status = UserStatus.ACTIVE; }
+    public boolean isActive() { return UserStatus.ACTIVE.equals(this.status); }
+}
+```
+
+## 필수 규칙
+- **테이블명**: snake_case (`users`, `user_profiles`)
+- **컬럼명**: snake_case (`created_at`, `tenant_id`)
+- **인덱스**: 자주 조회되는 컬럼에 `@Index` 정의
+- **멀티테넌트**: 모든 엔티티에 `tenantId` 필드 필수
+- **검증**: Bean Validation 어노테이션 사용 (`@NotBlank`, `@Email`, `@Size`)
+- **연관관계**: `FetchType.LAZY` 기본, `@ToString(exclude = "관계필드")`
+- **타임스탬프**: `@CreationTimestamp`, `@UpdateTimestamp` 사용
+
+## 금지사항
+- `FetchType.EAGER` 사용 금지 (N+1 문제)
+- `@ToString`에서 연관관계 필드 제외 필수
+- 복잡한 비즈니스 로직은 Service 계층으로
+- 하드코딩된 문자열 사용 금지

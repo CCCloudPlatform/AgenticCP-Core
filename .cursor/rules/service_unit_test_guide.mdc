@@ -1,0 +1,302 @@
+---
+globs: *ServiceTest.java
+alwaysApply: false
+---
+# AgenticCP Service Unit Test 작성 규칙
+
+## 기본 구조
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    
+    @Mock private UserRepository userRepository;
+    @Mock private EmailService emailService;
+    @InjectMocks private UserService userService;
+    
+    @Nested
+    @DisplayName("사용자 생성 테스트")
+    class CreateUserTest {
+        
+        @Test
+        @DisplayName("정상적인 사용자 생성")
+        void createUser_Success() {
+            // Given
+            UserCreateRequest request = TestDataBuilder.userCreateRequestBuilder().build();
+            User savedUser = TestDataBuilder.userBuilder().id(1L).build();
+            
+            when(userRepository.existsByUsername("newuser")).thenReturn(false);
+            when(userRepository.save(any(User.class))).thenReturn(savedUser);
+            
+            // When
+            User result = userService.createUser(request);
+            
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getUsername()).isEqualTo("newuser");
+            verify(userRepository).save(any(User.class));
+        }
+        
+        @Test
+        @DisplayName("중복된 사용자명으로 생성 시 예외 발생")
+        void createUser_DuplicateUsername_ThrowsException() {
+            // Given
+            UserCreateRequest request = TestDataBuilder.userCreateRequestBuilder().build();
+            when(userRepository.existsByUsername("newuser")).thenReturn(true);
+            
+            // When & Then
+            assertThatThrownBy(() -> userService.createUser(request))
+                    .isInstanceOf(BusinessException.class);
+            
+            verify(userRepository, never()).save(any(User.class));
+        }
+    }
+}
+```
+
+## 필수 규칙
+- **어노테이션**: `@ExtendWith(MockitoExtension.class)`, `@Mock`, `@InjectMocks`
+- **구조**: `@Nested` 클래스로 테스트 그룹화
+- **네이밍**: `methodName_condition_expectedResult` 형식
+- **패턴**: Given-When-Then 구조 준수
+- **검증**: `assertThat()`, `verify()` 사용
+
+## 테스트 데이터 빌더
+```java
+public class TestDataBuilder {
+    
+    public static User.UserBuilder userBuilder() {
+        return User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .name("테스트 사용자")
+                .status(UserStatus.ACTIVE)
+                .tenantId(1L);
+    }
+    
+    public static UserCreateRequest.UserCreateRequestBuilder userCreateRequestBuilder() {
+        return UserCreateRequest.builder()
+                .username("newuser")
+                .email("new@example.com")
+                .name("새 사용자");
+    }
+    
+    public static UserUpdateRequest.UserUpdateRequestBuilder userUpdateRequestBuilder() {
+        return UserUpdateRequest.builder()
+                .name("수정된 사용자")
+                .bio("수정된 자기소개");
+    }
+}
+```
+
+## 테스트 시나리오 설계
+```java
+// ✅ 성공 시나리오
+@Test
+void createUser_ValidData_ReturnsUser()
+@Test
+void getUserById_ExistingUser_ReturnsUser()
+@Test
+void updateUser_ValidData_UpdatesUser()
+
+// ✅ 예외 시나리오
+@Test
+void createUser_DuplicateUsername_ThrowsBusinessException()
+@Test
+void getUserById_NonExistingUser_ThrowsResourceNotFoundException()
+@Test
+void deleteUser_UnauthorizedUser_ThrowsAuthorizationException()
+
+// ✅ 경계값 시나리오
+@Test
+void createUser_MinLengthUsername_ReturnsUser()
+@Test
+void createUser_MaxLengthUsername_ReturnsUser()
+@Test
+void createUser_EmptyBio_ReturnsUser()
+```
+
+## Mock 설정 규칙
+```java
+// ✅ 기본 Mock 설정
+when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+when(userRepository.save(any(User.class))).thenReturn(savedUser);
+doNothing().when(emailService).sendWelcomeEmail(any(User.class));
+
+// ✅ 예외 Mock 설정
+when(userRepository.findById(999L)).thenReturn(Optional.empty());
+when(userRepository.existsByUsername("existing")).thenReturn(true);
+
+// ✅ 검증
+verify(userRepository).save(any(User.class));
+verify(userRepository, never()).delete(any(User.class));
+verify(userRepository, times(2)).findById(anyLong());
+```
+
+## 검증 규칙
+```java
+// ✅ 결과 검증
+assertThat(result).isNotNull();
+assertThat(result.getUsername()).isEqualTo("testuser");
+assertThat(result.getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+// ✅ 예외 검증
+assertThatThrownBy(() -> userService.createUser(request))
+        .isInstanceOf(BusinessException.class)
+        .hasMessage("이미 사용 중인 사용자명입니다.");
+```
+
+## 금지사항
+- `@SpringBootTest` 사용 금지 (단위 테스트)
+- 실제 데이터베이스 연결 금지
+- 외부 서비스 호출 금지
+- 테스트 간 의존성 금지
+- 하드코딩된 테스트 데이터 사용 금지
+# AgenticCP Service Unit Test 작성 규칙
+
+## 기본 구조
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    
+    @Mock private UserRepository userRepository;
+    @Mock private EmailService emailService;
+    @InjectMocks private UserService userService;
+    
+    @Nested
+    @DisplayName("사용자 생성 테스트")
+    class CreateUserTest {
+        
+        @Test
+        @DisplayName("정상적인 사용자 생성")
+        void createUser_Success() {
+            // Given
+            UserCreateRequest request = TestDataBuilder.userCreateRequestBuilder().build();
+            User savedUser = TestDataBuilder.userBuilder().id(1L).build();
+            
+            when(userRepository.existsByUsername("newuser")).thenReturn(false);
+            when(userRepository.save(any(User.class))).thenReturn(savedUser);
+            
+            // When
+            User result = userService.createUser(request);
+            
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getUsername()).isEqualTo("newuser");
+            verify(userRepository).save(any(User.class));
+        }
+        
+        @Test
+        @DisplayName("중복된 사용자명으로 생성 시 예외 발생")
+        void createUser_DuplicateUsername_ThrowsException() {
+            // Given
+            UserCreateRequest request = TestDataBuilder.userCreateRequestBuilder().build();
+            when(userRepository.existsByUsername("newuser")).thenReturn(true);
+            
+            // When & Then
+            assertThatThrownBy(() -> userService.createUser(request))
+                    .isInstanceOf(BusinessException.class);
+            
+            verify(userRepository, never()).save(any(User.class));
+        }
+    }
+}
+```
+
+## 필수 규칙
+- **어노테이션**: `@ExtendWith(MockitoExtension.class)`, `@Mock`, `@InjectMocks`
+- **구조**: `@Nested` 클래스로 테스트 그룹화
+- **네이밍**: `methodName_condition_expectedResult` 형식
+- **패턴**: Given-When-Then 구조 준수
+- **검증**: `assertThat()`, `verify()` 사용
+
+## 테스트 데이터 빌더
+```java
+public class TestDataBuilder {
+    
+    public static User.UserBuilder userBuilder() {
+        return User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .name("테스트 사용자")
+                .status(UserStatus.ACTIVE)
+                .tenantId(1L);
+    }
+    
+    public static UserCreateRequest.UserCreateRequestBuilder userCreateRequestBuilder() {
+        return UserCreateRequest.builder()
+                .username("newuser")
+                .email("new@example.com")
+                .name("새 사용자");
+    }
+    
+    public static UserUpdateRequest.UserUpdateRequestBuilder userUpdateRequestBuilder() {
+        return UserUpdateRequest.builder()
+                .name("수정된 사용자")
+                .bio("수정된 자기소개");
+    }
+}
+```
+
+## 테스트 시나리오 설계
+```java
+// ✅ 성공 시나리오
+@Test
+void createUser_ValidData_ReturnsUser()
+@Test
+void getUserById_ExistingUser_ReturnsUser()
+@Test
+void updateUser_ValidData_UpdatesUser()
+
+// ✅ 예외 시나리오
+@Test
+void createUser_DuplicateUsername_ThrowsBusinessException()
+@Test
+void getUserById_NonExistingUser_ThrowsResourceNotFoundException()
+@Test
+void deleteUser_UnauthorizedUser_ThrowsAuthorizationException()
+
+// ✅ 경계값 시나리오
+@Test
+void createUser_MinLengthUsername_ReturnsUser()
+@Test
+void createUser_MaxLengthUsername_ReturnsUser()
+@Test
+void createUser_EmptyBio_ReturnsUser()
+```
+
+## Mock 설정 규칙
+```java
+// ✅ 기본 Mock 설정
+when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+when(userRepository.save(any(User.class))).thenReturn(savedUser);
+doNothing().when(emailService).sendWelcomeEmail(any(User.class));
+
+// ✅ 예외 Mock 설정
+when(userRepository.findById(999L)).thenReturn(Optional.empty());
+when(userRepository.existsByUsername("existing")).thenReturn(true);
+
+// ✅ 검증
+verify(userRepository).save(any(User.class));
+verify(userRepository, never()).delete(any(User.class));
+verify(userRepository, times(2)).findById(anyLong());
+```
+
+## 검증 규칙
+```java
+// ✅ 결과 검증
+assertThat(result).isNotNull();
+assertThat(result.getUsername()).isEqualTo("testuser");
+assertThat(result.getStatus()).isEqualTo(UserStatus.ACTIVE);
+
+// ✅ 예외 검증
+assertThatThrownBy(() -> userService.createUser(request))
+        .isInstanceOf(BusinessException.class)
+        .hasMessage("이미 사용 중인 사용자명입니다.");
+```
+
+## 금지사항
+- `@SpringBootTest` 사용 금지 (단위 테스트)
+- 실제 데이터베이스 연결 금지
+- 외부 서비스 호출 금지
+- 테스트 간 의존성 금지
+- 하드코딩된 테스트 데이터 사용 금지

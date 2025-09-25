@@ -1,0 +1,418 @@
+---
+globs: *Request.java,*Response.java
+alwaysApply: false
+---
+# AgenticCP DTO 작성 규칙
+
+## 기본 구조
+```java
+// 요청 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다")
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    @Size(max = 255, message = "이메일은 255자를 초과할 수 없습니다")
+    private String email;
+    
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100, message = "이름은 100자를 초과할 수 없습니다")
+    private String name;
+    
+    @Size(max = 500, message = "자기소개는 500자를 초과할 수 없습니다")
+    private String bio;
+}
+
+// 응답 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserResponse {
+    
+    private Long id;
+    private String username;
+    private String email;
+    private String name;
+    private String bio;
+    private UserStatus status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    public static UserResponse from(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(user.getName())
+                .bio(user.getBio())
+                .status(user.getStatus())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
+    }
+}
+```
+
+## 필수 규칙
+- **어노테이션**: `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`
+- **검증**: Bean Validation 어노테이션 사용 (`@NotBlank`, `@Email`, `@Size`)
+- **변환**: `from()` 정적 메서드로 Entity → DTO 변환
+- **네이밍**: `{Entity}CreateRequest`, `{Entity}UpdateRequest`, `{Entity}Response`
+- **불변성**: `@EqualsAndHashCode` 사용하여 동등성 비교
+
+## 요청 DTO 규칙
+```java
+// ✅ 생성 요청 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50)
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    private String email;
+}
+
+// ✅ 수정 요청 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserUpdateRequest {
+    
+    @Size(max = 100, message = "이름은 100자를 초과할 수 없습니다")
+    private String name;
+    
+    @Size(max = 500, message = "자기소개는 500자를 초과할 수 없습니다")
+    private String bio;
+}
+```
+
+## 응답 DTO 규칙
+```java
+// ✅ 단일 응답 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserResponse {
+    
+    private Long id;
+    private String username;
+    private String email;
+    private String name;
+    private UserStatus status;
+    private LocalDateTime createdAt;
+    
+    public static UserResponse from(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(user.getName())
+                .status(user.getStatus())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
+}
+
+// ✅ 페이징 응답 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PagedResponse<T> {
+    
+    private List<T> content;
+    private int page;
+    private int size;
+    private long totalElements;
+    private int totalPages;
+    private boolean first;
+    private boolean last;
+    private boolean hasNext;
+    private boolean hasPrevious;
+}
+```
+
+## 검증 어노테이션 규칙
+```java
+// 필수 필드
+@NotBlank(message = "사용자명은 필수입니다")
+@NotNull(message = "나이는 필수입니다")
+
+// 길이 제한
+@Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+@Size(max = 255, message = "이메일은 255자를 초과할 수 없습니다")
+
+// 형식 검증
+@Email(message = "올바른 이메일 형식이 아닙니다")
+@Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다")
+
+// 범위 검증
+@Min(value = 0, message = "나이는 0 이상이어야 합니다")
+@Max(value = 150, message = "나이는 150 이하여야 합니다")
+
+// 날짜 검증
+@Past(message = "생년월일은 과거 날짜여야 합니다")
+@Future(message = "만료일은 미래 날짜여야 합니다")
+```
+
+## 변환 메서드 규칙
+```java
+// ✅ Entity → DTO 변환
+public static UserResponse from(User user) {
+    return UserResponse.builder()
+            .id(user.getId())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .name(user.getName())
+            .status(user.getStatus())
+            .createdAt(user.getCreatedAt())
+            .build();
+}
+
+// ✅ List 변환
+public static List<UserResponse> from(List<User> users) {
+    return users.stream()
+            .map(UserResponse::from)
+            .collect(Collectors.toList());
+}
+
+// ✅ Page 변환
+public static Page<UserResponse> from(Page<User> userPage) {
+    return userPage.map(UserResponse::from);
+}
+```
+
+## 금지사항
+- `Map<String, Object>` 사용 금지
+- 하드코딩된 검증 메시지 사용 금지
+- Entity 필드를 그대로 노출 금지
+- 불필요한 필드 포함 금지
+- 검증 어노테이션 없이 DTO 작성 금지
+- `@EqualsAndHashCode`에서 모든 필드 포함 금지 (순환참조 위험)
+# AgenticCP DTO 작성 규칙
+
+## 기본 구조
+```java
+// 요청 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다")
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    @Size(max = 255, message = "이메일은 255자를 초과할 수 없습니다")
+    private String email;
+    
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100, message = "이름은 100자를 초과할 수 없습니다")
+    private String name;
+    
+    @Size(max = 500, message = "자기소개는 500자를 초과할 수 없습니다")
+    private String bio;
+}
+
+// 응답 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserResponse {
+    
+    private Long id;
+    private String username;
+    private String email;
+    private String name;
+    private String bio;
+    private UserStatus status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    public static UserResponse from(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(user.getName())
+                .bio(user.getBio())
+                .status(user.getStatus())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
+    }
+}
+```
+
+## 필수 규칙
+- **어노테이션**: `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`
+- **검증**: Bean Validation 어노테이션 사용 (`@NotBlank`, `@Email`, `@Size`)
+- **변환**: `from()` 정적 메서드로 Entity → DTO 변환
+- **네이밍**: `{Entity}CreateRequest`, `{Entity}UpdateRequest`, `{Entity}Response`
+- **불변성**: `@EqualsAndHashCode` 사용하여 동등성 비교
+
+## 요청 DTO 규칙
+```java
+// ✅ 생성 요청 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50)
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    private String email;
+}
+
+// ✅ 수정 요청 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserUpdateRequest {
+    
+    @Size(max = 100, message = "이름은 100자를 초과할 수 없습니다")
+    private String name;
+    
+    @Size(max = 500, message = "자기소개는 500자를 초과할 수 없습니다")
+    private String bio;
+}
+```
+
+## 응답 DTO 규칙
+```java
+// ✅ 단일 응답 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserResponse {
+    
+    private Long id;
+    private String username;
+    private String email;
+    private String name;
+    private UserStatus status;
+    private LocalDateTime createdAt;
+    
+    public static UserResponse from(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(user.getName())
+                .status(user.getStatus())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
+}
+
+// ✅ 페이징 응답 DTO
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PagedResponse<T> {
+    
+    private List<T> content;
+    private int page;
+    private int size;
+    private long totalElements;
+    private int totalPages;
+    private boolean first;
+    private boolean last;
+    private boolean hasNext;
+    private boolean hasPrevious;
+}
+```
+
+## 검증 어노테이션 규칙
+```java
+// 필수 필드
+@NotBlank(message = "사용자명은 필수입니다")
+@NotNull(message = "나이는 필수입니다")
+
+// 길이 제한
+@Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+@Size(max = 255, message = "이메일은 255자를 초과할 수 없습니다")
+
+// 형식 검증
+@Email(message = "올바른 이메일 형식이 아닙니다")
+@Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다")
+
+// 범위 검증
+@Min(value = 0, message = "나이는 0 이상이어야 합니다")
+@Max(value = 150, message = "나이는 150 이하여야 합니다")
+
+// 날짜 검증
+@Past(message = "생년월일은 과거 날짜여야 합니다")
+@Future(message = "만료일은 미래 날짜여야 합니다")
+```
+
+## 변환 메서드 규칙
+```java
+// ✅ Entity → DTO 변환
+public static UserResponse from(User user) {
+    return UserResponse.builder()
+            .id(user.getId())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .name(user.getName())
+            .status(user.getStatus())
+            .createdAt(user.getCreatedAt())
+            .build();
+}
+
+// ✅ List 변환
+public static List<UserResponse> from(List<User> users) {
+    return users.stream()
+            .map(UserResponse::from)
+            .collect(Collectors.toList());
+}
+
+// ✅ Page 변환
+public static Page<UserResponse> from(Page<User> userPage) {
+    return userPage.map(UserResponse::from);
+}
+```
+
+## 금지사항
+- `Map<String, Object>` 사용 금지
+- 하드코딩된 검증 메시지 사용 금지
+- Entity 필드를 그대로 노출 금지
+- 불필요한 필드 포함 금지
+- 검증 어노테이션 없이 DTO 작성 금지
+- `@EqualsAndHashCode`에서 모든 필드 포함 금지 (순환참조 위험)

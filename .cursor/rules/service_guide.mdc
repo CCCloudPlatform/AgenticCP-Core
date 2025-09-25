@@ -1,0 +1,288 @@
+---
+globs: *Service.java
+alwaysApply: false
+---
+# AgenticCP Service 작성 규칙
+
+## 기본 구조
+```java
+@Service
+@Transactional(readOnly = true)
+@Slf4j
+@RequiredArgsConstructor
+public class UserService {
+    
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    
+    @Transactional(readOnly = true)
+    public Optional<User> getUserById(Long userId) {
+        log.debug("사용자 조회: userId={}", userId);
+        return userRepository.findById(userId);
+    }
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        log.info("사용자 생성 시작: username={}", request.getUsername());
+        
+        validateUserUniqueness(request);
+        
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .name(request.getName())
+                .tenantId(TenantContextHolder.getCurrentTenantId())
+                .build();
+        
+        User savedUser = userRepository.save(user);
+        emailService.sendWelcomeEmail(savedUser);
+        
+        log.info("사용자 생성 완료: userId={}", savedUser.getId());
+        return savedUser;
+    }
+    
+    @Transactional
+    public void updateUser(Long userId, UserUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+        
+        user.updateFrom(request);
+        userRepository.save(user);
+    }
+}
+```
+
+## 필수 규칙
+- **어노테이션**: `@Service`, `@Transactional(readOnly = true)`, `@Slf4j`, `@RequiredArgsConstructor`
+- **의존성 주입**: 생성자 주입 (`@RequiredArgsConstructor` 사용)
+- **트랜잭션**: 읽기 전용 기본, 쓰기 작업시 `@Transactional`
+- **로깅**: 메서드 시작/완료/오류 로그 작성
+- **예외 처리**: `BusinessException` 계층 사용
+- **검증**: 비즈니스 규칙 검증 후 처리
+
+## 트랜잭션 규칙
+```java
+// ✅ 읽기 전용 (기본)
+@Transactional(readOnly = true)
+public Optional<User> getUserById(Long userId) { ... }
+
+// ✅ 쓰기 작업
+@Transactional
+public User createUser(UserCreateRequest request) { ... }
+
+// ✅ 읽기 전용 명시
+@Transactional(readOnly = true)
+public List<User> getActiveUsers() { ... }
+```
+
+## 예외 처리 규칙
+```java
+// ✅ 리소스 없음
+public User getUserById(Long userId) {
+    return userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+}
+
+// ✅ 비즈니스 규칙 위반
+public void createUser(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+}
+
+// ✅ 권한 없음
+public void deleteUser(Long userId, Long currentUserId) {
+    if (!userId.equals(currentUserId)) {
+        throw new AuthorizationException(currentUserId, "User", "delete");
+    }
+    userRepository.deleteById(userId);
+}
+```
+
+## 로깅 규칙
+```java
+public User createUser(UserCreateRequest request) {
+    log.info("사용자 생성 시작: username={}", request.getUsername());
+    
+    try {
+        // 비즈니스 로직
+        User savedUser = userRepository.save(user);
+        
+        log.info("사용자 생성 완료: userId={}, username={}", savedUser.getId(), savedUser.getUsername());
+        return savedUser;
+        
+    } catch (Exception e) {
+        log.error("사용자 생성 실패: username={}, error={}", request.getUsername(), e.getMessage(), e);
+        throw e;
+    }
+}
+```
+
+## 검증 규칙
+```java
+private void validateUserUniqueness(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+    
+    if (userRepository.existsByEmail(request.getEmail())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+    }
+}
+
+private void validateUserStatus(User user) {
+    if (!user.isActive()) {
+        throw new BusinessException(UserErrorCode.USER_INACTIVE);
+    }
+}
+```
+
+## 금지사항
+- `@Autowired` 필드 주입 사용 금지
+- `@Transactional`을 컨트롤러에 사용 금지
+- 읽기 전용 메서드에 `@Transactional` 사용 금지
+- 복잡한 비즈니스 로직을 Service에 집중 금지
+- 하드코딩된 에러 메시지 사용 금지
+- 로깅 없이 중요한 작업 수행 금지
+# AgenticCP Service 작성 규칙
+
+## 기본 구조
+```java
+@Service
+@Transactional(readOnly = true)
+@Slf4j
+@RequiredArgsConstructor
+public class UserService {
+    
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    
+    @Transactional(readOnly = true)
+    public Optional<User> getUserById(Long userId) {
+        log.debug("사용자 조회: userId={}", userId);
+        return userRepository.findById(userId);
+    }
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        log.info("사용자 생성 시작: username={}", request.getUsername());
+        
+        validateUserUniqueness(request);
+        
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .name(request.getName())
+                .tenantId(TenantContextHolder.getCurrentTenantId())
+                .build();
+        
+        User savedUser = userRepository.save(user);
+        emailService.sendWelcomeEmail(savedUser);
+        
+        log.info("사용자 생성 완료: userId={}", savedUser.getId());
+        return savedUser;
+    }
+    
+    @Transactional
+    public void updateUser(Long userId, UserUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+        
+        user.updateFrom(request);
+        userRepository.save(user);
+    }
+}
+```
+
+## 필수 규칙
+- **어노테이션**: `@Service`, `@Transactional(readOnly = true)`, `@Slf4j`, `@RequiredArgsConstructor`
+- **의존성 주입**: 생성자 주입 (`@RequiredArgsConstructor` 사용)
+- **트랜잭션**: 읽기 전용 기본, 쓰기 작업시 `@Transactional`
+- **로깅**: 메서드 시작/완료/오류 로그 작성
+- **예외 처리**: `BusinessException` 계층 사용
+- **검증**: 비즈니스 규칙 검증 후 처리
+
+## 트랜잭션 규칙
+```java
+// ✅ 읽기 전용 (기본)
+@Transactional(readOnly = true)
+public Optional<User> getUserById(Long userId) { ... }
+
+// ✅ 쓰기 작업
+@Transactional
+public User createUser(UserCreateRequest request) { ... }
+
+// ✅ 읽기 전용 명시
+@Transactional(readOnly = true)
+public List<User> getActiveUsers() { ... }
+```
+
+## 예외 처리 규칙
+```java
+// ✅ 리소스 없음
+public User getUserById(Long userId) {
+    return userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+}
+
+// ✅ 비즈니스 규칙 위반
+public void createUser(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+}
+
+// ✅ 권한 없음
+public void deleteUser(Long userId, Long currentUserId) {
+    if (!userId.equals(currentUserId)) {
+        throw new AuthorizationException(currentUserId, "User", "delete");
+    }
+    userRepository.deleteById(userId);
+}
+```
+
+## 로깅 규칙
+```java
+public User createUser(UserCreateRequest request) {
+    log.info("사용자 생성 시작: username={}", request.getUsername());
+    
+    try {
+        // 비즈니스 로직
+        User savedUser = userRepository.save(user);
+        
+        log.info("사용자 생성 완료: userId={}, username={}", savedUser.getId(), savedUser.getUsername());
+        return savedUser;
+        
+    } catch (Exception e) {
+        log.error("사용자 생성 실패: username={}, error={}", request.getUsername(), e.getMessage(), e);
+        throw e;
+    }
+}
+```
+
+## 검증 규칙
+```java
+private void validateUserUniqueness(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+    
+    if (userRepository.existsByEmail(request.getEmail())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+    }
+}
+
+private void validateUserStatus(User user) {
+    if (!user.isActive()) {
+        throw new BusinessException(UserErrorCode.USER_INACTIVE);
+    }
+}
+```
+
+## 금지사항
+- `@Autowired` 필드 주입 사용 금지
+- `@Transactional`을 컨트롤러에 사용 금지
+- 읽기 전용 메서드에 `@Transactional` 사용 금지
+- 복잡한 비즈니스 로직을 Service에 집중 금지
+- 하드코딩된 에러 메시지 사용 금지
+- 로깅 없이 중요한 작업 수행 금지

@@ -1,0 +1,120 @@
+# AgenticCP BusinessException 작성 규칙
+
+## 기본 구조
+```java
+// 1. 비즈니스 예외 (일반적인 비즈니스 규칙 위반)
+throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+
+// 2. 리소스 없음 (404)
+throw new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND);
+
+// 3. 권한 없음 (403)
+throw new AuthorizationException(userId, "User", "delete");
+throw new AuthorizationException(userId, "ADMIN");
+throw new AuthorizationException(userId);
+```
+
+## 예외 사용 시나리오
+```java
+@Service
+public class UserService {
+    
+    // ✅ 리소스 없음
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+    }
+    
+    // ✅ 비즈니스 규칙 위반
+    public void createUser(UserCreateRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+        }
+        
+        if (request.getAge() < 18) {
+            throw new BusinessException(UserErrorCode.UNDERAGE_USER, "만 18세 미만은 가입할 수 없습니다.");
+        }
+    }
+    
+    // ✅ 권한 없음
+    public void deleteUser(Long userId, Long currentUserId) {
+        if (!userId.equals(currentUserId)) {
+            throw new AuthorizationException(currentUserId, "User", "delete");
+        }
+        
+        if (!hasAdminRole(currentUserId)) {
+            throw new AuthorizationException(currentUserId, "ADMIN");
+        }
+    }
+}
+```
+
+## ErrorCode 작성 규칙
+```java
+// 도메인별 ErrorCode Enum
+public enum UserErrorCode implements BaseErrorCode {
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, 2001, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_USERNAME(HttpStatus.CONFLICT, 2002, "이미 사용 중인 사용자명입니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 2003, "이미 사용 중인 이메일입니다."),
+    USER_INACTIVE(HttpStatus.BAD_REQUEST, 2004, "비활성 상태의 사용자입니다."),
+    UNDERAGE_USER(HttpStatus.BAD_REQUEST, 2005, "만 18세 미만은 가입할 수 없습니다.");
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.USER.generate(codeNumber); // "USER_2001"
+    }
+}
+```
+
+## AuthorizationException 사용법
+```java
+// 1. 기본 권한 없음
+throw new AuthorizationException();
+
+// 2. 리소스별 권한 확인
+throw new AuthorizationException(userId, "Post", "delete");
+throw new AuthorizationException(userId, "User", "update");
+throw new AuthorizationException(userId, "Tenant", "modify");
+
+// 3. 역할 기반 권한 확인
+throw new AuthorizationException(userId, "ADMIN");
+throw new AuthorizationException(userId, "MANAGER");
+
+// 4. 사용자별 권한 확인
+throw new AuthorizationException(userId);
+```
+
+## 예외 메시지 규칙
+```java
+// ✅ 기본 메시지 사용
+throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+
+// ✅ 커스텀 메시지 사용
+throw new BusinessException(UserErrorCode.UNDERAGE_USER, "만 18세 미만은 가입할 수 없습니다.");
+
+// ✅ 동적 메시지 사용
+throw new BusinessException(UserErrorCode.USER_NOT_FOUND, "사용자 ID " + userId + "를 찾을 수 없습니다.");
+```
+
+## ErrorCode 번호 범위
+```java
+// 도메인별 에러 코드 번호 범위
+COMMON: HTTP 상태 코드 번호 그대로 사용 (404, 500 등)
+AUTH:   1000-1999     // 인증/인가 관련
+USER:   2000-2999     // 사용자 관리
+TENANT: 3000-3999     // 테넌트 관리
+CLOUD:  4000-4999     // 클라우드 리소스 관리
+SECURITY: 5000-5999   // 보안 관련
+PLATFORM: 6000-6999  // 플랫폼 관리
+COST:   7000-7999     // 비용 관리
+MONITORING: 8000-8999 // 모니터링 및 알림
+INTEGRATION: 9000-9999 // 통합 관련
+```
+
+## 금지사항
+- `RuntimeException` 직접 사용 금지
+- 하드코딩된 에러 메시지 사용 금지
+- 다른 도메인의 에러 코드 번호 범위 사용 금지
+- `Exception` 직접 사용 금지
+- 예외를 무시하거나 빈 catch 블록 사용 금지
+- 예외를 로그만 남기고 다시 던지지 않는 경우 금지

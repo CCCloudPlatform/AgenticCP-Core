@@ -1,0 +1,167 @@
+# AgenticCP Controller 작성 규칙
+
+## 기본 구조
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+@Validated
+@Slf4j
+@RequiredArgsConstructor
+public class UserController {
+    
+    private final UserService userService;
+    
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        
+        log.info("사용자 목록 조회: page={}, size={}, status={}", page, size, status);
+        
+        Page<UserResponse> users = userService.getUsers(page, size, status);
+        return ResponseEntity.ok(ApiResponse.success(users));
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> getUser(
+            @PathVariable @Positive(message = "사용자 ID는 양수여야 합니다") Long id) {
+        
+        log.info("사용자 조회: userId={}", id);
+        
+        UserResponse user = userService.getUserById(id);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+    
+    @PostMapping
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+        
+        log.info("사용자 생성: username={}", request.getUsername());
+        
+        UserResponse user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(user));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody UserUpdateRequest request) {
+        
+        log.info("사용자 수정: userId={}", id);
+        
+        UserResponse user = userService.updateUser(id, request);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable @Positive Long id) {
+        
+        log.info("사용자 삭제: userId={}", id);
+        
+        userService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+}
+```
+
+## 필수 규칙
+- **어노테이션**: `@RestController`, `@RequestMapping`, `@Validated`, `@Slf4j`, `@RequiredArgsConstructor`
+- **URL 설계**: `/api/v1/{resource}` 형식, 리소스 중심
+- **HTTP 메서드**: GET(조회), POST(생성), PUT(전체수정), PATCH(부분수정), DELETE(삭제)
+- **상태 코드**: 200(성공), 201(생성), 204(삭제), 400(잘못된요청), 404(없음)
+- **응답 형식**: `ApiResponse<T>` 통일된 응답 구조
+- **검증**: `@Valid`, `@Positive` 등 Bean Validation 사용
+
+## URL 설계 규칙
+```java
+// ✅ 리소스 중심
+GET    /api/v1/users              # 사용자 목록
+GET    /api/v1/users/{id}         # 특정 사용자
+POST   /api/v1/users              # 사용자 생성
+PUT    /api/v1/users/{id}         # 사용자 전체 수정
+PATCH  /api/v1/users/{id}         # 사용자 부분 수정
+DELETE /api/v1/users/{id}         # 사용자 삭제
+
+// ✅ 하위 리소스
+GET    /api/v1/users/{id}/profiles    # 사용자 프로필 목록
+POST   /api/v1/users/{id}/profiles    # 프로필 생성
+
+// ✅ 액션 기반 (필요시)
+POST   /api/v1/users/{id}/activate    # 사용자 활성화
+POST   /api/v1/users/{id}/deactivate  # 사용자 비활성화
+```
+
+## 상태 코드 규칙
+```java
+// ✅ 성공 응답
+@GetMapping
+public ResponseEntity<ApiResponse<List<UserResponse>>> getUsers() {
+    List<UserResponse> users = userService.getAllUsers();
+    return ResponseEntity.ok(ApiResponse.success(users)); // 200 OK
+}
+
+@PostMapping
+public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserCreateRequest request) {
+    UserResponse user = userService.createUser(request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(user)); // 201 Created
+}
+
+@DeleteMapping("/{id}")
+public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+    userService.deleteUser(id);
+    return ResponseEntity.ok(ApiResponse.success()); // 200 OK
+}
+```
+
+## 검증 규칙
+```java
+// ✅ 요청 데이터 검증
+@PostMapping
+public ResponseEntity<ApiResponse<UserResponse>> createUser(
+        @Valid @RequestBody UserCreateRequest request) {
+    // @Valid로 자동 검증
+}
+
+// ✅ 경로 변수 검증
+@GetMapping("/{id}")
+public ResponseEntity<ApiResponse<UserResponse>> getUser(
+        @PathVariable @Positive(message = "사용자 ID는 양수여야 합니다") Long id) {
+    // @Positive로 추가 검증
+}
+
+// ✅ 쿼리 파라미터 검증
+@GetMapping
+public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+    // @Min, @Max로 범위 검증
+}
+```
+
+## 로깅 규칙
+```java
+@PostMapping
+public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserCreateRequest request) {
+    log.info("사용자 생성: username={}", request.getUsername());
+    
+    try {
+        UserResponse user = userService.createUser(request);
+        log.info("사용자 생성 완료: userId={}", user.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(user));
+        
+    } catch (Exception e) {
+        log.error("사용자 생성 실패: username={}, error={}", request.getUsername(), e.getMessage());
+        throw e;
+    }
+}
+```
+
+## 금지사항
+- `@Transactional`을 컨트롤러에 사용 금지
+- 비즈니스 로직을 컨트롤러에 작성 금지
+- 하드코딩된 에러 메시지 사용 금지
+- `Map<String, Object>` 응답 사용 금지
+- 로깅 없이 중요한 작업 수행 금지
+- 예외 처리를 컨트롤러에서 직접 처리 금지 (GlobalExceptionHandler 사용)

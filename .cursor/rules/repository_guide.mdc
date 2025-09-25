@@ -1,0 +1,182 @@
+---
+globs: *Repository.java
+alwaysApply: false
+---
+# AgenticCP Repository 작성 규칙
+
+## 기본 구조
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>, TenantAwareRepository<User> {
+    
+    // 단순 조회 - 메서드명 기반
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
+    
+    // 복잡한 쿼리 - @Query 사용
+    @Query("SELECT u FROM User u WHERE u.status = :status ORDER BY u.createdAt DESC")
+    List<User> findActiveUsers(@Param("status") UserStatus status);
+    
+    // 페이징 쿼리
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    Page<User> findActiveUsersWithPagination(@Param("status") UserStatus status, Pageable pageable);
+    
+    // 네이티브 쿼리 (필요시)
+    @Query(value = "SELECT u.*, COUNT(p.id) as profile_count FROM users u " +
+                   "LEFT JOIN user_profiles p ON u.id = p.user_id " +
+                   "WHERE u.status = :status GROUP BY u.id", nativeQuery = true)
+    List<Object[]> findUsersWithProfileCount(@Param("status") String status);
+}
+```
+
+## 필수 규칙
+- **인터페이스**: `JpaRepository<Entity, ID>` 상속
+- **멀티테넌트**: `TenantAwareRepository<Entity>` 상속 필수
+- **메서드명**: `findBy`, `existsBy`, `countBy` 등 Spring Data JPA 규칙 준수
+- **쿼리**: 복잡한 쿼리는 `@Query` 사용, `@Param`으로 파라미터 바인딩
+- **페이징**: `Pageable` 사용하여 페이징 지원
+- **반환타입**: `Optional<T>`, `List<T>`, `Page<T>` 사용
+
+## 네이밍 규칙
+```java
+// 조회 메서드
+findByUsername(String username)
+findByEmailAndStatus(String email, UserStatus status)
+findByCreatedAtBetween(LocalDateTime start, LocalDateTime end)
+
+// 존재 확인
+existsByUsername(String username)
+existsByEmailAndStatus(String email, UserStatus status)
+
+// 개수 조회
+countByStatus(UserStatus status)
+countByTenantId(Long tenantId)
+
+// 삭제 메서드
+deleteByStatus(UserStatus status)
+deleteByTenantId(Long tenantId)
+```
+
+## 쿼리 작성 규칙
+```java
+// ✅ 좋은 예
+@Query("SELECT u FROM User u WHERE u.status = :status AND u.tenantId = :tenantId")
+List<User> findByStatusAndTenant(@Param("status") UserStatus status, @Param("tenantId") Long tenantId);
+
+// ✅ 페이징 쿼리
+@Query("SELECT u FROM User u WHERE u.status = :status")
+Page<User> findByStatus(@Param("status") UserStatus status, Pageable pageable);
+
+// ✅ 복합 조건
+@Query("""
+    SELECT u FROM User u 
+    WHERE u.status = :status 
+    AND u.createdAt BETWEEN :startDate AND :endDate
+    ORDER BY u.createdAt DESC
+    """)
+List<User> findUsersByStatusAndDateRange(
+    @Param("status") UserStatus status,
+    @Param("startDate") LocalDateTime startDate,
+    @Param("endDate") LocalDateTime endDate
+);
+
+// ❌ 나쁜 예 - 직접 문자열 연결
+@Query("SELECT u FROM User u WHERE u.username = '" + username + "'") // SQL 인젝션 위험
+```
+
+## 금지사항
+- 직접 문자열 연결로 쿼리 작성 금지 (SQL 인젝션 위험)
+- `@Query` 없이 복잡한 쿼리 작성 금지
+- `@Param` 없이 파라미터 사용 금지
+- `TenantAwareRepository` 상속 누락 금지
+- 하드코딩된 테넌트 ID 사용 금지
+# AgenticCP Repository 작성 규칙
+
+## 기본 구조
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>, TenantAwareRepository<User> {
+    
+    // 단순 조회 - 메서드명 기반
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
+    
+    // 복잡한 쿼리 - @Query 사용
+    @Query("SELECT u FROM User u WHERE u.status = :status ORDER BY u.createdAt DESC")
+    List<User> findActiveUsers(@Param("status") UserStatus status);
+    
+    // 페이징 쿼리
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    Page<User> findActiveUsersWithPagination(@Param("status") UserStatus status, Pageable pageable);
+    
+    // 네이티브 쿼리 (필요시)
+    @Query(value = "SELECT u.*, COUNT(p.id) as profile_count FROM users u " +
+                   "LEFT JOIN user_profiles p ON u.id = p.user_id " +
+                   "WHERE u.status = :status GROUP BY u.id", nativeQuery = true)
+    List<Object[]> findUsersWithProfileCount(@Param("status") String status);
+}
+```
+
+## 필수 규칙
+- **인터페이스**: `JpaRepository<Entity, ID>` 상속
+- **멀티테넌트**: `TenantAwareRepository<Entity>` 상속 필수
+- **메서드명**: `findBy`, `existsBy`, `countBy` 등 Spring Data JPA 규칙 준수
+- **쿼리**: 복잡한 쿼리는 `@Query` 사용, `@Param`으로 파라미터 바인딩
+- **페이징**: `Pageable` 사용하여 페이징 지원
+- **반환타입**: `Optional<T>`, `List<T>`, `Page<T>` 사용
+
+## 네이밍 규칙
+```java
+// 조회 메서드
+findByUsername(String username)
+findByEmailAndStatus(String email, UserStatus status)
+findByCreatedAtBetween(LocalDateTime start, LocalDateTime end)
+
+// 존재 확인
+existsByUsername(String username)
+existsByEmailAndStatus(String email, UserStatus status)
+
+// 개수 조회
+countByStatus(UserStatus status)
+countByTenantId(Long tenantId)
+
+// 삭제 메서드
+deleteByStatus(UserStatus status)
+deleteByTenantId(Long tenantId)
+```
+
+## 쿼리 작성 규칙
+```java
+// ✅ 좋은 예
+@Query("SELECT u FROM User u WHERE u.status = :status AND u.tenantId = :tenantId")
+List<User> findByStatusAndTenant(@Param("status") UserStatus status, @Param("tenantId") Long tenantId);
+
+// ✅ 페이징 쿼리
+@Query("SELECT u FROM User u WHERE u.status = :status")
+Page<User> findByStatus(@Param("status") UserStatus status, Pageable pageable);
+
+// ✅ 복합 조건
+@Query("""
+    SELECT u FROM User u 
+    WHERE u.status = :status 
+    AND u.createdAt BETWEEN :startDate AND :endDate
+    ORDER BY u.createdAt DESC
+    """)
+List<User> findUsersByStatusAndDateRange(
+    @Param("status") UserStatus status,
+    @Param("startDate") LocalDateTime startDate,
+    @Param("endDate") LocalDateTime endDate
+);
+
+// ❌ 나쁜 예 - 직접 문자열 연결
+@Query("SELECT u FROM User u WHERE u.username = '" + username + "'") // SQL 인젝션 위험
+```
+
+## 금지사항
+- 직접 문자열 연결로 쿼리 작성 금지 (SQL 인젝션 위험)
+- `@Query` 없이 복잡한 쿼리 작성 금지
+- `@Param` 없이 파라미터 사용 금지
+- `TenantAwareRepository` 상속 누락 금지
+- 하드코딩된 테넌트 ID 사용 금지
