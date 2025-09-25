@@ -5,6 +5,7 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
+import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import com.agenticcp.core.domain.monitoring.service.MetricsCollectionService;
 import lombok.RequiredArgsConstructor;
@@ -44,18 +45,20 @@ public class MetricsController {
             
             Page<Metric> metrics;
             if (metricName != null) {
-                metrics = metricRepository.findLatestByMetricName(metricName, pageable);
+                List<Metric> metricList = metricRepository.findLatestByMetricName(metricName, pageable);
+                metrics = new org.springframework.data.domain.PageImpl<>(metricList, pageable, metricList.size());
             } else if (metricType != null) {
                 metrics = metricRepository.findByMetricType(metricType, pageable);
             } else {
                 metrics = metricRepository.findAll(pageable);
             }
             
+            // 목록 조회: 빈 결과도 정상 응답
             return ResponseEntity.ok(ApiResponse.success(metrics));
         } catch (Exception e) {
             log.error("Error retrieving metrics", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_NOT_FOUND, 
-                "메트릭 목록 조회 중 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 목록 조회 중 오류가 발생했습니다.");
         }
     }
 
@@ -92,8 +95,7 @@ public class MetricsController {
             }
             
             if (metrics.isEmpty()) {
-                throw new ResourceNotFoundException(MonitoringErrorCode.METRIC_NOT_FOUND, 
-                    "메트릭을 찾을 수 없습니다: " + metricName);
+                throw new ResourceNotFoundException(MonitoringErrorCode.METRIC_NOT_FOUND);
             }
             
             return ResponseEntity.ok(ApiResponse.success(metrics));
@@ -103,8 +105,8 @@ public class MetricsController {
             throw e;
         } catch (Exception e) {
             log.error("Error retrieving metric: {}", metricName, e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_NOT_FOUND, 
-                "메트릭 조회 중 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 조회 중 오류가 발생했습니다.");
         }
     }
 
@@ -121,11 +123,12 @@ public class MetricsController {
             LocalDateTime sinceTime = since != null ? since : LocalDateTime.now().minusHours(1);
             List<Metric> metrics = metricRepository.findSince(sinceTime);
             
+            // 목록 조회: 빈 결과도 정상 응답
             return ResponseEntity.ok(ApiResponse.success(metrics));
         } catch (Exception e) {
             log.error("Error retrieving metrics trend", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_NOT_FOUND, 
-                "메트릭 트렌드 조회 중 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 트렌드 조회 중 오류가 발생했습니다.");
         }
     }
 
@@ -144,8 +147,8 @@ public class MetricsController {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during manual metrics collection", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_COLLECTION_FAILED, 
-                "메트릭 수집 중 예상치 못한 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
         }
     }
 
@@ -158,11 +161,13 @@ public class MetricsController {
             log.info("Retrieving metric names");
             
             List<String> metricNames = metricRepository.findDistinctMetricNames();
+            
+            // 목록 조회: 빈 결과도 정상 응답
             return ResponseEntity.ok(ApiResponse.success(metricNames));
         } catch (Exception e) {
             log.error("Error retrieving metric names", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_NOT_FOUND, 
-                "메트릭 이름 목록 조회 중 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 이름 목록 조회 중 오류가 발생했습니다.");
         }
     }
 }

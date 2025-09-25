@@ -2,7 +2,7 @@ package com.agenticcp.core.domain.monitoring.service;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
-import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
+import com.agenticcp.core.common.enums.CommonErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -66,8 +66,8 @@ public class SystemMetricsCollector {
                     
         } catch (Exception e) {
             log.error("Failed to collect system metrics", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_COLLECTION_FAILED, 
-                "시스템 메트릭 수집 중 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "시스템 메트릭 수집 중 오류가 발생했습니다.");
         }
     }
 
@@ -84,8 +84,8 @@ public class SystemMetricsCollector {
             return osBean.getSystemLoadAverage();
         } catch (Exception e) {
             log.warn("Failed to get CPU usage", e);
-            throw new BusinessException(MonitoringErrorCode.CPU_METRICS_UNAVAILABLE, 
-                "CPU 메트릭을 사용할 수 없습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "CPU 메트릭을 사용할 수 없습니다.");
         }
     }
 
@@ -99,8 +99,8 @@ public class SystemMetricsCollector {
             return usedMemory / (1024 * 1024);
         } catch (Exception e) {
             log.warn("Failed to get memory usage", e);
-            throw new BusinessException(MonitoringErrorCode.MEMORY_METRICS_UNAVAILABLE, 
-                "메모리 메트릭을 사용할 수 없습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메모리 메트릭을 사용할 수 없습니다.");
         }
     }
 
@@ -114,8 +114,8 @@ public class SystemMetricsCollector {
             return totalMemory / (1024 * 1024);
         } catch (Exception e) {
             log.warn("Failed to get total memory", e);
-            throw new BusinessException(MonitoringErrorCode.MEMORY_METRICS_UNAVAILABLE, 
-                "메모리 총량을 사용할 수 없습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메모리 총량을 사용할 수 없습니다.");
         }
     }
 
@@ -141,8 +141,8 @@ public class SystemMetricsCollector {
             return usedSpace / (1024 * 1024 * 1024);
         } catch (Exception e) {
             log.warn("Failed to get disk usage", e);
-            throw new BusinessException(MonitoringErrorCode.DISK_METRICS_UNAVAILABLE, 
-                "디스크 메트릭을 사용할 수 없습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "디스크 메트릭을 사용할 수 없습니다.");
         }
     }
 
@@ -156,8 +156,8 @@ public class SystemMetricsCollector {
             return totalSpace / (1024 * 1024 * 1024);
         } catch (Exception e) {
             log.warn("Failed to get total disk space", e);
-            throw new BusinessException(MonitoringErrorCode.DISK_METRICS_UNAVAILABLE, 
-                "디스크 총량을 사용할 수 없습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "디스크 총량을 사용할 수 없습니다.");
         }
     }
 

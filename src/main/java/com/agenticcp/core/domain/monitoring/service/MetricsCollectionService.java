@@ -6,6 +6,7 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
+import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,8 +67,8 @@ public class MetricsCollectionService {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error collecting system metrics", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_COLLECTION_FAILED, 
-                "시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
         }
     }
 
@@ -100,8 +101,8 @@ public class MetricsCollectionService {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during manual metrics collection", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_COLLECTION_FAILED, 
-                "수동 메트릭 수집 중 예상치 못한 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "수동 메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
         }
     }
 
@@ -156,8 +157,8 @@ public class MetricsCollectionService {
             }
         } catch (Exception e) {
             log.error("Error saving system metrics to database", e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_SAVE_FAILED, 
-                "메트릭 데이터 저장 중 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 데이터 저장 중 오류가 발생했습니다.");
         }
     }
 
@@ -183,8 +184,8 @@ public class MetricsCollectionService {
             log.debug("Saved metric: {} = {} {}", metricName, metricValue, unit);
         } catch (Exception e) {
             log.error("Error saving metric: {} = {} {}", metricName, metricValue, unit, e);
-            throw new BusinessException(MonitoringErrorCode.METRIC_SAVE_FAILED, 
-                "메트릭 저장 중 오류가 발생했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 저장 중 오류가 발생했습니다.");
         }
     }
 
@@ -201,8 +202,8 @@ public class MetricsCollectionService {
             return metadata.toString();
         } catch (Exception e) {
             log.warn("Failed to convert metadata to string", e);
-            throw new BusinessException(MonitoringErrorCode.METADATA_PARSING_FAILED, 
-                "메타데이터 변환에 실패했습니다.", e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메타데이터 변환에 실패했습니다.");
         }
     }
 }
