@@ -39,8 +39,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - agenticcp-network
     volumes:
@@ -53,20 +51,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  redis:
-    image: redis:7
-    container_name: agenticcp-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - agenticcp-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:5.2
