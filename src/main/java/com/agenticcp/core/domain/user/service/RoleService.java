@@ -5,7 +5,9 @@ import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.domain.user.enums.RoleErrorCode;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.domain.user.enums.PermissionErrorCode;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.user.dto.CreateRoleRequest;
 import com.agenticcp.core.domain.user.dto.RoleResponse;
@@ -17,7 +19,6 @@ import com.agenticcp.core.domain.user.repository.RoleRepository;
 import com.agenticcp.core.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +31,7 @@ import java.util.stream.Collectors;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-09-22
  */
 @Slf4j
 @Service
@@ -41,7 +42,6 @@ public class RoleService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
     
     /**
      * 모든 역할 조회 (현재 테넌트)
@@ -93,7 +93,7 @@ public class RoleService {
     public Role getRoleByKeyOrThrow(String roleKey) {
         log.info("[RoleService] getRoleByKeyOrThrow - roleKey={}", LogMaskingUtils.mask(roleKey, 2, 2));
         Role role = getRoleByKey(roleKey)
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "roleKey", roleKey));
+                .orElseThrow(() -> new ResourceNotFoundException(RoleErrorCode.ROLE_NOT_FOUND));
         log.info("[RoleService] getRoleByKeyOrThrow - success roleKey={}", LogMaskingUtils.mask(roleKey, 2, 2));
         return role;
     }
@@ -168,7 +168,8 @@ public class RoleService {
         
         // 역할 키 중복 확인
         if (roleRepository.existsByRoleKeyAndTenant(request.getRoleKey(), currentTenant)) {
-            throw new BusinessException("이미 존재하는 역할 키입니다: " + request.getRoleKey());
+            throw new BusinessException(RoleErrorCode.DUPLICATE_ROLE_KEY, 
+                    "이미 존재하는 역할 키입니다: " + request.getRoleKey());
         }
         
         // 역할 생성
@@ -190,8 +191,6 @@ public class RoleService {
             assignPermissionsToRole(savedRole.getId(), request.getPermissionKeys());
         }
         
-        // 캐시 무효화
-        evictRoleCache();
         
         log.info("[RoleService] createRole - success roleKey={} tenantKey={}",
                 LogMaskingUtils.mask(savedRole.getRoleKey(), 2, 2),
@@ -219,7 +218,7 @@ public class RoleService {
         
         // 시스템 역할 수정 제한
         if (role.getIsSystem() && request.getIsSystem() != null && !request.getIsSystem()) {
-            throw new BusinessException("시스템 역할은 수정할 수 없습니다");
+            throw new BusinessException(RoleErrorCode.SYSTEM_ROLE_NOT_MODIFIABLE);
         }
         
         // 역할 정보 업데이트
@@ -240,8 +239,6 @@ public class RoleService {
             updateRolePermissions(role.getId(), request.getPermissionKeys());
         }
         
-        // 캐시 무효화
-        evictRoleCache();
         
         log.info("[RoleService] updateRole - success roleKey={} tenantKey={}",
                 LogMaskingUtils.mask(roleKey, 2, 2),
@@ -261,26 +258,24 @@ public class RoleService {
         
         // 시스템 역할 삭제 방지
         if (role.getIsSystem()) {
-            throw new BusinessException("시스템 역할은 삭제할 수 없습니다");
+            throw new BusinessException(RoleErrorCode.SYSTEM_ROLE_NOT_DELETABLE);
         }
         
         // 기본 역할 삭제 방지
         if (role.getIsDefault()) {
-            throw new BusinessException("기본 역할은 삭제할 수 없습니다");
+            throw new BusinessException(RoleErrorCode.DEFAULT_ROLE_NOT_DELETABLE);
         }
         
         // 역할을 사용하는 사용자 확인
         Long userCount = roleRepository.countUsersByRole(role);
         if (userCount > 0) {
-            throw new BusinessException("이 역할을 사용하는 사용자가 있어 삭제할 수 없습니다");
+            throw new BusinessException(RoleErrorCode.ROLE_IN_USE);
         }
         
         // 소프트 삭제
         role.setIsDeleted(true);
         roleRepository.save(role);
         
-        // 캐시 무효화
-        evictRoleCache();
         
         log.info("[RoleService] deleteRole - success roleKey={} tenantKey={}",
                 LogMaskingUtils.mask(roleKey, 2, 2),
@@ -302,24 +297,22 @@ public class RoleService {
                 LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         
         Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
+                .orElseThrow(() -> new ResourceNotFoundException(RoleErrorCode.ROLE_NOT_FOUND));
         
         // 테넌트 확인
         if (!role.getTenant().equals(currentTenant)) {
-            throw new BusinessException("다른 테넌트의 역할에 접근할 수 없습니다");
+            throw new BusinessException(RoleErrorCode.INVALID_TENANT_ACCESS);
         }
         
         List<Permission> permissions = permissionRepository.findByPermissionKeyInAndTenant(permissionKeys, currentTenant);
         
         if (permissions.size() != permissionKeys.size()) {
-            throw new BusinessException("일부 권한을 찾을 수 없습니다");
+            throw new BusinessException(RoleErrorCode.PERMISSION_NOT_FOUND);
         }
         
         role.setPermissions(permissions);
         roleRepository.save(role);
         
-        // 사용자 권한 캐시 무효화
-        evictUserPermissionCache();
         
         log.info("[RoleService] assignPermissionsToRole - success roleKey={} tenantKey={}",
                 LogMaskingUtils.mask(role.getRoleKey(), 2, 2),
@@ -352,19 +345,19 @@ public class RoleService {
                 LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         
         Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
+                .orElseThrow(() -> new ResourceNotFoundException(RoleErrorCode.ROLE_NOT_FOUND));
         
         // 테넌트 확인
         if (!role.getTenant().equals(currentTenant)) {
-            throw new BusinessException("다른 테넌트의 역할에 접근할 수 없습니다");
+            throw new BusinessException(RoleErrorCode.INVALID_TENANT_ACCESS);
         }
         
         Permission permission = permissionRepository.findByPermissionKey(permissionKey)
-                .orElseThrow(() -> new ResourceNotFoundException("Permission", "permissionKey", permissionKey));
+                .orElseThrow(() -> new ResourceNotFoundException(PermissionErrorCode.PERMISSION_NOT_FOUND));
         
         // 테넌트 확인
         if (!permission.getTenant().equals(currentTenant)) {
-            throw new BusinessException("다른 테넌트의 권한에 접근할 수 없습니다");
+            throw new BusinessException(RoleErrorCode.INVALID_TENANT_PERMISSION_ACCESS);
         }
         
         List<Permission> permissions = role.getPermissions();
@@ -374,8 +367,6 @@ public class RoleService {
             roleRepository.save(role);
         }
         
-        // 사용자 권한 캐시 무효화
-        evictUserPermissionCache();
         
         log.info("[RoleService] removePermissionFromRole - success roleKey={} tenantKey={}",
                 LogMaskingUtils.mask(role.getRoleKey(), 2, 2),
@@ -438,27 +429,4 @@ public class RoleService {
                 .build();
     }
     
-    /**
-     * 역할 캐시 무효화
-     */
-    private void evictRoleCache() {
-        try {
-            redisTemplate.delete("roles:*");
-            log.debug("Role cache evicted");
-        } catch (Exception e) {
-            log.warn("Failed to evict role cache: {}", e.getMessage());
-        }
-    }
-    
-    /**
-     * 사용자 권한 캐시 무효화
-     */
-    private void evictUserPermissionCache() {
-        try {
-            redisTemplate.delete("user_permissions:*");
-            log.debug("User permission cache evicted");
-        } catch (Exception e) {
-            log.warn("Failed to evict user permission cache: {}", e.getMessage());
-        }
-    }
 }
