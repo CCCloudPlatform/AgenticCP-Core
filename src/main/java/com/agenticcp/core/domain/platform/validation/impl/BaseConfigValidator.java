@@ -51,7 +51,8 @@ public abstract class BaseConfigValidator implements ConfigValidator {
     public void validateValue(String configValue, PlatformConfig.ConfigType configType) {
         log.debug("[BaseConfigValidator] validateValue - configType={}", configType);
 
-        if (!StringUtils.hasText(configValue)) {
+        // null 체크만 수행하고, 빈 문자열 체크는 타입별 검증기에서 처리
+        if (configValue == null) {
             throw new ConfigValidationException(PlatformConfigErrorCode.CONFIG_VALUE_REQUIRED);
         }
 

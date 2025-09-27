@@ -27,6 +27,10 @@ public class BooleanConfigValidator extends BaseConfigValidator {
 
         log.debug("[BooleanConfigValidator] validateValueByType - BOOLEAN type validation");
 
+        if (configValue == null || configValue.trim().isEmpty()) {
+            throw new ConfigValidationException(PlatformConfigErrorCode.CONFIG_VALUE_REQUIRED);
+        }
+
         String trimmedValue = configValue.trim().toLowerCase();
         if (!"true".equals(trimmedValue) && !"false".equals(trimmedValue)) {
             log.warn("[BooleanConfigValidator] Invalid boolean value: {}", configValue);

@@ -89,7 +89,7 @@ class PlatformConfigControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6002"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6002"));
     }
 
     @Test
@@ -108,7 +108,7 @@ class PlatformConfigControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6006"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6006"));
     }
 
     @Test
@@ -127,7 +127,7 @@ class PlatformConfigControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6009"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6009"));
     }
 
     @Test
@@ -146,7 +146,7 @@ class PlatformConfigControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6008"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6008"));
     }
 
     @Test
@@ -165,7 +165,7 @@ class PlatformConfigControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6007"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6007"));
     }
 
     @Test
@@ -191,7 +191,7 @@ class PlatformConfigControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(newConfig)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6012"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6012"));
     }
 
     @Test
@@ -217,7 +217,7 @@ class PlatformConfigControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(updatedConfig)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6014"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6014"));
     }
 
     @Test
@@ -236,7 +236,7 @@ class PlatformConfigControllerIntegrationTest {
         mockMvc.perform(delete("/api/platform/configs/system.config.key"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PLATFORM_6013"));
+                .andExpect(jsonPath("$.errorCode").value("PLATFORM_6013"));
     }
 
     @Test

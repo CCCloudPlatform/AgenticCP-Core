@@ -34,6 +34,10 @@ public class JsonConfigValidator extends BaseConfigValidator {
 
         log.debug("[JsonConfigValidator] validateValueByType - JSON type validation");
 
+        if (configValue == null || configValue.trim().isEmpty()) {
+            throw new ConfigValidationException(PlatformConfigErrorCode.CONFIG_VALUE_REQUIRED);
+        }
+
         try {
             objectMapper.readTree(configValue.trim());
         } catch (Exception e) {

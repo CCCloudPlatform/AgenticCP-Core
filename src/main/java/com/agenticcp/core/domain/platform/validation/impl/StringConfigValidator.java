@@ -28,7 +28,7 @@ public class StringConfigValidator extends BaseConfigValidator {
 
         log.debug("[StringConfigValidator] validateValueByType - STRING type validation");
 
-        if (!StringUtils.hasText(configValue.trim())) {
+        if (configValue == null || configValue.trim().isEmpty()) {
             throw new ConfigValidationException(PlatformConfigErrorCode.STRING_VALUE_EMPTY);
         }
 

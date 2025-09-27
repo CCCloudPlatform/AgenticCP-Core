@@ -30,6 +30,10 @@ public class NumberConfigValidator extends BaseConfigValidator {
 
         log.debug("[NumberConfigValidator] validateValueByType - NUMBER type validation");
 
+        if (configValue == null || configValue.trim().isEmpty()) {
+            throw new ConfigValidationException(PlatformConfigErrorCode.CONFIG_VALUE_REQUIRED);
+        }
+
         try {
             // 정수 검증
             new BigInteger(configValue.trim());

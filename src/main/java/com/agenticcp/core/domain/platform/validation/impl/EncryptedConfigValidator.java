@@ -29,7 +29,7 @@ public class EncryptedConfigValidator extends BaseConfigValidator {
 
         log.debug("[EncryptedConfigValidator] validateValueByType - ENCRYPTED type validation");
 
-        if (!StringUtils.hasText(configValue.trim())) {
+        if (configValue == null || configValue.trim().isEmpty()) {
             throw new ConfigValidationException(PlatformConfigErrorCode.ENCRYPTED_VALUE_EMPTY);
         }
 

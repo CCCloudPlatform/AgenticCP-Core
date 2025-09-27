@@ -13,7 +13,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,10 +47,14 @@ class PlatformConfigServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Mock validator가 아무것도 하지 않도록 설정
-        doNothing().when(configValidator).validate(any(PlatformConfig.class));
-        doNothing().when(configValidator).validateKey(anyString());
-        doNothing().when(configValidator).validateValue(anyString(), any(PlatformConfig.ConfigType.class));
+        // Mock validator 리스트 설정
+        List<ConfigValidator> mockValidators = Arrays.asList(configValidator);
+        ReflectionTestUtils.setField(platformConfigService, "configValidators", mockValidators);
+        
+        // Mock validator가 아무것도 하지 않도록 설정 (lenient 모드 사용)
+        lenient().doNothing().when(configValidator).validate(any(PlatformConfig.class));
+        lenient().doNothing().when(configValidator).validateKey(anyString());
+        lenient().doNothing().when(configValidator).validateValue(anyString(), any(PlatformConfig.ConfigType.class));
 
         validConfig = PlatformConfig.builder()
                 .configKey("test.config.key")
