@@ -1,4 +1,4 @@
-package com.agenticcp.core.common.enums;
+package com.agenticcp.core.common.exception;
 
 import com.agenticcp.core.common.dto.BaseErrorCode;
 

@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.exception;
 
-
+import com.agenticcp.core.common.dto.BaseErrorCode;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 
 /**
@@ -35,26 +35,28 @@ import com.agenticcp.core.common.enums.CommonErrorCode;
  * @author hyobinyang
  * @since 2025.09.22
  */
-public class AuthorizationException extends BusinessException{
+public class AuthorizationException extends BusinessException {
 
     public AuthorizationException() {
         super(CommonErrorCode.FORBIDDEN);
     }
 
-    public AuthorizationException(Long userId, String resource, String action) {
-        super(CommonErrorCode.FORBIDDEN,
-                String.format("User(ID: %d): '%s' 리소스에 대한 '%s' 권한이 없습니다.",
-                        userId, resource, action));
+    public AuthorizationException(BaseErrorCode errorCode) {
+        super(errorCode);
     }
 
-    public AuthorizationException(Long userId, String requiredRole) {
+    public AuthorizationException(Long userId, String resource, String action) {
         super(CommonErrorCode.FORBIDDEN,
-                String.format("User(ID: %d): 할당된 '%s' 역할이 없습니다.",
-                        userId, requiredRole));
+                String.format("사용자[%d]는 리소스[%s]에 대해 [%s] 권한이 없습니다.", userId, resource, action));
+    }
+
+    public AuthorizationException(Long userId, String role) {
+        super(CommonErrorCode.FORBIDDEN,
+                String.format("사용자[%d]는 필요한 권한[%s]을 가지고 있지 않습니다.", userId, role));
     }
 
     public AuthorizationException(Long userId) {
         super(CommonErrorCode.FORBIDDEN,
-                String.format("User(ID: %d): 접근 권한이 없습니다.", userId));
+                String.format("사용자[%d]는 요청된 작업을 수행할 권한이 없습니다.", userId));
     }
 }
