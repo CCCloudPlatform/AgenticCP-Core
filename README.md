@@ -152,12 +152,22 @@ Swagger UI에서 API 인증을 테스트할 수 있습니다:
 #### JWT 토큰 테스트 방법
 ```bash
 # 1. 로그인하여 토큰 발급
-curl -X POST http://localhost:8080/api/auth/login \
+curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "admin123"}'
 
 # 2. 응답에서 accessToken 복사
 # 3. Swagger UI에서 Authorize → Bearer Token에 토큰 입력
+
+# 4. 2FA 활성화 (선택사항)
+curl -X POST http://localhost:8080/api/v1/auth/2fa/qr-code \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# 5. 2FA 코드로 활성화
+curl -X POST http://localhost:8080/api/v1/auth/2fa/enable \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"verificationCode": "123456"}'
 ```
 
 ### 🗄️ 데이터베이스 정보
@@ -176,11 +186,14 @@ curl -X POST http://localhost:8080/api/auth/login \
 - `GET /api/health` - 애플리케이션 상태 확인
 - `GET /api/health/ready` - 준비 상태 확인
 
-### 🔐 인증 및 인가
-- `POST /api/auth/login` - 사용자 로그인 (JWT 토큰 발급)
-- `POST /api/auth/refresh` - 토큰 갱신
-- `POST /api/auth/logout` - 로그아웃
-- `GET /api/auth/me` - 현재 사용자 정보 조회
+### 🔐 인증 및 인가 (v1)
+- `POST /api/v1/auth/login` - 사용자 로그인 (JWT 토큰 발급)
+- `POST /api/v1/auth/refresh` - 토큰 갱신
+- `POST /api/v1/auth/logout` - 로그아웃
+- `GET /api/v1/auth/me` - 현재 사용자 정보 조회
+- `POST /api/v1/auth/2fa/qr-code` - 2FA QR 코드 생성
+- `POST /api/v1/auth/2fa/enable` - 2FA 활성화
+- `POST /api/v1/auth/2fa/disable` - 2FA 비활성화
 
 ### 👥 사용자 관리
 - `GET /api/users` - 모든 사용자 조회
