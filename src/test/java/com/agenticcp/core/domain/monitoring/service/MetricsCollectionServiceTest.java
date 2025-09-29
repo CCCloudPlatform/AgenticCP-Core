@@ -3,7 +3,9 @@ package com.agenticcp.core.domain.monitoring.service;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
+import com.agenticcp.core.domain.monitoring.entity.MetricThreshold;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
+import com.agenticcp.core.domain.monitoring.repository.MetricThresholdRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -26,6 +30,9 @@ class MetricsCollectionServiceTest {
 
     @Mock
     private MetricRepository metricRepository;
+
+    @Mock
+    private MetricThresholdRepository metricThresholdRepository;
 
     @Mock
     private SystemMetricsCollector systemMetricsCollector;
@@ -55,6 +62,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectSystemMetrics();
@@ -77,6 +85,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectMetricsManually();
@@ -110,6 +119,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectSystemMetrics();
@@ -136,6 +146,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectSystemMetrics();
@@ -175,6 +186,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectSystemMetrics();
@@ -226,6 +238,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics metricsWithNulls = TestDataBuilder.systemMetricsWithNullsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(metricsWithNulls);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectSystemMetrics();
@@ -247,6 +260,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectSystemMetrics();
@@ -285,6 +299,7 @@ class MetricsCollectionServiceTest {
             SystemMetrics highUsageMetrics = TestDataBuilder.highResourceUsageSystemMetricsBuilder().build();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(highUsageMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
 
             // When
             metricsCollectionService.collectSystemMetrics();
@@ -361,6 +376,112 @@ class MetricsCollectionServiceTest {
             assertThatThrownBy(() -> metricsCollectionService.collectMetricsManually())
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
+        }
+    }
+
+    /**
+     * 임계값 위반 확인 테스트 그룹
+     * 시나리오 13: 임계값 위반 시 경고 로그가 출력되는지 검증
+     * 시나리오 14: 임계값 위반이 없을 때는 로그가 출력되지 않는지 검증
+     * 시나리오 15: 임계값 확인 중 예외 발생 시 메트릭 저장이 중단되지 않는지 검증
+     */
+    @Nested
+    @DisplayName("임계값 위반 확인 테스트")
+    class ThresholdViolationTest {
+
+        /**
+         * 시나리오 13: 임계값 위반 시 경고 로그 출력
+         * Given: CPU 사용률 85% > 임계값 80%
+         * When: collectSystemMetrics() 호출
+         * Then: 경고 로그가 출력됨
+         */
+        @Test
+        @DisplayName("임계값 위반 시 경고 로그가 출력됨")
+        void collectSystemMetrics_WhenThresholdViolated_ShouldLogWarning() {
+            // Given
+            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
+            when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
+            
+            // CPU 임계값 위반 설정 (85% > 80%)
+            MetricThreshold cpuThreshold = MetricThreshold.builder()
+                    .metricName("cpu.usage")
+                    .thresholdValue(80.0)
+                    .operator(">")
+                    .thresholdType(MetricThreshold.ThresholdType.WARNING)
+                    .isActive(true)
+                    .build();
+            when(metricThresholdRepository.findByMetricName("cpu.usage")).thenReturn(List.of(cpuThreshold));
+
+            // When
+            metricsCollectionService.collectSystemMetrics();
+
+            // Then: 메트릭 저장 확인
+            verify(metricRepository, times(7)).save(any(Metric.class));
+            // Then: 임계값 확인 호출 확인
+            verify(metricThresholdRepository, atLeastOnce()).findByMetricName("cpu.usage");
+        }
+
+        /**
+         * 시나리오 14: 임계값 위반이 없을 때는 로그 출력 안됨
+         * Given: CPU 사용률 75% < 임계값 80%
+         * When: collectSystemMetrics() 호출
+         * Then: 경고 로그가 출력되지 않음
+         */
+        @Test
+        @DisplayName("임계값 위반이 없을 때는 경고 로그가 출력되지 않음")
+        void collectSystemMetrics_WhenNoThresholdViolated_ShouldNotLogWarning() {
+            // Given
+            SystemMetrics lowUsageMetrics = TestDataBuilder.systemMetricsBuilder()
+                    .cpuUsage(75.0)  // 80% 미만으로 설정
+                    .build();
+            when(systemMetricsCollector.collectSystemMetrics()).thenReturn(lowUsageMetrics);
+            when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
+            
+            // CPU 임계값 설정 (80%)
+            MetricThreshold cpuThreshold = MetricThreshold.builder()
+                    .metricName("cpu.usage")
+                    .thresholdValue(80.0)
+                    .operator(">")
+                    .thresholdType(MetricThreshold.ThresholdType.WARNING)
+                    .isActive(true)
+                    .build();
+            when(metricThresholdRepository.findByMetricName("cpu.usage")).thenReturn(List.of(cpuThreshold));
+
+            // When
+            metricsCollectionService.collectSystemMetrics();
+
+            // Then: 메트릭 저장 확인
+            verify(metricRepository, times(7)).save(any(Metric.class));
+            // Then: 임계값 확인 호출 확인
+            verify(metricThresholdRepository, atLeastOnce()).findByMetricName("cpu.usage");
+        }
+
+        /**
+         * 시나리오 15: 임계값 확인 중 예외 발생 시 메트릭 저장 중단되지 않음
+         * Given: MetricThresholdRepository에서 예외 발생
+         * When: collectSystemMetrics() 호출
+         * Then: 메트릭 저장은 정상적으로 완료됨
+         */
+        @Test
+        @DisplayName("임계값 확인 중 예외 발생 시 메트릭 저장은 정상 완료")
+        void collectSystemMetrics_WhenThresholdCheckFails_ShouldNotAffectMetricSaving() {
+            // Given
+            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
+            when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
+            when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
+            when(metricThresholdRepository.findByMetricName(anyString()))
+                    .thenThrow(new RuntimeException("Threshold check failed"));
+
+            // When & Then: 예외 발생하지 않음
+            assertThatCode(() -> metricsCollectionService.collectSystemMetrics())
+                    .doesNotThrowAnyException();
+
+            // Then: 메트릭 저장은 정상적으로 완료됨
+            verify(metricRepository, times(7)).save(any(Metric.class));
         }
     }
 }
