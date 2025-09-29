@@ -55,6 +55,9 @@ jobs:
       run: |
         mysql --host 127.0.0.1 --port 3306 -uroot -proot -e "SHOW DATABASES;"
 
+    - name: Install redis-cli
+      run: sudo apt-get update && sudo apt-get install -y redis-tools
+
     - name: Verify Redis connection
       run: |
         redis-cli -h 127.0.0.1 -p 6379 ping
