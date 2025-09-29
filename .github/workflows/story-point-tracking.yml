@@ -1,0 +1,328 @@
+name: Story Point Tracking
+
+on:
+  issues:
+    types: [closed, reopened]
+  schedule:
+    # 매일 오전 9시 (UTC) - 일일 벨로시티 계산
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'Tracking period'
+        required: true
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - weekly
+          - monthly
+
+jobs:
+  track-velocity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Calculate Daily Velocity
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            // 어제 완료된 UserStory 조회
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            const completedUserStories = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue label:user-story label:done closed:${yesterdayStr}`
+            });
+            
+            // Story Point 계산 (간단한 추정)
+            let totalStoryPoints = 0;
+            const userStoryDetails = [];
+            
+            for (const userStory of completedUserStories.data.items) {
+              // UserStory 본문에서 Story Point 추출
+              const body = userStory.body || '';
+              const spMatch = body.match(/Story Point[:\s]*(\d+)/i);
+              const storyPoints = spMatch ? parseInt(spMatch[1]) : 5; // 기본값 5 SP
+              
+              totalStoryPoints += storyPoints;
+              userStoryDetails.push({
+                number: userStory.number,
+                title: userStory.title,
+                storyPoints: storyPoints,
+                closedAt: userStory.closed_at
+              });
+            }
+            
+            console.log(`Daily velocity for ${yesterdayStr}: ${totalStoryPoints} SP`);
+            console.log(`Completed UserStories: ${userStoryDetails.length}`);
+            
+            // 벨로시티 추적 이슈 생성 (일일)
+            if (totalStoryPoints > 0) {
+              const velocityIssue = await github.rest.issues.create({
+                owner: owner,
+                repo: repo,
+                title: `[VELOCITY] ${yesterdayStr} 일일 벨로시티`,
+                body: `# ${yesterdayStr} 일일 벨로시티
+                
+## 📊 완료 통계
+- **완료된 UserStory**: ${userStoryDetails.length}개
+- **완료된 Story Point**: ${totalStoryPoints} SP
+- **평균 UserStory당 SP**: ${(totalStoryPoints / userStoryDetails.length).toFixed(1)} SP
+                
+## 📋 완료된 UserStory 목록
+${userStoryDetails.map(us => `- [ ] #${us.number} - ${us.title} (${us.storyPoints} SP)`).join('\n')}
+                
+## 📈 벨로시티 트렌드
+<!-- 최근 7일간의 벨로시티 트렌드를 분석하세요 -->
+                
+## 🎯 다음 목표
+<!-- 다음 스프린트 목표를 설정하세요 -->`,
+                labels: ['velocity', 'daily', 'done']
+              });
+              
+              console.log(`Created daily velocity issue: #${velocityIssue.data.number}`);
+            }
+
+      - name: Calculate Weekly Velocity
+        if: github.event_name == 'schedule' && github.event.schedule == '0 9 * * 1' || github.event_name == 'workflow_dispatch' && github.event.inputs.period == 'weekly'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            // 지난 주 완료된 UserStory 조회
+            const today = new Date();
+            const lastWeek = new Date(today);
+            lastWeek.setDate(today.getDate() - 7);
+            const lastWeekStr = lastWeek.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const completedUserStories = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue label:user-story label:done closed:${lastWeekStr}..${todayStr}`
+            });
+            
+            // Story Point 계산
+            let totalStoryPoints = 0;
+            const userStoryDetails = [];
+            
+            for (const userStory of completedUserStories.data.items) {
+              const body = userStory.body || '';
+              const spMatch = body.match(/Story Point[:\s]*(\d+)/i);
+              const storyPoints = spMatch ? parseInt(spMatch[1]) : 5;
+              
+              totalStoryPoints += storyPoints;
+              userStoryDetails.push({
+                number: userStory.number,
+                title: userStory.title,
+                storyPoints: storyPoints,
+                closedAt: userStory.closed_at
+              });
+            }
+            
+            console.log(`Weekly velocity for ${lastWeekStr} to ${todayStr}: ${totalStoryPoints} SP`);
+            
+            // 주간 벨로시티 추적 이슈 생성
+            const velocityIssue = await github.rest.issues.create({
+              owner: owner,
+              repo: repo,
+              title: `[VELOCITY] ${lastWeekStr} ~ ${todayStr} 주간 벨로시티`,
+              body: `# ${lastWeekStr} ~ ${todayStr} 주간 벨로시티
+              
+## 📊 완료 통계
+- **완료된 UserStory**: ${userStoryDetails.length}개
+- **완료된 Story Point**: ${totalStoryPoints} SP
+- **평균 UserStory당 SP**: ${userStoryDetails.length > 0 ? (totalStoryPoints / userStoryDetails.length).toFixed(1) : 0} SP
+- **일평균 SP**: ${(totalStoryPoints / 7).toFixed(1)} SP
+              
+## 📋 완료된 UserStory 목록
+${userStoryDetails.map(us => `- [ ] #${us.number} - ${us.title} (${us.storyPoints} SP)`).join('\n')}
+              
+## 📈 벨로시티 분석
+### 이번 주 성과
+- 
+- 
+- 
+              
+### 개선점
+- 
+- 
+- 
+              
+## 🎯 다음 주 목표
+- **목표 Story Point**: ${Math.round(totalStoryPoints * 1.1)} SP (10% 증가)
+- **예상 완료 UserStory**: ${Math.round(userStoryDetails.length * 1.1)}개
+              
+## 📝 액션 아이템
+- [ ] 액션 1
+- [ ] 액션 2
+- [ ] 액션 3`,
+              labels: ['velocity', 'weekly', 'done']
+            });
+            
+            console.log(`Created weekly velocity issue: #${velocityIssue.data.number}`);
+
+      - name: Calculate Monthly Velocity
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.period == 'monthly'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            // 지난 달 완료된 UserStory 조회
+            const today = new Date();
+            const lastMonth = new Date(today);
+            lastMonth.setMonth(today.getMonth() - 1);
+            const lastMonthStr = lastMonth.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            
+            const completedUserStories = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue label:user-story label:done closed:${lastMonthStr}..${todayStr}`
+            });
+            
+            // Story Point 계산
+            let totalStoryPoints = 0;
+            const userStoryDetails = [];
+            
+            for (const userStory of completedUserStories.data.items) {
+              const body = userStory.body || '';
+              const spMatch = body.match(/Story Point[:\s]*(\d+)/i);
+              const storyPoints = spMatch ? parseInt(spMatch[1]) : 5;
+              
+              totalStoryPoints += storyPoints;
+              userStoryDetails.push({
+                number: userStory.number,
+                title: userStory.title,
+                storyPoints: storyPoints,
+                closedAt: userStory.closed_at
+              });
+            }
+            
+            console.log(`Monthly velocity for ${lastMonthStr} to ${todayStr}: ${totalStoryPoints} SP`);
+            
+            // 월간 벨로시티 추적 이슈 생성
+            const velocityIssue = await github.rest.issues.create({
+              owner: owner,
+              repo: repo,
+              title: `[VELOCITY] ${lastMonthStr} ~ ${todayStr} 월간 벨로시티`,
+              body: `# ${lastMonthStr} ~ ${todayStr} 월간 벨로시티
+              
+## 📊 완료 통계
+- **완료된 UserStory**: ${userStoryDetails.length}개
+- **완료된 Story Point**: ${totalStoryPoints} SP
+- **평균 UserStory당 SP**: ${userStoryDetails.length > 0 ? (totalStoryPoints / userStoryDetails.length).toFixed(1) : 0} SP
+- **일평균 SP**: ${(totalStoryPoints / 30).toFixed(1)} SP
+              
+## 📋 완료된 UserStory 목록
+${userStoryDetails.map(us => `- [ ] #${us.number} - ${us.title} (${us.storyPoints} SP)`).join('\n')}
+              
+## 📈 벨로시티 트렌드 분석
+### 이번 달 성과
+- 
+- 
+- 
+              
+### 개선점
+- 
+- 
+- 
+              
+## 🎯 다음 달 목표
+- **목표 Story Point**: ${Math.round(totalStoryPoints * 1.2)} SP (20% 증가)
+- **예상 완료 UserStory**: ${Math.round(userStoryDetails.length * 1.2)}개
+              
+## 📝 월간 액션 아이템
+- [ ] 액션 1
+- [ ] 액션 2
+- [ ] 액션 3
+              
+## 🏆 팀 성과
+<!-- 팀원별 성과를 분석하세요 -->`,
+              labels: ['velocity', 'monthly', 'done']
+            });
+            
+            console.log(`Created monthly velocity issue: #${velocityIssue.data.number}`);
+
+      - name: Update Burndown Chart
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            // 현재 스프린트의 진행 상황 계산
+            const startDate = new Date('2024-01-01');
+            const currentDate = new Date();
+            const weeksSinceStart = Math.floor((currentDate - startDate) / (7 * 24 * 60 * 60 * 1000));
+            const sprintNumber = weeksSinceStart + 1;
+            
+            // 스프린트 시작일 계산
+            const sprintStartDate = new Date(startDate);
+            sprintStartDate.setDate(startDate.getDate() + (sprintNumber - 1) * 7);
+            const sprintStartStr = sprintStartDate.toISOString().split('T')[0];
+            
+            // 스프린트 종료일 계산
+            const sprintEndDate = new Date(sprintStartDate);
+            sprintEndDate.setDate(sprintStartDate.getDate() + 7);
+            const sprintEndStr = sprintEndDate.toISOString().split('T')[0];
+            
+            // 스프린트 기간 내 완료된 UserStory 조회
+            const completedUserStories = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue label:user-story label:done closed:${sprintStartStr}..${sprintEndStr}`
+            });
+            
+            // 완료된 Story Point 계산
+            let completedStoryPoints = 0;
+            for (const userStory of completedUserStories.data.items) {
+              const body = userStory.body || '';
+              const spMatch = body.match(/Story Point[:\s]*(\d+)/i);
+              const storyPoints = spMatch ? parseInt(spMatch[1]) : 5;
+              completedStoryPoints += storyPoints;
+            }
+            
+            // 스프린트 목표 Story Point (기본값 40 SP)
+            const targetStoryPoints = 40;
+            const remainingStoryPoints = Math.max(0, targetStoryPoints - completedStoryPoints);
+            
+            // 백로그 버닝 차트 업데이트
+            const burndownIssue = await github.rest.issues.create({
+              owner: owner,
+              repo: repo,
+              title: `[BURNDOWN] Sprint ${sprintNumber} 백로그 버닝 차트`,
+              body: `# Sprint ${sprintNumber} 백로그 버닝 차트
+              
+## 📊 현재 진행 상황
+- **목표 Story Point**: ${targetStoryPoints} SP
+- **완료된 Story Point**: ${completedStoryPoints} SP
+- **남은 Story Point**: ${remainingStoryPoints} SP
+- **완료율**: ${((completedStoryPoints / targetStoryPoints) * 100).toFixed(1)}%
+              
+## 📈 백로그 버닝 차트
+\`\`\`
+목표: ${targetStoryPoints} SP
+완료: ${completedStoryPoints} SP
+남은: ${remainingStoryPoints} SP
+              
+진행률: ${'█'.repeat(Math.floor((completedStoryPoints / targetStoryPoints) * 20))}${'░'.repeat(20 - Math.floor((completedStoryPoints / targetStoryPoints) * 20))} ${((completedStoryPoints / targetStoryPoints) * 100).toFixed(1)}%
+\`\`\`
+              
+## 📋 완료된 UserStory
+${completedUserStories.data.items.map(us => `- [x] #${us.number} - ${us.title}`).join('\n')}
+              
+## 🎯 다음 목표
+<!-- 다음에 완료할 UserStory를 나열하세요 -->
+- [ ] UserStory 1
+- [ ] UserStory 2
+- [ ] UserStory 3
+              
+## 📝 스프린트 노트
+<!-- 스프린트 진행 상황에 대한 특이사항을 작성하세요 -->`,
+              labels: ['burndown', 'sprint', 'done']
+            });
+            
+            console.log(`Created burndown chart issue: #${burndownIssue.data.number}`);

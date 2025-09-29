@@ -1,0 +1,273 @@
+name: Update Parent Issues
+
+on:
+  issues:
+    types: [closed, reopened]
+
+jobs:
+  update-parent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Feature when all Tasks are done
+        if: contains(github.event.issue.labels.*.name, 'task')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const issueNumber = issue.number;
+            const owner = issue.owner;
+            const repo = issue.repo;
+            
+            console.log(`Processing Task issue #${issueNumber}`);
+            
+            // 이슈 본문에서 상위 Feature 찾기
+            const issueBody = context.payload.issue.body;
+            const featureMatch = issueBody.match(/Feature:\s*#(\d+)/i);
+            
+            if (!featureMatch) {
+              console.log(`No parent Feature found in Task issue #${issueNumber}`);
+              return;
+            }
+            
+            const parentFeatureNumber = parseInt(featureMatch[1]);
+            console.log(`Found parent Feature: #${parentFeatureNumber}`);
+            
+            // Feature 이슈 정보 가져오기
+            const parentIssue = await github.rest.issues.get({
+              owner: owner,
+              repo: repo,
+              issue_number: parentFeatureNumber
+            });
+            
+            if (!parentIssue.data) {
+              console.log(`Parent Feature #${parentFeatureNumber} not found`);
+              return;
+            }
+            
+            // Feature의 모든 Task 찾기
+            const allTasks = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue label:task in:body "Feature: #${parentFeatureNumber}"`
+            });
+            
+            console.log(`Found ${allTasks.data.items.length} tasks for Feature #${parentFeatureNumber}`);
+            
+            // 완료된 Task 수 계산
+            const completedTasks = allTasks.data.items.filter(task => 
+              task.state === 'closed' && 
+              task.labels.some(label => label.name === 'done')
+            );
+            
+            console.log(`Completed tasks: ${completedTasks.length}/${allTasks.data.items.length}`);
+            
+            // 모든 Task가 완료되었는지 확인
+            if (completedTasks.length === allTasks.data.items.length && allTasks.data.items.length > 0) {
+              // Feature를 done으로 변경
+              await github.rest.issues.addLabels({
+                owner: owner,
+                repo: repo,
+                issue_number: parentFeatureNumber,
+                labels: ['done']
+              });
+              
+              await github.rest.issues.removeLabel({
+                owner: owner,
+                repo: repo,
+                issue_number: parentFeatureNumber,
+                name: 'in-progress'
+              }).catch(() => {});
+              
+              await github.rest.issues.removeLabel({
+                owner: owner,
+                repo: repo,
+                issue_number: parentFeatureNumber,
+                name: 'ready-for-work'
+              }).catch(() => {});
+              
+              console.log(`Feature #${parentFeatureNumber} marked as done - all tasks completed`);
+              
+              // Feature 완료 알림 댓글 추가
+              await github.rest.issues.createComment({
+                owner: owner,
+                repo: repo,
+                issue_number: parentFeatureNumber,
+                body: `🎉 **Feature 완료!**\n\n모든 Task가 완료되어 이 Feature가 완료되었습니다.\n\n- 완료된 Task: ${completedTasks.length}개\n- 총 Task: ${allTasks.data.items.length}개`
+              });
+            } else {
+              console.log(`Feature #${parentFeatureNumber} not ready for completion yet`);
+            }
+
+      - name: Update UserStory when all Features are done
+        if: contains(github.event.issue.labels.*.name, 'feature')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const issueNumber = issue.number;
+            const owner = issue.owner;
+            const repo = issue.repo;
+            
+            console.log(`Processing Feature issue #${issueNumber}`);
+            
+            // 이슈 본문에서 상위 UserStory 찾기
+            const issueBody = context.payload.issue.body;
+            const userStoryMatch = issueBody.match(/UserStory:\s*#(\d+)/i);
+            
+            if (!userStoryMatch) {
+              console.log(`No parent UserStory found in Feature issue #${issueNumber}`);
+              return;
+            }
+            
+            const parentUserStoryNumber = parseInt(userStoryMatch[1]);
+            console.log(`Found parent UserStory: #${parentUserStoryNumber}`);
+            
+            // UserStory 이슈 정보 가져오기
+            const parentIssue = await github.rest.issues.get({
+              owner: owner,
+              repo: repo,
+              issue_number: parentUserStoryNumber
+            });
+            
+            if (!parentIssue.data) {
+              console.log(`Parent UserStory #${parentUserStoryNumber} not found`);
+              return;
+            }
+            
+            // UserStory의 모든 Feature 찾기
+            const allFeatures = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue label:feature in:body "UserStory: #${parentUserStoryNumber}"`
+            });
+            
+            console.log(`Found ${allFeatures.data.items.length} features for UserStory #${parentUserStoryNumber}`);
+            
+            // 완료된 Feature 수 계산
+            const completedFeatures = allFeatures.data.items.filter(feature => 
+              feature.state === 'closed' && 
+              feature.labels.some(label => label.name === 'done')
+            );
+            
+            console.log(`Completed features: ${completedFeatures.length}/${allFeatures.data.items.length}`);
+            
+            // 모든 Feature가 완료되었는지 확인
+            if (completedFeatures.length === allFeatures.data.items.length && allFeatures.data.items.length > 0) {
+              // UserStory를 done으로 변경
+              await github.rest.issues.addLabels({
+                owner: owner,
+                repo: repo,
+                issue_number: parentUserStoryNumber,
+                labels: ['done']
+              });
+              
+              await github.rest.issues.removeLabel({
+                owner: owner,
+                repo: repo,
+                issue_number: parentUserStoryNumber,
+                name: 'in-progress'
+              }).catch(() => {});
+              
+              await github.rest.issues.removeLabel({
+                owner: owner,
+                repo: repo,
+                issue_number: parentUserStoryNumber,
+                name: 'ready-for-work'
+              }).catch(() => {});
+              
+              console.log(`UserStory #${parentUserStoryNumber} marked as done - all features completed`);
+              
+              // UserStory 완료 알림 댓글 추가
+              await github.rest.issues.createComment({
+                owner: owner,
+                repo: repo,
+                issue_number: parentUserStoryNumber,
+                body: `🎉 **UserStory 완료!**\n\n모든 Feature가 완료되어 이 UserStory가 완료되었습니다.\n\n- 완료된 Feature: ${completedFeatures.length}개\n- 총 Feature: ${allFeatures.data.items.length}개`
+              });
+            } else {
+              console.log(`UserStory #${parentUserStoryNumber} not ready for completion yet`);
+            }
+
+      - name: Update Epic when all UserStories are done
+        if: contains(github.event.issue.labels.*.name, 'user-story')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const issueNumber = issue.number;
+            const owner = issue.owner;
+            const repo = issue.repo;
+            
+            console.log(`Processing UserStory issue #${issueNumber}`);
+            
+            // 이슈 본문에서 상위 Epic 찾기
+            const issueBody = context.payload.issue.body;
+            const epicMatch = issueBody.match(/Epic:\s*#(\d+)/i);
+            
+            if (!epicMatch) {
+              console.log(`No parent Epic found in UserStory issue #${issueNumber}`);
+              return;
+            }
+            
+            const parentEpicNumber = parseInt(epicMatch[1]);
+            console.log(`Found parent Epic: #${parentEpicNumber}`);
+            
+            // Epic 이슈 정보 가져오기
+            const parentIssue = await github.rest.issues.get({
+              owner: owner,
+              repo: repo,
+              issue_number: parentEpicNumber
+            });
+            
+            if (!parentIssue.data) {
+              console.log(`Parent Epic #${parentEpicNumber} not found`);
+              return;
+            }
+            
+            // Epic의 모든 UserStory 찾기
+            const allUserStories = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue label:user-story in:body "Epic: #${parentEpicNumber}"`
+            });
+            
+            console.log(`Found ${allUserStories.data.items.length} user stories for Epic #${parentEpicNumber}`);
+            
+            // 완료된 UserStory 수 계산
+            const completedUserStories = allUserStories.data.items.filter(userStory => 
+              userStory.state === 'closed' && 
+              userStory.labels.some(label => label.name === 'done')
+            );
+            
+            console.log(`Completed user stories: ${completedUserStories.length}/${allUserStories.data.items.length}`);
+            
+            // 모든 UserStory가 완료되었는지 확인
+            if (completedUserStories.length === allUserStories.data.items.length && allUserStories.data.items.length > 0) {
+              // Epic을 done으로 변경
+              await github.rest.issues.addLabels({
+                owner: owner,
+                repo: repo,
+                issue_number: parentEpicNumber,
+                labels: ['done']
+              });
+              
+              await github.rest.issues.removeLabel({
+                owner: owner,
+                repo: repo,
+                issue_number: parentEpicNumber,
+                name: 'in-progress'
+              }).catch(() => {});
+              
+              await github.rest.issues.removeLabel({
+                owner: owner,
+                repo: repo,
+                issue_number: parentEpicNumber,
+                name: 'ready-for-work'
+              }).catch(() => {});
+              
+              console.log(`Epic #${parentEpicNumber} marked as done - all user stories completed`);
+              
+              // Epic 완료 알림 댓글 추가
+              await github.rest.issues.createComment({
+                owner: owner,
+                repo: repo,
+                issue_number: parentEpicNumber,
+                body: `🎉 **Epic 완료!**\n\n모든 UserStory가 완료되어 이 Epic이 완료되었습니다.\n\n- 완료된 UserStory: ${completedUserStories.length}개\n- 총 UserStory: ${allUserStories.data.items.length}개`
+              });
+            } else {
+              console.log(`Epic #${parentEpicNumber} not ready for completion yet`);
+            }

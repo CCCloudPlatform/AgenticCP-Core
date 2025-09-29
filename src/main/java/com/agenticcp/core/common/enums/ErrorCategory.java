@@ -1,4 +1,4 @@
-package com.agenticcp.core.common.exception;
+package com.agenticcp.core.common.enums;
 
 import com.agenticcp.core.common.dto.BaseErrorCode;
 
@@ -17,7 +17,7 @@ import com.agenticcp.core.common.dto.BaseErrorCode;
  * @since 2025-09-22
  */
 public enum ErrorCategory {
-
+    
     COMMON("COMMON_"),      // 0000-0999 (HTTP 상태 코드 그대로)
     AUTH("AUTH_"),          // 1000-1999
     USER("USER_"),          // 2000-2999

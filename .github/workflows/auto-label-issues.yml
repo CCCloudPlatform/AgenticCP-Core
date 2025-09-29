@@ -1,0 +1,153 @@
+name: Auto-label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-label Epic
+        if: contains(github.event.issue.title, '[EPIC]')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const labels = ['epic', 'needs-triage'];
+            
+            // 기존 라벨 제거
+            await github.rest.issues.removeLabel({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              name: 'needs-triage'
+            }).catch(() => {});
+            
+            // 새 라벨 추가
+            await github.rest.issues.addLabels({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              labels: labels
+            });
+            
+            console.log(`Added labels: ${labels.join(', ')} to Epic issue #${issue.number}`);
+
+      - name: Auto-label UserStory
+        if: contains(github.event.issue.title, '[USER-STORY]')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const labels = ['user-story', 'needs-triage'];
+            
+            // 기존 라벨 제거
+            await github.rest.issues.removeLabel({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              name: 'needs-triage'
+            }).catch(() => {});
+            
+            // 새 라벨 추가
+            await github.rest.issues.addLabels({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              labels: labels
+            });
+            
+            console.log(`Added labels: ${labels.join(', ')} to UserStory issue #${issue.number}`);
+
+      - name: Auto-label Feature
+        if: contains(github.event.issue.title, '[FEATURE]')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const labels = ['feature', 'needs-triage'];
+            
+            // 기존 라벨 제거
+            await github.rest.issues.removeLabel({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              name: 'needs-triage'
+            }).catch(() => {});
+            
+            // 새 라벨 추가
+            await github.rest.issues.addLabels({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              labels: labels
+            });
+            
+            console.log(`Added labels: ${labels.join(', ')} to Feature issue #${issue.number}`);
+
+      - name: Auto-label Task
+        if: contains(github.event.issue.title, '[TASK]')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const labels = ['task', 'needs-triage'];
+            
+            // 기존 라벨 제거
+            await github.rest.issues.removeLabel({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              name: 'needs-triage'
+            }).catch(() => {});
+            
+            // 새 라벨 추가
+            await github.rest.issues.addLabels({
+              owner: issue.owner,
+              repo: issue.repo,
+              issue_number: issue.number,
+              labels: labels
+            });
+            
+            console.log(`Added labels: ${labels.join(', ')} to Task issue #${issue.number}`);
+
+      - name: Auto-assign Epic to Project Manager
+        if: contains(github.event.issue.title, '[EPIC]')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const projectManager = 'kkooonsj'; // 프로젝트 매니저 GitHub 사용자명
+            
+            try {
+              await github.rest.issues.addAssignees({
+                owner: issue.owner,
+                repo: issue.repo,
+                issue_number: issue.number,
+                assignees: [projectManager]
+              });
+              console.log(`Assigned Epic issue #${issue.number} to ${projectManager}`);
+            } catch (error) {
+              console.log(`Failed to assign Epic issue #${issue.number}: ${error.message}`);
+            }
+
+      - name: Auto-assign UserStory to Team Lead
+        if: contains(github.event.issue.title, '[USER-STORY]')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.issue;
+            const teamLead = 'kkooonsj'; // 팀 리드 GitHub 사용자명
+            
+            try {
+              await github.rest.issues.addAssignees({
+                owner: issue.owner,
+                repo: issue.repo,
+                issue_number: issue.number,
+                assignees: [teamLead]
+              });
+              console.log(`Assigned UserStory issue #${issue.number} to ${teamLead}`);
+            } catch (error) {
+              console.log(`Failed to assign UserStory issue #${issue.number}: ${error.message}`);
+            }
