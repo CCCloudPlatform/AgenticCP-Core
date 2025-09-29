@@ -50,11 +50,7 @@ public class AuthenticationService {
 
             // 사용자 조회
             User user = userService.getUserByUsername(request.getUsername())
-                    .orElse(null); // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_LOGIN_FAILED)
-            if (user == null) {
-                log.warn("[TODO:BE] 사용자 없음 - AUTH_LOGIN_FAILED");
-                return TokenResponse.builder().build();
-            }
+                    .orElseThrow(() -> new BusinessException(AuthErrorCode.LOGIN_FAILED));
 
             // 계정 상태 확인
             validateUserStatus(user);
@@ -62,18 +58,14 @@ public class AuthenticationService {
             // 비밀번호 검증
             if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
                 handleFailedLogin(user);
-                // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_LOGIN_FAILED)
-                log.warn("[TODO:BE] 비밀번호 불일치 - AUTH_LOGIN_FAILED");
-                return TokenResponse.builder().build();
+                throw new BusinessException(AuthErrorCode.LOGIN_FAILED);
             }
 
             // 2FA 검증 (활성화된 경우)
             if (user.getTwoFactorEnabled() && request.getTwoFactorCode() != null) {
                 validateTwoFactorCode(user, request.getTwoFactorCode());
             } else if (user.getTwoFactorEnabled() && request.getTwoFactorCode() == null) {
-                // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_2FA_REQUIRED)
-                log.warn("[TODO:BE] 2FA 코드 필요 - AUTH_2FA_REQUIRED");
-                return TokenResponse.builder().build();
+                throw new BusinessException(AuthErrorCode.TWO_FACTOR_REQUIRED);
             }
 
             // 로그인 성공 처리
@@ -113,9 +105,7 @@ public class AuthenticationService {
 
                 // 리프레시 토큰 검증
                 if (!jwtService.validateToken(refreshToken) || !jwtService.isRefreshToken(refreshToken)) {
-                    // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_REFRESH_TOKEN_INVALID)
-                    log.warn("[TODO:BE] 리프레시 토큰 유효성 실패 - AUTH_REFRESH_TOKEN_INVALID");
-                    return TokenResponse.builder().build();
+                    throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
                 }
 
                 String username = jwtService.getUsernameFromToken(refreshToken);
@@ -123,18 +113,12 @@ public class AuthenticationService {
                 // Redis에서 리프레시 토큰 확인
                 String storedToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + username);
                 if (!refreshToken.equals(storedToken)) {
-                    // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_REFRESH_TOKEN_INVALID)
-                    log.warn("[TODO:BE] 저장된 리프레시 토큰과 불일치 - AUTH_REFRESH_TOKEN_INVALID");
-                    return TokenResponse.builder().build();
+                    throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
                 }
 
                 // 사용자 조회
                 User user = userService.getUserByUsername(username)
-                        .orElse(null); // TODO : BE - 비즈니스 예외 처리 보류 (USER_NOT_FOUND)
-                if (user == null) {
-                    log.warn("[TODO:BE] 사용자 없음 - USER_NOT_FOUND");
-                    return TokenResponse.builder().build();
-                }
+                        .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
 
                 // 사용자 상태 확인
                 validateUserStatus(user);
@@ -198,15 +182,11 @@ public class AuthenticationService {
      */
     private void validateUserStatus(User user) {
         if (!"ACTIVE".equals(user.getStatus().name())) {
-            // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_ACCOUNT_DISABLED)
-            log.warn("[TODO:BE] 계정 비활성화 - AUTH_ACCOUNT_DISABLED");
-            return;
+            throw new BusinessException(AuthErrorCode.ACCOUNT_DISABLED);
         }
 
         if (user.isAccountLocked()) {
-            // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_ACCOUNT_LOCKED)
-            log.warn("[TODO:BE] 계정 잠금 - AUTH_ACCOUNT_LOCKED");
-            return;
+            throw new BusinessException(AuthErrorCode.ACCOUNT_LOCKED);
         }
     }
 
@@ -215,23 +195,17 @@ public class AuthenticationService {
      */
     private void validateTwoFactorCode(User user, String twoFactorCode) {
         if (user.getTwoFactorSecret() == null) {
-            // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_2FA_NOT_ENABLED)
-            log.warn("[TODO:BE] 2FA 미활성화 - AUTH_2FA_NOT_ENABLED");
-            return;
+            throw new BusinessException(AuthErrorCode.TWO_FACTOR_NOT_ENABLED);
         }
 
         // 2FA 검증 시도 횟수 확인
         if (twoFactorService.isVerificationAttemptsExceeded(user.getUsername())) {
-            // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_2FA_ATTEMPTS_EXCEEDED)
-            log.warn("[TODO:BE] 2FA 시도 횟수 초과 - AUTH_2FA_ATTEMPTS_EXCEEDED");
-            return;
+            throw new BusinessException(AuthErrorCode.TWO_FACTOR_ATTEMPTS_EXCEEDED);
         }
 
         if (!twoFactorService.verifyCode(user.getTwoFactorSecret(), twoFactorCode)) {
             twoFactorService.incrementVerificationAttempts(user.getUsername());
-            // TODO : BE - 비즈니스 예외 처리 보류 (AUTH_2FA_INVALID)
-            log.warn("[TODO:BE] 2FA 코드 불일치 - AUTH_2FA_INVALID");
-            return;
+            throw new BusinessException(AuthErrorCode.TWO_FACTOR_INVALID);
         }
 
         // 검증 성공 시 시도 횟수 초기화
@@ -242,17 +216,9 @@ public class AuthenticationService {
      * 로그인 실패 처리
      */
     private void handleFailedLogin(User user) {
-        user.incrementFailedLoginAttempts();
-
-        if (user.getFailedLoginAttempts() >= MAX_FAILED_LOGIN_ATTEMPTS) {
-            user.lockAccount(ACCOUNT_LOCKOUT_MINUTES);
-            log.warn("계정 잠금: username={}, attempts={}", user.getUsername(), user.getFailedLoginAttempts());
-        }
-
-        userService.updateFailedLoginAttempts(user.getUsername(), user.getFailedLoginAttempts());
-        
-        if (user.getLockedUntil() != null) {
-            userService.lockUserAccount(user.getUsername(), user.getLockedUntil());
+        User updated = userService.handleFailedLogin(user.getUsername());
+        if (updated.isAccountLocked()) {
+            log.warn("계정 잠금: username={}, attempts={}", updated.getUsername(), updated.getFailedLoginAttempts());
         }
     }
 
