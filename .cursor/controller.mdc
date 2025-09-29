@@ -1,0 +1,43 @@
+name: Controller Rules
+applies_to:
+  - src/main/java/**/controller/**.java
+  - src/main/java/**/domain/**/controller/**.java
+priority: high
+
+---
+
+Goals:
+- 안정적인 API 경계를 제공하고 요청/응답/오류를 표준화한다
+
+Directives:
+- 경로 규칙: /api/v{n}/resources, 복수형, 하위 리소스는 중첩 경로
+- DTO 기반 I/O, 엔티티 직접 노출 금지, ApiResponse 규격 일관 적용
+- Bean Validation으로 입력 검증, 실패는 전역 예외 처리로 변환
+- 보안 어노테이션 명시(@PreAuthorize), 테넌트 경계 위반은 403/404
+
+Allowed:
+- 페이징 파라미터 표준(page/size/sort), 필터 화이트리스트
+- OpenAPI 문서 동기화(스키마/에러 포함)
+- 슬라이스/통합 테스트로 계약 검증
+
+Disallowed:
+- 컨트롤러에서 트랜잭션/비즈니스 로직 수행
+- Map/Generic으로 요청 바디 수신(타입 안정성 저하)
+- 내부 스택/식별자/민감정보를 오류로 그대로 노출
+
+Patterns:
+- 에러 응답 통일(코드/메시지/필드 오류)
+- 멱등 엔드포인트의 적절한 메서드 선택(PUT/PATCH)
+- 액션형 URL 최소화, 필요한 경우 하위 리소스 경로로 표현
+
+Anti-patterns:
+- 동사형 경로(getUsers/createUser)
+- 다중 책임 컨트롤러(크기 비대화)
+- 검증 실패를 200 OK로 래핑
+
+Checklist:
+- [ ] 경로/메서드/상태코드 표준 준수
+- [ ] DTO만 노출, ApiResponse 적용
+- [ ] 입력 검증/전역 예외 연계 확인
+- [ ] 권한/테넌트 경계 테스트 존재
+- [ ] OpenAPI 최신화 완료

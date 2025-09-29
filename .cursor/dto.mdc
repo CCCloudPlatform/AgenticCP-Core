@@ -1,0 +1,43 @@
+name: DTO Rules
+applies_to:
+  - src/main/java/**/dto/**.java
+  - src/main/java/**/domain/**/dto/**.java
+priority: high
+
+---
+
+Goals:
+- API 계약의 안정성과 직렬화 일관성을 보장한다
+
+Directives:
+- 불변성 지향(세터 최소화), 빌더/정적 팩토리 허용
+- @Json* 규칙 일관 유지, snake/camel 혼용 금지
+- 민감필드 미노출/마스킹, 서버측 기본값 재검증
+- 엔티티-DTO 매핑은 일원화(MapStruct 등)하고 컨트롤러 경계에서 수행
+
+Allowed:
+- 생성/수정 그룹 검증(Validation Groups)
+- 페이지 응답 표준 필드(content/page/size/total/hasNext)
+- 버전 추가 시 하위 호환 우선(필드 추가 → 점진 제거)
+
+Disallowed:
+- 엔티티를 그대로 재사용하여 누수 발생
+- 순환 참조를 유발하는 중첩 구조
+- 비즈니스 규칙/도메인 로직 내장
+
+Patterns:
+- Request/Response DTO 분리, 전환 정적 메서드(from/to)
+- 공통 Error/Paged 응답 DTO 재사용
+- 선택적 필드에는 Optional 대신 nullable + 문서화
+
+Anti-patterns:
+- Map<String,Object>로 요청 수신
+- Date/시간대 혼재(UTC 기준 고정 필요)
+- Enum 직렬화 값 임의 변경
+
+Checklist:
+- [ ] 불변 설계/빌더 사용
+- [ ] @Json 규칙/케이스 일관성
+- [ ] 민감정보 미노출/마스킹 적용
+- [ ] 그룹 검증/필수-선택 필드 명확화
+- [ ] 매핑 규칙 일원화 및 테스트 존재

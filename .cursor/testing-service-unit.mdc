@@ -1,0 +1,62 @@
+name: Service Unit Test Rules
+applies_to:
+  - src/test/java/**/service/**/*Test.java
+  - src/test/java/**/domain/**/service/**/*Test.java
+priority: high
+
+---
+
+Goals:
+- 서비스 레이어를 순수 단위로 검증하여 회귀를 방지한다
+- 외부 의존(웹/DB/보안/IO)을 모킹하여 빠르고 결정적(Deterministic)인 테스트를 보장한다
+- 테스트 가독성(명확한 Given/When/Then)과 실패 시 원인 파악 용이성을 확보한다
+
+Directives:
+- 단위 테스트는 스프링 컨텍스트를 로드하지 않는다(@SpringBootTest 금지). JUnit5 + Mockito만 사용
+- 외부 협력자(Repository, Port, Client, MessageBus)는 전부 @Mock 또는 Mockito.mock으로 대체
+- @ExtendWith(MockitoExtension.class) 사용, @InjectMocks로 대상 서비스 주입
+- 메서드명/테스트명은 행위와 기대 결과를 드러낸다: methodName_조건_결과
+- Given/When/Then 3단 구성, 하나의 시나리오를 명확히 검증(필요 시 SoftAssertions/AssertJ 사용)
+- 시간/UUID 등 비결정 값은 Clock/IdGenerator 등 추상화 주입 후 고정값으로 스텁
+- 예외 시나리오는 타입과 메시지/코드까지 검증(도메인 ErrorCode 기준)
+- 트랜잭션/보안/테넌트 경계는 서비스 진입부 가드 절 호출/결과를 검증(모킹으로 분기 확인)
+- 테스트 데이터는 빌더/픽스처 메서드로 중복 제거, Given 블록에서 의도를 드러내도록 구성
+- 로깅/메트릭 호출은 부수효과 검증 대상이 아니면 관찰하지 않음(행위 기반 검증 최소화)
+
+Allowed:
+- 파라미터화 테스트(경계값/에지케이스)로 입력 도메인 명시적 검증
+- ArgumentCaptor로 저장/전달 객체의 필드 유효성 검증
+- BDDMockito(given/when/then) 또는 Mockito(when/verify) 중 한 가지 스타일로 일관 사용
+- AssertJ로 가독성 높은 단언 사용(isEqualTo, containsExactlyInAnyOrder 등)
+
+Disallowed:
+- 컨텍스트 로딩(@SpringBootTest, @DataJpaTest 등) 및 Testcontainers 사용(단위 테스트 아님)
+- 리포지토리/외부 호출의 실제 IO 수행(네트워크/DB/파일)
+- 하나의 테스트에서 다중 독립 시나리오 검증(테스트 원자성 훼손)
+- 임의 슬립/랜덤/시간 의존으로 비결정 상태 유발
+
+Patterns:
+- 예외 검증: assertThatThrownBy/Assertions.assertThrows로 타입/메시지/에러코드까지 확인
+- 검증 전 필수 가드: null/empty/범위/테넌트 불일치 시 즉시 실패 확인
+- 저장 전 중복 검사: existsBy*/findBy* 모킹으로 Conflict 경로 검증 → 저장 호출 미발생 검증
+- 성공 플로우: 입력 검증 → 권한/테넌트 확인 → 도메인 규칙 → 저장/반환 순서 보장 검증
+- 멱등 동작: 동일 입력 시 동일 결과 및 부수효과 없음 검증
+
+Anti-patterns:
+- 내부 구현 디테일에 과도하게 결합된 verify 호출(리팩터링 취약)
+- "한 번에 모든 것을" 검증하는 거대 테스트(원인 추적 어려움)
+- 불필요한 스파이/부분 모킹으로 테스트 불안정성 증가
+
+Checklist:
+- [ ] 스프링 미사용(JUnit5 + Mockito only) 확인
+- [ ] 모든 외부 의존 모킹, 실제 IO 호출 금지
+- [ ] Given/When/Then 3단 구성 및 명확한 테스트명
+- [ ] 성공/실패/경계 시나리오 대칭 검증
+- [ ] 예외 타입/메시지/에러코드 단언
+- [ ] Clock/IdGenerator 등 비결정 값 고정
+- [ ] 저장/호출 횟수 및 순서 최소한으로 검증
+- [ ] 픽스처/빌더로 중복 제거, 가독성 유지
+
+Notes:
+- 참조: docs/TESTING_GUIDELINES.md → 단위/통합 경계, 모킹 전략, 명명 규칙, 결정성 확보 가이드
+- 커버리지 목표는 핵심 서비스/보안 경계 최소 임계치 충족(프로젝트 기준)이며, 수치를 목표로 하는 테스트 작성은 지양

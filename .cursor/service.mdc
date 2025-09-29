@@ -1,0 +1,44 @@
+name: Service Rules
+applies_to:
+  - src/main/java/**/service/**.java
+  - src/main/java/**/domain/**/service/**.java
+priority: high
+
+---
+
+Goals:
+- 유스케이스 중심으로 도메인 규칙을 캡슐화하고 트랜잭션/권한/테넌트를 일관 적용한다
+
+Directives:
+- 클래스 레벨 @Transactional(readOnly=true), 쓰기 메서드에 명시적 @Transactional
+- 메서드 초입 가드 절로 파라미터/상태/테넌트 경계 검증
+- @PreAuthorize 또는 권한 헬퍼를 통한 역할/권한 확인
+- 예외는 BusinessException/ResourceNotFound/AuthorizationException으로 표준화
+
+Allowed:
+- 포트/어댑터 분리로 외부 연동 캡슐화
+- 캐시 도입 시 TTL/무효화/키 설계 선행
+- 구조화 로깅(상관ID/테넌트ID) 및 성능 지표 수집
+
+Disallowed:
+- 컨트롤러/리포지토리 로직을 서비스에 혼합
+- 민감정보 로깅 및 내부 식별자 노출
+- 권한/테넌트 검증 없는 상태 변경
+
+Patterns:
+- 애플리케이션 서비스(유스케이스) ↔ 도메인 서비스(규칙)의 분리
+- 재시도/서킷브레이커는 데코레이터로 적용하여 비침투성 확보
+- 읽기/쓰기 경로 분리로 성능/일관성 조화
+
+Anti-patterns:
+- 서비스에서 트랜잭션 남발 및 경계 불명확
+- 예외 삼키기 후 null/빈 리턴
+- 권한 실패를 비즈니스 성공처럼 처리
+
+Checklist:
+- [ ] readOnly 기본, 쓰기 메서드 트랜잭션 명시
+- [ ] 권한/테넌트 가드 절 존재
+- [ ] 도메인 ErrorCode 기반 예외 매핑
+- [ ] 캐시 일관성 전략 정의(TTL/무효화)
+- [ ] 구조화 로깅/마스킹 적용
+- [ ] 외부 연동 회복력(재시도/서킷) 정의

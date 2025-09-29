@@ -1,0 +1,49 @@
+name: Entity Rules
+applies_to:
+  - src/main/java/**/entity/**.java
+  - src/main/java/**/domain/**/entity/**.java
+priority: high
+
+---
+
+Goals:
+- 엔티티 설계를 일관화하고 성능/무결성/보안을 보장한다
+- 테넌트 격리와 RBAC 시나리오에 맞춘 스키마 제약을 표준화한다
+
+Directives:
+- 기본 로딩은 LAZY, 즉시 로딩은 전용 조회에 한정한다
+- 다대다 금지, 매핑 엔티티(조인 엔티티) 사용을 기본으로 한다
+- (tenant_id, business_key) 유니크 제약을 준수한다
+- Enum은 STRING 저장, 직렬화 값 변경 시 마이그레이션 동반
+- 소프트 삭제 표준 필드(deleted, deleted_at, deleted_by) 일관 적용
+- 낙관적 락 버전 필드 사용, 충돌은 상위 계층에서 재시도 처리
+
+Allowed:
+- 단방향 연관관계 우선 사용
+- 전용 조회 DTO/프로젝션을 통한 읽기 최적화
+- 감사 필드 자동 관리(생성/수정 시각)
+
+Disallowed:
+- 엔티티를 컨트롤러 응답으로 직접 노출
+- 컬렉션 즉시 로딩 및 페이징과의 페치 조인 동시 사용
+- 비즈니스 로직/외부 통신 코드를 엔티티에 배치
+
+Patterns:
+- 매핑 엔티티: RolePermission(tenant_id, role_id, permission_id, depth, assigned_at)
+- 값 타입(VO) 불변 모델링 및 편의 메서드로만 변경 허용
+- 키셋 페이지네이션 적용이 필요한 대용량 테이블 설계
+
+Anti-patterns:
+- 자연키를 PK로 사용하여 변경 전파 비용 유발
+- 무분별한 cascade ALL과 orphanRemoval 남용
+- 상호 순환 직렬화를 유발하는 양방향 연관 남발
+
+Checklist:
+- [ ] LAZY 기본, 즉시 로딩 사유 기록됨
+- [ ] 다대다 금지, 매핑 엔티티 적용됨
+- [ ] (tenant_id, key) 유니크/인덱스 설계됨
+- [ ] Enum STRING 저장, 변경 계획 문서화됨
+- [ ] 소프트 삭제/감사/버전 필드 존재
+- [ ] DTO 변환 경계 준수(노출 금지)
+- [ ] N+1 예방 전략 문서화(Fetch Join/DTO/EntityGraph)
+- [ ] 마이그레이션/릴리즈 노트 포함
