@@ -39,8 +39,4 @@ public class ResourceNotFoundException extends BusinessException {
         super(CommonErrorCode.NOT_FOUND,
                 String.format("%s 리소스를 찾을 수 없습니다. (%s: %s)", resource, field, value));
     }
-
-    public ResourceNotFoundException(BaseErrorCode errorCode, String customMessage) {
-        super(errorCode, customMessage);
-    }
 }
