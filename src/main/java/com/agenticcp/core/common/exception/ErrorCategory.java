@@ -1,4 +1,4 @@
-package com.agenticcp.core.common.enums;
+package com.agenticcp.core.common.exception;
 
 import com.agenticcp.core.common.dto.BaseErrorCode;
 
@@ -17,11 +17,17 @@ import com.agenticcp.core.common.dto.BaseErrorCode;
  * @since 2025-09-22
  */
 public enum ErrorCategory {
-    
-    COMMON("COMMON_"),
-    AUTH("AUTH_"),
-    USER("USER_"),
-    TENANT("TENANT_");
+
+    COMMON("COMMON_"),      // 0000-0999 (HTTP 상태 코드 그대로)
+    AUTH("AUTH_"),          // 1000-1999
+    USER("USER_"),          // 2000-2999
+    TENANT("TENANT_"),      // 3000-3999
+    CLOUD("CLOUD_"),        // 4000-4999
+    SECURITY("SECURITY_"),  // 5000-5999
+    PLATFORM("PLATFORM_"),  // 6000-6999
+    COST("COST_"),          // 7000-7999
+    MONITORING("MONITORING_"), // 8000-8999
+    INTEGRATION("INTEGRATION_"); // 9000-9999
 
     private final String prefix;
     

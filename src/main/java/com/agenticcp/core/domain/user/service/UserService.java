@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.user.service;
 
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.domain.user.enums.UserErrorCode;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.repository.UserRepository;
 import com.agenticcp.core.common.enums.Status;
@@ -58,7 +59,7 @@ public class UserService {
     public User getUserByUsernameOrThrow(String username) {
         log.info("[UserService] getUserByUsernameOrThrow - username={}", LogMaskingUtils.mask(username, 2, 2));
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
         log.info("[UserService] getUserByUsernameOrThrow - success username={}", LogMaskingUtils.mask(username, 2, 2));
         return user;
     }
@@ -233,5 +234,34 @@ public class UserService {
         user.setIsDeleted(true);
         userRepository.save(user);
         log.info("[UserService] deleteUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
+    }
+
+    // 인증 서비스를 위한 추가 메서드들
+
+    @Transactional
+    public void updateFailedLoginAttempts(String username, int attempts) {
+        User user = getUserByUsernameOrThrow(username);
+        user.setFailedLoginAttempts(attempts);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void resetFailedLoginAttempts(String username) {
+        User user = getUserByUsernameOrThrow(username);
+        user.resetFailedLoginAttempts();
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void lockUserAccount(String username, LocalDateTime lockedUntil) {
+        User user = getUserByUsernameOrThrow(username);
+        user.setLockedUntil(lockedUntil);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateUser(User user) {
+        log.info("Updating user: {}", user.getUsername());
+        return userRepository.save(user);
     }
 }

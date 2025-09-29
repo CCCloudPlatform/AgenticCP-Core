@@ -4,6 +4,7 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.domain.user.enums.PermissionErrorCode;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.user.dto.CreatePermissionRequest;
@@ -14,7 +15,6 @@ import com.agenticcp.core.domain.user.repository.PermissionRepository;
 import com.agenticcp.core.domain.user.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +37,6 @@ public class PermissionService {
     
     private final PermissionRepository permissionRepository;
     private final RoleRepository roleRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
     
     /**
      * 모든 권한 조회 (현재 테넌트)
@@ -94,7 +93,7 @@ public class PermissionService {
     public Permission getPermissionByKeyOrThrow(String permissionKey) {
         log.info("[PermissionService] getPermissionByKeyOrThrow - permissionKey={}", LogMaskingUtils.maskPermissionKey(permissionKey));
         Permission permission = getPermissionByKey(permissionKey)
-                .orElseThrow(() -> new ResourceNotFoundException("Permission", "permissionKey", permissionKey));
+                .orElseThrow(() -> new ResourceNotFoundException(PermissionErrorCode.PERMISSION_NOT_FOUND));
         log.info("[PermissionService] getPermissionByKeyOrThrow - success permissionKey={}", LogMaskingUtils.maskPermissionKey(permissionKey));
         return permission;
     }
@@ -221,7 +220,8 @@ public class PermissionService {
         
         // 권한 키 중복 확인
         if (permissionRepository.existsByPermissionKeyAndTenant(request.getPermissionKey(), currentTenant)) {
-            throw new BusinessException("이미 존재하는 권한 키입니다: " + request.getPermissionKey());
+            throw new BusinessException(PermissionErrorCode.DUPLICATE_PERMISSION_KEY, 
+                    "이미 존재하는 권한 키입니다: " + request.getPermissionKey());
         }
         
         // 권한 생성
@@ -240,8 +240,6 @@ public class PermissionService {
         
         Permission savedPermission = permissionRepository.save(permission);
         
-        // 캐시 무효화
-        evictPermissionCache();
         
         log.info("[PermissionService] createPermission - success permissionKey={} tenantKey={}",
                 LogMaskingUtils.maskPermissionKey(savedPermission.getPermissionKey()),
@@ -270,7 +268,7 @@ public class PermissionService {
         
         // 시스템 권한 수정 제한
         if (permission.getIsSystem() && request.getIsSystem() != null && !request.getIsSystem()) {
-            throw new BusinessException("시스템 권한은 수정할 수 없습니다");
+            throw new BusinessException(PermissionErrorCode.SYSTEM_PERMISSION_NOT_MODIFIABLE);
         }
         
         // 권한 정보 업데이트
@@ -295,9 +293,6 @@ public class PermissionService {
         
         Permission updatedPermission = permissionRepository.save(permission);
         
-        // 캐시 무효화
-        evictPermissionCache();
-        evictUserPermissionCache();
         
         log.info("[PermissionService] updatePermission - success permissionKey={} tenantKey={}",
                 LogMaskingUtils.maskPermissionKey(permissionKey),
@@ -317,22 +312,19 @@ public class PermissionService {
         
         // 시스템 권한 삭제 방지
         if (permission.getIsSystem()) {
-            throw new BusinessException("시스템 권한은 삭제할 수 없습니다");
+            throw new BusinessException(PermissionErrorCode.SYSTEM_PERMISSION_NOT_DELETABLE);
         }
         
         // 권한을 사용하는 역할 확인
         Long roleCount = permissionRepository.countRolesByPermission(permission);
         if (roleCount > 0) {
-            throw new BusinessException("이 권한을 사용하는 역할이 있어 삭제할 수 없습니다");
+            throw new BusinessException(PermissionErrorCode.PERMISSION_IN_USE);
         }
         
         // 소프트 삭제
         permission.setIsDeleted(true);
         permissionRepository.save(permission);
         
-        // 캐시 무효화
-        evictPermissionCache();
-        evictUserPermissionCache();
         
         log.info("[PermissionService] deletePermission - success permissionKey={} tenantKey={}",
                 LogMaskingUtils.maskPermissionKey(permissionKey),
@@ -368,27 +360,4 @@ public class PermissionService {
                 .build();
     }
     
-    /**
-     * 권한 캐시 무효화
-     */
-    private void evictPermissionCache() {
-        try {
-            redisTemplate.delete("permissions:*");
-            log.debug("Permission cache evicted");
-        } catch (Exception e) {
-            log.warn("Failed to evict permission cache: {}", e.getMessage());
-        }
-    }
-    
-    /**
-     * 사용자 권한 캐시 무효화
-     */
-    private void evictUserPermissionCache() {
-        try {
-            redisTemplate.delete("user_permissions:*");
-            log.debug("User permission cache evicted");
-        } catch (Exception e) {
-            log.warn("Failed to evict user permission cache: {}", e.getMessage());
-        }
-    }
 }
