@@ -77,6 +77,9 @@ public class SecurityPolicy extends BaseEntity {
     @Column(name = "priority")
     private Integer priority = 0;
 
+    @Column(name = "version")
+    private String version = "1.0";
+
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata; // JSON for additional policy metadata
 
