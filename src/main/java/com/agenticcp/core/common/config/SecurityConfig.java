@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/health/**").permitAll()
                 .requestMatchers("/api/v3/api-docs/**", "/api/swagger-ui/**", "/api/swagger-resources/**", "/api/webjars/**").permitAll()
                 .requestMatchers("/api/swagger-ui.html").permitAll()
+                // 레디스가 없는 로컬 환경에서의 헬퍼 엔드포인트가 있다면 여기에 추가
                 
                 // 나머지 모든 요청은 인증 필요
                 .anyRequest().authenticated()

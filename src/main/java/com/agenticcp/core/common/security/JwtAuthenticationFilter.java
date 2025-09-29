@@ -1,6 +1,7 @@
 package com.agenticcp.core.common.security;
 
 import com.agenticcp.core.domain.user.entity.User;
+import org.springframework.data.redis.core.RedisTemplate;
 import com.agenticcp.core.domain.user.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -37,6 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserService userService;
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Override
     protected void doFilterInternal(
@@ -47,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractTokenFromRequest(request);
             
-            if (token != null && jwtService.validateToken(token) && !jwtService.isTokenExpired(token)) {
+            if (token != null && jwtService.validateToken(token) && !jwtService.isTokenExpired(token) && !isBlacklisted(token)) {
                 authenticateUser(token, request);
             }
         } catch (Exception e) {
@@ -56,6 +58,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isBlacklisted(String token) {
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
+        } catch (Exception e) {
+            log.warn("블랙리스트 체크 실패: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**
