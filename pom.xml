@@ -126,11 +126,10 @@
             <version>${mysql.version}</version>
         </dependency>
         
-        <!-- H2 Database for testing -->
+        <!-- H2 Database (local runtime & tests) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <!-- Development Tools -->
