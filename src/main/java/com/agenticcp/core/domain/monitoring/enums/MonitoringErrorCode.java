@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.monitoring.enums;
 
 import com.agenticcp.core.common.dto.BaseErrorCode;
-import com.agenticcp.core.common.enums.ErrorCategory;
+import com.agenticcp.core.common.exception.ErrorCategory;
 import org.springframework.http.HttpStatus;
 
 /**
