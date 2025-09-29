@@ -1,8 +1,10 @@
 package com.agenticcp.core.domain.security.service;
 
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.security.dto.*;
 import com.agenticcp.core.domain.security.entity.SecurityPolicy;
 import com.agenticcp.core.domain.security.enums.PolicyDecision;
+import com.agenticcp.core.domain.security.enums.SecurityErrorCode;
 import com.agenticcp.core.domain.security.repository.SecurityPolicyRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -81,9 +83,12 @@ public class PolicyEngineService {
             
             return result;
             
+        } catch (BusinessException e) {
+            log.error("정책 평가 중 비즈니스 오류 발생: {}", e.getMessage(), e);
+            throw e; // BusinessException은 그대로 전파
         } catch (Exception e) {
-            log.error("정책 평가 중 오류 발생: {}", e.getMessage(), e);
-            return PolicyEvaluationResult.deny("정책 평가 중 오류가 발생했습니다: " + e.getMessage());
+            log.error("정책 평가 중 시스템 오류 발생: {}", e.getMessage(), e);
+            throw new BusinessException(SecurityErrorCode.POLICY_EVALUATION_FAILED, "정책 평가 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
     
@@ -721,16 +726,16 @@ public class PolicyEngineService {
      */
     private void validateRequest(PolicyEvaluationRequest request) {
         if (request == null) {
-            throw new IllegalArgumentException("정책 평가 요청이 null입니다");
+            throw new BusinessException(SecurityErrorCode.POLICY_CONTEXT_MISSING, "정책 평가 요청이 null입니다");
         }
         if (request.getResourceType() == null || request.getResourceType().isEmpty()) {
-            throw new IllegalArgumentException("리소스 타입이 필요합니다");
+            throw new BusinessException(SecurityErrorCode.POLICY_CONTEXT_MISSING, "리소스 타입이 필요합니다");
         }
         if (request.getAction() == null || request.getAction().isEmpty()) {
-            throw new IllegalArgumentException("액션이 필요합니다");
+            throw new BusinessException(SecurityErrorCode.POLICY_CONTEXT_MISSING, "액션이 필요합니다");
         }
         if (request.getUserId() == null || request.getUserId().isEmpty()) {
-            throw new IllegalArgumentException("사용자 ID가 필요합니다");
+            throw new BusinessException(SecurityErrorCode.POLICY_CONTEXT_MISSING, "사용자 ID가 필요합니다");
         }
     }
     
