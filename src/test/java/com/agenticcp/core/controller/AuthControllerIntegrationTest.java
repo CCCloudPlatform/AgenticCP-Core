@@ -3,7 +3,7 @@ package com.agenticcp.core.controller;
 import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
-import com.agenticcp.core.common.dto.auth.TokenResponse;
+import com.agenticcp.core.common.dto.auth.AuthenticationResponse;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
@@ -94,7 +94,7 @@ class AuthControllerIntegrationTest {
             loginRequest.setUsername("testuser");
             loginRequest.setPassword("password123");
 
-            mockMvc.perform(post("/api/v1/auth/login")
+            mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isCreated())
@@ -111,7 +111,7 @@ class AuthControllerIntegrationTest {
             loginRequest.setUsername("testuser");
             loginRequest.setPassword("wrongpassword");
 
-            mockMvc.perform(post("/api/v1/auth/login")
+            mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest())
@@ -134,7 +134,7 @@ class AuthControllerIntegrationTest {
             loginRequest.setUsername("testuser");
             loginRequest.setPassword("password123");
 
-            mockMvc.perform(post("/api/v1/auth/login")
+            mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(loginRequest)))
                     .andExpect(status().isBadRequest())
@@ -155,20 +155,20 @@ class AuthControllerIntegrationTest {
         loginRequest.setUsername("testuser");
         loginRequest.setPassword("password123");
 
-        String loginResponseContent = mockMvc.perform(post("/api/v1/auth/login")
+        String loginResponseContent = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        ApiResponse<TokenResponse> loginApiResponse = objectMapper.readValue(loginResponseContent, new com.fasterxml.jackson.core.type.TypeReference<ApiResponse<TokenResponse>>() {});
+        ApiResponse<AuthenticationResponse> loginApiResponse = objectMapper.readValue(loginResponseContent, new com.fasterxml.jackson.core.type.TypeReference<ApiResponse<AuthenticationResponse>>() {});
         String refreshToken = loginApiResponse.getData().getRefreshToken();
 
         // 2. 리프레시 토큰으로 갱신 요청
         RefreshTokenRequest refreshRequest = new RefreshTokenRequest();
         refreshRequest.setRefreshToken(refreshToken);
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
+        mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(refreshRequest)))
                 .andExpect(status().isOk())
@@ -183,7 +183,7 @@ class AuthControllerIntegrationTest {
         RefreshTokenRequest refreshRequest = new RefreshTokenRequest();
         refreshRequest.setRefreshToken("invalidRefreshToken");
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
+        mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(refreshRequest)))
                 .andExpect(status().isBadRequest())
@@ -204,17 +204,17 @@ class AuthControllerIntegrationTest {
         loginRequest.setUsername("testuser");
         loginRequest.setPassword("password123");
 
-        String loginResponseContent = mockMvc.perform(post("/api/v1/auth/login")
+        String loginResponseContent = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        ApiResponse<TokenResponse> loginApiResponse = objectMapper.readValue(loginResponseContent, new com.fasterxml.jackson.core.type.TypeReference<ApiResponse<TokenResponse>>() {});
+        ApiResponse<AuthenticationResponse> loginApiResponse = objectMapper.readValue(loginResponseContent, new com.fasterxml.jackson.core.type.TypeReference<ApiResponse<AuthenticationResponse>>() {});
         String accessToken = loginApiResponse.getData().getAccessToken();
 
         // 2. 로그아웃 요청
-        mockMvc.perform(post("/api/v1/auth/logout")
+        mockMvc.perform(post("/api/auth/logout")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -234,17 +234,17 @@ class AuthControllerIntegrationTest {
         loginRequest.setUsername("testuser");
         loginRequest.setPassword("password123");
 
-        String loginResponseContent = mockMvc.perform(post("/api/v1/auth/login")
+        String loginResponseContent = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
-        ApiResponse<TokenResponse> loginApiResponse = objectMapper.readValue(loginResponseContent, new com.fasterxml.jackson.core.type.TypeReference<ApiResponse<TokenResponse>>() {});
+        ApiResponse<AuthenticationResponse> loginApiResponse = objectMapper.readValue(loginResponseContent, new com.fasterxml.jackson.core.type.TypeReference<ApiResponse<AuthenticationResponse>>() {});
         String accessToken = loginApiResponse.getData().getAccessToken();
 
         // 2. 현재 사용자 정보 조회 요청
-        mockMvc.perform(get("/api/v1/auth/me")
+        mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -255,7 +255,7 @@ class AuthControllerIntegrationTest {
         @Test
         @DisplayName("인증되지 않은 상태에서 사용자 정보 조회 시 401 Unauthorized")
         void getCurrentUser_Unauthorized() throws Exception {
-            mockMvc.perform(get("/api/v1/auth/me"))
+            mockMvc.perform(get("/api/auth/me"))
                     .andExpect(status().isUnauthorized());
         }
     }

@@ -169,8 +169,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         
         // 인증이 필요없는 경로들
-        return path.startsWith("/api/v1/auth/login") ||
-               path.startsWith("/api/v1/auth/refresh") ||
+        return path.startsWith("/api/auth/login") ||
+               path.startsWith("/api/auth/refresh") ||
                path.startsWith("/api/health") ||
                path.startsWith("/api/v3/api-docs") ||
                path.startsWith("/api/swagger-ui") ||

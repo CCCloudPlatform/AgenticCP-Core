@@ -6,13 +6,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * JWT 토큰 응답 DTO
+ * 인증 응답 DTO (액세스/리프레시 토큰 포함)
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TokenResponse {
+public class AuthenticationResponse {
 
     private String accessToken;
     private String refreshToken;

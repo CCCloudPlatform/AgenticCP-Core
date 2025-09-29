@@ -2,7 +2,7 @@ package com.agenticcp.core.common.service;
 
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
-import com.agenticcp.core.common.dto.auth.TokenResponse;
+import com.agenticcp.core.common.dto.auth.AuthenticationResponse;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
@@ -110,7 +110,7 @@ class AuthenticationServiceTest {
             when(performanceMonitoringService.measureLoginPerformance(anyString(), any()))
                     .thenAnswer(invocation -> {
                         PerformanceMonitoringService.PerformanceMetrics metrics = new PerformanceMonitoringService.PerformanceMetrics("LOGIN", "testuser", 100L, true);
-                        metrics.setResult(TokenResponse.builder()
+                        metrics.setResult(AuthenticationResponse.builder()
                                 .accessToken("accessToken")
                                 .refreshToken("refreshToken")
                                 .tokenType("Bearer")
@@ -120,7 +120,7 @@ class AuthenticationServiceTest {
                         return metrics;
                     });
 
-            TokenResponse response = authenticationService.login(request);
+            AuthenticationResponse response = authenticationService.login(request);
 
             assertThat(response).isNotNull();
             assertThat(response.getAccessToken()).isEqualTo("accessToken");
@@ -236,7 +236,7 @@ class AuthenticationServiceTest {
                             .build()
             );
 
-            TokenResponse response = authenticationService.refreshToken(request);
+            AuthenticationResponse response = authenticationService.refreshToken(request);
 
             assertThat(response).isNotNull();
             assertThat(response.getAccessToken()).isEqualTo("newAccessToken");

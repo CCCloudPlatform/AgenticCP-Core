@@ -2,7 +2,7 @@ package com.agenticcp.core.common.service;
 
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
-import com.agenticcp.core.common.dto.auth.TokenResponse;
+import com.agenticcp.core.common.dto.auth.AuthenticationResponse;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
 import com.agenticcp.core.common.enums.AuthErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
@@ -46,7 +46,7 @@ public class AuthenticationService {
      * 사용자 로그인
      */
     @Transactional
-    public TokenResponse login(LoginRequest request) {
+    public AuthenticationResponse login(LoginRequest request) {
         PerformanceMonitoringService.PerformanceMetrics metrics = performanceMonitoringService.measureLoginPerformance(request.getUsername(), () -> {
             log.info("로그인 시도: username={}", request.getUsername());
 
@@ -82,7 +82,7 @@ public class AuthenticationService {
 
             log.info("로그인 성공: username={}", request.getUsername());
 
-            return TokenResponse.builder()
+            return AuthenticationResponse.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
                     .tokenType("Bearer")
@@ -98,7 +98,7 @@ public class AuthenticationService {
      * 리프레시 토큰으로 새로운 액세스 토큰 발급
      */
     @Transactional
-    public TokenResponse refreshToken(RefreshTokenRequest request) {
+    public AuthenticationResponse refreshToken(RefreshTokenRequest request) {
         return retryService.retryTokenRefresh("system", () -> {
             String refreshToken = request.getRefreshToken();
             
@@ -134,7 +134,7 @@ public class AuthenticationService {
 
                 log.info("토큰 갱신 성공: username={}", username);
 
-                return TokenResponse.builder()
+                return AuthenticationResponse.builder()
                         .accessToken(newAccessToken)
                         .refreshToken(newRefreshToken)
                         .tokenType("Bearer")

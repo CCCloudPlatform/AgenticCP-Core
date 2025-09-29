@@ -50,7 +50,7 @@ public class SecurityConfig {
             // 요청별 인가 설정
             .authorizeHttpRequests(authz -> authz
                 // 인증 없이 접근 가능한 경로들
-                .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
                 .requestMatchers("/api/health/**").permitAll()
                 .requestMatchers("/api/v3/api-docs/**", "/api/swagger-ui/**", "/api/swagger-resources/**", "/api/webjars/**").permitAll()
                 .requestMatchers("/api/swagger-ui.html").permitAll()

@@ -3,7 +3,7 @@ package com.agenticcp.core.controller;
 import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
-import com.agenticcp.core.common.dto.auth.TokenResponse;
+import com.agenticcp.core.common.dto.auth.AuthenticationResponse;
 import com.agenticcp.core.common.dto.auth.TwoFactorDisableRequest;
 import com.agenticcp.core.common.dto.auth.TwoFactorEnableRequest;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
@@ -22,7 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/auth")
 @Tag(name = "Authentication v1", description = "인증 관련 API v1")
 @RequiredArgsConstructor
 @Slf4j
@@ -35,12 +35,12 @@ public class AuthController {
         summary = "사용자 로그인", 
         description = "사용자명과 비밀번호로 로그인하여 JWT 토큰을 발급합니다."
     )
-    public ResponseEntity<ApiResponse<TokenResponse>> login(
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> login(
             @Valid @RequestBody LoginRequest request) {
         
         log.info("로그인 API 호출: username={}", request.getUsername());
         
-        TokenResponse response = authenticationService.login(request);
+        AuthenticationResponse response = authenticationService.login(request);
         
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "로그인에 성공했습니다."));
@@ -51,12 +51,12 @@ public class AuthController {
         summary = "토큰 갱신", 
         description = "리프레시 토큰으로 새로운 액세스 토큰을 발급합니다."
     )
-    public ResponseEntity<ApiResponse<TokenResponse>> refreshToken(
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> refreshToken(
             @Valid @RequestBody RefreshTokenRequest request) {
         
         log.info("토큰 갱신 API 호출");
         
-        TokenResponse response = authenticationService.refreshToken(request);
+        AuthenticationResponse response = authenticationService.refreshToken(request);
         
         return ResponseEntity.ok(ApiResponse.success(response, "토큰 갱신에 성공했습니다."));
     }
