@@ -5,21 +5,7 @@ spring:
   profiles:
     active: local
   
-  datasource:
-    url: jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: agenticcp
-    password: agenticcppassword
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
-        format_sql: true
-    open-in-view: false
+  # 기본 프로필에서는 데이터소스 설정을 두지 않음 (프로필별로 분리)
     
   devtools:
     restart:
@@ -48,16 +34,9 @@ jwt:
   access-token-expiration: 3600000 # 1시간 (밀리초)
   refresh-token-expiration: 604800000 # 7일 (밀리초)
 
-# Redis 설정
+# Redis 설정 (기본 비활성화, 프로필에서 활성화)
 redis:
-  host: ${REDIS_HOST:localhost}
-  port: ${REDIS_PORT:6379}
-  timeout: 2000ms
-  lettuce:
-    pool:
-      max-active: 8
-      max-idle: 8
-      min-idle: 0
+  enabled: false
 
 logging:
   level:
