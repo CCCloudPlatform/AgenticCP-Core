@@ -4,8 +4,6 @@ spring:
   
   profiles:
     active: local
-  
-  # 기본 프로필에서는 데이터소스 설정을 두지 않음 (프로필별로 분리)
     
   devtools:
     restart:
