@@ -11,19 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
-      mysql:
-        image: mysql:8.0.33
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: agenticcp_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
       redis:
         image: redis:7.0
         ports:
@@ -51,10 +38,6 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
-    - name: Verify MySQL connection
-      run: |
-        mysql --host 127.0.0.1 --port 3306 -uroot -proot -e "SHOW DATABASES;"
-
     - name: Install redis-cli
       run: sudo apt-get update && sudo apt-get install -y redis-tools
 
@@ -66,9 +49,6 @@ jobs:
       run: mvn clean test
       env:
         SPRING_PROFILES_ACTIVE: test
-        SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/agenticcp_test
-        SPRING_DATASOURCE_USERNAME: root
-        SPRING_DATASOURCE_PASSWORD: root
         SPRING_REDIS_HOST: 127.0.0.1
         SPRING_REDIS_PORT: 6379
 
