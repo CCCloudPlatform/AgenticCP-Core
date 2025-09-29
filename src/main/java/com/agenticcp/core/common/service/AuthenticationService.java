@@ -6,9 +6,11 @@ import com.agenticcp.core.common.dto.auth.TokenResponse;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
 import com.agenticcp.core.common.enums.AuthErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.common.security.JwtService;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.service.UserService;
+import com.agenticcp.core.domain.user.enums.UserErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -118,7 +120,7 @@ public class AuthenticationService {
 
                 // 사용자 조회
                 User user = userService.getUserByUsername(username)
-                        .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+                        .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
 
                 // 사용자 상태 확인
                 validateUserStatus(user);
@@ -252,12 +254,7 @@ public class AuthenticationService {
      */
     public UserInfoResponse getCurrentUser(String username) {
         User user = userService.getUserByUsername(username)
-                .orElse(null); // TODO : BE - 비즈니스 예외 처리 보류 (USER_NOT_FOUND)
-        if (user == null) {
-            log.warn("[TODO:BE] 현재 사용자 조회 실패 - USER_NOT_FOUND");
-            return null;
-        }
-
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
         return UserInfoResponse.from(user);
     }
 
