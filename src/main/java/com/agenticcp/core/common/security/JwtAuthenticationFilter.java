@@ -3,6 +3,7 @@ package com.agenticcp.core.common.security;
 import com.agenticcp.core.domain.user.entity.User;
 import org.springframework.data.redis.core.RedisTemplate;
 import com.agenticcp.core.domain.user.service.UserService;
+import org.springframework.context.annotation.Lazy;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,7 +38,9 @@ import static com.agenticcp.core.common.security.JwtConstants.*;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    @Lazy
     private final UserService userService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
     private final RedisTemplate<String, String> redisTemplate;
 
     @Override
