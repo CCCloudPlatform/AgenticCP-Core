@@ -31,7 +31,14 @@ public enum MonitoringErrorCode implements BaseErrorCode {
 
     // 메타데이터 관련 (8041-8050)
     METADATA_PARSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8041, "메타데이터 파싱에 실패했습니다."),
-    INVALID_METADATA_FORMAT(HttpStatus.BAD_REQUEST, 8042, "유효하지 않은 메타데이터 형식입니다.");
+    INVALID_METADATA_FORMAT(HttpStatus.BAD_REQUEST, 8042, "유효하지 않은 메타데이터 형식입니다."),
+
+    // 수집기 관련 (8051-8060)
+    COLLECTOR_NOT_FOUND(HttpStatus.NOT_FOUND, 8051, "수집기를 찾을 수 없습니다."),
+    COLLECTOR_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, 8052, "수집기가 비활성화되어 있습니다."),
+    COLLECTOR_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8053, "수집기 생성에 실패했습니다."),
+    INVALID_COLLECTOR_TYPE(HttpStatus.BAD_REQUEST, 8054, "유효하지 않은 수집기 타입입니다."),
+    METRICS_COLLECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8055, "메트릭 수집에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
