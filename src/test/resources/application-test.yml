@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+    open-in-view: false
+
+# Redis 설정 비활성화 (테스트용)
+redis:
+  enabled: false
+  
+# JWT 설정
+jwt:
+  secret: dGhpc2lzdGVzdGp3dHNlY3JldGtleWZvcmFnZW50aWNjcGNvcmVhcHBsaWNhdGlvbg==
+  access-token-expiration: 3600000
+  refresh-token-expiration: 604800000
+
+logging:
+  level:
+    com.agenticcp: WARN
+    org.springframework: WARN
+    org.hibernate: WARN

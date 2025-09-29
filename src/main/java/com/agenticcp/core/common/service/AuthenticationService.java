@@ -13,6 +13,7 @@ import com.agenticcp.core.domain.user.service.UserService;
 import com.agenticcp.core.domain.user.enums.UserErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,10 +38,12 @@ public class AuthenticationService {
     private final UserService userService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
-    private final RedisTemplate<String, String> redisTemplate;
     private final TwoFactorService twoFactorService;
     private final PerformanceMonitoringService performanceMonitoringService;
     private final RetryService retryService;
+    
+    @Autowired(required = false)
+    private RedisTemplate<String, String> redisTemplate;
 
     /**
      * 사용자 로그인
@@ -113,9 +116,13 @@ public class AuthenticationService {
                 String username = jwtService.getUsernameFromToken(refreshToken);
 
                 // Redis에서 리프레시 토큰 확인
-                String storedToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + username);
-                if (!refreshToken.equals(storedToken)) {
-                    throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+                if (redisTemplate != null) {
+                    String storedToken = redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + username);
+                    if (!refreshToken.equals(storedToken)) {
+                        throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+                    }
+                } else {
+                    log.warn("Redis가 비활성화되어 리프레시 토큰 검증을 건너뜁니다");
                 }
 
                 // 사용자 조회
@@ -154,19 +161,23 @@ public class AuthenticationService {
     public void logout(String username, String accessToken) {
         log.info("로그아웃 요청: username={}", username);
 
-        // Redis에서 리프레시 토큰 제거
-        redisTemplate.delete(REFRESH_TOKEN_PREFIX + username);
+        if (redisTemplate != null) {
+            // Redis에서 리프레시 토큰 제거
+            redisTemplate.delete(REFRESH_TOKEN_PREFIX + username);
 
-        // 액세스 토큰을 블랙리스트에 추가 (토큰 만료까지)
-        if (accessToken != null && jwtService.validateToken(accessToken)) {
-            long expirationTime = jwtService.getTokenExpirationTime(accessToken);
-            if (expirationTime > 0) {
-                redisTemplate.opsForValue().set(
-                        BLACKLIST_PREFIX + accessToken,
-                        "blacklisted",
-                        Duration.ofSeconds(expirationTime)
-                );
+            // 액세스 토큰을 블랙리스트에 추가 (토큰 만료까지)
+            if (accessToken != null && jwtService.validateToken(accessToken)) {
+                long expirationTime = jwtService.getTokenExpirationTime(accessToken);
+                if (expirationTime > 0) {
+                    redisTemplate.opsForValue().set(
+                            BLACKLIST_PREFIX + accessToken,
+                            "blacklisted",
+                            Duration.ofSeconds(expirationTime)
+                    );
+                }
             }
+        } else {
+            log.warn("Redis가 비활성화되어 토큰 무효화를 건너뜁니다: username={}", username);
         }
 
         log.info("로그아웃 완료: username={}", username);
@@ -176,7 +187,10 @@ public class AuthenticationService {
      * 토큰이 블랙리스트에 있는지 확인
      */
     public boolean isTokenBlacklisted(String token) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
+        if (redisTemplate != null) {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
+        }
+        return false; // Redis 없으면 블랙리스트 체크 건너뜀
     }
 
     /**
@@ -239,14 +253,18 @@ public class AuthenticationService {
      * 리프레시 토큰을 Redis에 저장
      */
     private void storeRefreshToken(String username, String refreshToken) {
-        performanceMonitoringService.measureRedisPerformance("store_refresh_token", () -> {
-            redisTemplate.opsForValue().set(
-                    REFRESH_TOKEN_PREFIX + username,
-                    refreshToken,
-                    Duration.ofDays(7) // 7일 후 자동 만료
-            );
-            return null;
-        });
+        if (redisTemplate != null) {
+            performanceMonitoringService.measureRedisPerformance("store_refresh_token", () -> {
+                redisTemplate.opsForValue().set(
+                        REFRESH_TOKEN_PREFIX + username,
+                        refreshToken,
+                        Duration.ofDays(7) // 7일 후 자동 만료
+                );
+                return null;
+            });
+        } else {
+            log.warn("Redis가 비활성화되어 리프레시 토큰 저장을 건너뜁니다: username={}", username);
+        }
     }
 
     /**

@@ -20,11 +20,14 @@ import java.util.Base64;
  * TOTP (Time-based One-Time Password) 기반 2FA 구현
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TwoFactorService {
 
     private final RedisTemplate<String, String> redisTemplate;
+    
+    public TwoFactorService(@org.springframework.beans.factory.annotation.Autowired(required = false) RedisTemplate<String, String> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
     
     private static final String ALGORITHM = "HmacSHA1";
     private static final int CODE_LENGTH = 6;
@@ -112,11 +115,15 @@ public class TwoFactorService {
      * 2FA 설정을 위한 임시 시크릿 저장
      */
     public void storeTemporarySecret(String username, String secretKey) {
-        redisTemplate.opsForValue().set(
-                TEMP_SECRET_PREFIX + username,
-                secretKey,
-                Duration.ofMinutes(10) // 10분간 유효
-        );
+        if (redisTemplate != null) {
+            redisTemplate.opsForValue().set(
+                    TEMP_SECRET_PREFIX + username,
+                    secretKey,
+                    Duration.ofMinutes(10) // 10분간 유효
+            );
+        } else {
+            log.warn("Redis가 비활성화되어 임시 시크릿 저장을 건너뜁니다: username={}", username);
+        }
     }
 
     /**
