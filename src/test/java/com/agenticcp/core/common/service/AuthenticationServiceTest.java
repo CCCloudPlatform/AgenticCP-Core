@@ -4,6 +4,7 @@ import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
 import com.agenticcp.core.common.dto.auth.TokenResponse;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
+import com.agenticcp.core.common.enums.AuthErrorCode;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.common.exception.BusinessException;
@@ -141,7 +142,7 @@ class AuthenticationServiceTest {
             testUser.setStatus(Status.INACTIVE);
             when(userService.getUserByUsername("testuser")).thenReturn(java.util.Optional.of(testUser));
             when(performanceMonitoringService.measureLoginPerformance(anyString(), any()))
-                    .thenThrow(new BusinessException("계정이 비활성화되었습니다"));
+                    .thenThrow(new BusinessException(AuthErrorCode.ACCOUNT_DISABLED));
 
             assertThatThrownBy(() -> authenticationService.login(request))
                     .isInstanceOf(BusinessException.class)
@@ -160,7 +161,7 @@ class AuthenticationServiceTest {
             testUser.setLockedUntil(LocalDateTime.now().plusMinutes(30));
             when(userService.getUserByUsername("testuser")).thenReturn(java.util.Optional.of(testUser));
             when(performanceMonitoringService.measureLoginPerformance(anyString(), any()))
-                    .thenThrow(new BusinessException("계정이 잠금되었습니다"));
+                    .thenThrow(new BusinessException(AuthErrorCode.ACCOUNT_LOCKED));
 
             assertThatThrownBy(() -> authenticationService.login(request))
                     .isInstanceOf(BusinessException.class)
@@ -179,7 +180,7 @@ class AuthenticationServiceTest {
             when(userService.getUserByUsername("testuser")).thenReturn(java.util.Optional.of(testUser));
             when(passwordEncoder.matches("wrongpassword", "encodedPassword")).thenReturn(false);
             when(performanceMonitoringService.measureLoginPerformance(anyString(), any()))
-                    .thenThrow(new BusinessException("잘못된 사용자명 또는 비밀번호입니다"));
+                    .thenThrow(new BusinessException(AuthErrorCode.LOGIN_FAILED));
 
             assertThatThrownBy(() -> authenticationService.login(request))
                     .isInstanceOf(BusinessException.class)
@@ -198,7 +199,7 @@ class AuthenticationServiceTest {
 
             when(userService.getUserByUsername("nonexistent")).thenReturn(java.util.Optional.empty());
             when(performanceMonitoringService.measureLoginPerformance(anyString(), any()))
-                    .thenThrow(new BusinessException("잘못된 사용자명 또는 비밀번호입니다"));
+                    .thenThrow(new BusinessException(AuthErrorCode.LOGIN_FAILED));
 
             assertThatThrownBy(() -> authenticationService.login(request))
                     .isInstanceOf(BusinessException.class);
@@ -251,7 +252,7 @@ class AuthenticationServiceTest {
 
             when(jwtService.validateToken("invalidToken")).thenReturn(false);
             when(retryService.retryTokenRefresh(anyString(), any()))
-                    .thenThrow(new BusinessException("유효하지 않은 리프레시 토큰입니다"));
+                    .thenThrow(new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID));
 
             assertThatThrownBy(() -> authenticationService.refreshToken(request))
                     .isInstanceOf(BusinessException.class)
@@ -272,7 +273,7 @@ class AuthenticationServiceTest {
             when(userService.getUserByUsername("testuser")).thenReturn(java.util.Optional.of(testUser));
             when(valueOperations.get("refresh_token:testuser")).thenReturn(null); // Not in Redis
             when(retryService.retryTokenRefresh(anyString(), any()))
-                    .thenThrow(new BusinessException("유효하지 않은 리프레시 토큰입니다"));
+                    .thenThrow(new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID));
 
             assertThatThrownBy(() -> authenticationService.refreshToken(request))
                     .isInstanceOf(BusinessException.class)
