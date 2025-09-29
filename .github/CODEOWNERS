@@ -1,0 +1,39 @@
+# CODEOWNERS 파일
+# 이 파일은 코드 리뷰어를 지정하는 데 사용됩니다.
+# 자세한 내용은 https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners 를 참조하세요.
+
+# Global code owners - 모든 파일에 대해 기본 리뷰어
+* @CCCloudPlatform/developers
+
+# Java 소스 코드
+*.java @CCCloudPlatform/java-team
+
+# 설정 파일들
+*.yml @CCCloudPlatform/devops-team
+*.yaml @CCCloudPlatform/devops-team
+*.properties @CCCloudPlatform/devops-team
+
+# 문서 파일들
+*.md @CCCloudPlatform/docs-team
+
+# GitHub Actions 워크플로우
+/.github/workflows/ @CCCloudPlatform/devops-team
+
+# Docker 관련 파일들
+Dockerfile @CCCloudPlatform/devops-team
+docker-compose*.yml @CCCloudPlatform/devops-team
+
+# Maven 설정
+pom.xml @CCCloudPlatform/java-team
+
+# 데이터베이스 관련
+/docker/mysql/ @CCCloudPlatform/database-team
+
+# 테스트 파일들
+/src/test/ @CCCloudPlatform/java-team
+
+# 메인 소스 코드
+/src/main/java/ @CCCloudPlatform/backend-team
+
+# 리소스 파일들
+/src/main/resources/ @CCCloudPlatform/backend-team

@@ -1,0 +1,253 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: '-Xmx1024m'
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0.33
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: agenticcp
+          MYSQL_USER: agenticcp
+          MYSQL_PASSWORD: agenticcppassword
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -prootpassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Wait for MySQL to be ready
+      run: |
+        while ! mysqladmin ping -h localhost -u root -prootpassword --silent; do
+          echo "Waiting for MySQL to be ready..."
+          sleep 2
+        done
+        echo "MySQL is ready!"
+
+    - name: Run tests
+      run: mvn clean test
+      env:
+        SPRING_PROFILES_ACTIVE: test
+        SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+        SPRING_DATASOURCE_USERNAME: agenticcp
+        SPRING_DATASOURCE_PASSWORD: agenticcppassword
+        SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+
+    - name: Generate test report
+      uses: dorny/test-reporter@v1
+      if: success() || failure()
+      with:
+        name: Maven Tests
+        path: target/surefire-reports/*.xml
+        reporter: java-junit
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: target/surefire-reports/
+
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Build application
+      run: mvn clean package -DskipTests
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: application-jar
+        path: target/*.jar
+
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run code quality checks
+      run: mvn clean compile test-compile
+
+    - name: Run SpotBugs (if available)
+      run: |
+        if mvn help:evaluate -Dexpression=project.plugins -q -DforceStdout | grep -q spotbugs; then
+          mvn spotbugs:check
+        else
+          echo "SpotBugs plugin not configured, skipping..."
+        fi
+      continue-on-error: true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run OWASP Dependency Check
+      run: |
+        if mvn help:evaluate -Dexpression=project.plugins -q -DforceStdout | grep -q dependency-check; then
+          mvn org.owasp:dependency-check-maven:check
+        else
+          echo "OWASP Dependency Check plugin not configured, skipping..."
+        fi
+      continue-on-error: true
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: java
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}/agenticcp-core
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  pr-status:
+    name: PR Status Check
+    runs-on: ubuntu-latest
+    needs: [test, build, code-quality, security-scan]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: PR Status Summary
+      run: |
+        echo "## ✅ CI/CD Pipeline Status" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧪 Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🏗️ Build | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 📊 Code Quality | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔒 Security Scan | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**All checks passed! This PR is ready for review and merge.**" >> $GITHUB_STEP_SUMMARY

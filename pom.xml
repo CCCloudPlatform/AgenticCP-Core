@@ -195,6 +195,69 @@
             </plugin>
             
             
+            <!-- Maven Surefire Plugin for Test Reports -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.2</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            
+            <!-- Maven Failsafe Plugin for Integration Tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.2.2</version>
+                <configuration>
+                    <includes>
+                        <include>**/*IntegrationTest.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <!-- JaCoCo Plugin for Code Coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            
             <plugin>
                 <groupId>com.spotify</groupId>
                 <artifactId>dockerfile-maven-plugin</artifactId>

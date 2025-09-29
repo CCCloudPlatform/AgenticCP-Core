@@ -1,0 +1,52 @@
+spring:
+  profiles:
+    active: test
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+    username: agenticcp
+    password: agenticcppassword
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        
+  security:
+    jwt:
+      secret: test-secret-key-for-ci-cd-pipeline-only
+      expiration: 3600000
+      
+  cache:
+    type: simple
+    
+  mail:
+    host: localhost
+    port: 1025
+    username: test
+    password: test
+    
+logging:
+  level:
+    com.agenticcp.core: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    
+server:
+  port: 8080
+  
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
