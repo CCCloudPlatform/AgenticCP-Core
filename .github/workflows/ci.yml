@@ -38,12 +38,6 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
-    - name: Install redis-cli
-      run: sudo apt-get update && sudo apt-get install -y redis-tools
-
-    - name: Verify Redis connection
-      run: |
-        redis-cli -h 127.0.0.1 -p 6379 ping
 
     - name: Run tests
       run: mvn clean test
