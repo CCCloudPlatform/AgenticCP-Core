@@ -2,12 +2,14 @@ package com.agenticcp.core.common.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /**
@@ -26,6 +28,11 @@ public class RetryService {
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final long BASE_DELAY_MS = 1000L; // 1초
     private static final long MAX_DELAY_MS = 10000L; // 10초
+
+    // 빈 주입
+    @Autowired
+    @Qualifier("tenantTaskExecutor")
+    private TaskExecutor tenantTaskExecutor;
 
     /**
      * 토큰 갱신 재시도 로직
@@ -109,9 +116,16 @@ public class RetryService {
                                              Supplier<T> operationToRetry, int maxAttempts) {
         
         return CompletableFuture.supplyAsync(() -> 
-                retryWithBackoff(operation, identifier, operationToRetry, maxAttempts, BASE_DELAY_MS, MAX_DELAY_MS)
+                retryWithBackoff(operation,
+                        identifier,
+                        operationToRetry,
+                        maxAttempts,
+                        BASE_DELAY_MS,
+                        MAX_DELAY_MS),
+                tenantTaskExecutor // 커스텀 executor
         );
     }
+
 
     /**
      * 지수 백오프 지연 계산

@@ -2,6 +2,9 @@ package com.agenticcp.core.common.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +24,11 @@ import java.util.function.Supplier;
 public class PerformanceMonitoringService {
 
     private final RedisTemplate<String, String> redisTemplate;
+
+    // 빈 주입
+    @Autowired
+    @Qualifier("tenantTaskExecutor")
+    private TaskExecutor tenantTaskExecutor;
     
     private static final String LOGIN_PERFORMANCE_PREFIX = "perf:login:";
     private static final String TOKEN_REFRESH_PERFORMANCE_PREFIX = "perf:refresh:";
@@ -158,7 +166,7 @@ public class PerformanceMonitoringService {
                 logPerformanceMetrics(metrics);
                 return metrics;
             }
-        });
+        }, tenantTaskExecutor);
     }
 
     /**
