@@ -73,6 +73,7 @@ public interface MetricsStorageFactory {
         private final String username;
         private final String password;
         private final String database;
+        private final String pushgateway;
         private final int timeout;
         private final int retryCount;
         
@@ -82,6 +83,7 @@ public interface MetricsStorageFactory {
             this.username = builder.username;
             this.password = builder.password;
             this.database = builder.database;
+            this.pushgateway = builder.pushgateway;
             this.timeout = builder.timeout;
             this.retryCount = builder.retryCount;
         }
@@ -97,6 +99,7 @@ public interface MetricsStorageFactory {
                     .username(username)
                     .password(password)
                     .database(database)
+                    .pushgateway(pushgateway)
                     .timeout(timeout)
                     .retryCount(retryCount);
         }
@@ -107,6 +110,7 @@ public interface MetricsStorageFactory {
         public String getUsername() { return username; }
         public String getPassword() { return password; }
         public String getDatabase() { return database; }
+        public String getPushgateway() { return pushgateway; }
         public int getTimeout() { return timeout; }
         public int getRetryCount() { return retryCount; }
         
@@ -116,6 +120,7 @@ public interface MetricsStorageFactory {
             private String username;
             private String password;
             private String database;
+            private String pushgateway;
             private int timeout = 30000;
             private int retryCount = 3;
             
@@ -141,6 +146,11 @@ public interface MetricsStorageFactory {
             
             public Builder database(String database) {
                 this.database = database;
+                return this;
+            }
+            
+            public Builder pushgateway(String pushgateway) {
+                this.pushgateway = pushgateway;
                 return this;
             }
             
