@@ -3,7 +3,7 @@ package com.agenticcp.core.domain.monitoring.storage.impl;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
-import com.agenticcp.core.domain.monitoring.storage.TestDataBuilder;
+import com.agenticcp.core.domain.monitoring.TestDataBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
