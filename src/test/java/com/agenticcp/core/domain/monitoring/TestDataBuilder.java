@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.monitoring;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.entity.Metric.MetricType;
+import com.agenticcp.core.domain.monitoring.entity.MetricThreshold;
 import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 
@@ -24,6 +25,13 @@ import java.util.Map;
  * @since 2024-01-01
  */
 public class TestDataBuilder {
+    
+    // ==================== 상수 정의 ====================
+    private static final int DEFAULT_TIMEOUT = 30000;
+    private static final int DEFAULT_RETRY_COUNT = 3;
+    private static final String DEFAULT_HOSTNAME = "test-host";
+    private static final String DEFAULT_OS_NAME = "Windows 10";
+    private static final String DEFAULT_JAVA_VERSION = "17.0.1";
 
     // ==================== SystemMetrics 관련 ====================
 
@@ -32,15 +40,15 @@ public class TestDataBuilder {
      */
     public static SystemMetrics.SystemMetricsBuilder systemMetricsBuilder() {
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("hostname", "test-host");
-        metadata.put("os_name", "Windows 10");
-        metadata.put("java_version", "17.0.1");
+        metadata.put("hostname", DEFAULT_HOSTNAME);
+        metadata.put("os_name", DEFAULT_OS_NAME);
+        metadata.put("java_version", DEFAULT_JAVA_VERSION);
 
         SystemMetrics.SystemInfo systemInfo = SystemMetrics.SystemInfo.builder()
-                .hostname("test-host")
-                .osName("Windows 10")
+                .hostname(DEFAULT_HOSTNAME)
+                .osName(DEFAULT_OS_NAME)
                 .osVersion("10.0")
-                .javaVersion("17.0.1")
+                .javaVersion(DEFAULT_JAVA_VERSION)
                 .availableProcessors(8)
                 .build();
 
@@ -98,14 +106,14 @@ public class TestDataBuilder {
     // ==================== Metric 관련 ====================
 
     /**
-     * 메트릭 빌더 생성 (기본값: SYSTEM)
+     * 메트릭 빌더 생성 (기본값: APPLICATION)
      */
     public static Metric.MetricBuilder metricBuilder() {
         return Metric.builder()
                 .metricName("test.metric")
                 .metricValue(100.0)
                 .unit("count")
-                .metricType(MetricType.SYSTEM)
+                .metricType(MetricType.APPLICATION)
                 .collectedAt(LocalDateTime.now())
                 .source("test-source");
     }
@@ -267,5 +275,23 @@ public class TestDataBuilder {
                 .timeout(1000)
                 .retryCount(1)
                 .build();
+    }
+
+    // ==================== MetricThreshold 관련 ====================
+
+    /**
+     * 기본 MetricThreshold 빌더
+     */
+    public static MetricThreshold.MetricThresholdBuilder metricThresholdBuilder() {
+        return MetricThreshold.builder()
+                .metricName("cpu.usage")
+                .thresholdType(MetricThreshold.ThresholdType.WARNING)
+                .thresholdValue(80.0)
+                .operator(">")
+                .description("CPU 사용률 경고 임계값")
+                .isActive(true)
+                .alertEnabled(true)
+                .alertDuration(300)
+                .severity(MetricThreshold.Severity.MEDIUM);
     }
 }
