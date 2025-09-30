@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
@@ -31,6 +32,7 @@ public class PlatformConfigService {
 
     private final PlatformConfigRepository platformConfigRepository;
     private final List<ConfigValidator> configValidators;
+    private final EncryptionService encryptionService;
 
     public List<PlatformConfig> getAllConfigs() {
         log.info("[PlatformConfigService] getAllConfigs");
@@ -82,7 +84,19 @@ public class PlatformConfigService {
         if (platformConfigRepository.findByConfigKey(platformConfig.getConfigKey()).isPresent()) {
             throw new ConfigValidationException(PlatformConfigErrorCode.CONFIG_ALREADY_EXISTS);
         }
-        
+
+        // ENCRYPTED 타입 저장 시 암호화 적용
+        if (platformConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) {
+            String value = platformConfig.getConfigValue();
+            if (value != null && !value.isEmpty()) {
+                if (!isProbablyEncrypted(value)) {
+                    String encrypted = encryptionService.encrypt(value);
+                    platformConfig.setConfigValue(encrypted);
+                }
+            }
+            platformConfig.setIsEncrypted(true);
+        }
+
         PlatformConfig saved = platformConfigRepository.save(platformConfig);
         log.info("[PlatformConfigService] createConfig - success configKey={}", LogMaskingUtils.mask(saved.getConfigKey(), 2, 2));
         return saved;
@@ -103,11 +117,23 @@ public class PlatformConfigService {
         
         // 설정 검증 수행
         validateConfig(updatedConfig);
-        
-        existingConfig.setConfigValue(updatedConfig.getConfigValue());
+
+        // ENCRYPTED 타입 업데이트 시 암호화 적용
+        if (updatedConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) {
+            String newValue = updatedConfig.getConfigValue();
+            if (newValue != null && !newValue.isEmpty()) {
+                if (!isProbablyEncrypted(newValue)) {
+                    newValue = encryptionService.encrypt(newValue);
+                }
+            }
+            existingConfig.setConfigValue(newValue);
+            existingConfig.setIsEncrypted(true);
+        } else {
+            existingConfig.setConfigValue(updatedConfig.getConfigValue());
+            existingConfig.setIsEncrypted(Boolean.FALSE.equals(updatedConfig.getIsEncrypted()) ? false : updatedConfig.getIsEncrypted());
+        }
         existingConfig.setConfigType(updatedConfig.getConfigType());
         existingConfig.setDescription(updatedConfig.getDescription());
-        existingConfig.setIsEncrypted(updatedConfig.getIsEncrypted());
         
         PlatformConfig saved = platformConfigRepository.save(existingConfig);
         log.info("[PlatformConfigService] updateConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
@@ -163,6 +189,16 @@ public class PlatformConfigService {
         } catch (Exception e) {
             log.warn("[PlatformConfigService] validateConfig - failed: {}", e.getMessage());
             throw e;
+        }
+    }
+
+    // 매우 보수적인 이중 암호화 방지 체크: Base64 디코딩 가능하며 IV(12바이트) 이상 길이면 이미 암호문일 가능성으로 간주
+    private boolean isProbablyEncrypted(String value) {
+        try {
+            byte[] decoded = java.util.Base64.getDecoder().decode(value);
+            return decoded != null && decoded.length > 12; // AES-GCM IV 12바이트
+        } catch (IllegalArgumentException ex) {
+            return false;
         }
     }
 }
