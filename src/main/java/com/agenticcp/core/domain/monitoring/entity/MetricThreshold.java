@@ -4,8 +4,10 @@ import com.agenticcp.core.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 
@@ -28,6 +30,8 @@ import java.time.LocalDateTime;
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(callSuper = false, exclude = {"id", "createdAt", "updatedAt"})
+@ToString(callSuper = true)
 public class MetricThreshold extends BaseEntity {
 
     /**
