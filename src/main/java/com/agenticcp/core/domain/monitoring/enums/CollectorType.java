@@ -18,8 +18,9 @@ public enum CollectorType {
     SYSTEM,
     
     /**
-     * 애플리케이션 메트릭 수집기
+     * 애플리케이션 메트릭 수집기 (Micrometer 기반)
      * JVM, 커스텀 메트릭 등 애플리케이션 관련 정보 수집
+     * Micrometer를 활용한 고급 메트릭 수집 및 모니터링
      */
     APPLICATION
 }
