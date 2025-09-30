@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
 
     private final SystemMetricsCollector systemMetricsCollector;
-    private final ApplicationMetricsCollector applicationMetricsCollector;
+    private final MicrometerMetricsCollector micrometerMetricsCollector;
     
     /**
      * 수집기별 활성화 상태 관리
@@ -73,7 +73,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
                 
         collectorConfigs.put(CollectorType.APPLICATION, CollectorConfig.builder()
                 .enabled(true)
-                .collectionInterval(60000L) // 1분
+                .collectionInterval(30000L) // 30초 (Micrometer는 더 자주 수집)
                 .retryCount(3)
                 .timeout(30000L) // 30초
                 .build());
@@ -176,7 +176,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
         
         boolean exists = switch (type) {
             case SYSTEM -> systemMetricsCollector != null;
-            case APPLICATION -> applicationMetricsCollector != null;
+            case APPLICATION -> micrometerMetricsCollector != null;
         };
         
         log.debug("수집기 존재 여부 확인: type={}, exists={}", type, exists);
@@ -256,7 +256,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
     private MetricsCollector createCollectorByType(CollectorType type) {
         return switch (type) {
             case SYSTEM -> (MetricsCollector) systemMetricsCollector;
-            case APPLICATION -> (MetricsCollector) applicationMetricsCollector;
+            case APPLICATION -> (MetricsCollector) micrometerMetricsCollector;
         };
     }
     

@@ -24,12 +24,19 @@ import java.util.Map;
 /**
  * 메트릭 수집을 담당하는 서비스
  * 시스템 리소스 메트릭과 애플리케이션 메트릭을 수집하여 저장
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MetricsCollectionService {
+    
+    private static final int DEFAULT_TIMEOUT = 30000;
+    private static final int DEFAULT_RETRY_COUNT = 3;
 
     private final MetricRepository metricRepository;
     private final MetricThresholdRepository metricThresholdRepository;
@@ -40,7 +47,7 @@ public class MetricsCollectionService {
     /**
      * 1분마다 자동으로 메트릭 수집 실행
      */
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = DEFAULT_TIMEOUT)
     @Transactional
     public void collectMetricsScheduled() {
         try {
