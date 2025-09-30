@@ -10,6 +10,7 @@ import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import com.agenticcp.core.domain.monitoring.repository.MetricThresholdRepository;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
+import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -34,6 +35,7 @@ public class MetricsCollectionService {
     private final MetricThresholdRepository metricThresholdRepository;
     private final SystemMetricsCollector systemMetricsCollector;
     private final MetricsCollectorFactory metricsCollectorFactory;
+    private final MetricsStorageFactory metricsStorageFactory;
 
     /**
      * 1분마다 자동으로 메트릭 수집 실행
