@@ -38,7 +38,14 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     COLLECTOR_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, 8052, "수집기가 비활성화되어 있습니다."),
     COLLECTOR_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8053, "수집기 생성에 실패했습니다."),
     INVALID_COLLECTOR_TYPE(HttpStatus.BAD_REQUEST, 8054, "유효하지 않은 수집기 타입입니다."),
-    METRICS_COLLECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8055, "메트릭 수집에 실패했습니다.");
+    METRICS_COLLECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8055, "메트릭 수집에 실패했습니다."),
+
+    // 저장소 관련 (8061-8070)
+    STORAGE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, 8061, "저장소가 비활성화되어 있습니다."),
+    STORAGE_CONNECTION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8062, "저장소 연결에 실패했습니다."),
+    STORAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 8063, "저장소를 찾을 수 없습니다."),
+    STORAGE_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8064, "저장소 생성에 실패했습니다."),
+    INVALID_STORAGE_TYPE(HttpStatus.BAD_REQUEST, 8065, "유효하지 않은 저장소 타입입니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
