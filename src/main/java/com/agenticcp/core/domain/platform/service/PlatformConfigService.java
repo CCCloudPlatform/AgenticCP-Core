@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
@@ -250,18 +251,35 @@ public class PlatformConfigService {
         }
     }
 
-    // 응답 마스킹: ENCRYPTED 타입은 값 대신 *** 반환. JPA 관리 엔티티를 직접 변경하지 않도록 새 인스턴스로 변환
+    // 응답 변환: ENCRYPTED 타입은 기본 마스킹, showSecret=true 시 복호화하여 평문 반환
     private PlatformConfig toResponse(PlatformConfig source, boolean showSecret) {
-        boolean shouldMask = !showSecret && (source.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED
-                || Boolean.TRUE.equals(source.getIsEncrypted()));
-
-        return PlatformConfig.builder()
+        PlatformConfig.PlatformConfigBuilder builder = PlatformConfig.builder()
                 .configKey(source.getConfigKey())
-                .configValue(shouldMask ? "***" : source.getConfigValue())
                 .configType(source.getConfigType())
                 .description(source.getDescription())
                 .isEncrypted(source.getIsEncrypted())
-                .isSystem(source.getIsSystem())
-                .build();
+                .isSystem(source.getIsSystem());
+
+        boolean isEncryptedType = source.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED
+                || Boolean.TRUE.equals(source.getIsEncrypted());
+
+        if (isEncryptedType) {
+            if (showSecret) {
+                try {
+                    String decrypted = encryptionService.decrypt(source.getConfigValue());
+                    builder.configValue(decrypted);
+                } catch (IllegalArgumentException e) {
+                    throw new BusinessException(PlatformConfigErrorCode.ENCRYPTED_PAYLOAD_INVALID, e.getMessage());
+                } catch (RuntimeException e) {
+                    throw new BusinessException(PlatformConfigErrorCode.DECRYPTION_FAILED, e.getMessage());
+                }
+            } else {
+                builder.configValue("***");
+            }
+        } else {
+            builder.configValue(source.getConfigValue());
+        }
+
+        return builder.build();
     }
 }
