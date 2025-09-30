@@ -24,6 +24,11 @@ logging:
     org.springframework.web: INFO
     org.springframework.security: WARN
 
+# 로컬 개발용 암호화 키 (개발 전용, 운영/형상 반출 금지)
+    config:
+      cipher:
+        key: ${CONFIG_CIPHER_KEY:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
