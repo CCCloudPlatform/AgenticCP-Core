@@ -22,32 +22,63 @@ public class PlatformConfigController {
 
     @GetMapping
     @Operation(summary = "모든 플랫폼 설정 조회")
-    public ResponseEntity<ApiResponse<List<PlatformConfig>>> getAllConfigs() {
-        List<PlatformConfig> configs = platformConfigService.getAllConfigs();
-        return ResponseEntity.ok(ApiResponse.success(configs));
+    public ResponseEntity<ApiResponse<List<PlatformConfig>>> getAllConfigs(
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+        boolean reveal = Boolean.TRUE.equals(showSecret);
+        List<PlatformConfig> configs = platformConfigService.getAllConfigs(reveal);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        if (reveal) {
+            builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+            builder.header("Pragma", "no-cache");
+        }
+        return builder.body(ApiResponse.success(configs));
     }
 
     @GetMapping("/{configKey}")
     @Operation(summary = "특정 플랫폼 설정 조회")
-    public ResponseEntity<ApiResponse<PlatformConfig>> getConfigByKey(@PathVariable String configKey) {
-        return platformConfigService.getConfigByKey(configKey)
-                .map(config -> ResponseEntity.ok(ApiResponse.success(config)))
+    public ResponseEntity<ApiResponse<PlatformConfig>> getConfigByKey(
+            @PathVariable String configKey,
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+        boolean reveal = Boolean.TRUE.equals(showSecret);
+        return platformConfigService.getConfigByKey(configKey, reveal)
+                .map(config -> {
+                    ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+                    if (reveal) {
+                        builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                        builder.header("Pragma", "no-cache");
+                    }
+                    return builder.body(ApiResponse.success(config));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/type/{configType}")
     @Operation(summary = "설정 타입별 조회")
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getConfigsByType(
-            @PathVariable PlatformConfig.ConfigType configType) {
-        List<PlatformConfig> configs = platformConfigService.getConfigsByType(configType);
-        return ResponseEntity.ok(ApiResponse.success(configs));
+            @PathVariable PlatformConfig.ConfigType configType,
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+        boolean reveal = Boolean.TRUE.equals(showSecret);
+        List<PlatformConfig> configs = platformConfigService.getConfigsByType(configType, reveal);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        if (reveal) {
+            builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+            builder.header("Pragma", "no-cache");
+        }
+        return builder.body(ApiResponse.success(configs));
     }
 
     @GetMapping("/system")
     @Operation(summary = "시스템 설정 조회")
-    public ResponseEntity<ApiResponse<List<PlatformConfig>>> getSystemConfigs() {
-        List<PlatformConfig> configs = platformConfigService.getSystemConfigs();
-        return ResponseEntity.ok(ApiResponse.success(configs));
+    public ResponseEntity<ApiResponse<List<PlatformConfig>>> getSystemConfigs(
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+        boolean reveal = Boolean.TRUE.equals(showSecret);
+        List<PlatformConfig> configs = platformConfigService.getSystemConfigs(reveal);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        if (reveal) {
+            builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+            builder.header("Pragma", "no-cache");
+        }
+        return builder.body(ApiResponse.success(configs));
     }
 
     @PostMapping
