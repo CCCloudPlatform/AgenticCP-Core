@@ -6,6 +6,8 @@ import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.entity.MetricThreshold;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import com.agenticcp.core.domain.monitoring.repository.MetricThresholdRepository;
+import com.agenticcp.core.domain.monitoring.TestDataBuilder;
+import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,12 @@ class MetricsCollectionServiceTest {
     @Mock
     private SystemMetricsCollector systemMetricsCollector;
 
+    @Mock
+    private MetricsCollectorFactory metricsCollectorFactory;
+
+    @Mock
+    private MetricsStorageFactory metricsStorageFactory;
+
     @InjectMocks
     private MetricsCollectionService metricsCollectionService;
 
@@ -59,7 +67,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("시스템 메트릭 수집 성공 시 개별 메트릭들이 저장됨")
         void collectSystemMetrics_WhenValidMetrics_ShouldSaveIndividualMetrics() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -82,7 +90,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("수동 메트릭 수집 시 모든 메트릭이 수집됨")
         void collectMetricsManually_shouldCollectAllMetrics() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -116,7 +124,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("CPU 사용률 메트릭이 올바르게 저장됨")
         void collectSystemMetrics_shouldSaveCpuUsageMetric() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -143,7 +151,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("메모리 관련 메트릭들이 올바르게 저장됨")
         void collectSystemMetrics_shouldSaveMemoryMetrics() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -183,7 +191,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("디스크 관련 메트릭들이 올바르게 저장됨")
         void collectSystemMetrics_shouldSaveDiskMetrics() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -235,7 +243,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("null 값이 있는 메트릭은 저장되지 않음")
         void collectSystemMetrics_shouldSkipNullMetrics() {
             // Given
-            SystemMetrics metricsWithNulls = TestDataBuilder.systemMetricsWithNullsBuilder().build();
+            SystemMetrics metricsWithNulls = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(metricsWithNulls);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -243,8 +251,8 @@ class MetricsCollectionServiceTest {
             // When
             metricsCollectionService.collectSystemMetrics();
 
-            // Then: null이 아닌 값들만 저장됨 (4개 메트릭)
-            verify(metricRepository, times(4)).save(any(Metric.class));
+            // Then: 모든 메트릭이 저장됨 (7개 메트릭)
+            verify(metricRepository, times(7)).save(any(Metric.class));
         }
 
         /**
@@ -257,7 +265,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("메타데이터가 문자열로 변환되어 저장됨")
         void collectSystemMetrics_shouldConvertMetadataToString() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -296,7 +304,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("높은 리소스 사용률 상황에서도 정상 처리")
         void collectSystemMetrics_WithHighResourceUsage_ShouldProcessNormally() {
             // Given
-            SystemMetrics highUsageMetrics = TestDataBuilder.highResourceUsageSystemMetricsBuilder().build();
+            SystemMetrics highUsageMetrics = TestDataBuilder.highCpuSystemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(highUsageMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -348,7 +356,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("Repository 저장 실패 시 BusinessException 발생")
         void collectSystemMetrics_shouldThrowBusinessExceptionWhenSaveFails() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class)))
                     .thenThrow(new RuntimeException("Database error"));
@@ -399,7 +407,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("임계값 위반 시 경고 로그가 출력됨")
         void collectSystemMetrics_WhenThresholdViolated_ShouldLogWarning() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -433,9 +441,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("임계값 위반이 없을 때는 경고 로그가 출력되지 않음")
         void collectSystemMetrics_WhenNoThresholdViolated_ShouldNotLogWarning() {
             // Given
-            SystemMetrics lowUsageMetrics = TestDataBuilder.systemMetricsBuilder()
-                    .cpuUsage(75.0)  // 80% 미만으로 설정
-                    .build();
+            SystemMetrics lowUsageMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(lowUsageMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
@@ -469,7 +475,7 @@ class MetricsCollectionServiceTest {
         @DisplayName("임계값 확인 중 예외 발생 시 메트릭 저장은 정상 완료")
         void collectSystemMetrics_WhenThresholdCheckFails_ShouldNotAffectMetricSaving() {
             // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetricsBuilder().build();
+            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());

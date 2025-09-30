@@ -4,6 +4,7 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
+import com.agenticcp.core.domain.monitoring.TestDataBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -279,8 +280,12 @@ class ApplicationMetricsCollectorTest {
         @DisplayName("테스트 데이터 빌더 사용 예시")
         void testDataBuilder_Usage() {
             // Given
-            Metric testMetric = TestDataBuilder.createMetric("test.metric", 100.0, "count");
-            SystemMetrics testSystemMetrics = TestDataBuilder.createSystemMetrics();
+            Metric testMetric = TestDataBuilder.applicationMetricBuilder()
+                    .metricName("test.metric")
+                    .metricValue(100.0)
+                    .unit("count")
+                    .build();
+            SystemMetrics testSystemMetrics = TestDataBuilder.systemMetrics();
             
             // When & Then
             assertThat(testMetric.getMetricName()).isEqualTo("test.metric");
