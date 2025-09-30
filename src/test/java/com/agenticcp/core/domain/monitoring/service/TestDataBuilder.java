@@ -186,4 +186,33 @@ public class TestDataBuilder {
     public static Metric createDiskTotalMetric() {
         return createMockMetric("disk.total", 500.0, "GB", Metric.MetricType.SYSTEM);
     }
+
+    /**
+     * 애플리케이션 메트릭 생성 (ApplicationMetricsCollectorTest용)
+     */
+    public static Metric createMetric(String name, Double value, String unit) {
+        return Metric.builder()
+                .metricName(name)
+                .metricValue(value)
+                .unit(unit)
+                .collectedAt(LocalDateTime.now())
+                .metricType(Metric.MetricType.APPLICATION)
+                .build();
+    }
+    
+    /**
+     * 애플리케이션용 SystemMetrics 생성
+     */
+    public static SystemMetrics createSystemMetrics() {
+        return SystemMetrics.builder()
+                .collectedAt(LocalDateTime.now())
+                .systemInfo(SystemMetrics.SystemInfo.builder()
+                        .hostname("test-host")
+                        .osName("Test OS")
+                        .javaVersion("11.0.0")
+                        .availableProcessors(4)
+                        .build())
+                .metadata(Map.of("collector_type", "APPLICATION"))
+                .build();
+    }
 }

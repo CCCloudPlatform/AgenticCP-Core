@@ -5,9 +5,11 @@ import com.agenticcp.core.common.exception.BusinessException;
 // import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
-import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
+import com.agenticcp.core.domain.monitoring.entity.MetricThreshold;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
+import com.agenticcp.core.domain.monitoring.repository.MetricThresholdRepository;
+import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +31,9 @@ import java.util.Map;
 public class MetricsCollectionService {
 
     private final MetricRepository metricRepository;
+    private final MetricThresholdRepository metricThresholdRepository;
     private final SystemMetricsCollector systemMetricsCollector;
+    private final MetricsCollectorFactory metricsCollectorFactory;
 
     /**
      * 1분마다 자동으로 메트릭 수집 실행
@@ -79,10 +82,29 @@ public class MetricsCollectionService {
     public void collectApplicationMetrics() {
         try {
             log.debug("Collecting application metrics...");
-            // TODO: 애플리케이션 메트릭 수집 로직 구현
-            log.debug("Application metrics collection - TODO: implement");
+            
+            // 애플리케이션 메트릭 수집기 생성
+            MetricsCollector applicationCollector = metricsCollectorFactory.createCollector(CollectorType.APPLICATION);
+            
+            if (applicationCollector != null && applicationCollector.isEnabled()) {
+                // 애플리케이션 메트릭 수집
+                List<Metric> applicationMetrics = applicationCollector.collectApplicationMetrics();
+                
+                // 수집된 메트릭 저장
+                for (Metric metric : applicationMetrics) {
+                    saveMetric(metric);
+                }
+                
+                log.debug("Application metrics collected successfully: {} metrics", applicationMetrics.size());
+            } else {
+                log.debug("Application metrics collector is disabled or not available");
+            }
+            
+        } catch (BusinessException e) {
+            log.error("Business error collecting application metrics: {}", e.getMessage(), e);
+            // 애플리케이션 메트릭 수집 실패는 시스템 메트릭에 영향주지 않음
         } catch (Exception e) {
-            log.error("Error collecting application metrics", e);
+            log.error("Unexpected error collecting application metrics", e);
             // 애플리케이션 메트릭 수집 실패는 시스템 메트릭에 영향주지 않음
         }
     }
@@ -163,6 +185,24 @@ public class MetricsCollectionService {
     }
 
     /**
+     * 메트릭 엔티티 저장
+     */
+    private void saveMetric(Metric metric) {
+        try {
+            metricRepository.save(metric);
+            
+            // ✅ 임계값 위반 확인
+            checkThresholdViolations(metric);
+            
+            log.debug("Saved metric: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit());
+        } catch (Exception e) {
+            log.error("Error saving metric: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit(), e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 저장 중 오류가 발생했습니다.");
+        }
+    }
+
+    /**
      * 개별 메트릭 저장
      */
     private void saveMetric(String metricName, Double metricValue, String unit, 
@@ -181,6 +221,10 @@ public class MetricsCollectionService {
                     .build();
 
             metricRepository.save(metric);
+            
+            // ✅ 임계값 위반 확인
+            checkThresholdViolations(metric);
+            
             log.debug("Saved metric: {} = {} {}", metricName, metricValue, unit);
         } catch (Exception e) {
             log.error("Error saving metric: {} = {} {}", metricName, metricValue, unit, e);
@@ -204,6 +248,32 @@ public class MetricsCollectionService {
             log.warn("Failed to convert metadata to string", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메타데이터 변환에 실패했습니다.");
+        }
+    }
+
+    /**
+     * 임계값 위반 확인
+     */
+    private void checkThresholdViolations(Metric metric) {
+        try {
+            List<MetricThreshold> thresholds = metricThresholdRepository.findByMetricName(metric.getMetricName());
+            
+            for (MetricThreshold threshold : thresholds) {
+                if (threshold.isThresholdViolated(metric.getMetricValue())) {
+                    log.warn("🚨 Threshold violated for metric {}: {} {} {} {}", 
+                        metric.getMetricName(), 
+                        metric.getMetricValue(), 
+                        threshold.getOperator(), 
+                        threshold.getThresholdValue(),
+                        threshold.getThresholdType());
+                    
+                    // TODO: 알림 발송 로직 구현
+                    // sendAlert(threshold, metric);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error checking threshold violations for metric: {}", metric.getMetricName(), e);
+            // 임계값 확인 실패는 메트릭 저장을 중단시키지 않음
         }
     }
 }

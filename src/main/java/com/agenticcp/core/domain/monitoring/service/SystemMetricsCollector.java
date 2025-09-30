@@ -2,6 +2,8 @@ package com.agenticcp.core.domain.monitoring.service;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
+import com.agenticcp.core.domain.monitoring.entity.Metric;
+import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -11,7 +13,9 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -20,14 +24,52 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class SystemMetricsCollector {
+public class SystemMetricsCollector implements MetricsCollector {
 
     private final OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
     private final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
+    private boolean enabled = true; // 기본적으로 활성화
+
+    /**
+     * 수집기 활성화 상태 확인
+     */
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /**
+     * 수집기 활성화/비활성화 설정
+     */
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    /**
+     * 수집기 타입 반환
+     */
+    @Override
+    public CollectorType getCollectorType() {
+        return CollectorType.SYSTEM;
+    }
+
+    /**
+     * 애플리케이션 메트릭 수집 (시스템 수집기는 빈 리스트 반환)
+     */
+    @Override
+    public List<Metric> collectApplicationMetrics() {
+        if (!enabled) {
+            log.debug("SystemMetricsCollector is disabled. Skipping application metrics collection.");
+            return new ArrayList<>();
+        }
+        
+        // 시스템 수집기는 애플리케이션 메트릭을 수집하지 않음
+        return new ArrayList<>();
+    }
 
     /**
      * 시스템 메트릭 수집
      */
+    @Override
     public SystemMetrics collectSystemMetrics() {
         try {
             log.debug("Collecting system metrics...");
