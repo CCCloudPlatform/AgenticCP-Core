@@ -36,14 +36,18 @@ public class PlatformConfigService {
 
     public List<PlatformConfig> getAllConfigs() {
         log.info("[PlatformConfigService] getAllConfigs");
-        List<PlatformConfig> result = platformConfigRepository.findAllActive();
+        List<PlatformConfig> result = platformConfigRepository.findAllActive()
+                .stream()
+                .map(this::toResponse)
+                .toList();
         log.info("[PlatformConfigService] getAllConfigs - success count={}", result.size());
         return result;
     }
 
     public Optional<PlatformConfig> getConfigByKey(String configKey) {
         log.info("[PlatformConfigService] getConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-        Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey);
+        Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
+                .map(this::toResponse);
         log.info("[PlatformConfigService] getConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
         return result;
     }
@@ -58,14 +62,20 @@ public class PlatformConfigService {
 
     public List<PlatformConfig> getConfigsByType(PlatformConfig.ConfigType configType) {
         log.info("[PlatformConfigService] getConfigsByType - type={}", configType);
-        List<PlatformConfig> result = platformConfigRepository.findByConfigType(configType);
+        List<PlatformConfig> result = platformConfigRepository.findByConfigType(configType)
+                .stream()
+                .map(this::toResponse)
+                .toList();
         log.info("[PlatformConfigService] getConfigsByType - success count={} type={}", result.size(), configType);
         return result;
     }
 
     public List<PlatformConfig> getSystemConfigs() {
         log.info("[PlatformConfigService] getSystemConfigs");
-        List<PlatformConfig> result = platformConfigRepository.findByIsSystem(true);
+        List<PlatformConfig> result = platformConfigRepository.findByIsSystem(true)
+                .stream()
+                .map(this::toResponse)
+                .toList();
         log.info("[PlatformConfigService] getSystemConfigs - success count={}", result.size());
         return result;
     }
@@ -200,5 +210,20 @@ public class PlatformConfigService {
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    // 응답 마스킹: ENCRYPTED 타입은 값 대신 *** 반환. JPA 관리 엔티티를 직접 변경하지 않도록 새 인스턴스로 변환
+    private PlatformConfig toResponse(PlatformConfig source) {
+        boolean shouldMask = source.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED
+                || Boolean.TRUE.equals(source.getIsEncrypted());
+
+        return PlatformConfig.builder()
+                .configKey(source.getConfigKey())
+                .configValue(shouldMask ? "***" : source.getConfigValue())
+                .configType(source.getConfigType())
+                .description(source.getDescription())
+                .isEncrypted(source.getIsEncrypted())
+                .isSystem(source.getIsSystem())
+                .build();
     }
 }
