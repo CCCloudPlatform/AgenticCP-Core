@@ -3,6 +3,8 @@ package com.agenticcp.core.domain.monitoring.storage;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.impl.InfluxDBStorage;
+import com.agenticcp.core.domain.monitoring.storage.impl.TimescaleDBStorage;
+import com.agenticcp.core.domain.monitoring.storage.impl.PrometheusStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -29,12 +31,18 @@ class MetricsStorageFactoryImplTest {
 
     @Mock
     private InfluxDBStorage influxDBStorage;
+    
+    @Mock
+    private TimescaleDBStorage timescaleDBStorage;
+    
+    @Mock
+    private PrometheusStorage prometheusStorage;
 
     private MetricsStorageFactoryImpl storageFactory;
 
     @BeforeEach
     void setUp() {
-        storageFactory = new MetricsStorageFactoryImpl(influxDBStorage);
+        storageFactory = new MetricsStorageFactoryImpl(influxDBStorage, timescaleDBStorage, prometheusStorage);
         storageFactory.initializeDefaultConfigs(); // @PostConstruct 메서드 수동 호출
     }
 
@@ -59,21 +67,35 @@ class MetricsStorageFactoryImplTest {
     }
 
     @Test
-    @DisplayName("TimescaleDB 저장소 생성 시 예외 발생")
-    void createStorage_TimescaleDB_ThrowsException() {
-        // when & then
-        assertThatThrownBy(() -> storageFactory.createStorage(StorageType.TIMESCALEDB))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("지원되지 않는 저장소 타입입니다: TIMESCALEDB");
+    @DisplayName("TimescaleDB 저장소 생성 성공")
+    void createStorage_TimescaleDB_Success() {
+        // given
+        when(timescaleDBStorage.isEnabled()).thenReturn(true);
+        storageFactory.setStorageEnabled(StorageType.TIMESCALEDB, true); // 팩토리에서 활성화
+
+        // when
+        MetricsStorage result = storageFactory.createStorage(StorageType.TIMESCALEDB);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result).isInstanceOf(TimescaleDBStorage.class);
+        verify(timescaleDBStorage, never()).setEnabled(anyBoolean());
     }
 
     @Test
-    @DisplayName("Prometheus 저장소 생성 시 예외 발생")
-    void createStorage_Prometheus_ThrowsException() {
-        // when & then
-        assertThatThrownBy(() -> storageFactory.createStorage(StorageType.PROMETHEUS))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("지원되지 않는 저장소 타입입니다: PROMETHEUS");
+    @DisplayName("Prometheus 저장소 생성 성공")
+    void createStorage_Prometheus_Success() {
+        // given
+        when(prometheusStorage.isEnabled()).thenReturn(true);
+        storageFactory.setStorageEnabled(StorageType.PROMETHEUS, true); // 팩토리에서 활성화
+
+        // when
+        MetricsStorage result = storageFactory.createStorage(StorageType.PROMETHEUS);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result).isInstanceOf(PrometheusStorage.class);
+        verify(prometheusStorage, never()).setEnabled(anyBoolean());
     }
 
     @Test
@@ -89,15 +111,24 @@ class MetricsStorageFactoryImplTest {
     @DisplayName("모든 활성화된 저장소 생성 성공")
     void createAllStorages_Success() {
         // given
+        when(influxDBStorage.getStorageType()).thenReturn(StorageType.INFLUXDB);
         when(influxDBStorage.isEnabled()).thenReturn(true);
-        storageFactory.setStorageEnabled(StorageType.INFLUXDB, true); // 팩토리에서 활성화
+        when(timescaleDBStorage.getStorageType()).thenReturn(StorageType.TIMESCALEDB);
+        when(timescaleDBStorage.isEnabled()).thenReturn(true);
+        when(prometheusStorage.getStorageType()).thenReturn(StorageType.PROMETHEUS);
+        when(prometheusStorage.isEnabled()).thenReturn(true);
+        
+        storageFactory.setStorageEnabled(StorageType.INFLUXDB, true);
+        storageFactory.setStorageEnabled(StorageType.TIMESCALEDB, true);
+        storageFactory.setStorageEnabled(StorageType.PROMETHEUS, true);
 
         // when
         List<MetricsStorage> result = storageFactory.createAllStorages();
 
         // then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0)).isInstanceOf(InfluxDBStorage.class);
+        assertThat(result).hasSize(3);
+        assertThat(result).extracting(MetricsStorage::getStorageType)
+                .containsExactlyInAnyOrder(StorageType.INFLUXDB, StorageType.TIMESCALEDB, StorageType.PROMETHEUS);
     }
 
     @Test
@@ -112,22 +143,22 @@ class MetricsStorageFactoryImplTest {
 
     @Test
     @DisplayName("TimescaleDB 저장소 존재 여부 확인")
-    void hasStorage_TimescaleDB_ReturnsFalse() {
+    void hasStorage_TimescaleDB_ReturnsTrue() {
         // when
         boolean result = storageFactory.hasStorage(StorageType.TIMESCALEDB);
 
         // then
-        assertThat(result).isFalse();
+        assertThat(result).isTrue();
     }
 
     @Test
     @DisplayName("Prometheus 저장소 존재 여부 확인")
-    void hasStorage_Prometheus_ReturnsFalse() {
+    void hasStorage_Prometheus_ReturnsTrue() {
         // when
         boolean result = storageFactory.hasStorage(StorageType.PROMETHEUS);
 
         // then
-        assertThat(result).isFalse();
+        assertThat(result).isTrue();
     }
 
     @Test

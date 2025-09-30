@@ -4,6 +4,8 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.impl.InfluxDBStorage;
+import com.agenticcp.core.domain.monitoring.storage.impl.TimescaleDBStorage;
+import com.agenticcp.core.domain.monitoring.storage.impl.PrometheusStorage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -39,14 +41,22 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
 
     private final InfluxDBStorage influxDBStorage;
+    private final TimescaleDBStorage timescaleDBStorage;
+    private final PrometheusStorage prometheusStorage;
     
     /**
      * 메트릭 저장소 팩토리 생성자
      * 
      * @param influxDBStorage InfluxDB 저장소
+     * @param timescaleDBStorage TimescaleDB 저장소
+     * @param prometheusStorage Prometheus 저장소
      */
-    public MetricsStorageFactoryImpl(InfluxDBStorage influxDBStorage) {
+    public MetricsStorageFactoryImpl(InfluxDBStorage influxDBStorage, 
+                                     TimescaleDBStorage timescaleDBStorage, 
+                                     PrometheusStorage prometheusStorage) {
         this.influxDBStorage = influxDBStorage;
+        this.timescaleDBStorage = timescaleDBStorage;
+        this.prometheusStorage = prometheusStorage;
     }
     
     /**
@@ -201,8 +211,8 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
         
         boolean exists = switch (type) {
             case INFLUXDB -> influxDBStorage != null;
-            case TIMESCALEDB -> false; // TODO: TimescaleDBStorage 구현 후 true로 변경
-            case PROMETHEUS -> false;  // TODO: PrometheusStorage 구현 후 true로 변경
+            case TIMESCALEDB -> timescaleDBStorage != null;
+            case PROMETHEUS -> prometheusStorage != null;
         };
         
         log.debug("저장소 존재 여부 확인: type={}, exists={}", type, exists);
@@ -284,16 +294,8 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
     private MetricsStorage createStorageByType(StorageType type) {
         return switch (type) {
             case INFLUXDB -> influxDBStorage;
-            case TIMESCALEDB -> {
-                // TODO: TimescaleDBStorage 구현 후 활성화
-                throw new BusinessException(MonitoringErrorCode.COLLECTOR_NOT_FOUND, 
-                    "TimescaleDB 저장소는 아직 구현되지 않았습니다.");
-            }
-            case PROMETHEUS -> {
-                // TODO: PrometheusStorage 구현 후 활성화
-                throw new BusinessException(MonitoringErrorCode.COLLECTOR_NOT_FOUND, 
-                    "Prometheus 저장소는 아직 구현되지 않았습니다.");
-            }
+            case TIMESCALEDB -> timescaleDBStorage;
+            case PROMETHEUS -> prometheusStorage;
         };
     }
 }
