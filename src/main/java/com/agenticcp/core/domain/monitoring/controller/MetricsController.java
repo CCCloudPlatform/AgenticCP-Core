@@ -20,6 +20,10 @@ import java.util.List;
 
 /**
  * 메트릭 관련 API 컨트롤러
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
  */
 @Slf4j
 @RestController

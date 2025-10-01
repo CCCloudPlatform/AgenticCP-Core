@@ -25,16 +25,19 @@ class MetricsCollectorFactoryImplTest {
 
     @Mock
     private MetricsEndpoint metricsEndpoint;
+    
+    @Mock
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
     private SystemMetricsCollector systemMetricsCollector;
-    private ApplicationMetricsCollector applicationMetricsCollector;
+    private MicrometerMetricsCollector micrometerMetricsCollector;
     private MetricsCollectorFactoryImpl metricsCollectorFactory;
 
     @BeforeEach
     void setUp() {
         systemMetricsCollector = new SystemMetricsCollector();
-        applicationMetricsCollector = new ApplicationMetricsCollector(metricsEndpoint);
-        metricsCollectorFactory = new MetricsCollectorFactoryImpl(systemMetricsCollector, applicationMetricsCollector);
+        micrometerMetricsCollector = new MicrometerMetricsCollector(meterRegistry);
+        metricsCollectorFactory = new MetricsCollectorFactoryImpl(systemMetricsCollector, micrometerMetricsCollector);
         
         // @PostConstruct 메서드 수동 호출 (테스트 환경에서는 자동 실행되지 않음)
         metricsCollectorFactory.initializeDefaultConfigs();
@@ -67,7 +70,7 @@ class MetricsCollectorFactoryImplTest {
         @DisplayName("애플리케이션 수집기 생성 성공")
         void createApplicationCollector_Success() {
             // Given
-            applicationMetricsCollector.setEnabled(true);
+            micrometerMetricsCollector.setEnabled(true);
             metricsCollectorFactory.setCollectorEnabled(CollectorType.APPLICATION, true);
 
             // When
@@ -84,7 +87,6 @@ class MetricsCollectorFactoryImplTest {
         void createAllCollectors_Success() {
             // Given
             systemMetricsCollector.setEnabled(true);
-            applicationMetricsCollector.setEnabled(true);
             metricsCollectorFactory.setCollectorEnabled(CollectorType.SYSTEM, true);
             metricsCollectorFactory.setCollectorEnabled(CollectorType.APPLICATION, true);
 

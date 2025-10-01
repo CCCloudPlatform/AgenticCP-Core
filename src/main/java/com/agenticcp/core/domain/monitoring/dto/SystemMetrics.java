@@ -1,7 +1,9 @@
 package com.agenticcp.core.domain.monitoring.dto;
 
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -9,9 +11,15 @@ import java.util.Map;
 /**
  * 시스템 리소스 메트릭을 담는 DTO
  * CPU, 메모리, 디스크 사용량 정보를 포함
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
  */
 @Getter
 @Builder
+@EqualsAndHashCode
+@ToString
 public class SystemMetrics {
     
     /**
@@ -66,6 +74,8 @@ public class SystemMetrics {
     
     @Getter
     @Builder
+    @EqualsAndHashCode
+    @ToString
     public static class SystemInfo {
         private final String hostname;
         private final String osName;

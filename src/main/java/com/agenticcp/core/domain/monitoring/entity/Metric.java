@@ -4,8 +4,10 @@ import com.agenticcp.core.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -17,6 +19,9 @@ import java.util.List;
  * <p>시스템 리소스 메트릭(CPU, 메모리, 디스크)과 애플리케이션 메트릭을 저장합니다.
  * 메트릭은 메타데이터, 태그, 임계값과 연관관계를 가집니다.</p>
  * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
  */
 @Entity
 @Table(name = "metrics", indexes = {
@@ -30,6 +35,8 @@ import java.util.List;
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(callSuper = false, exclude = {"id", "createdAt", "updatedAt"})
+@ToString(callSuper = true)
 public class Metric extends BaseEntity {
 
     /**

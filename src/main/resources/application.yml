@@ -1,7 +1,7 @@
 spring:
   application:
     name: agenticcp-core
-  
+
   profiles:
     active: local
   
@@ -26,7 +26,15 @@ spring:
       enabled: true
     livereload:
       enabled: true
-      
+
+logging:
+  mdc:
+    enabled-keys: ["requestId", "tenantId", "clientIp"]
+    request-id-type: "uuid"
+    request-id-prefix: "req_"
+    request-id-length: 8
+    mask-client-ip: false
+    mask-user-agent: false
 
 server:
   port: 8080
@@ -41,18 +49,6 @@ management:
   endpoint:
     health:
       show-details: always
-
-logging:
-  level:
-    com.agenticcp: DEBUG
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/agenticcp-core.log
 
 ---
 spring:
@@ -77,9 +73,3 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
-
-logging:
-  level:
-    com.agenticcp: INFO
-    org.springframework.web: WARN
-    org.hibernate.SQL: WARN
