@@ -3,30 +3,44 @@ package com.agenticcp.core.domain.monitoring.service;
 import com.agenticcp.core.common.exception.BusinessException;
 // TODO: 테넌트 도메인 구현 후 활성화 예정
 // import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.monitoring.config.RetryConfig;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.entity.MetricThreshold;
 import com.agenticcp.core.common.enums.CommonErrorCode;
+import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import com.agenticcp.core.domain.monitoring.repository.MetricThresholdRepository;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 메트릭 수집을 담당하는 서비스
- * 시스템 리소스 메트릭과 애플리케이션 메트릭을 수집하여 저장
+ * 
+ * <p>시스템 리소스 메트릭과 애플리케이션 메트릭을 수집하여 저장합니다.
+ * 
+ * <p>Issue #39: Task 8 - 재시도 로직 및 오류 처리 구현
+ * <ul>
+ *   <li>메트릭 수집 실패 시 자동 재시도 (최대 3회)</li>
+ *   <li>재시도 실패 시 캐시된 데이터로 폴백</li>
+ *   <li>재시도 통계 수집</li>
+ * </ul>
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2024-01-01
  */
 @Slf4j
@@ -35,7 +49,17 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class MetricsCollectionService {
     
+    /**
+     * 메트릭 수집 주기 (밀리초)
+     * 30초마다 자동 수집 (Issue #39 요구사항: 1분 이하)
+     */
     private static final int DEFAULT_TIMEOUT = 30000;
+    
+    /**
+     * 기본 재시도 횟수
+     * @deprecated RetryConfig.MAX_RETRY_ATTEMPTS 사용 권장
+     */
+    @Deprecated
     private static final int DEFAULT_RETRY_COUNT = 3;
 
     private final MetricRepository metricRepository;
@@ -43,6 +67,7 @@ public class MetricsCollectionService {
     private final SystemMetricsCollector systemMetricsCollector;
     private final MetricsCollectorFactory metricsCollectorFactory;
     private final MetricsStorageFactory metricsStorageFactory;
+    private final MetricsCache metricsCache;
 
     /**
      * 1분마다 자동으로 메트릭 수집 실행
@@ -66,31 +91,95 @@ public class MetricsCollectionService {
 
     /**
      * 시스템 리소스 메트릭 수집
+     * 
+     * <p>Issue #39 Task 8: 재시도 로직 적용
+     * <ul>
+     *   <li>최대 3회 재시도</li>
+     *   <li>지수 백오프: 1초 → 2초 → 4초</li>
+     *   <li>실패 시 recoverFromSystemMetricsFailure 호출</li>
+     * </ul>
+     * 
+     * @throws BusinessException 메트릭 수집 실패 시
      */
+    @Retryable(
+        value = {BusinessException.class, RuntimeException.class},
+        maxAttempts = RetryConfig.MAX_RETRY_ATTEMPTS,
+        backoff = @Backoff(delay = RetryConfig.INITIAL_BACKOFF_DELAY, multiplier = RetryConfig.BACKOFF_MULTIPLIER)
+    )
     @Transactional
     public void collectSystemMetrics() {
         try {
-            log.debug("Collecting system metrics...");
+            log.debug("시스템 메트릭 수집 시작...");
+            
             SystemMetrics systemMetrics = systemMetricsCollector.collectSystemMetrics();
             saveSystemMetrics(systemMetrics);
-            log.debug("System metrics collected successfully");
+            
+            // 캐시에 저장 (폴백용)
+            metricsCache.cacheSystemMetrics(systemMetrics);
+            
+            log.debug("시스템 메트릭 수집 완료");
         } catch (BusinessException e) {
-            log.error("Business error collecting system metrics: {}", e.getMessage(), e);
+            log.error("시스템 메트릭 수집 중 비즈니스 오류 발생: {}", e.getMessage(), e);
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error collecting system metrics", e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
-                "시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
+            log.error("시스템 메트릭 수집 중 예상치 못한 오류 발생", e);
+            throw new BusinessException(MonitoringErrorCode.SYSTEM_METRICS_UNAVAILABLE, 
+                "시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다: " + e.getMessage());
         }
+    }
+    
+    /**
+     * 시스템 메트릭 수집 실패 시 폴백 처리
+     * 
+     * <p>모든 재시도가 실패했을 때 호출됩니다.
+     * <ul>
+     *   <li>재시도 실패 기록</li>
+     *   <li>캐시된 데이터 사용</li>
+     *   <li>캐시 없으면 예외 발생</li>
+     * </ul>
+     * 
+     * @param e 발생한 예외
+     * @throws BusinessException 폴백도 실패한 경우
+     */
+    @Recover
+    public void recoverFromSystemMetricsFailure(Exception e) {
+        log.error("시스템 메트릭 수집의 모든 재시도가 실패했습니다.", e);
+        
+        // 캐시된 데이터 사용
+        SystemMetrics cachedMetrics = metricsCache.getLastSuccessfulSystemMetrics();
+        
+        if (cachedMetrics != null) {
+            log.warn("캐시된 시스템 메트릭을 사용합니다. collectedAt={}", cachedMetrics.getCollectedAt());
+            // 캐시된 데이터는 이미 저장되어 있으므로 별도 저장 불필요
+            return;
+        }
+        
+        // 캐시도 없으면 예외 발생
+        log.error("캐시된 시스템 메트릭도 없습니다. 폴백 실패.");
+        throw new BusinessException(MonitoringErrorCode.RETRY_EXHAUSTED, 
+            "시스템 메트릭 수집의 모든 재시도가 실패했으며, 캐시된 데이터도 없습니다.");
     }
 
     /**
      * 애플리케이션 메트릭 수집
+     * 
+     * <p>Issue #39 Task 8: 재시도 로직 적용 및 부분 실패 처리
+     * <ul>
+     *   <li>최대 3회 재시도</li>
+     *   <li>지수 백오프: 1초 → 2초 → 4초</li>
+     *   <li>부분 실패 허용: 일부 메트릭 실패해도 나머지는 저장</li>
+     *   <li>실패 시 recoverFromApplicationMetricsFailure 호출</li>
+     * </ul>
      */
+    @Retryable(
+        value = {BusinessException.class, RuntimeException.class},
+        maxAttempts = RetryConfig.MAX_RETRY_ATTEMPTS,
+        backoff = @Backoff(delay = RetryConfig.INITIAL_BACKOFF_DELAY, multiplier = RetryConfig.BACKOFF_MULTIPLIER)
+    )
     @Transactional
     public void collectApplicationMetrics() {
         try {
-            log.debug("Collecting application metrics...");
+            log.debug("애플리케이션 메트릭 수집 시작...");
             
             // 애플리케이션 메트릭 수집기 생성
             MetricsCollector applicationCollector = metricsCollectorFactory.createCollector(CollectorType.APPLICATION);
@@ -99,22 +188,98 @@ public class MetricsCollectionService {
                 // 애플리케이션 메트릭 수집
                 List<Metric> applicationMetrics = applicationCollector.collectApplicationMetrics();
                 
-                // 수집된 메트릭 저장
-                for (Metric metric : applicationMetrics) {
-                    saveMetric(metric);
-                }
+                // Issue #39 Task 8: 부분 실패 처리
+                saveMetricsWithPartialFailureHandling(applicationMetrics);
                 
-                log.debug("Application metrics collected successfully: {} metrics", applicationMetrics.size());
+                // 캐시에 저장 (폴백용)
+                metricsCache.cacheApplicationMetrics(applicationMetrics);
+                
+                log.debug("애플리케이션 메트릭 수집 완료: {} 메트릭", applicationMetrics.size());
             } else {
-                log.debug("Application metrics collector is disabled or not available");
+                log.debug("애플리케이션 메트릭 수집기가 비활성화되어 있거나 사용 불가능합니다.");
             }
             
         } catch (BusinessException e) {
-            log.error("Business error collecting application metrics: {}", e.getMessage(), e);
-            // 애플리케이션 메트릭 수집 실패는 시스템 메트릭에 영향주지 않음
+            log.error("애플리케이션 메트릭 수집 중 비즈니스 오류 발생: {}", e.getMessage(), e);
+            throw e;
         } catch (Exception e) {
-            log.error("Unexpected error collecting application metrics", e);
-            // 애플리케이션 메트릭 수집 실패는 시스템 메트릭에 영향주지 않음
+            log.error("애플리케이션 메트릭 수집 중 예상치 못한 오류 발생", e);
+            throw new BusinessException(MonitoringErrorCode.METRICS_COLLECTION_FAILED, 
+                "애플리케이션 메트릭 수집 중 예상치 못한 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 애플리케이션 메트릭 수집 실패 시 폴백 처리
+     * 
+     * <p>모든 재시도가 실패했을 때 호출됩니다.
+     * 
+     * @param e 발생한 예외
+     */
+    @Recover
+    public void recoverFromApplicationMetricsFailure(Exception e) {
+        log.error("애플리케이션 메트릭 수집의 모든 재시도가 실패했습니다.", e);
+        
+        // 캐시된 데이터 사용
+        List<Metric> cachedMetrics = metricsCache.getLastSuccessfulApplicationMetrics();
+        
+        if (!cachedMetrics.isEmpty()) {
+            log.warn("캐시된 애플리케이션 메트릭 {}개를 사용합니다.", cachedMetrics.size());
+            // 캐시된 데이터는 이미 저장되어 있으므로 별도 저장 불필요
+            return;
+        }
+        
+        // 캐시도 없으면 경고만 로그 (애플리케이션 메트릭은 선택적이므로 예외 발생하지 않음)
+        log.warn("캐시된 애플리케이션 메트릭도 없습니다. 이번 수집 주기는 건너뜁니다.");
+    }
+    
+    /**
+     * 부분 실패 처리를 지원하는 메트릭 저장
+     * 
+     * <p>Issue #39 Task 8: 부분 실패 처리
+     * <ul>
+     *   <li>일부 메트릭 저장 실패 시 나머지는 계속 저장</li>
+     *   <li>실패한 메트릭은 로그로 기록</li>
+     *   <li>모든 메트릭 실패 시에만 예외 발생</li>
+     * </ul>
+     * 
+     * @param metrics 저장할 메트릭 목록
+     * @throws BusinessException 모든 메트릭 저장에 실패한 경우
+     */
+    private void saveMetricsWithPartialFailureHandling(List<Metric> metrics) {
+        if (metrics == null || metrics.isEmpty()) {
+            log.debug("저장할 메트릭이 없습니다.");
+            return;
+        }
+        
+        int successCount = 0;
+        int failureCount = 0;
+        List<String> failedMetricNames = new ArrayList<>();
+        
+        for (Metric metric : metrics) {
+            try {
+                // 직접 저장 (saveMetric 내부 예외 처리 우회)
+                metricRepository.save(metric);
+                checkThresholdViolations(metric);
+                successCount++;
+                log.debug("메트릭 저장 성공: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit());
+            } catch (Exception e) {
+                failureCount++;
+                failedMetricNames.add(metric.getMetricName());
+                log.warn("메트릭 저장 실패: name={}, error={}", metric.getMetricName(), e.getMessage());
+            }
+        }
+        
+        log.info("메트릭 저장 완료: 성공={}, 실패={}", successCount, failureCount);
+        
+        if (failureCount > 0) {
+            log.warn("실패한 메트릭 목록: {}", failedMetricNames);
+        }
+        
+        // 모든 메트릭 저장 실패 시에만 예외 발생
+        if (successCount == 0 && failureCount > 0) {
+            throw new BusinessException(MonitoringErrorCode.METRIC_SAVE_FAILED, 
+                String.format("모든 메트릭 저장에 실패했습니다. 실패 수: %d", failureCount));
         }
     }
 
