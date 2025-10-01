@@ -177,6 +177,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
         boolean exists = switch (type) {
             case SYSTEM -> systemMetricsCollector != null;
             case APPLICATION -> micrometerMetricsCollector != null;
+            case CUSTOM, EXTERNAL -> false; // 아직 구현되지 않음
         };
         
         log.debug("수집기 존재 여부 확인: type={}, exists={}", type, exists);
@@ -257,6 +258,8 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
         return switch (type) {
             case SYSTEM -> (MetricsCollector) systemMetricsCollector;
             case APPLICATION -> (MetricsCollector) micrometerMetricsCollector;
+            case CUSTOM, EXTERNAL -> throw new BusinessException(MonitoringErrorCode.COLLECTOR_NOT_FOUND, 
+                "해당 타입의 수집기는 MetricsCollectorRegistry를 사용하세요: " + type);
         };
     }
     
