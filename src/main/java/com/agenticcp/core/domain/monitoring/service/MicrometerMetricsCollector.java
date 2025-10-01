@@ -382,6 +382,7 @@ public class MicrometerMetricsCollector implements MetricsCollector {
                 .unit(unit)
                 .collectedAt(collectedAt)
                 .metricType(Metric.MetricType.APPLICATION)
+                .source("micrometer")
                 .build();
     }
 }
