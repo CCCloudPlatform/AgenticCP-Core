@@ -7,7 +7,6 @@ import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorage;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -21,12 +20,13 @@ import java.util.List;
  * PostgreSQL 기반 시계열 데이터베이스로 고성능 시계열 데이터 처리를 지원합니다.
  * </p>
  *
+ * <p>Note: @Component 제거 - MetricsStorageFactory에서 생성되므로 직접 Bean 등록 불필요
+ *
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2024-01-01
  */
 @Slf4j
-@Component
 public class TimescaleDBStorage implements MetricsStorage {
 
     private final MetricsStorageFactory.StorageConfig config;

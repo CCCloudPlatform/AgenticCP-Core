@@ -7,7 +7,6 @@ import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorage;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,12 +16,13 @@ import java.util.List;
  * 
  * <p>InfluxDB를 사용하여 메트릭을 저장하고 조회하는 구현체입니다.</p>
  * 
+ * <p>Note: @Component 제거 - MetricsStorageFactory에서 생성되므로 직접 Bean 등록 불필요
+ * 
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2024-01-01
  */
 @Slf4j
-@Component
 public class InfluxDBStorage implements MetricsStorage {
     
     private final MetricsStorageFactory.StorageConfig config;

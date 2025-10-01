@@ -40,23 +40,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
 
-    private final InfluxDBStorage influxDBStorage;
-    private final TimescaleDBStorage timescaleDBStorage;
-    private final PrometheusStorage prometheusStorage;
-    
     /**
      * 메트릭 저장소 팩토리 생성자
      * 
-     * @param influxDBStorage InfluxDB 저장소
-     * @param timescaleDBStorage TimescaleDB 저장소
-     * @param prometheusStorage Prometheus 저장소
+     * <p>Note: 저장소는 필요할 때 동적으로 생성됩니다 (Factory 패턴)
      */
-    public MetricsStorageFactoryImpl(InfluxDBStorage influxDBStorage, 
-                                     TimescaleDBStorage timescaleDBStorage, 
-                                     PrometheusStorage prometheusStorage) {
-        this.influxDBStorage = influxDBStorage;
-        this.timescaleDBStorage = timescaleDBStorage;
-        this.prometheusStorage = prometheusStorage;
+    public MetricsStorageFactoryImpl() {
+        // 의존성 주입 없음 - Factory가 직접 생성
     }
     
     /**
@@ -209,11 +199,8 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
             return false;
         }
         
-        boolean exists = switch (type) {
-            case INFLUXDB -> influxDBStorage != null;
-            case TIMESCALEDB -> timescaleDBStorage != null;
-            case PROMETHEUS -> prometheusStorage != null;
-        };
+        // 모든 StorageType은 지원됨 (동적 생성)
+        boolean exists = true;
         
         log.debug("저장소 존재 여부 확인: type={}, exists={}", type, exists);
         return exists;
@@ -292,10 +279,12 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
      * 저장소 타입별 생성
      */
     private MetricsStorage createStorageByType(StorageType type) {
+        StorageConfig config = getStorageConfig(type);
+        
         return switch (type) {
-            case INFLUXDB -> influxDBStorage;
-            case TIMESCALEDB -> timescaleDBStorage;
-            case PROMETHEUS -> prometheusStorage;
+            case INFLUXDB -> new InfluxDBStorage(config);
+            case TIMESCALEDB -> new TimescaleDBStorage(config);
+            case PROMETHEUS -> new PrometheusStorage(config);
         };
     }
 }
