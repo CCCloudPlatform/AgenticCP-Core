@@ -45,7 +45,13 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     STORAGE_CONNECTION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8062, "저장소 연결에 실패했습니다."),
     STORAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 8063, "저장소를 찾을 수 없습니다."),
     STORAGE_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8064, "저장소 생성에 실패했습니다."),
-    INVALID_STORAGE_TYPE(HttpStatus.BAD_REQUEST, 8065, "유효하지 않은 저장소 타입입니다.");
+    INVALID_STORAGE_TYPE(HttpStatus.BAD_REQUEST, 8065, "유효하지 않은 저장소 타입입니다."),
+    
+    // 재시도 관련 (8071-8080) - Issue #39 Task 8
+    RETRY_EXHAUSTED(HttpStatus.INTERNAL_SERVER_ERROR, 8071, "모든 재시도가 실패했습니다."),
+    RETRY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8072, "재시도 중 오류가 발생했습니다."),
+    CACHE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 8073, "캐시를 사용할 수 없습니다."),
+    FALLBACK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8074, "폴백 처리에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
