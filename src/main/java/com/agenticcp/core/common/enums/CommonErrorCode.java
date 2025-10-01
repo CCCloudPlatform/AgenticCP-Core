@@ -30,8 +30,8 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public enum CommonErrorCode implements BaseErrorCode {
 
-    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 500, "서버 내부 오류가 발생했습니다."),
-    DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 501, "데이터베이스 오류가 발생했습니다."),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 001, "서버 내부 오류가 발생했습니다."),
+    DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 002, "데이터베이스 오류가 발생했습니다."),
 
     BAD_REQUEST(HttpStatus.BAD_REQUEST, 400, "잘못된 요청입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, 401, "인증되지 않은 사용자입니다."),
@@ -41,7 +41,10 @@ public enum CommonErrorCode implements BaseErrorCode {
 
     FIELD_VALIDATION_ERROR(HttpStatus.BAD_REQUEST, 422, "필드 유효성 검증에 실패했습니다."),
 
-    VALIDATION_CODE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, 502, "정의되지 않은 유효성 검사 코드입니다.");
+    VALIDATION_CODE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, 003, "정의되지 않은 유효성 검사 코드입니다."),
+    
+    // 컨텍스트 관련 (004-010)
+    TENANT_CONTEXT_NOT_SET(HttpStatus.INTERNAL_SERVER_ERROR, 004, "테넌트 컨텍스트가 설정되지 않았습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
