@@ -9,14 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 /**
  * MetricsStorageFactoryImpl 단위 테스트
@@ -25,24 +21,14 @@ import static org.mockito.Mockito.*;
  * @version 1.0.0
  * @since 2024-01-01
  */
-@ExtendWith(MockitoExtension.class)
 @DisplayName("메트릭 저장소 팩토리 테스트")
 class MetricsStorageFactoryImplTest {
-
-    @Mock
-    private InfluxDBStorage influxDBStorage;
-    
-    @Mock
-    private TimescaleDBStorage timescaleDBStorage;
-    
-    @Mock
-    private PrometheusStorage prometheusStorage;
 
     private MetricsStorageFactoryImpl storageFactory;
 
     @BeforeEach
     void setUp() {
-        storageFactory = new MetricsStorageFactoryImpl(influxDBStorage, timescaleDBStorage, prometheusStorage);
+        storageFactory = new MetricsStorageFactoryImpl();
         storageFactory.initializeDefaultConfigs(); // @PostConstruct 메서드 수동 호출
     }
 
@@ -53,9 +39,7 @@ class MetricsStorageFactoryImplTest {
     @Test
     @DisplayName("InfluxDB 저장소 생성 성공")
     void createStorage_InfluxDB_Success() {
-        // given
-        when(influxDBStorage.isEnabled()).thenReturn(true);
-        storageFactory.setStorageEnabled(StorageType.INFLUXDB, true); // 팩토리에서 활성화
+        // given - InfluxDB는 기본 활성화됨
 
         // when
         MetricsStorage result = storageFactory.createStorage(StorageType.INFLUXDB);
@@ -63,15 +47,13 @@ class MetricsStorageFactoryImplTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result).isInstanceOf(InfluxDBStorage.class);
-        verify(influxDBStorage, never()).setEnabled(anyBoolean());
     }
 
     @Test
     @DisplayName("TimescaleDB 저장소 생성 성공")
     void createStorage_TimescaleDB_Success() {
         // given
-        when(timescaleDBStorage.isEnabled()).thenReturn(true);
-        storageFactory.setStorageEnabled(StorageType.TIMESCALEDB, true); // 팩토리에서 활성화
+        storageFactory.setStorageEnabled(StorageType.TIMESCALEDB, true);
 
         // when
         MetricsStorage result = storageFactory.createStorage(StorageType.TIMESCALEDB);
@@ -79,15 +61,13 @@ class MetricsStorageFactoryImplTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result).isInstanceOf(TimescaleDBStorage.class);
-        verify(timescaleDBStorage, never()).setEnabled(anyBoolean());
     }
 
     @Test
     @DisplayName("Prometheus 저장소 생성 성공")
     void createStorage_Prometheus_Success() {
         // given
-        when(prometheusStorage.isEnabled()).thenReturn(true);
-        storageFactory.setStorageEnabled(StorageType.PROMETHEUS, true); // 팩토리에서 활성화
+        storageFactory.setStorageEnabled(StorageType.PROMETHEUS, true);
 
         // when
         MetricsStorage result = storageFactory.createStorage(StorageType.PROMETHEUS);
@@ -95,7 +75,6 @@ class MetricsStorageFactoryImplTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result).isInstanceOf(PrometheusStorage.class);
-        verify(prometheusStorage, never()).setEnabled(anyBoolean());
     }
 
     @Test
@@ -110,14 +89,7 @@ class MetricsStorageFactoryImplTest {
     @Test
     @DisplayName("모든 활성화된 저장소 생성 성공")
     void createAllStorages_Success() {
-        // given
-        when(influxDBStorage.getStorageType()).thenReturn(StorageType.INFLUXDB);
-        when(influxDBStorage.isEnabled()).thenReturn(true);
-        when(timescaleDBStorage.getStorageType()).thenReturn(StorageType.TIMESCALEDB);
-        when(timescaleDBStorage.isEnabled()).thenReturn(true);
-        when(prometheusStorage.getStorageType()).thenReturn(StorageType.PROMETHEUS);
-        when(prometheusStorage.isEnabled()).thenReturn(true);
-        
+        // given - 모두 활성화
         storageFactory.setStorageEnabled(StorageType.INFLUXDB, true);
         storageFactory.setStorageEnabled(StorageType.TIMESCALEDB, true);
         storageFactory.setStorageEnabled(StorageType.PROMETHEUS, true);
