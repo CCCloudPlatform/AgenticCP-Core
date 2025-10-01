@@ -42,6 +42,42 @@ public final class LogMaskingUtils {
 		return value == null ? "" : mask(String.valueOf(value), revealStart, revealEnd);
 	}
 
+	/**
+	 * IP 주소 마스킹
+	 * IPv4: a.b.c.d -> a.b.c.***
+	 * IPv6: a:b:c:d:e:f:g:h -> a:b:c:d:****
+	 */
+	public static String maskIpAddress(String ip) {
+		if (ip == null || ip.isEmpty()) {
+			return ip;
+		}
+		
+		if (ip.contains(".")) { // IPv4
+			String[] parts = ip.split("\\.");
+			if (parts.length == 4) {
+				return parts[0] + "." + parts[1] + "." + parts[2] + ".***";
+			}
+		} else if (ip.contains(":")) { // IPv6
+			String[] parts = ip.split(":");
+			if (parts.length >= 4) {
+				return parts[0] + ":" + parts[1] + ":" + parts[2] + ":" + parts[3] + ":****";
+			}
+		}
+		
+		return ip;
+	}
+
+	/**
+	 * User-Agent 마스킹
+	 * 길이가 maxPrefixLen 이하면 원문, 그 이상이면 prefix + "..."
+	 */
+	public static String previewUserAgent(String userAgent, int maxPrefixLen) {
+		if (userAgent == null || userAgent.length() <= maxPrefixLen) {
+			return userAgent;
+		}
+		return userAgent.substring(0, maxPrefixLen) + "...";
+	}
+
 	private static String repeat(char c, int count) {
 		StringBuilder sb = new StringBuilder(Math.max(0, count));
 		for (int i = 0; i < count; i++) {
