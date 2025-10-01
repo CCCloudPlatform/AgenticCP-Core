@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+security:
+  jwt:
+    secret: ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=
+    access-token-expiration-ms: 3600000
+    refresh-token-expiration-ms: 604800000
+
+logging:
+  level:
+    com.agenticcp.core: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
