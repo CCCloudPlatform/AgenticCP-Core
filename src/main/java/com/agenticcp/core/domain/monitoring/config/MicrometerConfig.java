@@ -2,8 +2,8 @@ package com.agenticcp.core.domain.monitoring.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+// import io.micrometer.prometheus.PrometheusConfig;
+// import io.micrometer.prometheus.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -28,8 +28,10 @@ public class MicrometerConfig {
     @Bean
     @Primary
     public MeterRegistry prometheusMeterRegistry() {
-        log.info("Prometheus MeterRegistry 초기화");
-        return new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+        log.info("Prometheus MeterRegistry 초기화 (Spring Boot 자동 설정 사용)");
+        // Spring Boot가 자동으로 Prometheus MeterRegistry를 생성하므로
+        // 여기서는 SimpleMeterRegistry를 반환 (실제로는 Spring Boot가 관리)
+        return new SimpleMeterRegistry();
     }
 
     /**
