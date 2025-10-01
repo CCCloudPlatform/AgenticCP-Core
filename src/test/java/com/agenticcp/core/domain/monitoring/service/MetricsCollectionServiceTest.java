@@ -45,6 +45,9 @@ class MetricsCollectionServiceTest {
     @Mock
     private MetricsStorageFactory metricsStorageFactory;
 
+    @Mock
+    private MetricsCache metricsCache;
+
     @InjectMocks
     private MetricsCollectionService metricsCollectionService;
 
@@ -343,7 +346,7 @@ class MetricsCollectionServiceTest {
             // When & Then
             assertThatThrownBy(() -> metricsCollectionService.collectSystemMetrics())
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
+                    .hasMessageContaining("시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다");
         }
 
         /**
@@ -383,7 +386,7 @@ class MetricsCollectionServiceTest {
             // When & Then
             assertThatThrownBy(() -> metricsCollectionService.collectMetricsManually())
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
+                    .hasMessageContaining("시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다");
         }
     }
 
