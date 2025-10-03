@@ -7,7 +7,6 @@ import com.agenticcp.core.domain.security.repository.SecurityPolicyRepository;
 // import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +39,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("PolicyEngineService 테스트")
-@Disabled("임시로 비활성화")
 class PolicyEngineServiceTest {
     
     @Mock

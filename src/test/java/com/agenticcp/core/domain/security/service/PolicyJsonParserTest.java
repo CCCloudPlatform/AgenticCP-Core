@@ -7,7 +7,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
@@ -21,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @since 2024-01-01
  */
 @DisplayName("PolicyJsonParser 테스트")
-@Disabled("임시로 비활성화")
 class PolicyJsonParserTest {
     
     private PolicyJsonParser policyJsonParser;
