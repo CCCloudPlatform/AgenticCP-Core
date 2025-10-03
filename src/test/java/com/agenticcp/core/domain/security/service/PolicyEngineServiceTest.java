@@ -127,6 +127,7 @@ class PolicyEngineServiceTest {
         void evaluatePolicy_CachedResult_ReturnsCachedResult() {
             // Given
             PolicyEvaluationResult cachedResult = PolicyEvaluationResult.allow("캐시된 결과");
+            cachedResult.setExpirationMinutes(5); // 만료되지 않은 캐시 (5분 후 만료)
             when(valueOperations.get(anyString())).thenReturn(cachedResult);
             
             // When
@@ -250,25 +251,31 @@ class PolicyEngineServiceTest {
             // Given
             String resourceType = "EC2_INSTANCE";
             String action = "CREATE";
+            Set<String> mockKeys = Set.of("policy_evaluation:EC2_INSTANCE:CREATE:user1");
+            when(redisTemplate.keys(anyString())).thenReturn(mockKeys);
             
             // When
             policyEngineService.evictPolicyCache(resourceType, action);
             
             // Then
-            verify(redisTemplate).delete(anyString());
+            verify(redisTemplate, atLeastOnce()).delete(anyString());
+            verify(redisTemplate, atLeastOnce()).delete(any(Set.class));
         }
         
         @Test
         @DisplayName("모든 정책 캐시 무효화")
         void evictAllPolicyCache_NoParameters_EvictsAllCache() {
             // Given
-            when(redisTemplate.keys(anyString())).thenReturn(Set.of("key1", "key2"));
+            Set<String> mockKeys1 = Set.of("policy_evaluation:key1", "policy_evaluation:key2");
+            Set<String> mockKeys2 = Set.of("applicable_policies:key1", "applicable_policies:key2");
+            when(redisTemplate.keys("policy_evaluation:*")).thenReturn(mockKeys1);
+            when(redisTemplate.keys("applicable_policies:*")).thenReturn(mockKeys2);
             
             // When
             policyEngineService.evictAllPolicyCache();
             
             // Then
-            verify(redisTemplate, times(2)).delete(any(Collection.class));
+            verify(redisTemplate, times(2)).delete(any(Set.class));
         }
     }
     
