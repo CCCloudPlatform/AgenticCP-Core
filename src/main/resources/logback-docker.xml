@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProfile name="docker">
+
+        <!-- STDOUT(JSON) - INFO 이하만 -->
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp fieldName="@timestamp" timeZone="Asia/Seoul"/>
+                    <logLevel fieldName="level"/>
+                    <loggerName fieldName="logger"/>
+                    <threadName fieldName="thread"/>
+                    <message fieldName="message"/>
+                    <mdc fieldName="mdc"/>
+                </providers>
+            </encoder>
+            <filter class="ch.qos.logback.classic.filter.LevelFilter">
+                <level>WARN</level>
+                <onMatch>DENY</onMatch>
+                <onMismatch>NEUTRAL</onMismatch>
+            </filter>
+            <filter class="ch.qos.logback.classic.filter.LevelFilter">
+                <level>ERROR</level>
+                <onMatch>DENY</onMatch>
+                <onMismatch>NEUTRAL</onMismatch>
+            </filter>
+        </appender>
+
+        <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="JSON_CONSOLE"/>
+            <queueSize>8192</queueSize>
+            <discardingThreshold>80</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
+
+        <!-- STDERR(JSON) - WARN 이상만 -->
+        <appender name="JSON_ERR" class="ch.qos.logback.core.ConsoleAppender">
+            <target>System.err</target>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp fieldName="@timestamp" timeZone="Asia/Seoul"/>
+                    <logLevel fieldName="level"/>
+                    <loggerName fieldName="logger"/>
+                    <threadName fieldName="thread"/>
+                    <message fieldName="message"/>
+                    <mdc fieldName="mdc"/>
+                </providers>
+            </encoder>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>WARN</level>
+            </filter>
+        </appender>
+
+        <appender name="ASYNC_ERR" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="JSON_ERR"/>
+            <queueSize>4096</queueSize>
+            <neverBlock>true</neverBlock>
+        </appender>
+
+        <root level="${LOG_LEVEL:-INFO}">
+            <appender-ref ref="ASYNC_JSON"/>
+            <appender-ref ref="ASYNC_ERR"/>
+        </root>
+
+        <logger name="org.springframework.security" level="INFO"/>
+        <logger name="org.hibernate.SQL" level="WARN"/>
+         <logger name="org.hibernate.type.descriptor.sql" level="WARN"/>
+
+    </springProfile>
+</included>

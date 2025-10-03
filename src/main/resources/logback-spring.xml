@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <property name="APP_NAME" value="agenticcp"/>
+    <property name="LOG_PATH" value="logs"/>
+    <property name="FILE_NAME" value="${APP_NAME}.log"/>
+    <property name="MAX_HISTORY" value="14"/>
+    <property name="TOTAL_SIZE_CAP" value="3GB"/>
+
+    <!-- 공통 콘솔 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="local,default">
+        <include resource="logback-local.xml" optional="false"/>
+    </springProfile>
+
+    <springProfile name="prod">
+        <include resource="logback-prod.xml" optional="false"/>
+    </springProfile>
+
+    <springProfile name="docker">
+        <include resource="logback-docker.xml" optional="false"/>
+    </springProfile>
+
+</configuration>

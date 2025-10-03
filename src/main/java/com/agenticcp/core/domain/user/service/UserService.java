@@ -235,33 +235,4 @@ public class UserService {
         userRepository.save(user);
         log.info("[UserService] deleteUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
     }
-
-    // 인증 서비스를 위한 추가 메서드들
-
-    @Transactional
-    public void updateFailedLoginAttempts(String username, int attempts) {
-        User user = getUserByUsernameOrThrow(username);
-        user.setFailedLoginAttempts(attempts);
-        userRepository.save(user);
-    }
-
-    @Transactional
-    public void resetFailedLoginAttempts(String username) {
-        User user = getUserByUsernameOrThrow(username);
-        user.resetFailedLoginAttempts();
-        userRepository.save(user);
-    }
-
-    @Transactional
-    public void lockUserAccount(String username, LocalDateTime lockedUntil) {
-        User user = getUserByUsernameOrThrow(username);
-        user.setLockedUntil(lockedUntil);
-        userRepository.save(user);
-    }
-
-    @Transactional
-    public User updateUser(User user) {
-        log.info("Updating user: {}", user.getUsername());
-        return userRepository.save(user);
-    }
 }

@@ -1,7 +1,7 @@
 spring:
   application:
     name: agenticcp-core
-  
+
   profiles:
     active: local
   
@@ -26,7 +26,15 @@ spring:
       enabled: true
     livereload:
       enabled: true
-      
+
+logging:
+  mdc:
+    enabled-keys: ["requestId", "tenantId", "clientIp"]
+    request-id-type: "uuid"
+    request-id-prefix: "req_"
+    request-id-length: 8
+    mask-client-ip: false
+    mask-user-agent: false
 
 server:
   port: 8080
@@ -41,36 +49,6 @@ management:
   endpoint:
     health:
       show-details: always
-
-# JWT 설정
-jwt:
-  secret: ${JWT_SECRET:dGhpc2lzdGVzdGp3dHNlY3JldGtleWZvcmFnZW50aWNjcGNvcmVhcHBsaWNhdGlvbg==}
-  access-token-expiration: 3600000 # 1시간 (밀리초)
-  refresh-token-expiration: 604800000 # 7일 (밀리초)
-
-# Redis 설정
-redis:
-  host: ${REDIS_HOST:localhost}
-  port: ${REDIS_PORT:6379}
-  timeout: 2000ms
-  lettuce:
-    pool:
-      max-active: 8
-      max-idle: 8
-      min-idle: 0
-
-logging:
-  level:
-    com.agenticcp: DEBUG
-    org.springframework.web: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/agenticcp-core.log
 
 ---
 spring:
@@ -95,9 +73,3 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
-
-logging:
-  level:
-    com.agenticcp: INFO
-    org.springframework.web: WARN
-    org.hibernate.SQL: WARN
