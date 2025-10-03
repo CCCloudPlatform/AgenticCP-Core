@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.monitoring.health.integration;
 
 import com.agenticcp.core.domain.monitoring.health.dto.*;
+import com.agenticcp.core.domain.monitoring.health.exception.ComponentNotFoundException;
 import com.agenticcp.core.domain.monitoring.health.service.AdvancedHealthCheckService;
 import com.agenticcp.core.domain.platform.entity.PlatformHealth;
 import com.agenticcp.core.domain.platform.repository.PlatformHealthRepository;
@@ -12,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 헬스체크 H2 데이터베이스 통합 테스트
@@ -91,15 +93,12 @@ class HealthCheckIntegrationTestH2 {
      * 존재하지 않는 컴포넌트에 대한 헬스체크 요청 시 UNKNOWN 상태를 반환하는지 확인합니다.
      */
     @Test
-    @DisplayName("존재하지 않는 컴포넌트 헬스체크 시 UNKNOWN 상태 반환")
-    void getComponentHealth_WithNonExistentComponent_ShouldReturnUnknown() {
-        // When
-        ComponentHealthStatus response = advancedHealthCheckService.getComponentHealth("nonexistent");
-
-        // Then
-        assertThat(response.getComponent()).isEqualTo("nonexistent");
-        assertThat(response.getStatus()).isEqualTo(PlatformHealth.HealthStatus.UNKNOWN);
-        assertThat(response.getMessage()).isEqualTo("Component not found");
+    @DisplayName("존재하지 않는 컴포넌트 헬스체크 시 ComponentNotFoundException 발생")
+    void getComponentHealth_WithNonExistentComponent_ShouldThrowComponentNotFoundException() {
+        // When & Then
+        assertThatThrownBy(() -> advancedHealthCheckService.getComponentHealth("nonexistent"))
+                .isInstanceOf(ComponentNotFoundException.class)
+                .hasMessage("Component 'nonexistent' not found");
     }
 
     /**
