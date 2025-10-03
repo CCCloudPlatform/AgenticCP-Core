@@ -13,6 +13,7 @@ import com.agenticcp.core.domain.user.service.RoleService;
 import com.agenticcp.core.domain.user.service.SystemRolePermissionInitializer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +25,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class TenantAuthorizationService {
 
@@ -38,7 +38,21 @@ public class TenantAuthorizationService {
     private final RoleService roleService;
     private final PermissionService permissionService;
     private final SystemRolePermissionInitializer systemRolePermissionInitializer;
-    private final RedisTemplate<String, Object> redisTemplate;
+    
+    @Autowired(required = false)
+    private RedisTemplate<String, Object> redisTemplate;
+
+    public TenantAuthorizationService(TenantService tenantService, RoleRepository roleRepository, 
+                                     PermissionRepository permissionRepository, RoleService roleService,
+                                     PermissionService permissionService, 
+                                     SystemRolePermissionInitializer systemRolePermissionInitializer) {
+        this.tenantService = tenantService;
+        this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
+        this.roleService = roleService;
+        this.permissionService = permissionService;
+        this.systemRolePermissionInitializer = systemRolePermissionInitializer;
+    }
 
     @Transactional
     public void initializeTenantPermissions(String tenantKey) {
@@ -51,10 +65,14 @@ public class TenantAuthorizationService {
 
     public List<RoleResponse> getTenantRoles(String tenantKey) {
         String cacheKey = CACHE_KEY_TENANT_ROLES + tenantKey;
-        @SuppressWarnings("unchecked")
-        List<RoleResponse> cached = (List<RoleResponse>) redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            return cached;
+        
+        // Redis가 활성화된 경우 캐시에서 조회
+        if (redisTemplate != null) {
+            @SuppressWarnings("unchecked")
+            List<RoleResponse> cached = (List<RoleResponse>) redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
         }
 
         Tenant tenant = tenantService.getTenantByKey(tenantKey)
@@ -64,16 +82,23 @@ public class TenantAuthorizationService {
                 .map(roleService::toRoleResponse)
                 .collect(Collectors.toList());
 
-        redisTemplate.opsForValue().set(cacheKey, responses, CACHE_TTL);
+        // Redis가 활성화된 경우 캐시에 저장
+        if (redisTemplate != null) {
+            redisTemplate.opsForValue().set(cacheKey, responses, CACHE_TTL);
+        }
         return responses;
     }
 
     public List<PermissionResponse> getTenantPermissions(String tenantKey) {
         String cacheKey = CACHE_KEY_TENANT_PERMISSIONS + tenantKey;
-        @SuppressWarnings("unchecked")
-        List<PermissionResponse> cached = (List<PermissionResponse>) redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            return cached;
+        
+        // Redis가 활성화된 경우 캐시에서 조회
+        if (redisTemplate != null) {
+            @SuppressWarnings("unchecked")
+            List<PermissionResponse> cached = (List<PermissionResponse>) redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
         }
 
         List<Permission> permissions = permissionRepository.findByTenantKey(tenantKey);
@@ -81,16 +106,21 @@ public class TenantAuthorizationService {
                 .map(this::toPermissionResponse)
                 .collect(Collectors.toList());
 
-        redisTemplate.opsForValue().set(cacheKey, responses, CACHE_TTL);
+        // Redis가 활성화된 경우 캐시에 저장
+        if (redisTemplate != null) {
+            redisTemplate.opsForValue().set(cacheKey, responses, CACHE_TTL);
+        }
         return responses;
     }
 
     @Transactional
     public void evictTenantCache(String tenantKey) {
-        String rolesKey = CACHE_KEY_TENANT_ROLES + tenantKey;
-        String permissionsKey = CACHE_KEY_TENANT_PERMISSIONS + tenantKey;
-        redisTemplate.delete(rolesKey);
-        redisTemplate.delete(permissionsKey);
+        if (redisTemplate != null) {
+            String rolesKey = CACHE_KEY_TENANT_ROLES + tenantKey;
+            String permissionsKey = CACHE_KEY_TENANT_PERMISSIONS + tenantKey;
+            redisTemplate.delete(rolesKey);
+            redisTemplate.delete(permissionsKey);
+        }
     }
 
     private PermissionResponse toPermissionResponse(Permission permission) {
