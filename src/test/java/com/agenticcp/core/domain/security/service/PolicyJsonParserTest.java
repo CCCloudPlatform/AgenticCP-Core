@@ -184,13 +184,13 @@ class PolicyJsonParserTest {
                         "description": "사용자 차단",
                         "duration": "PT1H",
                         "priority": 100,
-                        "enabled": true
+                        "status": "PENDING"
                     },
                     {
                         "type": "SEND_ALERT",
                         "description": "알림 발송",
                         "priority": 50,
-                        "enabled": true
+                        "status": "PENDING"
                     }
                 ]
                 """;

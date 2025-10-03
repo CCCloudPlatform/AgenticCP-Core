@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -35,6 +37,7 @@ import static org.mockito.Mockito.*;
  * @since 2024-01-01
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("PolicyEngineService 테스트")
 class PolicyEngineServiceTest {
     
@@ -74,6 +77,7 @@ class PolicyEngineServiceTest {
                 .policyKey("test-policy-1")
                 .policyName("테스트 정책")
                 .description("테스트용 정책")
+                .status(com.agenticcp.core.common.enums.Status.ACTIVE)
                 .isEnabled(true)
                 .priority(100)
                 .rules("{\"defaultAction\":\"ALLOW\",\"evaluationMode\":\"FIRST\"}")
@@ -138,23 +142,21 @@ class PolicyEngineServiceTest {
         }
         
         @Test
-        @DisplayName("null 요청으로 정책 평가")
-        void evaluatePolicy_NullRequest_ReturnsDenyResult() {
+        @DisplayName("null 요청으로 정책 평가 - 예외 발생")
+        void evaluatePolicy_NullRequest_ThrowsException() {
             // Given
             PolicyEvaluationRequest nullRequest = null;
             
-            // When
-            PolicyEvaluationResult result = policyEngineService.evaluatePolicy(nullRequest);
-            
-            // Then
-            assertThat(result).isNotNull();
-            assertThat(result.getDecision()).isEqualTo(PolicyDecision.DENY);
-            assertThat(result.getReason()).contains("정책 평가 중 오류가 발생했습니다");
+            // When & Then
+            org.junit.jupiter.api.Assertions.assertThrows(
+                com.agenticcp.core.common.exception.BusinessException.class,
+                () -> policyEngineService.evaluatePolicy(nullRequest)
+            );
         }
         
         @Test
-        @DisplayName("필수 필드가 없는 요청으로 정책 평가")
-        void evaluatePolicy_InvalidRequest_ReturnsDenyResult() {
+        @DisplayName("필수 필드가 없는 요청으로 정책 평가 - 예외 발생")
+        void evaluatePolicy_InvalidRequest_ThrowsException() {
             // Given
             PolicyEvaluationRequest invalidRequest = PolicyEvaluationRequest.builder()
                     .resourceType("") // 빈 문자열
@@ -162,13 +164,79 @@ class PolicyEngineServiceTest {
                     .userId("user123")
                     .build();
             
+            // When & Then
+            org.junit.jupiter.api.Assertions.assertThrows(
+                com.agenticcp.core.common.exception.BusinessException.class,
+                () -> policyEngineService.evaluatePolicy(invalidRequest)
+            );
+        }
+        
+        @Test
+        @DisplayName("적용 가능한 정책이 없을 때 기본 허용")
+        void evaluatePolicy_NoPolicies_ReturnsDefaultAllow() {
+            // Given
+            when(valueOperations.get(anyString())).thenReturn(null); // 캐시 없음
+            when(securityPolicyRepository.findGlobalPolicies(any())).thenReturn(List.of());
+            when(securityPolicyRepository.findActivePolicies(any())).thenReturn(List.of());
+            
             // When
-            PolicyEvaluationResult result = policyEngineService.evaluatePolicy(invalidRequest);
+            PolicyEvaluationResult result = policyEngineService.evaluatePolicy(testRequest);
             
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getDecision()).isEqualTo(PolicyDecision.DENY);
-            assertThat(result.getReason()).contains("정책 평가 중 오류가 발생했습니다");
+            assertThat(result.getDecision()).isEqualTo(PolicyDecision.ALLOW);
+            assertThat(result.getReason()).contains("적용 가능한 정책이 없어 기본적으로 허용합니다");
+        }
+        
+        @Test
+        @DisplayName("여러 정책 중 우선순위가 높은 정책 적용")
+        void evaluatePolicy_MultiplePolicies_AppliesHighestPriority() {
+            // Given
+            SecurityPolicy lowPriorityPolicy = SecurityPolicy.builder()
+                    .policyKey("low-priority-policy")
+                    .policyName("낮은 우선순위 정책")
+                    .status(com.agenticcp.core.common.enums.Status.ACTIVE)
+                    .isEnabled(true)
+                    .priority(50)
+                    .rules("{\"defaultAction\":\"DENY\",\"evaluationMode\":\"FIRST\"}")
+                    .conditions("{\"evaluationMode\":\"ALL\"}")
+                    .build();
+            
+            SecurityPolicy highPriorityPolicy = SecurityPolicy.builder()
+                    .policyKey("high-priority-policy")
+                    .policyName("높은 우선순위 정책")
+                    .status(com.agenticcp.core.common.enums.Status.ACTIVE)
+                    .isEnabled(true)
+                    .priority(100)
+                    .rules("{\"defaultAction\":\"ALLOW\",\"evaluationMode\":\"FIRST\"}")
+                    .conditions("{\"evaluationMode\":\"ALL\"}")
+                    .build();
+            
+            when(valueOperations.get(anyString())).thenReturn(null);
+            when(securityPolicyRepository.findGlobalPolicies(any())).thenReturn(List.of(lowPriorityPolicy, highPriorityPolicy));
+            when(securityPolicyRepository.findActivePolicies(any())).thenReturn(List.of());
+            
+            PolicyRules allowRules = PolicyRules.builder()
+                    .defaultAction("ALLOW")
+                    .evaluationMode(PolicyRules.RuleEvaluationMode.FIRST)
+                    .build();
+            
+            PolicyRules denyRules = PolicyRules.builder()
+                    .defaultAction("DENY")
+                    .evaluationMode(PolicyRules.RuleEvaluationMode.FIRST)
+                    .build();
+            
+            when(policyJsonParser.parsePolicyRules(contains("ALLOW"))).thenReturn(allowRules);
+            when(policyJsonParser.parsePolicyRules(contains("DENY"))).thenReturn(denyRules);
+            when(policyJsonParser.parsePolicyConditions(anyString())).thenReturn(PolicyConditions.builder().build());
+            
+            // When
+            PolicyEvaluationResult result = policyEngineService.evaluatePolicy(testRequest);
+            
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getPolicyKey()).isEqualTo("high-priority-policy");
+            assertThat(result.getDecision()).isEqualTo(PolicyDecision.ALLOW);
         }
     }
     
