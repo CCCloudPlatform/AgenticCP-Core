@@ -1,5 +1,7 @@
 package com.agenticcp.core.common.context;
 
+import com.agenticcp.core.common.enums.CommonErrorCode;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import lombok.extern.slf4j.Slf4j;
 
@@ -67,7 +69,7 @@ public class TenantContextHolder {
     public static String getCurrentTenantKeyOrThrow() {
         String tenantKey = getCurrentTenantKey();
         if (tenantKey == null) {
-            throw new IllegalStateException("Tenant context is not set");
+            throw new BusinessException(CommonErrorCode.TENANT_CONTEXT_NOT_SET);
         }
         return tenantKey;
     }
@@ -81,7 +83,7 @@ public class TenantContextHolder {
     public static Tenant getCurrentTenantOrThrow() {
         Tenant tenant = getCurrentTenant();
         if (tenant == null) {
-            throw new IllegalStateException("Tenant context is not set");
+            throw new BusinessException(CommonErrorCode.TENANT_CONTEXT_NOT_SET);
         }
         return tenant;
     }
