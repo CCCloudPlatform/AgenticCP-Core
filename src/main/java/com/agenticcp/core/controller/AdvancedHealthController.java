@@ -1,7 +1,7 @@
 package com.agenticcp.core.controller;
 
 import com.agenticcp.core.common.dto.ApiResponse;
-import com.agenticcp.core.common.enums.CommonErrorCode;
+import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.health.dto.*;
 import com.agenticcp.core.domain.monitoring.health.service.AdvancedHealthCheckService;
 import lombok.RequiredArgsConstructor;
@@ -48,8 +48,8 @@ public class AdvancedHealthController {
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("Error performing advanced health check", e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR, "Health check failed: " + e.getMessage()));
+            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
+                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
         }
     }
     
@@ -73,8 +73,8 @@ public class AdvancedHealthController {
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("Error performing component health check for: {}", name, e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR, "Component health check failed: " + e.getMessage()));
+            return ResponseEntity.status(MonitoringErrorCode.COMPONENT_HEALTH_CHECK_FAILED.getHttpStatus())
+                    .body(ApiResponse.error(MonitoringErrorCode.COMPONENT_HEALTH_CHECK_FAILED, e.getMessage()));
         }
     }
     
@@ -96,8 +96,8 @@ public class AdvancedHealthController {
             return ResponseEntity.ok(ApiResponse.success(summary));
         } catch (Exception e) {
             log.error("Error generating health check summary", e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR, "Health check summary failed: " + e.getMessage()));
+            return ResponseEntity.status(MonitoringErrorCode.HEALTH_SUMMARY_FAILED.getHttpStatus())
+                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_SUMMARY_FAILED, e.getMessage()));
         }
     }
     
@@ -122,8 +122,8 @@ public class AdvancedHealthController {
             return ResponseEntity.ok(ApiResponse.success(components));
         } catch (Exception e) {
             log.error("Error getting available components", e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR, "Failed to get available components: " + e.getMessage()));
+            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
+                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
         }
     }
 }

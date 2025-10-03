@@ -1,7 +1,10 @@
 package com.agenticcp.core.domain.monitoring.health.service;
 
 import com.agenticcp.core.domain.monitoring.health.dto.*;
+import com.agenticcp.core.domain.monitoring.health.exception.ComponentNotFoundException;
+import com.agenticcp.core.domain.monitoring.health.exception.HealthCheckException;
 import com.agenticcp.core.domain.monitoring.health.indicator.HealthIndicator;
+import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.platform.entity.PlatformHealth;
 import com.agenticcp.core.domain.platform.repository.PlatformHealthRepository;
 import lombok.RequiredArgsConstructor;
@@ -58,11 +61,8 @@ public class AdvancedHealthCheckService {
                 
             } catch (Exception e) {
                 log.error("Error checking health for indicator: {}", indicator.getName(), e);
-                HealthIndicatorResult errorResult = HealthIndicatorResult.critical(
-                    "Health check failed: " + e.getMessage()
-                );
-                components.put(indicator.getName(), errorResult);
-                overallStatus = PlatformHealth.HealthStatus.CRITICAL;
+                throw new HealthCheckException(MonitoringErrorCode.HEALTH_INDICATOR_ERROR, 
+                    "Health indicator error for " + indicator.getName() + ": " + e.getMessage());
             }
         }
         
@@ -92,13 +92,7 @@ public class AdvancedHealthCheckService {
         
         if (indicator == null) {
             log.warn("Component not found: {}", componentName);
-            return ComponentHealthStatus.builder()
-                    .component(componentName)
-                    .status(PlatformHealth.HealthStatus.UNKNOWN)
-                    .message("Component not found")
-                    .timestamp(LocalDateTime.now())
-                    .responseTime(System.currentTimeMillis() - startTime)
-                    .build();
+            throw new ComponentNotFoundException(componentName);
         }
         
         try {
