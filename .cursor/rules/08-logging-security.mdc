@@ -1,0 +1,444 @@
+# 로깅 및 보안 규칙
+
+## 로깅 (Logging)
+
+### 로그 레벨 사용 가이드
+
+#### ERROR - 즉각적인 조치 필요
+```java
+@Service
+@Slf4j
+public class UserService {
+    
+    public void processPayment(PaymentRequest request) {
+        try {
+            // 결제 처리
+        } catch (PaymentException e) {
+            log.error("결제 처리 실패: userId={}, amount={}, error={}", 
+                request.getUserId(), request.getAmount(), e.getMessage(), e);
+            throw e;
+        }
+    }
+}
+```
+
+#### WARN - 잠재적 문제
+```java
+@Service
+@Slf4j
+public class UserService {
+    
+    public User createUser(UserCreateRequest request) {
+        // 중복 시도 경고
+        if (userRepository.existsByUsername(request.getUsername())) {
+            log.warn("중복된 사용자명으로 생성 시도: username={}", 
+                request.getUsername());
+            throw new DuplicateUserException("username", request.getUsername());
+        }
+        
+        // 비정상적인 요청 패턴 경고
+        if (isAbnormalRequestPattern(request)) {
+            log.warn("비정상적인 요청 패턴 감지: username={}, ip={}", 
+                request.getUsername(), getClientIp());
+        }
+        
+        return userRepository.save(toEntity(request));
+    }
+}
+```
+
+#### INFO - 주요 비즈니스 로직
+```java
+@Service
+@Slf4j
+public class UserService {
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        log.info("사용자 생성 시작: username={}", request.getUsername());
+        
+        User user = toEntity(request);
+        User savedUser = userRepository.save(user);
+        
+        log.info("사용자 생성 완료: userId={}, username={}", 
+            savedUser.getId(), savedUser.getUsername());
+        
+        return savedUser;
+    }
+}
+```
+
+#### DEBUG - 상세 디버그 정보
+```java
+@Service
+@Slf4j
+public class UserService {
+    
+    public User getUserById(Long userId) {
+        log.debug("사용자 조회 시작: userId={}", userId);
+        
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> {
+                log.debug("사용자를 찾을 수 없음: userId={}", userId);
+                return new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND);
+            });
+        
+        log.debug("사용자 조회 완료: userId={}, username={}", 
+            user.getId(), user.getUsername());
+        
+        return user;
+    }
+}
+```
+
+### 로깅 포맷
+
+#### 구조화된 로깅
+```java
+@Service
+@Slf4j
+public class UserService {
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        // ✅ 좋은 예 - key=value 형식
+        log.info("사용자 생성: username={}, email={}, status={}", 
+            request.getUsername(), request.getEmail(), "ACTIVE");
+        
+        // ✅ 좋은 예 - 성공/실패 명확히
+        try {
+            User user = userRepository.save(toEntity(request));
+            log.info("사용자 생성 성공: userId={}", user.getId());
+            return user;
+        } catch (Exception e) {
+            log.error("사용자 생성 실패: username={}, error={}", 
+                request.getUsername(), e.getMessage(), e);
+            throw e;
+        }
+    }
+}
+```
+
+#### ❌ 나쁜 예
+```java
+// 1. 문자열 연결
+log.info("사용자 생성: " + username);  // 성능 저하
+
+// 2. 불명확한 메시지
+log.info("success");
+log.error("error");
+
+// 3. 민감 정보 로깅
+log.info("사용자 로그인: password={}", password);  // 절대 금지!
+
+// 4. 예외 스택 트레이스 누락
+log.error("에러 발생: {}", e.getMessage());  // e 객체 누락
+```
+
+### 민감 정보 마스킹
+
+#### 자동 마스킹 (LogMaskingUtils 사용)
+```java
+@Service
+@Slf4j
+public class UserService {
+    
+    public User createUser(UserCreateRequest request) {
+        // ✅ 이메일 마스킹
+        log.info("사용자 생성: username={}, email={}", 
+            request.getUsername(),
+            LogMaskingUtils.maskEmail(request.getEmail()));
+        // 출력: test@example.com -> te**@example.com
+        
+        // ✅ 전화번호 마스킹
+        log.info("전화번호 업데이트: phone={}", 
+            LogMaskingUtils.maskPhone(request.getPhone()));
+        // 출력: 010-1234-5678 -> 010-****-5678
+        
+        return userRepository.save(toEntity(request));
+    }
+}
+```
+
+#### 절대 로깅하면 안 되는 정보
+```java
+// ❌ 절대 금지
+log.info("password={}", password);              // 비밀번호
+log.info("creditCard={}", creditCardNumber);    // 신용카드 번호
+log.info("ssn={}", socialSecurityNumber);       // 주민등록번호
+log.info("jwt={}", jwtToken);                   // JWT 토큰 전체
+log.info("apiKey={}", apiKey);                  // API 키
+log.info("accessToken={}", accessToken);        // 액세스 토큰
+```
+
+## 보안 (Security)
+
+### 입력 검증
+
+#### DTO 검증 (Bean Validation)
+```java
+@Data
+@Builder
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", 
+        message = "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다")
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    @Size(max = 255)
+    private String email;
+    
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(min = 2, max = 100)
+    private String name;
+}
+```
+
+#### Path Variable 검증
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+@Validated
+public class UserController {
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> getUser(
+            @PathVariable 
+            @Positive(message = "사용자 ID는 양수여야 합니다") 
+            Long id) {
+        // @Positive가 자동으로 검증
+        UserResponse user = userService.getUserById(id);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+}
+```
+
+### SQL 인젝션 방지
+
+#### ✅ 안전한 방법
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    // 1. 메서드 이름 기반 쿼리 (안전)
+    Optional<User> findByUsername(String username);
+    
+    // 2. @Query with @Param (안전)
+    @Query("SELECT u FROM User u WHERE u.username = :username AND u.status = :status")
+    Optional<User> findByUsernameAndStatus(
+        @Param("username") String username, 
+        @Param("status") UserStatus status
+    );
+    
+    // 3. 네이티브 쿼리 with @Param (안전)
+    @Query(value = "SELECT * FROM users WHERE username = :username", nativeQuery = true)
+    Optional<User> findByUsernameNative(@Param("username") String username);
+}
+```
+
+#### ❌ 위험한 방법 (절대 금지)
+```java
+// 절대 사용 금지 - 문자열 연결로 쿼리 생성
+@Query("SELECT u FROM User u WHERE u.username = '" + username + "'")
+Optional<User> findByUsername(String username);
+
+// 절대 사용 금지 - EntityManager로 문자열 연결
+entityManager.createQuery("SELECT u FROM User u WHERE u.username = '" + username + "'");
+```
+
+### XSS (Cross-Site Scripting) 방지
+
+#### HTML 이스케이프
+```java
+@Service
+public class UserService {
+    
+    public User createUser(UserCreateRequest request) {
+        // ✅ HTML 태그 제거 또는 이스케이프
+        String sanitizedName = HtmlUtils.htmlEscape(request.getName());
+        
+        User user = User.builder()
+            .username(request.getUsername())
+            .name(sanitizedName)  // 이스케이프된 이름 사용
+            .build();
+        
+        return userRepository.save(user);
+    }
+}
+```
+
+### 인증 및 인가
+
+#### JWT 토큰 검증
+```java
+@Service
+@RequiredArgsConstructor
+public class JwtService {
+    
+    private final String secretKey;
+    
+    public Claims validateToken(String token) {
+        try {
+            return Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        } catch (ExpiredJwtException e) {
+            throw new BusinessException(AuthErrorCode.TOKEN_EXPIRED);
+        } catch (JwtException e) {
+            throw new BusinessException(AuthErrorCode.TOKEN_INVALID);
+        }
+    }
+}
+```
+
+#### 권한 확인
+```java
+@Service
+@RequiredArgsConstructor
+public class PostService {
+    
+    public void deletePost(Long userId, Long postId) {
+        Post post = postRepository.findById(postId)
+            .orElseThrow(() -> new ResourceNotFoundException(PostErrorCode.POST_NOT_FOUND));
+        
+        // ✅ 권한 확인 - 리소스 소유자 확인
+        if (!post.getOwnerId().equals(userId)) {
+            throw new AuthorizationException(userId, "Post", "delete");
+        }
+        
+        postRepository.delete(post);
+    }
+}
+```
+
+### 비밀번호 보안
+
+#### 비밀번호 암호화
+```java
+@Service
+@RequiredArgsConstructor
+public class PasswordService {
+    
+    private final PasswordEncoder passwordEncoder;
+    
+    // ✅ BCrypt 사용
+    public String encodePassword(String rawPassword) {
+        return passwordEncoder.encode(rawPassword);
+    }
+    
+    public boolean matches(String rawPassword, String encodedPassword) {
+        return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+}
+
+// ❌ 절대 금지
+// 1. 평문 저장
+user.setPassword(rawPassword);  // 절대 금지!
+
+// 2. MD5, SHA-1 사용
+MessageDigest.getInstance("MD5");  // 취약한 알고리즘
+```
+
+#### 비밀번호 정책
+```java
+@Data
+public class PasswordChangeRequest {
+    
+    @NotBlank(message = "비밀번호는 필수입니다")
+    @Size(min = 8, max = 20, message = "비밀번호는 8-20자 사이여야 합니다")
+    @Pattern(
+        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$",
+        message = "비밀번호는 영문 대소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다"
+    )
+    private String newPassword;
+}
+```
+
+### CORS 설정
+
+```java
+@Configuration
+public class CorsConfig {
+    
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        
+        // ✅ 명시적으로 허용할 Origin 지정
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:3000",
+            "https://dev.agenticcp.com",
+            "https://agenticcp.com"
+        ));
+        
+        // ❌ 절대 금지 - 모든 Origin 허용
+        // configuration.addAllowedOrigin("*");
+        
+        configuration.setAllowedMethods(Arrays.asList(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+        ));
+        
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
+    }
+}
+```
+
+### Rate Limiting
+
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+public class UserController {
+    
+    // API 호출 제한 (예: Bucket4j 사용)
+    @PostMapping("/login")
+    @RateLimit(permitsPerMinute = 5)  // 분당 5회 제한
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
+            @Valid @RequestBody LoginRequest request) {
+        // 로그인 로직
+    }
+}
+```
+
+## 보안 체크리스트
+
+### ✅ 필수 보안 조치
+```
+- [ ] 모든 입력 데이터 검증 (@Valid, @Validated)
+- [ ] SQL 인젝션 방지 (파라미터 바인딩 사용)
+- [ ] XSS 방지 (HTML 이스케이프)
+- [ ] 비밀번호 암호화 (BCrypt)
+- [ ] JWT 토큰 검증
+- [ ] CORS 설정 (명시적 Origin 지정)
+- [ ] HTTPS 사용 (프로덕션)
+- [ ] 민감 정보 마스킹 (로그)
+- [ ] Rate Limiting (API 호출 제한)
+- [ ] 권한 확인 (리소스 접근 시)
+```
+
+### ❌ 보안 금지사항
+```
+- [ ] 비밀번호 평문 저장
+- [ ] SQL 문자열 연결
+- [ ] 민감 정보 로깅
+- [ ] CORS "*" 허용
+- [ ] HTTP 사용 (프로덕션)
+- [ ] 약한 암호화 알고리즘 (MD5, SHA-1)
+- [ ] 하드코딩된 시크릿 키
+- [ ] 예외 메시지에 민감 정보 포함
+```
+
+이 로깅 및 보안 규칙을 준수하여 안전하고 추적 가능한 애플리케이션을 구현하세요.
+

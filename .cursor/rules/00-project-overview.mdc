@@ -1,0 +1,129 @@
+# AgenticCP-Core 프로젝트 개요
+
+## 프로젝트 정보
+
+**프로젝트명**: AgenticCP-Core  
+**설명**: 멀티클라우드 플랫폼 (AWS, GCP, Azure 통합 관리)  
+**아키텍처**: 도메인 주도 설계 (DDD), 멀티테넌트 아키텍처
+
+## 기술 스택
+
+### Backend
+- **언어**: Java 17
+- **프레임워크**: Spring Boot 3.x
+- **ORM**: JPA (Hibernate)
+- **보안**: Spring Security, JWT
+- **빌드 도구**: Maven
+
+### Database
+- **주 데이터베이스**: MySQL 8.0
+- **캐시**: Redis
+- **연결 풀**: HikariCP
+
+### 테스트
+- **단위 테스트**: JUnit 5, Mockito
+- **통합 테스트**: TestContainers
+- **어설션**: AssertJ
+
+### 기타
+- **로깅**: SLF4J + Logback
+- **문서화**: SpringDoc OpenAPI (Swagger)
+- **검증**: Bean Validation (Hibernate Validator)
+
+## 아키텍처 특징
+
+### 1. 도메인 주도 설계 (DDD)
+- 비즈니스 도메인별로 패키지 분리
+- 각 도메인은 독립적인 Entity, Service, Repository 보유
+- 도메인 간 의존성 최소화
+
+### 2. 멀티테넌트 아키텍처
+- 테넌트별 데이터 격리
+- TenantContext를 통한 테넌트 식별
+- 모든 API 요청에 테넌트 정보 포함
+
+### 3. 계층형 아키텍처
+```
+┌─────────────────────────────────┐
+│   Controller (API Layer)        │  REST API 엔드포인트
+├─────────────────────────────────┤
+│   Service (Business Layer)      │  비즈니스 로직
+├─────────────────────────────────┤
+│   Repository (Data Layer)       │  데이터 접근
+├─────────────────────────────────┤
+│   Entity (Domain Model)         │  도메인 모델
+└─────────────────────────────────┘
+```
+
+## 주요 도메인
+
+### 1. User (사용자 관리)
+- 사용자 CRUD
+- 역할 및 권한 관리
+- 인증 및 인가
+
+### 2. Tenant (테넌트 관리)
+- 테넌트 생성 및 관리
+- 테넌트별 리소스 할당
+- 테넌트 격리
+
+### 3. Cloud (클라우드 관리)
+- AWS, GCP, Azure 계정 관리
+- 클라우드 리소스 조회
+- 멀티클라우드 통합
+
+### 4. Security (보안)
+- 보안 정책 관리
+- 액세스 제어
+- 감사 로그
+
+### 5. Platform (플랫폼 관리)
+- 플랫폼 설정
+- 시스템 관리
+- 라이선스 관리
+
+## 개발 원칙
+
+### 1. 일관성
+- 모든 코드는 동일한 스타일 준수
+- 네이밍 규칙 통일
+- API 설계 패턴 일관성
+
+### 2. 테스트 주도
+- 모든 비즈니스 로직은 테스트 코드 작성
+- 최소 70% 이상 테스트 커버리지
+- Given-When-Then 패턴 사용
+
+### 3. 보안 우선
+- 모든 입력 데이터 검증
+- SQL 인젝션 방지
+- 민감 정보 암호화
+
+### 4. 성능 고려
+- N+1 문제 방지
+- 적절한 인덱스 설계
+- 캐싱 전략 활용
+
+## 코드 생성 시 기본 원칙
+
+### 새로운 도메인 추가 시
+1. `com.agenticcp.core.domain.{도메인명}` 패키지 생성
+2. Entity, DTO, Service, Controller, Repository 생성
+3. 도메인별 ErrorCode enum 생성 (에러 코드 범위 준수)
+4. 테스트 코드 작성
+
+### 새로운 API 추가 시
+1. RESTful URL 설계
+2. ApiResponse<T> 반환
+3. 입력 검증 (@Valid)
+4. 예외 처리
+5. 로깅 추가
+
+### 새로운 Entity 추가 시
+1. BaseEntity 상속
+2. 적절한 인덱스 정의
+3. Lombok 어노테이션 사용
+4. Enum은 STRING으로 저장
+
+이 프로젝트는 멀티클라우드 환경에서 안정적이고 확장 가능한 플랫폼을 제공하는 것을 목표로 합니다.
+

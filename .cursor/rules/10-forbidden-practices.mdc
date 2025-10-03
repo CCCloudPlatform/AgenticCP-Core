@@ -1,0 +1,462 @@
+# 금지 사항 (Absolutely Forbidden)
+
+이 문서에 명시된 사항들은 **절대로 사용해서는 안 됩니다**.
+
+## 1. 필드 주입 (Field Injection) 🚫
+
+### ❌ 절대 금지
+```java
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;  // 필드 주입 금지!
+    
+    @Autowired
+    private EmailService emailService;      // 필드 주입 금지!
+}
+```
+
+### ✅ 반드시 사용
+```java
+// 방법 1: 생성자 주입 (Lombok)
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+}
+
+// 방법 2: 생성자 주입 (수동)
+@Service
+public class UserService {
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    
+    @Autowired
+    public UserService(UserRepository userRepository, EmailService emailService) {
+        this.userRepository = userRepository;
+        this.emailService = emailService;
+    }
+}
+```
+
+**금지 이유:** 테스트 어려움, 순환 의존성 발견 늦음, 불변성 보장 불가
+
+---
+
+## 2. SELECT * 쿼리 🚫
+
+### ❌ 절대 금지
+```sql
+-- 네이티브 쿼리
+SELECT * FROM users WHERE status = 'ACTIVE';
+
+-- JPQL
+@Query("SELECT u FROM User u")
+```
+
+### ✅ 반드시 사용
+```sql
+-- 명시적 컬럼 지정
+SELECT id, username, email, status FROM users WHERE status = 'ACTIVE';
+
+-- JPQL도 명시적으로
+@Query("SELECT u.id, u.username, u.email FROM User u")
+```
+
+**금지 이유:** 불필요한 데이터 전송, 성능 저하, 컬럼 변경 시 오류
+
+---
+
+## 3. 매직 넘버 하드코딩 🚫
+
+### ❌ 절대 금지
+```java
+if (user.getAge() >= 18) {  // 18은 무엇?
+    allow();
+}
+
+if (retryCount > 3) {  // 3은 무엇?
+    fail();
+}
+
+Thread.sleep(5000);  // 5000은 무엇?
+```
+
+### ✅ 반드시 사용
+```java
+private static final int MINIMUM_AGE = 18;
+private static final int MAX_RETRY_COUNT = 3;
+private static final long TIMEOUT_MILLIS = 5000;
+
+if (user.getAge() >= MINIMUM_AGE) {
+    allow();
+}
+
+if (retryCount > MAX_RETRY_COUNT) {
+    fail();
+}
+
+Thread.sleep(TIMEOUT_MILLIS);
+```
+
+**금지 이유:** 가독성 저하, 의미 불명확, 수정 어려움
+
+---
+
+## 4. System.out.println() 사용 🚫
+
+### ❌ 절대 금지
+```java
+System.out.println("User created: " + userId);
+System.out.println("Error occurred: " + e.getMessage());
+System.err.println("Critical error!");
+```
+
+### ✅ 반드시 사용
+```java
+@Slf4j
+public class UserService {
+    public void createUser() {
+        log.info("User created: userId={}", userId);
+        log.error("Error occurred: {}", e.getMessage(), e);
+    }
+}
+```
+
+**금지 이유:** 로그 레벨 제어 불가, 파일 저장 불가, 프로덕션 추적 불가
+
+---
+
+## 5. Enum ORDINAL 사용 🚫
+
+### ❌ 절대 금지
+```java
+@Enumerated(EnumType.ORDINAL)  // 순서 변경 시 데이터 오염!
+@Column(name = "status")
+private UserStatus status;
+
+// UserStatus: ACTIVE(0), INACTIVE(1), DELETED(2)
+// 만약 PENDING을 ACTIVE 앞에 추가하면?
+// PENDING(0), ACTIVE(1), INACTIVE(2), DELETED(3)
+// 기존 데이터의 0은 PENDING으로 해석됨! (원래 ACTIVE였는데)
+```
+
+### ✅ 반드시 사용
+```java
+@Enumerated(EnumType.STRING)  // 문자열로 저장
+@Column(name = "status", nullable = false, length = 20)
+private UserStatus status;
+```
+
+**금지 이유:** Enum 순서 변경 시 데이터 오염, 디버깅 어려움
+
+---
+
+## 6. 트랜잭션 없는 쓰기 작업 🚫
+
+### ❌ 절대 금지
+```java
+@Service
+public class UserService {
+    // @Transactional 없음!
+    public User createUser(UserCreateRequest request) {
+        return userRepository.save(user);
+    }
+    
+    // @Transactional 없음!
+    public void updateUser(Long id, UserUpdateRequest request) {
+        User user = userRepository.findById(id).orElseThrow();
+        user.setName(request.getName());
+        userRepository.save(user);
+    }
+}
+```
+
+### ✅ 반드시 사용
+```java
+@Service
+@Transactional(readOnly = true)  // 기본은 readOnly
+public class UserService {
+    
+    @Transactional  // 쓰기 작업은 명시
+    public User createUser(UserCreateRequest request) {
+        return userRepository.save(user);
+    }
+    
+    @Transactional  // 쓰기 작업은 명시
+    public void updateUser(Long id, UserUpdateRequest request) {
+        User user = userRepository.findById(id).orElseThrow();
+        user.setName(request.getName());
+        userRepository.save(user);
+    }
+}
+```
+
+**금지 이유:** 데이터 일관성 보장 불가, 롤백 불가, 성능 저하
+
+---
+
+## 7. Entity를 직접 반환 🚫
+
+### ❌ 절대 금지
+```java
+@GetMapping("/{id}")
+public ResponseEntity<User> getUser(@PathVariable Long id) {
+    User user = userService.getUserById(id);
+    return ResponseEntity.ok(user);  // Entity 직접 노출!
+}
+```
+
+### ✅ 반드시 사용
+```java
+@GetMapping("/{id}")
+public ResponseEntity<ApiResponse<UserResponse>> getUser(@PathVariable Long id) {
+    User user = userService.getUserById(id);
+    UserResponse response = UserResponse.from(user);
+    return ResponseEntity.ok(ApiResponse.success(response));
+}
+```
+
+**금지 이유:** 
+- Entity 내부 구조 노출
+- 순환 참조 문제
+- 불필요한 데이터 전송
+- API 변경 시 영향 큼
+
+---
+
+## 8. 비밀번호 평문 저장 🚫
+
+### ❌ 절대 금지
+```java
+@Column(name = "password")
+private String password;  // 평문 저장 금지!
+
+user.setPassword(request.getPassword());  // 그대로 저장 금지!
+```
+
+### ✅ 반드시 사용
+```java
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final PasswordEncoder passwordEncoder;
+    
+    public User createUser(UserCreateRequest request) {
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        
+        User user = User.builder()
+            .username(request.getUsername())
+            .password(encodedPassword)  // 암호화된 비밀번호 저장
+            .build();
+        
+        return userRepository.save(user);
+    }
+}
+```
+
+**금지 이유:** 보안 취약점, 법적 문제, 개인정보 유출
+
+---
+
+## 9. 민감 정보 로깅 🚫
+
+### ❌ 절대 금지
+```java
+log.info("User login: username={}, password={}", username, password);
+log.info("Credit card: {}", creditCardNumber);
+log.info("JWT token: {}", jwtToken);
+log.info("API key: {}", apiKey);
+log.info("주민등록번호: {}", ssn);
+```
+
+### ✅ 반드시 사용
+```java
+log.info("User login: username={}", username);  // 비밀번호 제외
+log.info("Credit card: {}", maskCreditCard(creditCardNumber));  // 마스킹
+log.info("JWT token: {}", jwtToken.substring(0, 10) + "...");  // 일부만
+```
+
+**금지 이유:** 개인정보 유출, 보안 취약점, 법적 문제
+
+---
+
+## 10. EAGER 로딩 사용 🚫
+
+### ❌ 절대 금지
+```java
+@OneToMany(fetch = FetchType.EAGER)  // N+1 문제 발생!
+private List<UserProfile> profiles;
+
+@ManyToOne(fetch = FetchType.EAGER)  // 불필요한 조인!
+private User user;
+```
+
+### ✅ 반드시 사용
+```java
+@OneToMany(fetch = FetchType.LAZY)  // 기본은 LAZY
+private List<UserProfile> profiles;
+
+@ManyToOne(fetch = FetchType.LAZY)
+private User user;
+
+// 필요 시 Fetch Join 사용
+@Query("SELECT u FROM User u LEFT JOIN FETCH u.profiles WHERE u.id = :id")
+Optional<User> findByIdWithProfiles(@Param("id") Long id);
+```
+
+**금지 이유:** N+1 문제, 성능 저하, 불필요한 데이터 로딩
+
+---
+
+## 11. SQL 문자열 연결 🚫
+
+### ❌ 절대 금지
+```java
+// SQL Injection 취약점!
+String sql = "SELECT * FROM users WHERE username = '" + username + "'";
+entityManager.createNativeQuery(sql);
+
+@Query("SELECT u FROM User u WHERE u.username = '" + username + "'")
+Optional<User> findByUsername(String username);
+```
+
+### ✅ 반드시 사용
+```java
+@Query("SELECT u FROM User u WHERE u.username = :username")
+Optional<User> findByUsername(@Param("username") String username);
+```
+
+**금지 이유:** SQL Injection 취약점, 보안 문제
+
+---
+
+## 12. 예외 무시 🚫
+
+### ❌ 절대 금지
+```java
+try {
+    doSomething();
+} catch (Exception e) {
+    // 아무것도 하지 않음 - 예외 무시!
+}
+
+try {
+    doSomething();
+} catch (Exception e) {
+    e.printStackTrace();  // 운영 환경에서 의미 없음
+}
+```
+
+### ✅ 반드시 사용
+```java
+try {
+    doSomething();
+} catch (Exception e) {
+    log.error("작업 실패: {}", e.getMessage(), e);
+    throw new BusinessException(ErrorCode.OPERATION_FAILED, e);
+}
+```
+
+**금지 이유:** 디버깅 불가, 오류 추적 불가, 잠재적 버그
+
+---
+
+## 13. primitive 타입 (null 가능한 경우) 🚫
+
+### ❌ 절대 금지
+```java
+@Column(name = "age")
+private int age;  // null 불가능!
+
+@Column(name = "balance")
+private double balance;  // null 불가능!
+```
+
+### ✅ 반드시 사용
+```java
+@Column(name = "age")
+private Integer age;  // null 가능
+
+@Column(name = "balance")
+private BigDecimal balance;  // 금액은 BigDecimal
+```
+
+**금지 이유:** null 표현 불가, NullPointerException 위험
+
+---
+
+## 14. Double/Float로 금액 표현 🚫
+
+### ❌ 절대 금지
+```java
+@Column(name = "price")
+private Double price;  // 부동소수점 오차!
+
+@Column(name = "amount")
+private Float amount;  // 부동소수점 오차!
+```
+
+### ✅ 반드시 사용
+```java
+@Column(name = "price", precision = 19, scale = 4)
+private BigDecimal price;  // 정확한 계산
+```
+
+**금지 이유:** 부동소수점 오차, 금액 계산 오류
+
+---
+
+## 15. 하드코딩된 시크릿 키 🚫
+
+### ❌ 절대 금지
+```java
+private static final String SECRET_KEY = "my-secret-key-123";
+private static final String API_KEY = "AIzaSyD...";
+private static final String DB_PASSWORD = "password123";
+```
+
+### ✅ 반드시 사용
+```yaml
+# application.yml
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+
+cloud:
+  aws:
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}
+```
+
+```java
+@Value("${jwt.secret-key}")
+private String secretKey;
+```
+
+**금지 이유:** 보안 취약점, Git 커밋 시 노출, 운영/개발 환경 분리 불가
+
+---
+
+## 요약: 절대 금지 사항 체크리스트
+
+```
+🚫 [ ] 필드 주입 (@Autowired on fields)
+🚫 [ ] SELECT * 쿼리
+🚫 [ ] 매직 넘버 하드코딩
+🚫 [ ] System.out.println()
+🚫 [ ] Enum ORDINAL
+🚫 [ ] 트랜잭션 없는 쓰기 작업
+🚫 [ ] Entity 직접 반환
+🚫 [ ] 비밀번호 평문 저장
+🚫 [ ] 민감 정보 로깅
+🚫 [ ] EAGER 로딩
+🚫 [ ] SQL 문자열 연결
+🚫 [ ] 예외 무시
+🚫 [ ] primitive 타입 (null 가능한 경우)
+🚫 [ ] Double/Float로 금액 표현
+🚫 [ ] 하드코딩된 시크릿 키
+```
+
+이 금지 사항들을 **절대로 위반하지 마세요!**
+

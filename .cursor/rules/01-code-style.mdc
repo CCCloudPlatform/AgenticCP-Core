@@ -1,0 +1,311 @@
+# 코드 스타일 가이드
+
+## 기본 규칙
+
+### 들여쓰기
+- **4 spaces** 사용 (탭 절대 금지)
+- 중괄호 내부 코드는 한 단계 들여쓰기
+
+```java
+// ✅ 좋은 예
+public class UserService {
+    
+    public User createUser(UserCreateRequest request) {
+        if (isValid(request)) {
+            return save(request);
+        }
+        return null;
+    }
+}
+
+// ❌ 나쁜 예 (탭 사용 또는 2 spaces)
+public class UserService {
+  public User createUser(UserCreateRequest request) {
+  if (isValid(request)) {
+  return save(request);
+  }
+  return null;
+  }
+}
+```
+
+### 중괄호
+- 여는 중괄호 `{`는 같은 줄
+- 닫는 중괄호 `}`는 새로운 줄
+- 한 줄 if문도 중괄호 사용
+
+```java
+// ✅ 좋은 예
+if (condition) {
+    doSomething();
+}
+
+// ❌ 나쁜 예
+if (condition) 
+{
+    doSomething();
+}
+
+// ❌ 나쁜 예 (중괄호 생략)
+if (condition) doSomething();
+```
+
+### 공백 사용
+
+#### 연산자 앞뒤
+```java
+// ✅ 좋은 예
+int result = a + b;
+boolean isValid = (x > 0) && (y < 10);
+
+// ❌ 나쁜 예
+int result=a+b;
+boolean isValid=(x>0)&&(y<10);
+```
+
+#### 콤마 뒤
+```java
+// ✅ 좋은 예
+method(param1, param2, param3);
+List<String> list = Arrays.asList("a", "b", "c");
+
+// ❌ 나쁜 예
+method(param1,param2,param3);
+```
+
+#### 키워드와 괄호
+```java
+// ✅ 좋은 예
+if (condition) {
+for (int i = 0; i < 10; i++) {
+while (running) {
+
+// ❌ 나쁜 예
+if(condition){
+for(int i=0;i<10;i++){
+```
+
+### 빈 줄 사용
+
+#### 메서드 간
+```java
+// ✅ 좋은 예
+public class UserService {
+    
+    public User findById(Long id) {
+        return userRepository.findById(id).orElseThrow();
+    }
+    
+    public User createUser(UserCreateRequest request) {
+        return userRepository.save(toEntity(request));
+    }
+    
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
+}
+```
+
+#### 로직 블록 간
+```java
+// ✅ 좋은 예
+public User createUser(UserCreateRequest request) {
+    // 검증
+    validateUserUniqueness(request);
+    
+    // 변환
+    User user = toEntity(request);
+    
+    // 저장
+    User savedUser = userRepository.save(user);
+    
+    // 이벤트 발행
+    publishUserCreatedEvent(savedUser);
+    
+    return savedUser;
+}
+```
+
+## Import 순서
+
+```java
+// 1. Java standard libraries
+import java.util.*;
+import java.time.*;
+
+// 2. Third-party libraries
+import org.springframework.*;
+import lombok.*;
+
+// 3. Project classes
+import com.agenticcp.core.*;
+```
+
+- 그룹 간 빈 줄로 구분
+- 각 그룹 내에서는 알파벳 순
+- `*` import는 최소화
+
+## 클래스 구조 순서
+
+```java
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class UserService {
+    
+    // 1. 상수
+    private static final int MAX_RETRY_COUNT = 3;
+    private static final String DEFAULT_STATUS = "ACTIVE";
+    
+    // 2. 필드 (final로 선언, 의존성 주입)
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    
+    // 3. 생성자 (Lombok으로 자동 생성되므로 생략 가능)
+    
+    // 4. Public 메서드
+    public User getUserById(Long id) {
+        // ...
+    }
+    
+    public User createUser(UserCreateRequest request) {
+        // ...
+    }
+    
+    // 5. Private 메서드
+    private void validateUserUniqueness(UserCreateRequest request) {
+        // ...
+    }
+    
+    private User toEntity(UserCreateRequest request) {
+        // ...
+    }
+}
+```
+
+## 라인 길이
+- 최대 **120자**
+- 초과 시 적절히 줄바꿈
+
+```java
+// ✅ 좋은 예
+@Query("""
+    SELECT u FROM User u 
+    WHERE u.status = :status 
+    AND u.createdAt BETWEEN :startDate AND :endDate
+    ORDER BY u.createdAt DESC
+    """)
+List<User> findUsersByStatusAndDateRange(
+    @Param("status") UserStatus status,
+    @Param("startDate") LocalDateTime startDate,
+    @Param("endDate") LocalDateTime endDate
+);
+
+// ❌ 나쁜 예 (너무 긴 한 줄)
+@Query("SELECT u FROM User u WHERE u.status = :status AND u.createdAt BETWEEN :startDate AND :endDate ORDER BY u.createdAt DESC")
+List<User> findUsersByStatusAndDateRange(@Param("status") UserStatus status, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+```
+
+## Lombok 어노테이션 순서
+
+```java
+// ✅ 권장 순서
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = "password")
+public class User extends BaseEntity {
+    // ...
+}
+```
+
+## 메서드 체이닝
+- 메서드 체이닝은 한 줄에 하나씩
+
+```java
+// ✅ 좋은 예
+List<String> result = users.stream()
+    .filter(user -> user.isActive())
+    .map(User::getUsername)
+    .collect(Collectors.toList());
+
+// ❌ 나쁜 예
+List<String> result = users.stream().filter(user -> user.isActive()).map(User::getUsername).collect(Collectors.toList());
+```
+
+## 조건문 스타일
+
+### if-else
+```java
+// ✅ 좋은 예
+if (condition1) {
+    doSomething1();
+} else if (condition2) {
+    doSomething2();
+} else {
+    doSomethingElse();
+}
+
+// ✅ Early Return 권장
+public User findUser(Long id) {
+    if (id == null) {
+        throw new IllegalArgumentException("ID cannot be null");
+    }
+    
+    return userRepository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+}
+```
+
+### switch
+```java
+// ✅ 좋은 예 (Java 17 pattern matching)
+return switch (status) {
+    case ACTIVE -> "활성";
+    case INACTIVE -> "비활성";
+    case SUSPENDED -> "정지";
+    default -> "알 수 없음";
+};
+```
+
+## 파일 인코딩
+- **UTF-8** 사용
+- 모든 파일은 newline으로 종료
+
+## 주석 스타일
+
+### JavaDoc
+```java
+/**
+ * 사용자 정보를 생성합니다.
+ * 
+ * @param request 사용자 생성 요청 정보
+ * @return 생성된 사용자 정보
+ * @throws DuplicateUserException 중복된 사용자명/이메일인 경우
+ */
+@Transactional
+public User createUser(UserCreateRequest request) {
+    // ...
+}
+```
+
+### 단일 라인 주석
+```java
+// ✅ 좋은 예 (설명이 필요한 복잡한 로직)
+// 사용자명 중복 검사: 대소문자 구분 없이 비교
+if (userRepository.existsByUsernameIgnoreCase(username)) {
+    throw new DuplicateUserException("username", username);
+}
+
+// ❌ 나쁜 예 (자명한 코드에 불필요한 주석)
+// 사용자 저장
+userRepository.save(user);
+```
+
+이 스타일 가이드를 준수하여 일관된 코드를 작성하세요.
+

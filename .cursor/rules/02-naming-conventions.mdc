@@ -1,0 +1,376 @@
+# 네이밍 규칙
+
+## 클래스명 (PascalCase)
+
+### Entity
+```java
+// ✅ 좋은 예
+public class User { }
+public class CloudAccount { }
+public class SecurityPolicy { }
+public class UserProfile { }
+
+// ❌ 나쁜 예
+public class user { }
+public class cloudAccount { }
+public class Securitypolicy { }
+```
+
+### Service
+```java
+// ✅ 좋은 예
+public class UserService { }
+public class CloudAccountService { }
+public class SecurityPolicyService { }
+
+// 패턴: {도메인명}Service
+```
+
+### Controller
+```java
+// ✅ 좋은 예
+public class UserController { }
+public class CloudAccountController { }
+public class SecurityPolicyController { }
+
+// 패턴: {도메인명}Controller
+```
+
+### Repository
+```java
+// ✅ 좋은 예
+public interface UserRepository extends JpaRepository<User, Long> { }
+public interface CloudAccountRepository extends JpaRepository<CloudAccount, Long> { }
+
+// 패턴: {도메인명}Repository
+```
+
+### DTO (Data Transfer Object)
+```java
+// ✅ 좋은 예 - 요청 DTO
+public class UserCreateRequest { }
+public class UserUpdateRequest { }
+public class CloudAccountRegisterRequest { }
+
+// ✅ 좋은 예 - 응답 DTO
+public class UserResponse { }
+public class UserDetailResponse { }
+public class CloudAccountResponse { }
+
+// 패턴: {도메인명}{동작}{Request/Response}
+```
+
+### Exception
+```java
+// ✅ 좋은 예
+public class UserNotFoundException extends ResourceNotFoundException { }
+public class DuplicateUserException extends BusinessException { }
+public class InvalidUserStatusException extends BusinessException { }
+
+// 패턴: {설명}{Exception}
+```
+
+### Enum
+```java
+// ✅ 좋은 예
+public enum UserStatus { }
+public enum UserRole { }
+public enum ErrorCategory { }
+public enum CloudProvider { }
+
+// 패턴: {설명}{타입}
+```
+
+## 메서드명 (camelCase)
+
+### 조회 (Query)
+```java
+// ✅ 좋은 예
+public User getUserById(Long id) { }
+public Optional<User> findByUsername(String username) { }
+public List<User> getActiveUsers() { }
+public Page<User> searchUsers(UserSearchCondition condition, Pageable pageable) { }
+
+// 패턴:
+// - get{Entity}By{Condition}: 단건 조회, 필수 존재
+// - find{Entity}By{Condition}: 단건 조회, Optional 반환
+// - get{Entities}: 목록 조회
+// - search{Entities}: 검색 조회
+```
+
+### 생성 (Create)
+```java
+// ✅ 좋은 예
+public User createUser(UserCreateRequest request) { }
+public User save(User user) { }
+public User register(UserRegisterRequest request) { }
+
+// 패턴:
+// - create{Entity}: 비즈니스 로직 포함
+// - save: 단순 저장
+// - register: 등록 (인증 포함)
+```
+
+### 수정 (Update)
+```java
+// ✅ 좋은 예
+public User updateUser(Long id, UserUpdateRequest request) { }
+public void updateUserStatus(Long id, UserStatus status) { }
+public User modify(Long id, UserModifyRequest request) { }
+public void change(Long id, UserChangeRequest request) { }
+
+// 패턴:
+// - update{Entity}: 전체 또는 여러 필드 수정
+// - update{Entity}{Field}: 특정 필드 수정
+// - modify, change: update와 유사
+```
+
+### 삭제 (Delete)
+```java
+// ✅ 좋은 예
+public void deleteUser(Long id) { }
+public void remove(Long id) { }
+public void softDelete(Long id) { } // 논리 삭제
+public void hardDelete(Long id) { } // 물리 삭제
+
+// 패턴:
+// - delete{Entity}: 기본 삭제
+// - remove: delete와 동일
+// - softDelete: status 변경
+// - hardDelete: DB에서 실제 삭제
+```
+
+### 검증 (Validation)
+```java
+// ✅ 좋은 예
+public void validateUser(User user) { }
+public boolean isValidEmail(String email) { }
+public void checkUserPermission(Long userId, String permission) { }
+public boolean verifyPassword(String rawPassword, String encodedPassword) { }
+public boolean exists(Long id) { }
+
+// 패턴:
+// - validate{Entity}: void, 예외 발생
+// - is{Condition}: boolean 반환
+// - check{Condition}: void, 예외 발생
+// - verify{Condition}: boolean 반환
+// - exists: boolean 반환
+```
+
+### 변환 (Conversion)
+```java
+// ✅ 좋은 예
+public User toEntity(UserCreateRequest request) { }
+public UserResponse toResponse(User user) { }
+public static UserResponse from(User user) { } // DTO 내부 static 메서드
+
+// 패턴:
+// - to{Type}: 변환
+// - from: static 팩토리 메서드
+```
+
+### 비즈니스 로직
+```java
+// ✅ 좋은 예
+public void activateUser(Long userId) { }
+public void deactivateUser(Long userId) { }
+public void suspendUser(Long userId, String reason) { }
+public void resetPassword(Long userId) { }
+public void sendWelcomeEmail(User user) { }
+
+// 패턴: 동사 + 명사, 의미가 명확하게
+```
+
+## 변수명 (camelCase)
+
+### 일반 변수
+```java
+// ✅ 좋은 예
+Long userId;
+String userName;
+String userEmail;
+User user;
+List<User> users;
+CloudAccount cloudAccount;
+LocalDateTime createdAt;
+
+// ❌ 나쁜 예
+Long user_id;        // snake_case 금지
+String UserName;     // PascalCase 금지
+String uName;        // 불명확한 축약
+User u;              // 한 글자 변수 (루프 제외)
+List<User> userList; // 타입 중복 명시 불필요
+```
+
+### 루프 변수
+```java
+// ✅ 좋은 예
+for (int i = 0; i < users.size(); i++) { }
+for (User user : users) { }
+users.forEach(user -> process(user));
+
+// ❌ 나쁜 예
+for (int index = 0; index < users.size(); index++) { } // 너무 장황
+for (User u : users) { } // 너무 축약
+```
+
+### Boolean 변수
+```java
+// ✅ 좋은 예
+boolean isActive;
+boolean hasPermission;
+boolean canDelete;
+boolean shouldNotify;
+boolean isValidated;
+
+// 패턴: is/has/can/should + 형용사/명사
+```
+
+## 상수명 (UPPER_SNAKE_CASE)
+
+```java
+// ✅ 좋은 예
+public static final int MAX_RETRY_COUNT = 3;
+public static final int DEFAULT_PAGE_SIZE = 20;
+public static final String API_VERSION = "v1";
+public static final String DATE_FORMAT = "yyyy-MM-dd";
+
+// ❌ 나쁜 예
+public static final int maxRetryCount = 3;
+public static final int MAX_RETRY = 3; // 불완전한 이름
+```
+
+## 패키지명 (lowercase)
+
+```java
+// ✅ 좋은 예
+com.agenticcp.core.domain.user
+com.agenticcp.core.domain.tenant
+com.agenticcp.core.domain.cloud
+com.agenticcp.core.common.exception
+
+// ❌ 나쁜 예
+com.agenticcp.core.domain.User
+com.agenticcp.core.domain.user_service
+com.agenticcp.core.domain.userService
+```
+
+## 테이블명/컬럼명 (snake_case)
+
+```sql
+-- ✅ 좋은 예
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY,
+    username VARCHAR(50),
+    email VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE cloud_accounts (
+    id BIGINT PRIMARY KEY,
+    account_name VARCHAR(100),
+    cloud_provider VARCHAR(20)
+);
+
+-- ❌ 나쁜 예
+CREATE TABLE Users (         -- PascalCase 금지
+CREATE TABLE user (          -- 단수형 (테이블은 복수형 권장)
+CREATE TABLE cloudAccounts ( -- camelCase 금지
+```
+
+## Enum 상수명
+
+```java
+// ✅ 좋은 예
+public enum UserStatus {
+    ACTIVE,
+    INACTIVE,
+    SUSPENDED,
+    DELETED
+}
+
+public enum CloudProvider {
+    AWS,
+    GCP,
+    AZURE
+}
+
+// 패턴: UPPER_SNAKE_CASE, 의미 명확하게
+```
+
+## ErrorCode 네이밍
+
+```java
+// ✅ 좋은 예
+public enum UserErrorCode implements BaseErrorCode {
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, 2001, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 2002, "이미 사용 중인 이메일입니다."),
+    INVALID_USER_STATUS(HttpStatus.BAD_REQUEST, 2003, "유효하지 않은 사용자 상태입니다.");
+    
+    // 패턴: {도메인}_{상황}
+    // 예: USER_NOT_FOUND, TENANT_QUOTA_EXCEEDED, CLOUD_CONNECTION_FAILED
+}
+```
+
+## REST API URL 네이밍
+
+```java
+// ✅ 좋은 예
+@GetMapping("/api/v1/users")              // 복수형
+@GetMapping("/api/v1/users/{id}")
+@PostMapping("/api/v1/users")
+@PutMapping("/api/v1/users/{id}")
+@DeleteMapping("/api/v1/users/{id}")
+
+// 하위 리소스
+@GetMapping("/api/v1/users/{userId}/profiles")
+@PostMapping("/api/v1/users/{userId}/profiles")
+
+// 액션 (동사 허용)
+@PostMapping("/api/v1/users/{id}/activate")
+@PostMapping("/api/v1/users/{id}/suspend")
+
+// ❌ 나쁜 예
+@GetMapping("/api/v1/user")               // 단수형
+@GetMapping("/api/v1/getUsers")           // 동사 포함
+@PostMapping("/api/v1/users/create")      // 불필요한 동사
+```
+
+## 약어 사용 규칙
+
+### 허용되는 약어
+```java
+// ✅ 일반적으로 허용
+Id      (Identifier)
+Dto     (Data Transfer Object)
+Api     (Application Programming Interface)
+Url     (Uniform Resource Locator)
+Jwt     (JSON Web Token)
+Aws     (Amazon Web Services)
+Gcp     (Google Cloud Platform)
+```
+
+### 약어 사용 시 주의
+```java
+// ✅ 좋은 예
+Long userId;
+String apiUrl;
+JwtService jwtService;
+
+// ❌ 나쁜 예
+Long usrId;        // 불명확한 축약
+String u;          // 너무 축약
+String uName;      // 불명확
+```
+
+## 네이밍 일반 원칙
+
+1. **명확성**: 이름만 보고 역할을 알 수 있어야 함
+2. **간결성**: 불필요하게 길지 않게
+3. **일관성**: 프로젝트 전체에서 같은 패턴 사용
+4. **의도 표현**: 주석 없이도 이해 가능하도록
+5. **검색 가능**: 의미 있는 이름으로 검색 용이하게
+
+이 네이밍 규칙을 준수하여 읽기 쉽고 유지보수하기 좋은 코드를 작성하세요.
+

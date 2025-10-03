@@ -1,0 +1,354 @@
+# 도메인 특수 규칙
+
+## 멀티테넌트 아키텍처
+
+### TenantContext 사용
+
+모든 API 요청은 테넌트 정보를 포함해야 합니다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    
+    private final UserRepository userRepository;
+    
+    public List<User> getUsers() {
+        // TenantContext에서 자동으로 테넌트 ID 가져옴
+        Long tenantId = TenantContextHolder.getTenantId();
+        
+        log.info("사용자 목록 조회: tenantId={}", tenantId);
+        
+        // Repository에서 자동으로 테넌트 필터링
+        return userRepository.findAll();
+    }
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        Long tenantId = TenantContextHolder.getTenantId();
+        
+        User user = User.builder()
+            .tenantId(tenantId)  // 테넌트 ID 설정
+            .username(request.getUsername())
+            .email(request.getEmail())
+            .build();
+        
+        return userRepository.save(user);
+    }
+}
+```
+
+### 테넌트별 데이터 격리
+
+```java
+@Entity
+@Table(name = "users")
+public class User extends BaseEntity {
+    
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;  // 모든 엔티티에 tenantId 포함
+    
+    // ... 다른 필드들
+}
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    // 테넌트 ID로 자동 필터링
+    @Query("SELECT u FROM User u WHERE u.tenantId = :tenantId")
+    List<User> findAll(@Param("tenantId") Long tenantId);
+    
+    @Query("SELECT u FROM User u WHERE u.id = :id AND u.tenantId = :tenantId")
+    Optional<User> findById(@Param("id") Long id, @Param("tenantId") Long tenantId);
+}
+```
+
+## 도메인별 에러 코드 범위
+
+### 에러 코드 번호 할당
+```java
+// 각 도메인은 할당된 범위 내에서만 에러 코드 사용
+
+COMMON:    HTTP 상태 코드 번호 그대로    // 공통 에러
+AUTH:      1000-1999                    // 인증/인가
+USER:      2000-2999                    // 사용자 관리
+TENANT:    3000-3999                    // 테넌트 관리
+CLOUD:     4000-4999                    // 클라우드 관리
+SECURITY:  5000-5999                    // 보안
+PLATFORM:  6000-6999                    // 플랫폼 관리
+COST:      7000-7999                    // 비용 관리
+MONITORING: 8000-8999                   // 모니터링
+```
+
+### 예시: CloudErrorCode
+```java
+public enum CloudErrorCode implements BaseErrorCode {
+    // 4000-4999 범위 사용
+    CLOUD_PROVIDER_NOT_FOUND(HttpStatus.NOT_FOUND, 4001, "클라우드 프로바이더를 찾을 수 없습니다."),
+    CLOUD_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, 4002, "클라우드 계정을 찾을 수 없습니다."),
+    CLOUD_CONNECTION_FAILED(HttpStatus.BAD_REQUEST, 4003, "클라우드 연결에 실패했습니다."),
+    INSUFFICIENT_CLOUD_QUOTA(HttpStatus.BAD_REQUEST, 4004, "클라우드 할당량이 부족합니다.");
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.CLOUD.generate(codeNumber); // "CLOUD_4001"
+    }
+}
+```
+
+## 클라우드 통합 (멀티클라우드)
+
+### CloudProvider Enum
+```java
+public enum CloudProvider {
+    AWS("Amazon Web Services"),
+    GCP("Google Cloud Platform"),
+    AZURE("Microsoft Azure");
+    
+    private final String displayName;
+    
+    CloudProvider(String displayName) {
+        this.displayName = displayName;
+    }
+}
+```
+
+### 클라우드 계정 관리
+```java
+@Entity
+@Table(name = "cloud_accounts")
+public class CloudAccount extends BaseEntity {
+    
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider", nullable = false, length = 20)
+    private CloudProvider provider;
+    
+    @Column(name = "account_name", nullable = false, length = 100)
+    private String accountName;
+    
+    @Column(name = "access_key", nullable = false, length = 255)
+    private String accessKey;  // 암호화 저장
+    
+    @Column(name = "secret_key", nullable = false, length = 255)
+    private String secretKey;  // 암호화 저장
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private CloudAccountStatus status;
+}
+
+@Service
+@RequiredArgsConstructor
+public class CloudAccountService {
+    
+    private final CloudAccountRepository cloudAccountRepository;
+    private final EncryptionService encryptionService;
+    
+    @Transactional
+    public CloudAccount createCloudAccount(CloudAccountCreateRequest request) {
+        Long tenantId = TenantContextHolder.getTenantId();
+        
+        // 민감 정보 암호화
+        String encryptedAccessKey = encryptionService.encrypt(request.getAccessKey());
+        String encryptedSecretKey = encryptionService.encrypt(request.getSecretKey());
+        
+        CloudAccount account = CloudAccount.builder()
+            .tenantId(tenantId)
+            .provider(request.getProvider())
+            .accountName(request.getAccountName())
+            .accessKey(encryptedAccessKey)
+            .secretKey(encryptedSecretKey)
+            .status(CloudAccountStatus.ACTIVE)
+            .build();
+        
+        return cloudAccountRepository.save(account);
+    }
+}
+```
+
+## 도메인 주도 설계 (DDD) 패턴
+
+### 도메인별 독립성
+```
+각 도메인은 독립적으로 동작해야 합니다:
+
+✅ 좋은 예:
+domain.user → domain.user.service (OK)
+domain.user → common.exception (OK)
+domain.user → common.util (OK)
+
+❌ 나쁜 예:
+domain.user → domain.tenant (가급적 회피, 필요 시 인터페이스 사용)
+domain.user → domain.cloud (도메인 간 직접 의존 금지)
+```
+
+### 도메인 서비스 간 통신
+```java
+// ❌ 나쁜 예 - 직접 의존
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final TenantService tenantService;  // 직접 의존
+}
+
+// ✅ 좋은 예 - 이벤트 기반 또는 인터페이스 사용
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final ApplicationEventPublisher eventPublisher;
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        User user = userRepository.save(toEntity(request));
+        
+        // 이벤트 발행
+        eventPublisher.publishEvent(new UserCreatedEvent(user.getId()));
+        
+        return user;
+    }
+}
+
+@Component
+@RequiredArgsConstructor
+public class UserCreatedEventListener {
+    
+    private final TenantService tenantService;
+    
+    @EventListener
+    public void handleUserCreated(UserCreatedEvent event) {
+        // 다른 도메인 서비스 호출
+        tenantService.updateUserCount(event.getTenantId());
+    }
+}
+```
+
+## 역할 및 권한 관리
+
+### UserRole
+```java
+public enum UserRole {
+    SUPER_ADMIN("슈퍼 관리자", "전체 시스템 관리"),
+    TENANT_ADMIN("테넌트 관리자", "테넌트 전체 관리"),
+    CLOUD_ADMIN("클라우드 관리자", "클라우드 리소스 관리"),
+    DEVELOPER("개발자", "개발 및 배포"),
+    VIEWER("뷰어", "읽기 전용"),
+    AUDITOR("감사자", "감사 및 로그 조회");
+    
+    private final String displayName;
+    private final String description;
+}
+```
+
+### 권한 확인
+```java
+@Service
+@RequiredArgsConstructor
+public class SecurityService {
+    
+    public void checkPermission(Long userId, String resource, String action) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+        
+        // 역할별 권한 확인
+        if (!hasPermission(user.getRole(), resource, action)) {
+            throw new AuthorizationException(userId, resource, action);
+        }
+    }
+    
+    private boolean hasPermission(UserRole role, String resource, String action) {
+        // 권한 매트릭스 확인
+        return PermissionMatrix.hasPermission(role, resource, action);
+    }
+}
+```
+
+## API 버전 관리
+
+### URL 버전 관리
+```java
+// v1 API
+@RestController
+@RequestMapping("/api/v1/users")
+public class UserV1Controller {
+    // v1 구현
+}
+
+// v2 API (변경 사항이 있을 때)
+@RestController
+@RequestMapping("/api/v2/users")
+public class UserV2Controller {
+    // v2 구현 (하위 호환성 유지)
+}
+```
+
+## 감사 로그 (Audit Log)
+
+### 중요한 작업 로깅
+```java
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class UserService {
+    
+    private final AuditLogService auditLogService;
+    
+    @Transactional
+    public void deleteUser(Long userId, Long targetUserId) {
+        User targetUser = userRepository.findById(targetUserId)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+        
+        // 감사 로그 기록
+        auditLogService.log(
+            AuditLog.builder()
+                .userId(userId)
+                .action("USER_DELETE")
+                .resourceType("User")
+                .resourceId(targetUserId)
+                .details(String.format("사용자 삭제: %s", targetUser.getUsername()))
+                .build()
+        );
+        
+        userRepository.delete(targetUser);
+    }
+}
+```
+
+## 도메인별 베스트 프랙티스
+
+### User 도메인
+```java
+// 1. 사용자 생성 시 중복 검사 필수
+// 2. 비밀번호는 반드시 암호화
+// 3. 이메일 검증 필수
+// 4. 역할 및 권한 검증
+```
+
+### Tenant 도메인
+```java
+// 1. 테넌트 ID 필수 확인
+// 2. 테넌트별 할당량 체크
+// 3. 테넌트 격리 보장
+// 4. 테넌트 상태 확인 (ACTIVE, SUSPENDED)
+```
+
+### Cloud 도메인
+```java
+// 1. 클라우드 인증 정보 암호화 저장
+// 2. 클라우드 연결 테스트
+// 3. 할당량 체크
+// 4. 멀티클라우드 지원 (AWS, GCP, Azure)
+```
+
+### Security 도메인
+```java
+// 1. 모든 보안 정책 감사 로그
+// 2. 권한 변경 이력 관리
+// 3. 보안 이벤트 알림
+// 4. 정기적인 보안 검사
+```
+
+이 도메인 특수 규칙을 준수하여 멀티테넌트, 멀티클라우드 플랫폼에 적합한 코드를 작성하세요.
+

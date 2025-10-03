@@ -1,0 +1,399 @@
+# API 설계 규칙
+
+## RESTful URL 설계
+
+### 기본 구조
+```
+https://api.agenticcp.com/api/{version}/{resource}
+│                           │    │        │
+│                           │    │        └─ 리소스명 (복수형)
+│                           │    └────────── API 버전
+│                           └─────────────── API 경로
+└─────────────────────────────────────────── 도메인
+```
+
+### URL 패턴
+
+#### 리소스 기반 URL (권장)
+```java
+// ✅ 좋은 예
+GET    /api/v1/users              // 사용자 목록 조회
+GET    /api/v1/users/{id}         // 특정 사용자 조회
+POST   /api/v1/users              // 사용자 생성
+PUT    /api/v1/users/{id}         // 사용자 전체 수정
+PATCH  /api/v1/users/{id}         // 사용자 부분 수정
+DELETE /api/v1/users/{id}         // 사용자 삭제
+
+// ❌ 나쁜 예
+GET    /api/v1/getUsers            // 동사 사용 금지
+POST   /api/v1/createUser          // 동사 사용 금지
+GET    /api/v1/user/{id}           // 단수형 금지
+```
+
+#### 하위 리소스
+```java
+// ✅ 좋은 예
+GET    /api/v1/users/{userId}/profiles              // 사용자의 프로필 목록
+POST   /api/v1/users/{userId}/profiles              // 사용자 프로필 생성
+GET    /api/v1/users/{userId}/profiles/{profileId}  // 특정 프로필 조회
+
+GET    /api/v1/tenants/{tenantId}/users             // 테넌트의 사용자 목록
+```
+
+#### 액션 기반 URL (예외적 허용)
+```java
+// ✅ 허용 - 단순 CRUD로 표현 불가능한 경우
+POST   /api/v1/users/{id}/activate        // 사용자 활성화
+POST   /api/v1/users/{id}/deactivate      // 사용자 비활성화
+POST   /api/v1/users/{id}/reset-password  // 비밀번호 초기화
+POST   /api/v1/users/{id}/send-email      // 이메일 발송
+```
+
+## HTTP 메서드 사용
+
+### GET - 조회
+```java
+@GetMapping("/api/v1/users")
+public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(required = false) String status) {
+    
+    Page<UserResponse> users = userService.getUsers(page, size, status);
+    return ResponseEntity.ok(ApiResponse.success(users));
+}
+
+@GetMapping("/api/v1/users/{id}")
+public ResponseEntity<ApiResponse<UserResponse>> getUser(
+        @PathVariable @Positive Long id) {
+    
+    UserResponse user = userService.getUserById(id);
+    return ResponseEntity.ok(ApiResponse.success(user));
+}
+```
+
+### POST - 생성
+```java
+@PostMapping("/api/v1/users")
+public ResponseEntity<ApiResponse<UserResponse>> createUser(
+        @Valid @RequestBody UserCreateRequest request) {
+    
+    UserResponse user = userService.createUser(request);
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ApiResponse.success(user, "사용자가 생성되었습니다."));
+}
+```
+
+### PUT - 전체 수정
+```java
+@PutMapping("/api/v1/users/{id}")
+public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+        @PathVariable @Positive Long id,
+        @Valid @RequestBody UserUpdateRequest request) {
+    
+    UserResponse user = userService.updateUser(id, request);
+    return ResponseEntity.ok(ApiResponse.success(user, "사용자 정보가 수정되었습니다."));
+}
+```
+
+### PATCH - 부분 수정
+```java
+@PatchMapping("/api/v1/users/{id}/status")
+public ResponseEntity<ApiResponse<UserResponse>> updateUserStatus(
+        @PathVariable @Positive Long id,
+        @Valid @RequestBody UserStatusUpdateRequest request) {
+    
+    UserResponse user = userService.updateUserStatus(id, request.getStatus());
+    return ResponseEntity.ok(ApiResponse.success(user));
+}
+```
+
+### DELETE - 삭제
+```java
+@DeleteMapping("/api/v1/users/{id}")
+public ResponseEntity<ApiResponse<Void>> deleteUser(
+        @PathVariable @Positive Long id) {
+    
+    userService.deleteUser(id);
+    return ResponseEntity.ok(ApiResponse.success(null, "사용자가 삭제되었습니다."));
+}
+```
+
+## 응답 형식
+
+### ApiResponse<T> 사용 (필수)
+
+모든 API는 `ApiResponse<T>` 형식으로 반환합니다.
+
+```java
+package com.agenticcp.core.common.dto;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ApiResponse<T> {
+    private boolean success;
+    private T data;
+    private String message;
+    private String errorCode;
+    private List<FieldErrorResponse> fieldErrors;
+    private LocalDateTime timestamp;
+    
+    public static <T> ApiResponse<T> success(T data) {
+        return ApiResponse.<T>builder()
+            .success(true)
+            .data(data)
+            .timestamp(LocalDateTime.now())
+            .build();
+    }
+    
+    public static <T> ApiResponse<T> success(T data, String message) {
+        return ApiResponse.<T>builder()
+            .success(true)
+            .data(data)
+            .message(message)
+            .timestamp(LocalDateTime.now())
+            .build();
+    }
+    
+    public static <T> ApiResponse<T> error(BaseErrorCode errorCode) {
+        return ApiResponse.<T>builder()
+            .success(false)
+            .errorCode(errorCode.getCode())
+            .message(errorCode.getMessage())
+            .timestamp(LocalDateTime.now())
+            .build();
+    }
+}
+```
+
+### 성공 응답 예시
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com"
+  },
+  "message": "사용자가 생성되었습니다.",
+  "timestamp": "2024-01-15T10:30:00"
+}
+```
+
+### 에러 응답 예시
+```json
+{
+  "success": false,
+  "errorCode": "USER_2001",
+  "message": "사용자를 찾을 수 없습니다.",
+  "timestamp": "2024-01-15T10:30:00"
+}
+```
+
+### 유효성 검증 에러 응답
+```json
+{
+  "success": false,
+  "errorCode": "COMMON_422",
+  "message": "필드 유효성 검증에 실패했습니다.",
+  "fieldErrors": [
+    {
+      "field": "email",
+      "value": "invalid-email",
+      "reason": "올바른 이메일 형식이 아닙니다."
+    }
+  ],
+  "timestamp": "2024-01-15T10:30:00"
+}
+```
+
+## HTTP 상태 코드
+
+### 2xx 성공
+```java
+// 200 OK - 조회, 수정 성공
+return ResponseEntity.ok(ApiResponse.success(user));
+
+// 201 Created - 생성 성공
+return ResponseEntity.status(HttpStatus.CREATED)
+    .body(ApiResponse.success(user));
+
+// 204 No Content - 삭제 성공 (응답 본문 없음)
+return ResponseEntity.noContent().build();
+```
+
+### 4xx 클라이언트 오류
+```java
+// 400 Bad Request - 잘못된 요청
+// 자동으로 GlobalExceptionHandler에서 처리
+
+// 401 Unauthorized - 인증 실패
+// Spring Security에서 자동 처리
+
+// 403 Forbidden - 권한 없음
+throw new AuthorizationException(userId, "User", "delete");
+
+// 404 Not Found - 리소스 없음
+throw new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND);
+
+// 409 Conflict - 충돌 (중복 데이터)
+throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+
+// 422 Unprocessable Entity - 검증 실패
+// @Valid에서 자동으로 GlobalExceptionHandler가 처리
+```
+
+### 5xx 서버 오류
+```java
+// 500 Internal Server Error - 서버 내부 오류
+// 예상치 못한 예외는 GlobalExceptionHandler에서 처리
+```
+
+## 쿼리 파라미터
+
+### 페이징
+```java
+@GetMapping("/api/v1/users")
+public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "id,desc") String sort) {
+    
+    Pageable pageable = PageRequest.of(page, size, 
+        Sort.by(Sort.Direction.DESC, "id"));
+    
+    Page<UserResponse> users = userService.getUsers(pageable);
+    return ResponseEntity.ok(ApiResponse.success(users));
+}
+```
+
+요청 예시:
+```
+GET /api/v1/users?page=0&size=20&sort=createdAt,desc
+```
+
+### 필터링
+```java
+@GetMapping("/api/v1/users")
+public ResponseEntity<ApiResponse<List<UserResponse>>> getUsers(
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String email) {
+    
+    List<UserResponse> users = userService.searchUsers(status, email);
+    return ResponseEntity.ok(ApiResponse.success(users));
+}
+```
+
+요청 예시:
+```
+GET /api/v1/users?status=ACTIVE&email=test@example.com
+```
+
+## 입력 검증
+
+### Request Body 검증
+```java
+@PostMapping("/api/v1/users")
+public ResponseEntity<ApiResponse<UserResponse>> createUser(
+        @Valid @RequestBody UserCreateRequest request) {
+    // @Valid가 자동으로 검증
+    // 실패 시 MethodArgumentNotValidException 발생
+    // GlobalExceptionHandler가 처리
+}
+```
+
+### Path Variable 검증
+```java
+@GetMapping("/api/v1/users/{id}")
+public ResponseEntity<ApiResponse<UserResponse>> getUser(
+        @PathVariable @Positive(message = "사용자 ID는 양수여야 합니다") Long id) {
+    // @Positive가 자동으로 검증
+}
+```
+
+### Request Param 검증
+```java
+@GetMapping("/api/v1/users")
+public ResponseEntity<ApiResponse<List<UserResponse>>> getUsers(
+        @RequestParam @Min(0) int page,
+        @RequestParam @Min(1) @Max(100) int size) {
+    // @Min, @Max가 자동으로 검증
+}
+```
+
+## 컨트롤러 작성 규칙
+
+### 기본 구조
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+@Slf4j
+@Validated  // 클래스 레벨 검증 활성화
+public class UserController {
+    
+    private final UserService userService;
+    
+    // API 메서드들...
+}
+```
+
+### 로깅
+```java
+@PostMapping
+public ResponseEntity<ApiResponse<UserResponse>> createUser(
+        @Valid @RequestBody UserCreateRequest request) {
+    
+    log.info("사용자 생성 요청: username={}", request.getUsername());
+    
+    UserResponse user = userService.createUser(request);
+    
+    log.info("사용자 생성 완료: userId={}", user.getId());
+    
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ApiResponse.success(user, "사용자가 생성되었습니다."));
+}
+```
+
+## API 문서화 (Swagger)
+
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+@Tag(name = "User", description = "사용자 관리 API")
+public class UserController {
+    
+    @Operation(summary = "사용자 생성", description = "새로운 사용자를 생성합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "사용자 생성 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "409", description = "이미 존재하는 사용자")
+    })
+    @PostMapping
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @Parameter(description = "사용자 생성 요청 정보")
+            @Valid @RequestBody UserCreateRequest request) {
+        // ...
+    }
+}
+```
+
+## 버전 관리
+
+### URL 버전 관리 (권장)
+```java
+// v1 API
+@RestController
+@RequestMapping("/api/v1/users")
+public class UserV1Controller { }
+
+// v2 API (변경 사항이 있을 때)
+@RestController
+@RequestMapping("/api/v2/users")
+public class UserV2Controller { }
+```
+
+이 API 설계 규칙을 준수하여 일관되고 RESTful한 API를 작성하세요.
+

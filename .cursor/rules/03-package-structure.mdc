@@ -1,0 +1,361 @@
+# 패키지 구조
+
+## 전체 구조
+
+```
+com.agenticcp.core
+├── domain/                    # 도메인별 패키지 (DDD)
+│   ├── user/                  # 사용자 도메인
+│   │   ├── entity/            # JPA 엔티티
+│   │   ├── dto/               # 요청/응답 DTO
+│   │   ├── service/           # 비즈니스 로직
+│   │   ├── controller/        # REST 컨트롤러
+│   │   └── repository/        # 데이터 접근 계층
+│   ├── tenant/                # 테넌트 도메인
+│   ├── cloud/                 # 클라우드 관리
+│   ├── security/              # 보안 도메인
+│   ├── platform/              # 플랫폼 관리
+│   ├── cost/                  # 비용 관리
+│   ├── monitoring/            # 모니터링
+│   └── ...
+├── common/                    # 공통 모듈
+│   ├── config/                # 설정 클래스
+│   ├── dto/                   # 공통 DTO
+│   ├── exception/             # 예외 클래스
+│   ├── enums/                 # 공통 열거형
+│   ├── util/                  # 유틸리티
+│   ├── context/               # Context 관리
+│   ├── security/              # 보안 설정
+│   ├── logging/               # 로깅 설정
+│   └── entity/                # 공통 엔티티
+├── controller/                # 공통 컨트롤러
+│   ├── HealthController.java
+│   └── AuthController.java
+└── AgenticCpCoreApplication.java
+```
+
+## 도메인 패키지 구조
+
+각 도메인은 다음과 같은 표준 구조를 따릅니다:
+
+```
+com.agenticcp.core.domain.user/
+├── entity/                    # JPA 엔티티
+│   ├── User.java
+│   ├── UserProfile.java
+│   └── UserRole.java
+├── dto/                       # 데이터 전송 객체
+│   ├── request/
+│   │   ├── UserCreateRequest.java
+│   │   ├── UserUpdateRequest.java
+│   │   └── UserSearchCondition.java
+│   └── response/
+│       ├── UserResponse.java
+│       └── UserDetailResponse.java
+├── service/                   # 비즈니스 로직
+│   ├── UserService.java
+│   ├── UserRoleService.java
+│   └── UserValidator.java
+├── controller/                # REST API 컨트롤러
+│   ├── UserController.java
+│   └── UserRoleController.java
+├── repository/                # 데이터 접근
+│   ├── UserRepository.java
+│   └── UserRoleRepository.java
+└── exception/                 # 도메인별 예외 (선택)
+    └── UserErrorCode.java
+```
+
+## 계층별 역할
+
+### 1. Entity (엔티티 계층)
+- **역할**: 데이터베이스 테이블과 매핑되는 도메인 모델
+- **책임**: 도메인 규칙과 데이터 구조 정의
+- **의존성**: 다른 계층에 의존하지 않음
+
+```java
+package com.agenticcp.core.domain.user.entity;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+public class User extends BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    private String username;
+    private String email;
+}
+```
+
+### 2. DTO (데이터 전송 객체 계층)
+- **역할**: API 요청/응답 데이터 전송
+- **책임**: 입력 검증, 데이터 변환
+- **의존성**: Entity (변환 로직에서만 사용)
+
+```java
+package com.agenticcp.core.domain.user.dto.request;
+
+@Data
+@Builder
+public class UserCreateRequest {
+    @NotBlank
+    private String username;
+    
+    @Email
+    private String email;
+}
+```
+
+```java
+package com.agenticcp.core.domain.user.dto.response;
+
+@Data
+@Builder
+public class UserResponse {
+    private Long id;
+    private String username;
+    private String email;
+    
+    public static UserResponse from(User user) {
+        return UserResponse.builder()
+            .id(user.getId())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .build();
+    }
+}
+```
+
+### 3. Repository (데이터 접근 계층)
+- **역할**: 데이터베이스 CRUD 작업
+- **책임**: 쿼리 정의, 데이터 영속성 관리
+- **의존성**: Entity
+
+```java
+package com.agenticcp.core.domain.user.repository;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+    boolean existsByEmail(String email);
+}
+```
+
+### 4. Service (비즈니스 로직 계층)
+- **역할**: 비즈니스 로직 처리
+- **책임**: 트랜잭션 관리, 비즈니스 규칙 적용
+- **의존성**: Repository, Entity, DTO, 다른 Service (필요 시)
+
+```java
+package com.agenticcp.core.domain.user.service;
+
+@Service
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        // 비즈니스 로직
+        return userRepository.save(toEntity(request));
+    }
+}
+```
+
+### 5. Controller (API 계층)
+- **역할**: HTTP 요청/응답 처리
+- **책임**: 입력 검증, 응답 형식 변환
+- **의존성**: Service, DTO
+
+```java
+package com.agenticcp.core.domain.user.controller;
+
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+public class UserController {
+    private final UserService userService;
+    
+    @PostMapping
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+        User user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success(UserResponse.from(user)));
+    }
+}
+```
+
+## 공통 패키지
+
+### common/config
+설정 클래스들
+
+```java
+package com.agenticcp.core.common.config;
+
+@Configuration
+public class JpaConfig { }
+
+@Configuration
+public class RedisConfig { }
+
+@Configuration
+public class SecurityConfig { }
+```
+
+### common/dto
+공통 DTO (ApiResponse, PageResponse 등)
+
+```java
+package com.agenticcp.core.common.dto;
+
+@Data
+@Builder
+public class ApiResponse<T> {
+    private boolean success;
+    private T data;
+    private String message;
+    private LocalDateTime timestamp;
+}
+```
+
+### common/exception
+예외 클래스 및 에러 코드
+
+```java
+package com.agenticcp.core.common.exception;
+
+public class BusinessException extends RuntimeException {
+    private final BaseErrorCode errorCode;
+}
+
+public class ResourceNotFoundException extends BusinessException { }
+```
+
+### common/enums
+공통 열거형
+
+```java
+package com.agenticcp.core.common.enums;
+
+public enum Status {
+    ACTIVE, INACTIVE, DELETED
+}
+
+public enum ErrorCategory {
+    COMMON, USER, TENANT, CLOUD
+}
+```
+
+### common/util
+유틸리티 클래스
+
+```java
+package com.agenticcp.core.common.util;
+
+public class DateUtils { }
+public class StringUtils { }
+public class ValidationUtils { }
+```
+
+## 패키지 의존성 규칙
+
+### ✅ 허용되는 의존성
+```
+Controller -> Service -> Repository -> Entity
+         ↘    ↓    ↙
+           DTO
+```
+
+- Controller는 Service, DTO에 의존 가능
+- Service는 Repository, Entity, DTO, 다른 Service에 의존 가능
+- Repository는 Entity에만 의존
+- Entity는 어디에도 의존하지 않음 (BaseEntity 제외)
+
+### ❌ 금지되는 의존성
+```
+Repository -> Service (X)
+Entity -> Repository (X)
+Entity -> Service (X)
+DTO -> Service (X)
+```
+
+## 새로운 도메인 추가 시
+
+### 1. 패키지 생성
+```
+com.agenticcp.core.domain.product/
+├── entity/
+├── dto/
+│   ├── request/
+│   └── response/
+├── service/
+├── controller/
+└── repository/
+```
+
+### 2. 기본 클래스 생성
+```java
+// Entity
+package com.agenticcp.core.domain.product.entity;
+public class Product extends BaseEntity { }
+
+// Repository
+package com.agenticcp.core.domain.product.repository;
+public interface ProductRepository extends JpaRepository<Product, Long> { }
+
+// Service
+package com.agenticcp.core.domain.product.service;
+@Service
+public class ProductService { }
+
+// Controller
+package com.agenticcp.core.domain.product.controller;
+@RestController
+@RequestMapping("/api/v1/products")
+public class ProductController { }
+
+// DTO
+package com.agenticcp.core.domain.product.dto.request;
+public class ProductCreateRequest { }
+
+package com.agenticcp.core.domain.product.dto.response;
+public class ProductResponse { }
+```
+
+### 3. ErrorCode 추가
+```java
+package com.agenticcp.core.common.enums;
+
+public enum ProductErrorCode implements BaseErrorCode {
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, 5001, "상품을 찾을 수 없습니다.");
+    // 5000-5999 범위 사용 (Product 도메인)
+}
+```
+
+## 패키지 네이밍 규칙
+
+- **소문자만 사용**
+- **단어 구분 없이** (snake_case, kebab-case 금지)
+- **복수형 사용 권장** (entities, repositories, services)
+- **간결하고 명확하게**
+
+```java
+// ✅ 좋은 예
+com.agenticcp.core.domain.user.entity
+com.agenticcp.core.domain.cloud.service
+com.agenticcp.core.common.exception
+
+// ❌ 나쁜 예
+com.agenticcp.core.domain.User.Entity
+com.agenticcp.core.domain.user_service
+com.agenticcp.core.domain.user-service
+```
+
+이 패키지 구조를 따라 일관된 프로젝트 구조를 유지하세요.
+

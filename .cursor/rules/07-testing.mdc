@@ -1,0 +1,494 @@
+# 테스트 작성 규칙
+
+## 테스트 전략
+
+### 테스트 피라미드
+```
+        /\
+       /E2E\      ← 적은 수, 높은 비용
+      /______\
+     /        \
+    /Integration\ ← 중간 수, 중간 비용
+   /____________\
+  /              \
+ /   Unit Tests   \ ← 많은 수, 낮은 비용
+/__________________\
+```
+
+- **단위 테스트**: 70%
+- **통합 테스트**: 20%
+- **E2E 테스트**: 10%
+
+## 단위 테스트 (Unit Test)
+
+### 기본 구조
+```java
+@ExtendWith(MockitoExtension.class)
+@DisplayName("UserService 테스트")
+class UserServiceTest {
+    
+    @Mock
+    private UserRepository userRepository;
+    
+    @Mock
+    private EmailService emailService;
+    
+    @InjectMocks
+    private UserService userService;
+    
+    @Nested
+    @DisplayName("사용자 생성 테스트")
+    class CreateUserTest {
+        
+        @Test
+        @DisplayName("정상적인 사용자 생성")
+        void createUser_Success() {
+            // Given
+            UserCreateRequest request = UserCreateRequest.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .build();
+            
+            User savedUser = User.builder()
+                .id(1L)
+                .username("testuser")
+                .email("test@example.com")
+                .status(UserStatus.ACTIVE)
+                .build();
+            
+            when(userRepository.existsByUsername("testuser")).thenReturn(false);
+            when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
+            when(userRepository.save(any(User.class))).thenReturn(savedUser);
+            
+            // When
+            User result = userService.createUser(request);
+            
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(1L);
+            assertThat(result.getUsername()).isEqualTo("testuser");
+            assertThat(result.getEmail()).isEqualTo("test@example.com");
+            assertThat(result.getStatus()).isEqualTo(UserStatus.ACTIVE);
+            
+            verify(userRepository).existsByUsername("testuser");
+            verify(userRepository).existsByEmail("test@example.com");
+            verify(userRepository).save(any(User.class));
+        }
+        
+        @Test
+        @DisplayName("중복된 사용자명으로 생성 시 예외 발생")
+        void createUser_DuplicateUsername_ThrowsException() {
+            // Given
+            UserCreateRequest request = UserCreateRequest.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .build();
+            
+            when(userRepository.existsByUsername("testuser")).thenReturn(true);
+            
+            // When & Then
+            assertThatThrownBy(() -> userService.createUser(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("이미 사용 중인 사용자명");
+            
+            verify(userRepository, never()).save(any(User.class));
+        }
+    }
+}
+```
+
+### Given-When-Then 패턴 (필수)
+```java
+@Test
+@DisplayName("사용자 조회 성공")
+void getUserById_Success() {
+    // Given: 테스트 데이터 준비
+    Long userId = 1L;
+    User user = User.builder()
+        .id(userId)
+        .username("testuser")
+        .build();
+    
+    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    
+    // When: 테스트 대상 메서드 실행
+    User result = userService.getUserById(userId);
+    
+    // Then: 결과 검증
+    assertThat(result).isNotNull();
+    assertThat(result.getId()).isEqualTo(userId);
+    assertThat(result.getUsername()).isEqualTo("testuser");
+    
+    verify(userRepository).findById(userId);
+}
+```
+
+### @Nested로 그룹화 (권장)
+```java
+@ExtendWith(MockitoExtension.class)
+@DisplayName("UserService 테스트")
+class UserServiceTest {
+    
+    @Nested
+    @DisplayName("사용자 생성 테스트")
+    class CreateUserTest {
+        // 생성 관련 테스트들
+    }
+    
+    @Nested
+    @DisplayName("사용자 조회 테스트")
+    class GetUserTest {
+        // 조회 관련 테스트들
+    }
+    
+    @Nested
+    @DisplayName("사용자 수정 테스트")
+    class UpdateUserTest {
+        // 수정 관련 테스트들
+    }
+    
+    @Nested
+    @DisplayName("사용자 삭제 테스트")
+    class DeleteUserTest {
+        // 삭제 관련 테스트들
+    }
+}
+```
+
+### Mock 사용
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    
+    @Mock  // Mock 객체 생성
+    private UserRepository userRepository;
+    
+    @Mock
+    private EmailService emailService;
+    
+    @InjectMocks  // Mock 객체들을 주입받는 대상
+    private UserService userService;
+    
+    @Test
+    void test() {
+        // when: Mock 동작 정의
+        when(userRepository.findById(1L))
+            .thenReturn(Optional.of(user));
+        
+        // doNothing: void 메서드 Mock
+        doNothing().when(emailService)
+            .sendEmail(anyString(), anyString());
+        
+        // doThrow: 예외 발생 Mock
+        doThrow(new RuntimeException("에러"))
+            .when(emailService).sendEmail(anyString(), anyString());
+        
+        // verify: 메서드 호출 검증
+        verify(userRepository).findById(1L);
+        verify(userRepository, times(1)).findById(1L);
+        verify(userRepository, never()).save(any());
+    }
+}
+```
+
+### AssertJ 사용 (권장)
+```java
+import static org.assertj.core.api.Assertions.*;
+
+@Test
+void assertJExamples() {
+    // 기본 검증
+    assertThat(user).isNotNull();
+    assertThat(user.getId()).isEqualTo(1L);
+    assertThat(user.getUsername()).isEqualTo("testuser");
+    
+    // 문자열 검증
+    assertThat(user.getEmail())
+        .isNotBlank()
+        .contains("@")
+        .endsWith(".com");
+    
+    // 컬렉션 검증
+    assertThat(users)
+        .isNotEmpty()
+        .hasSize(3)
+        .extracting(User::getUsername)
+        .containsExactly("user1", "user2", "user3");
+    
+    // 예외 검증
+    assertThatThrownBy(() -> userService.getUserById(999L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessageContaining("사용자를 찾을 수 없습니다");
+}
+```
+
+## 통합 테스트 (Integration Test)
+
+### Controller 통합 테스트
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+@Transactional
+@DisplayName("UserController 통합 테스트")
+class UserControllerIntegrationTest {
+    
+    @Container
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+        .withDatabaseName("testdb")
+        .withUsername("test")
+        .withPassword("test");
+    
+    @Autowired
+    private TestRestTemplate restTemplate;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", mysql::getJdbcUrl);
+        registry.add("spring.datasource.username", mysql::getUsername);
+        registry.add("spring.datasource.password", mysql::getPassword);
+    }
+    
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
+    
+    @Test
+    @DisplayName("사용자 생성 API 테스트")
+    void createUser_Success() {
+        // Given
+        UserCreateRequest request = UserCreateRequest.builder()
+            .username("apiuser")
+            .email("api@example.com")
+            .build();
+        
+        // When
+        ResponseEntity<ApiResponse> response = restTemplate.postForEntity(
+            "/api/v1/users", 
+            request, 
+            ApiResponse.class
+        );
+        
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        
+        // 데이터베이스 검증
+        List<User> users = userRepository.findAll();
+        assertThat(users).hasSize(1);
+        assertThat(users.get(0).getUsername()).isEqualTo("apiuser");
+    }
+    
+    @Test
+    @DisplayName("사용자 조회 API 테스트")
+    void getUser_Success() {
+        // Given
+        User user = User.builder()
+            .username("testuser")
+            .email("test@example.com")
+            .status(UserStatus.ACTIVE)
+            .build();
+        User savedUser = userRepository.save(user);
+        
+        // When
+        ResponseEntity<ApiResponse> response = restTemplate.getForEntity(
+            "/api/v1/users/" + savedUser.getId(),
+            ApiResponse.class
+        );
+        
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+    }
+}
+```
+
+### Repository 통합 테스트
+```java
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+@DisplayName("UserRepository 통합 테스트")
+class UserRepositoryTest {
+    
+    @Container
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+        .withDatabaseName("testdb")
+        .withUsername("test")
+        .withPassword("test");
+    
+    @Autowired
+    private TestEntityManager entityManager;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", mysql::getJdbcUrl);
+        registry.add("spring.datasource.username", mysql::getUsername);
+        registry.add("spring.datasource.password", mysql::getPassword);
+    }
+    
+    @Test
+    @DisplayName("사용자명으로 사용자 조회")
+    void findByUsername_Success() {
+        // Given
+        User user = User.builder()
+            .username("testuser")
+            .email("test@example.com")
+            .status(UserStatus.ACTIVE)
+            .build();
+        entityManager.persistAndFlush(user);
+        
+        // When
+        Optional<User> result = userRepository.findByUsername("testuser");
+        
+        // Then
+        assertThat(result).isPresent();
+        assertThat(result.get().getUsername()).isEqualTo("testuser");
+        assertThat(result.get().getEmail()).isEqualTo("test@example.com");
+    }
+}
+```
+
+## 테스트 데이터 빌더
+
+### 테스트 데이터 빌더 패턴
+```java
+public class TestDataBuilder {
+    
+    public static User.UserBuilder userBuilder() {
+        return User.builder()
+            .username("testuser")
+            .email("test@example.com")
+            .status(UserStatus.ACTIVE)
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now());
+    }
+    
+    public static UserCreateRequest.UserCreateRequestBuilder userCreateRequestBuilder() {
+        return UserCreateRequest.builder()
+            .username("newuser")
+            .email("new@example.com");
+    }
+}
+
+// 사용 예시
+@Test
+void testWithBuilder() {
+    // 기본 테스트 데이터
+    User user1 = TestDataBuilder.userBuilder().build();
+    
+    // 커스터마이징
+    User user2 = TestDataBuilder.userBuilder()
+        .username("customuser")
+        .email("custom@example.com")
+        .build();
+}
+```
+
+## 테스트 네이밍 규칙
+
+### 메서드명
+```java
+// 패턴: {테스트대상메서드}_{테스트조건}_{기대결과}
+
+// ✅ 좋은 예
+void createUser_WithValidData_ReturnsUser()
+void createUser_WithDuplicateUsername_ThrowsException()
+void getUserById_WithExistingId_ReturnsUser()
+void getUserById_WithNonExistingId_ThrowsNotFoundException()
+
+// ❌ 나쁜 예
+void testCreateUser()
+void test1()
+void userTest()
+```
+
+### @DisplayName
+```java
+// ✅ 좋은 예 - 한글로 명확하게
+@Test
+@DisplayName("유효한 데이터로 사용자 생성 시 사용자가 반환됨")
+void createUser_WithValidData_ReturnsUser() { }
+
+@Test
+@DisplayName("중복된 사용자명으로 생성 시 DuplicateUserException 발생")
+void createUser_WithDuplicateUsername_ThrowsException() { }
+```
+
+## 테스트 커버리지
+
+### 목표
+- **전체 커버리지**: 최소 70% 이상
+- **비즈니스 로직 (Service)**: 최소 80% 이상
+- **Controller**: 주요 API는 통합 테스트 작성
+- **Repository**: 커스텀 쿼리는 테스트 작성
+
+## 테스트 베스트 프랙티스
+
+### ✅ 좋은 예
+```java
+// 1. Given-When-Then 패턴 사용
+@Test
+void test() {
+    // Given
+    // When
+    // Then
+}
+
+// 2. @DisplayName으로 명확한 설명
+@DisplayName("사용자 생성 성공")
+
+// 3. @Nested로 그룹화
+@Nested
+@DisplayName("사용자 생성 테스트")
+class CreateUserTest { }
+
+// 4. AssertJ 사용
+assertThat(user).isNotNull();
+
+// 5. 예외 검증
+assertThatThrownBy(() -> service.method())
+    .isInstanceOf(Exception.class);
+
+// 6. Mock 검증
+verify(repository).save(any());
+```
+
+### ❌ 나쁜 예
+```java
+// 1. 주석 없이 불명확한 테스트
+@Test
+void test1() { }
+
+// 2. 여러 검증을 하나의 테스트에
+@Test
+void testEverything() {
+    // 생성 테스트
+    // 조회 테스트
+    // 수정 테스트
+    // 삭제 테스트
+}
+
+// 3. assertEquals 사용 (AssertJ 대신)
+assertEquals(expected, actual);
+
+// 4. 예외 검증을 try-catch로
+try {
+    service.method();
+    fail("예외가 발생해야 함");
+} catch (Exception e) {
+    // ...
+}
+```
+
+이 테스트 작성 규칙을 준수하여 안정적이고 유지보수하기 쉬운 테스트 코드를 작성하세요.
+

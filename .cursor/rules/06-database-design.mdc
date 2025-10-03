@@ -1,0 +1,474 @@
+# 데이터베이스 설계 규칙
+
+## Entity 설계
+
+### 기본 구조
+```java
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email"),
+    @Index(name = "idx_users_status_created_at", columnList = "status, created_at")
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"password", "profiles"})
+public class User extends BaseEntity {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50)
+    @Column(name = "username", unique = true, nullable = false, length = 50)
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email
+    @Column(name = "email", unique = true, nullable = false, length = 255)
+    private String email;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+    
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    // 연관관계는 LAZY 로딩
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<UserProfile> profiles = new ArrayList<>();
+}
+```
+
+### BaseEntity 상속
+
+모든 Entity는 `BaseEntity`를 상속해야 합니다.
+
+```java
+@MappedSuperclass
+@Getter
+@Setter
+public abstract class BaseEntity {
+    
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+    
+    @Column(name = "updated_by", length = 100)
+    private String updatedBy;
+}
+```
+
+## 필드 매핑 규칙
+
+### 기본 타입
+```java
+// ✅ 좋은 예
+@Column(name = "username", nullable = false, length = 50)
+private String username;
+
+@Column(name = "age")
+private Integer age;  // null 가능한 경우 Wrapper 타입 사용
+
+@Column(name = "price", precision = 10, scale = 2)
+private BigDecimal price;  // 금액은 BigDecimal 사용
+
+// ❌ 나쁜 예
+private String username;  // @Column 없음 (컬럼명이 username으로 자동 매핑)
+private int age;          // null 불가능한 primitive 타입
+private Double price;     // 금액을 Double로 표현 (정확도 문제)
+```
+
+### Enum 타입 (필수: EnumType.STRING)
+```java
+// ✅ 좋은 예 - STRING 타입 (필수)
+@Enumerated(EnumType.STRING)
+@Column(name = "status", nullable = false, length = 20)
+private UserStatus status;
+
+// ❌ 절대 금지 - ORDINAL 타입
+@Enumerated(EnumType.ORDINAL)  // 순서 변경 시 데이터 오염!
+private UserStatus status;
+```
+
+### 날짜/시간 타입
+```java
+// ✅ 좋은 예 - LocalDateTime 사용
+@CreationTimestamp
+@Column(name = "created_at", updatable = false)
+private LocalDateTime createdAt;
+
+@UpdateTimestamp
+@Column(name = "updated_at")
+private LocalDateTime updatedAt;
+
+@Column(name = "birth_date")
+private LocalDate birthDate;
+
+// ❌ 나쁜 예
+private Date createdAt;    // 구식 Date 타입
+private Timestamp updatedAt;  // Timestamp는 레거시
+```
+
+### Boolean 타입
+```java
+// ✅ 좋은 예
+@Column(name = "is_active", nullable = false)
+private Boolean isActive = true;
+
+@Column(name = "is_deleted", nullable = false)
+private Boolean isDeleted = false;
+```
+
+## 연관관계 매핑
+
+### @OneToMany / @ManyToOne
+```java
+// ✅ 좋은 예 - LAZY 로딩 (필수)
+@Entity
+public class User {
+    
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<UserProfile> profiles = new ArrayList<>();
+}
+
+@Entity
+public class UserProfile {
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+}
+
+// ❌ 나쁜 예 - EAGER 로딩 (N+1 문제 발생)
+@OneToMany(fetch = FetchType.EAGER)
+private List<UserProfile> profiles;
+```
+
+### @ManyToMany (가급적 사용 금지)
+```java
+// ❌ 피해야 할 예 - @ManyToMany 직접 사용
+@ManyToMany
+@JoinTable(name = "user_roles")
+private List<Role> roles;
+
+// ✅ 권장 - 중간 엔티티 사용
+@Entity
+public class User {
+    @OneToMany(mappedBy = "user")
+    private List<UserRole> userRoles;
+}
+
+@Entity
+public class UserRole {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id")
+    private Role role;
+    
+    private LocalDateTime assignedAt;  // 추가 정보 가능
+}
+
+@Entity
+public class Role {
+    @OneToMany(mappedBy = "role")
+    private List<UserRole> userRoles;
+}
+```
+
+## 인덱스 설계
+
+### 단일 컬럼 인덱스
+```java
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email")
+})
+public class User {
+    // 자주 조회되는 컬럼에 인덱스 추가
+}
+```
+
+### 복합 인덱스
+```java
+@Entity
+@Table(name = "users", indexes = {
+    // 복합 인덱스: status + created_at (함께 자주 조회되는 경우)
+    @Index(name = "idx_users_status_created_at", columnList = "status, created_at")
+})
+public class User {
+    // WHERE status = ? ORDER BY created_at DESC 쿼리에 최적화
+}
+```
+
+### 인덱스 네이밍 규칙
+```
+idx_{테이블명}_{컬럼명}[_{컬럼명2}_...]
+
+예시:
+- idx_users_username
+- idx_users_email
+- idx_users_status_created_at
+```
+
+## Repository 설계
+
+### 기본 구조
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    // 메서드 이름 기반 쿼리 (간단한 경우)
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+    
+    // @Query 사용 (복잡한 경우)
+    @Query("SELECT u FROM User u WHERE u.status = :status ORDER BY u.createdAt DESC")
+    List<User> findByStatus(@Param("status") UserStatus status);
+    
+    // 페이징 쿼리
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    Page<User> findByStatusWithPaging(
+        @Param("status") UserStatus status,
+        Pageable pageable
+    );
+    
+    // 복잡한 JPQL
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.status = :status
+        AND u.createdAt BETWEEN :startDate AND :endDate
+        ORDER BY u.createdAt DESC
+        """)
+    List<User> findUsersByStatusAndDateRange(
+        @Param("status") UserStatus status,
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate
+    );
+}
+```
+
+### 네이티브 쿼리 (최후의 수단)
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    // 복잡한 통계 쿼리 등 JPQL로 표현 어려울 때만 사용
+    @Query(value = """
+        SELECT u.*, COUNT(p.id) as profile_count
+        FROM users u
+        LEFT JOIN user_profiles p ON u.id = p.user_id
+        WHERE u.status = :status
+        GROUP BY u.id
+        HAVING COUNT(p.id) > :minProfileCount
+        """, nativeQuery = true)
+    List<Object[]> findUsersWithProfileCount(
+        @Param("status") String status,
+        @Param("minProfileCount") int minProfileCount
+    );
+}
+```
+
+## 트랜잭션 관리
+
+### Service 레벨 트랜잭션
+```java
+@Service
+@Transactional(readOnly = true)  // 기본은 readOnly
+@RequiredArgsConstructor
+public class UserService {
+    
+    private final UserRepository userRepository;
+    
+    // 조회는 readOnly (이미 클래스 레벨에서 설정됨)
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+    }
+    
+    // 쓰기 작업은 @Transactional 재정의
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        // 중복 검사
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+        }
+        
+        // 저장
+        User user = toEntity(request);
+        return userRepository.save(user);
+    }
+    
+    // 여러 작업을 하나의 트랜잭션으로
+    @Transactional
+    public void transferData(Long fromId, Long toId) {
+        User fromUser = getUserById(fromId);
+        User toUser = getUserById(toId);
+        
+        // 여러 작업이 모두 성공하거나 모두 실패
+        fromUser.decreaseBalance(1000);
+        toUser.increaseBalance(1000);
+        
+        userRepository.saveAll(List.of(fromUser, toUser));
+    }
+}
+```
+
+### 트랜잭션 전파 옵션
+```java
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    
+    // 기본: REQUIRED (부모 트랜잭션에 참여, 없으면 새로 생성)
+    @Transactional
+    public void method1() { }
+    
+    // 항상 새로운 트랜잭션 생성
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void method2() { }
+    
+    // 트랜잭션 없이 실행
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void method3() { }
+}
+```
+
+## N+1 문제 방지
+
+### Fetch Join 사용
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    // ✅ 좋은 예 - Fetch Join
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.profiles WHERE u.id = :id")
+    Optional<User> findByIdWithProfiles(@Param("id") Long id);
+    
+    // ✅ 여러 연관관계 Fetch Join
+    @Query("""
+        SELECT DISTINCT u 
+        FROM User u 
+        LEFT JOIN FETCH u.profiles 
+        LEFT JOIN FETCH u.roles
+        WHERE u.status = :status
+        """)
+    List<User> findByStatusWithRelations(@Param("status") UserStatus status);
+}
+```
+
+### @EntityGraph 사용
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    @EntityGraph(attributePaths = {"profiles", "roles"})
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findByIdWithGraph(@Param("id") Long id);
+}
+```
+
+## 데이터베이스 베스트 프랙티스
+
+### ✅ 권장사항
+```java
+// 1. BaseEntity 상속
+public class User extends BaseEntity { }
+
+// 2. FetchType.LAZY 사용
+@OneToMany(fetch = FetchType.LAZY)
+private List<UserProfile> profiles;
+
+// 3. Enum은 STRING으로
+@Enumerated(EnumType.STRING)
+private UserStatus status;
+
+// 4. 트랜잭션 명시
+@Transactional
+public User createUser(...) { }
+
+// 5. 인덱스 정의
+@Table(indexes = {@Index(...)})
+public class User { }
+
+// 6. BigDecimal 사용 (금액)
+private BigDecimal price;
+
+// 7. LocalDateTime 사용 (날짜)
+private LocalDateTime createdAt;
+```
+
+### ❌ 금지사항
+```java
+// 1. EAGER 로딩 사용
+@OneToMany(fetch = FetchType.EAGER)  // N+1 문제!
+
+// 2. ORDINAL 사용
+@Enumerated(EnumType.ORDINAL)  // 순서 변경 시 데이터 오염!
+
+// 3. 트랜잭션 없는 쓰기 작업
+public void createUser() {
+    userRepository.save(user);  // @Transactional 없음!
+}
+
+// 4. SELECT * 사용
+@Query("SELECT * FROM users")  // 명시적으로 컬럼 지정!
+
+// 5. primitive 타입 (null 가능한 경우)
+private int age;  // Integer 사용!
+
+// 6. Double/Float (금액)
+private Double price;  // BigDecimal 사용!
+```
+
+## 테이블 네이밍 규칙
+
+```sql
+-- ✅ 좋은 예 - snake_case, 복수형
+CREATE TABLE users (...)
+CREATE TABLE user_profiles (...)
+CREATE TABLE cloud_accounts (...)
+
+-- 컬럼명도 snake_case
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY,
+    username VARCHAR(50),
+    created_at TIMESTAMP
+);
+
+-- ❌ 나쁜 예
+CREATE TABLE User (...)         -- PascalCase
+CREATE TABLE user (...)         -- 단수형
+CREATE TABLE userProfiles (...) -- camelCase
+```
+
+이 데이터베이스 설계 규칙을 준수하여 안정적이고 효율적인 데이터 계층을 구현하세요.
+

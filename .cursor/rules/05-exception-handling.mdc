@@ -1,0 +1,415 @@
+# 예외 처리 규칙
+
+## 예외 처리 구조
+
+### 예외 계층 구조
+```
+RuntimeException
+└── BusinessException (비즈니스 예외 기본 클래스)
+    ├── ResourceNotFoundException (404)
+    ├── AuthorizationException (403)
+    ├── DuplicateResourceException (409)
+    └── ValidationException (400)
+```
+
+## BaseErrorCode 인터페이스
+
+모든 에러 코드는 `BaseErrorCode` 인터페이스를 구현해야 합니다.
+
+```java
+package com.agenticcp.core.common.dto;
+
+public interface BaseErrorCode {
+    HttpStatus getHttpStatus();  // HTTP 상태 코드
+    String getCode();           // 에러 코드 (예: "USER_2001")
+    String getMessage();        // 에러 메시지
+}
+```
+
+## ErrorCategory (도메인별 에러 코드 관리)
+
+### 에러 코드 범위 정의
+```java
+public enum ErrorCategory {
+    COMMON("COMMON_"),          // 공통: HTTP 상태 코드 번호 그대로
+    AUTH("AUTH_"),              // 1000-1999: 인증/인가
+    USER("USER_"),              // 2000-2999: 사용자 관리
+    TENANT("TENANT_"),          // 3000-3999: 테넌트 관리
+    CLOUD("CLOUD_"),            // 4000-4999: 클라우드 관리
+    SECURITY("SECURITY_"),      // 5000-5999: 보안
+    PLATFORM("PLATFORM_"),      // 6000-6999: 플랫폼 관리
+    COST("COST_"),              // 7000-7999: 비용 관리
+    MONITORING("MONITORING_");  // 8000-8999: 모니터링
+    
+    private final String prefix;
+    
+    ErrorCategory(String prefix) {
+        this.prefix = prefix;
+    }
+    
+    public String generate(int codeNumber) {
+        return prefix + codeNumber;
+    }
+}
+```
+
+## 도메인별 ErrorCode 작성
+
+### 예시: UserErrorCode
+```java
+package com.agenticcp.core.domain.user.exception;
+
+public enum UserErrorCode implements BaseErrorCode {
+    // 2000-2999 범위 사용
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, 2001, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 2002, "이미 사용 중인 이메일입니다."),
+    DUPLICATE_USERNAME(HttpStatus.CONFLICT, 2003, "이미 사용 중인 사용자명입니다."),
+    INVALID_USER_STATUS(HttpStatus.BAD_REQUEST, 2004, "유효하지 않은 사용자 상태입니다."),
+    USER_ALREADY_DELETED(HttpStatus.BAD_REQUEST, 2005, "이미 삭제된 사용자입니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    UserErrorCode(HttpStatus httpStatus, int codeNumber, String message) {
+        this.httpStatus = httpStatus;
+        this.codeNumber = codeNumber;
+        this.message = message;
+    }
+    
+    @Override
+    public HttpStatus getHttpStatus() {
+        return httpStatus;
+    }
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.USER.generate(codeNumber); // "USER_2001"
+    }
+    
+    @Override
+    public String getMessage() {
+        return message;
+    }
+}
+```
+
+### 예시: TenantErrorCode
+```java
+public enum TenantErrorCode implements BaseErrorCode {
+    // 3000-3999 범위 사용
+    TENANT_NOT_FOUND(HttpStatus.NOT_FOUND, 3001, "테넌트를 찾을 수 없습니다."),
+    TENANT_QUOTA_EXCEEDED(HttpStatus.BAD_REQUEST, 3002, "테넌트 할당량을 초과했습니다."),
+    TENANT_SUSPENDED(HttpStatus.FORBIDDEN, 3003, "일시정지된 테넌트입니다.");
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.TENANT.generate(codeNumber); // "TENANT_3001"
+    }
+}
+```
+
+## BusinessException 사용
+
+### 1. BusinessException (범용 비즈니스 예외)
+
+```java
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    
+    public void updateUser(UserUpdateRequest request) {
+        // 비즈니스 규칙 위반 시
+        if (isNicknameDuplicate(request.getNickname())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+        }
+        
+        // 커스텀 메시지와 함께
+        if (request.getAge() < 18) {
+            throw new BusinessException(
+                UserErrorCode.INVALID_USER_STATUS,
+                "만 18세 미만은 가입할 수 없습니다."
+            );
+        }
+    }
+}
+```
+
+### 2. ResourceNotFoundException (404)
+
+리소스를 찾을 수 없을 때 사용합니다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    
+    public User findUserById(Long userId) {
+        return userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+    }
+    
+    public void deleteUser(Long userId) {
+        // 리소스 존재 확인 후 삭제
+        User user = findUserById(userId); // ResourceNotFoundException 발생 가능
+        userRepository.delete(user);
+    }
+}
+```
+
+### 3. AuthorizationException (403)
+
+권한이 없을 때 사용합니다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class PostService {
+    
+    public void deletePost(Long userId, Long postId) {
+        Post post = postRepository.findById(postId)
+            .orElseThrow(() -> new ResourceNotFoundException(PostErrorCode.POST_NOT_FOUND));
+        
+        // 리소스별 권한 확인 - 소유자 확인
+        if (!post.getOwnerId().equals(userId)) {
+            throw new AuthorizationException(userId, "Post", "delete");
+        }
+        
+        postRepository.delete(post);
+    }
+    
+    public void updateUserRole(Long adminUserId, Long targetUserId, String newRole) {
+        // 역할 기반 권한 확인
+        if (!hasAdminRole(adminUserId)) {
+            throw new AuthorizationException(adminUserId, "ADMIN");
+        }
+        
+        userRepository.updateRole(targetUserId, newRole);
+    }
+}
+```
+
+**AuthorizationException 생성자:**
+```java
+// 1. 기본 생성자 - 단순 권한 없음
+new AuthorizationException()
+
+// 2. 리소스별 권한 확인
+new AuthorizationException(userId, "Post", "delete")
+new AuthorizationException(userId, "User", "update")
+
+// 3. 역할 기반 권한 확인
+new AuthorizationException(userId, "ADMIN")
+new AuthorizationException(userId, "MANAGER")
+
+// 4. 사용자별 권한 확인
+new AuthorizationException(userId)
+```
+
+## GlobalExceptionHandler
+
+모든 예외는 `GlobalExceptionHandler`에서 일관되게 처리됩니다.
+
+```java
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+    
+    /**
+     * 비즈니스 예외 처리
+     */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(
+            BusinessException e, HttpServletRequest request) {
+        
+        log.error("비즈니스 예외 발생: code={}, message={}, path={}", 
+            e.getErrorCode().getCode(), e.getMessage(), request.getRequestURI());
+        
+        ApiResponse<Void> response = ApiResponse.error(
+            e.getErrorCode(), 
+            e.getMessage()
+        );
+        
+        return ResponseEntity
+            .status(e.getErrorCode().getHttpStatus())
+            .body(response);
+    }
+    
+    /**
+     * 유효성 검증 예외 처리
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(
+            MethodArgumentNotValidException e, HttpServletRequest request) {
+        
+        log.error("검증 예외 발생: path={}", request.getRequestURI());
+        
+        List<FieldErrorResponse> fieldErrors = e.getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .map(error -> FieldErrorResponse.builder()
+                .field(error.getField())
+                .value(error.getRejectedValue())
+                .reason(error.getDefaultMessage())
+                .build())
+            .collect(Collectors.toList());
+        
+        ApiResponse<Void> response = ApiResponse.error(
+            CommonErrorCode.FIELD_VALIDATION_ERROR, 
+            fieldErrors
+        );
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    /**
+     * 데이터베이스 예외 처리
+     */
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataAccessException(
+            DataAccessException e, HttpServletRequest request) {
+        
+        log.error("데이터베이스 예외 발생: path={}, error={}", 
+            request.getRequestURI(), e.getMessage(), e);
+        
+        ApiResponse<Void> response = ApiResponse.error(CommonErrorCode.DATABASE_ERROR);
+        
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(response);
+    }
+    
+    /**
+     * 예상치 못한 예외 처리
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(
+            Exception e, HttpServletRequest request) {
+        
+        log.error("예상치 못한 예외 발생: path={}, error={}", 
+            request.getRequestURI(), e.getMessage(), e);
+        
+        ApiResponse<Void> response = ApiResponse.error(
+            CommonErrorCode.INTERNAL_SERVER_ERROR
+        );
+        
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(response);
+    }
+}
+```
+
+## 새로운 도메인 ErrorCode 추가 시
+
+### 1. ErrorCategory에 새 카테고리 추가
+```java
+public enum ErrorCategory {
+    // ... 기존 카테고리
+    PRODUCT("PRODUCT_"),  // 5000-5999: 상품 관리 (새로 추가)
+}
+```
+
+### 2. 도메인별 ErrorCode Enum 생성
+```java
+package com.agenticcp.core.domain.product.exception;
+
+public enum ProductErrorCode implements BaseErrorCode {
+    // 5000-5999 범위 사용
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, 5001, "상품을 찾을 수 없습니다."),
+    INSUFFICIENT_STOCK(HttpStatus.BAD_REQUEST, 5002, "재고가 부족합니다."),
+    PRODUCT_DISCONTINUED(HttpStatus.BAD_REQUEST, 5003, "단종된 상품입니다.");
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.PRODUCT.generate(codeNumber); // "PRODUCT_5001"
+    }
+}
+```
+
+### 3. Service에서 사용
+```java
+@Service
+@RequiredArgsConstructor
+public class ProductService {
+    
+    public Product findProductById(Long productId) {
+        return productRepository.findById(productId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                ProductErrorCode.PRODUCT_NOT_FOUND
+            ));
+    }
+    
+    public void purchaseProduct(Long productId, int quantity) {
+        Product product = findProductById(productId);
+        
+        if (product.getStock() < quantity) {
+            throw new BusinessException(ProductErrorCode.INSUFFICIENT_STOCK);
+        }
+        
+        if (product.isDiscontinued()) {
+            throw new BusinessException(ProductErrorCode.PRODUCT_DISCONTINUED);
+        }
+        
+        product.decreaseStock(quantity);
+        productRepository.save(product);
+    }
+}
+```
+
+## 예외 처리 베스트 프랙티스
+
+### ✅ 좋은 예
+```java
+// 1. 구체적인 예외 사용
+throw new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND);
+
+// 2. 적절한 로깅
+log.error("사용자 생성 실패: username={}, error={}", 
+    request.getUsername(), e.getMessage(), e);
+
+// 3. 예외 메시지에 컨텍스트 포함
+throw new BusinessException(
+    UserErrorCode.DUPLICATE_EMAIL,
+    String.format("이미 사용 중인 이메일입니다: %s", email)
+);
+```
+
+### ❌ 나쁜 예
+```java
+// 1. 범용 예외 사용
+throw new RuntimeException("오류 발생");
+
+// 2. 예외 무시
+try {
+    doSomething();
+} catch (Exception e) {
+    // 아무것도 하지 않음
+}
+
+// 3. 예외 체이닝 무시
+catch (Exception e) {
+    throw new BusinessException(errorCode);  // 원인 예외 손실
+}
+
+// ✅ 올바른 방법
+catch (Exception e) {
+    throw new BusinessException(errorCode, e);  // 원인 예외 포함
+}
+```
+
+## 에러 코드 번호 관리 규칙
+
+```java
+// ✅ 좋은 예 - 도메인별 범위 준수
+USER_NOT_FOUND(2001)           // USER 도메인 (2000-2999)
+TENANT_QUOTA_EXCEEDED(3002)    // TENANT 도메인 (3000-3999)
+CLOUD_CONNECTION_FAILED(4001)  // CLOUD 도메인 (4000-4999)
+
+// ❌ 나쁜 예 - 범위 초과
+USER_ERROR(5001)               // USER 도메인 범위(2000-2999)를 벗어남
+TENANT_ERROR(2001)             // TENANT 도메인이지만 USER 범위 사용
+```
+
+이 예외 처리 규칙을 준수하여 일관되고 명확한 에러 처리를 구현하세요.
+
