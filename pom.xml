@@ -125,14 +125,6 @@
             <version>7.4</version>
         </dependency>
 
-
-        <!-- Logging -->
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>7.4</version>
-        </dependency>
-
         <!-- Database -->
         <dependency>
             <groupId>mysql</groupId>
@@ -173,6 +165,13 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>mysql</artifactId>
             <version>1.17.6</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Spring Security Test for @WithMockUser -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

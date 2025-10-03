@@ -40,6 +40,21 @@ services:
     networks:
       - agenticcp-dev-network
 
+  redis:
+    image: redis:7.2-alpine
+    container_name: agenticcp-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - agenticcp-dev-network
+
 volumes:
   mysql_data_dev:
 
