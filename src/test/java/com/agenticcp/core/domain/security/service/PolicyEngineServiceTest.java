@@ -4,7 +4,7 @@ import com.agenticcp.core.domain.security.dto.*;
 import com.agenticcp.core.domain.security.entity.SecurityPolicy;
 import com.agenticcp.core.domain.security.enums.PolicyDecision;
 import com.agenticcp.core.domain.security.repository.SecurityPolicyRepository;
-// import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -52,6 +52,9 @@ class PolicyEngineServiceTest {
     
     @Mock
     private PolicyJsonParser policyJsonParser;
+    
+    @Mock
+    private ObjectMapper objectMapper;
     
     @InjectMocks
     private PolicyEngineService policyEngineService;
