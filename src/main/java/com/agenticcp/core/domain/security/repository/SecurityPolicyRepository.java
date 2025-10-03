@@ -43,4 +43,11 @@ public interface SecurityPolicyRepository extends JpaRepository<SecurityPolicy, 
 
     @Query("SELECT COUNT(sp) FROM SecurityPolicy sp WHERE sp.tenant = :tenant AND sp.status = :status")
     Long countPoliciesByTenant(@Param("tenant") Tenant tenant, @Param("status") Status status);
+    
+    // 우선순위 관리를 위한 메서드들
+    @Query("SELECT sp FROM SecurityPolicy sp WHERE sp.tenant.id = :tenantId AND sp.isEnabled = true AND sp.isDeleted = false")
+    List<SecurityPolicy> findByTenantIdAndIsEnabledTrue(@Param("tenantId") String tenantId);
+    
+    @Query("SELECT sp FROM SecurityPolicy sp WHERE sp.isGlobal = true AND sp.isEnabled = true AND sp.isDeleted = false")
+    List<SecurityPolicy> findByIsGlobalTrueAndIsEnabledTrue();
 }
