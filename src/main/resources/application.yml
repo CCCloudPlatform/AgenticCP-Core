@@ -27,6 +27,18 @@ spring:
     livereload:
       enabled: true
 
+app:
+  redis:
+    enabled: false
+
+
+security:
+  jwt:
+    # base64 인코딩된 256비트 이상 키를 사용하세요. 예시는 개발용입니다.
+    secret: ${JWT_SECRET:ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=}
+    access-token-expiration-ms: ${JWT_ACCESS_EXP_MS:3600000}
+    refresh-token-expiration-ms: ${JWT_REFRESH_EXP_MS:604800000}
+
 logging:
   mdc:
     enabled-keys: ["requestId", "tenantId", "clientIp"]
