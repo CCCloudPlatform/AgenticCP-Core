@@ -1,0 +1,172 @@
+WBS_Code,Level,Task_Name,Parent_Code,Domain,Priority,Assignee,Status,Start_Date,End_Date,Duration_Days,Dependencies,GitHub_Issue,Description
+1,1,AgenticCP-core 멀티클라우드 플랫폼,,All,High,,,Not Started,,,,"멀티클라우드 리소스 통합 관리 플랫폼"
+1.1,2,Platform Management,1,Platform,High,,,Not Started,,,,플랫폼 기본 설정 및 관리 시스템
+1.1.1,3,플랫폼 설정 관리 시스템,1.1,Platform,High,moonhyeonmin,In Progress,,,1.1.2,#9,"플랫폼 기본 설정 및 구성 관리"
+1.1.1.1,4,플랫폼 설정 CRUD API,1.1.1,Platform,High,moonhyeonmin,In Progress,,5,,#21,"플랫폼 설정 생성/조회/수정/삭제 API"
+1.1.1.2,4,설정 타입별 값 검증,1.1.1,Platform,High,moonhyeonmin,In Progress,,3,,#18,"설정 값의 타입별 유효성 검증 기능"
+1.1.1.3,4,설정 암호화/복호화,1.1.1,Platform,High,moonhyeonmin,In Progress,,4,,#19,"민감한 설정 정보의 암호화 저장 및 복호화"
+1.1.1.4,4,설정 변경 이력 추적,1.1.1,Platform,High,moonhyeonmin,Not Started,,3,1.1.1.1,#22,"설정 변경 사항에 대한 이력 관리"
+1.1.2,3,기능 플래그 시스템,1.1,Platform,High,syeongkim,In Progress,,,1.1.1,#10,"동적 기능 활성화/비활성화 시스템"
+1.1.2.1,4,기능 플래그 CRUD API,1.1.2,Platform,High,syeongkim,In Progress,,4,,#30,"기능 플래그 관리 API"
+1.1.2.2,4,고급 타겟팅 시스템,1.1.2,Platform,High,syeongkim,In Progress,,7,,#30,"사용자/그룹별 기능 플래그 타겟팅"
+1.1.2.3,4,설정 캐싱 및 실시간 반영,1.1.2,Platform,High,moonhyeonmin,Not Started,,5,1.1.2.1,#24,"기능 플래그 캐싱 및 실시간 업데이트"
+1.1.3,3,시스템/사용자 설정 구분 관리,1.1,Platform,High,moonhyeonmin,Not Started,,,1.1.1,#23,"시스템 설정과 사용자 설정 분리 관리"
+1.1.3.1,4,시스템 설정 관리 API,1.1.3,Platform,High,moonhyeonmin,Not Started,,3,1.1.1.1,,시스템 레벨 설정 관리
+1.1.3.2,4,사용자 설정 관리 API,1.1.3,Platform,High,moonhyeonmin,Not Started,,3,1.1.1.1,,사용자별 개인 설정 관리
+1.1.3.3,4,설정 우선순위 관리,1.1.3,Platform,Medium,moonhyeonmin,Not Started,,2,1.1.3.2,,시스템 vs 사용자 설정 우선순위 처리
+1.2,2,Tenant Management,1,Tenant,High,,,Not Started,,,,멀티 테넌트 지원 시스템
+1.2.1,3,멀티 테넌트 지원 시스템,1.2,Tenant,High,YoungseoChoi23,In Progress,,,1.1,#11,"테넌트별 데이터 격리 및 관리"
+1.2.1.1,4,테넌트 생성/수정/삭제 API,1.2.1,Tenant,High,YoungseoChoi23,Not Started,,5,,,"테넌트 라이프사이클 관리"
+1.2.1.2,4,테넌트 데이터 격리,1.2.1,Tenant,High,YoungseoChoi23,In Progress,,7,,#40,"테넌트별 데이터 격리 보장"
+1.2.1.3,4,테넌트 무결성 검증,1.2.1,Tenant,High,YoungseoChoi23,Not Started,,3,1.2.1.2,,테넌트 데이터 무결성 검증
+1.2.2,3,테넌트 컨텍스트 자동 주입,1.2,Tenant,High,juanxiu,In Progress,,,1.2.1,#34,"요청별 테넌트 컨텍스트 자동 주입"
+1.2.2.1,4,테넌트 컨텍스트 추출,1.2.2,Tenant,High,juanxiu,Not Started,,3,,,"요청에서 테넌트 정보 추출"
+1.2.2.2,4,컨텍스트 자동 주입 AOP,1.2.2,Tenant,High,juanxiu,Not Started,,4,1.2.2.1,,"AOP 기반 컨텍스트 주입"
+1.2.2.3,4,테넌트별 권한 격리,1.2.2,Tenant,High,YuSung011017,In Progress,,5,,#53,"테넌트별 권한 시스템 격리"
+1.2.3,3,테넌트 설정 관리,1.2,Tenant,Medium,,,Not Started,,,1.2.1,,"테넌트별 개별 설정 관리"
+1.2.3.1,4,테넌트별 설정 CRUD,1.2.3,Tenant,Medium,,Not Started,,4,1.2.1.1,,"테넌트별 설정 관리 API"
+1.2.3.2,4,테넌트 설정 상속,1.2.3,Tenant,Low,,Not Started,,3,1.2.3.1,,글로벌 설정의 테넌트별 상속
+1.3,2,Security & Compliance,1,Security,High,,,Not Started,,,,보안 및 컴플라이언스 시스템
+1.3.1,3,사용자 인증 시스템,1.3,Security,High,yejinj,In Progress,,,1.2,#12,"JWT 기반 사용자 인증 시스템"
+1.3.1.1,4,JWT 토큰 기반 인증,1.3.1,Security,High,yejinj,In Progress,,5,,#29,"JWT 토큰 생성/검증 시스템"
+1.3.1.2,4,실제 인증 서비스 구현,1.3.1,Security,High,yejinj,In Progress,,7,1.3.1.1,#48,"실제 사용자 인증 로직 구현"
+1.3.1.3,4,인증 미들웨어,1.3.1,Security,High,yejinj,Not Started,,3,1.3.1.2,,HTTP 요청 인증 미들웨어
+1.3.2,3,사용자 인가 및 권한 관리,1.3,Security,High,YuSung011017,In Progress,,,1.3.1,#13,"RBAC 기반 권한 관리 시스템"
+1.3.2.1,4,Role & Permission CRUD,1.3.2,Security,High,YuSung011017,Completed,,5,,#20,"역할 및 권한 관리 API"
+1.3.2.2,4,권한 검증 미들웨어 및 AOP,1.3.2,Security,High,YuSung011017,In Progress,,6,1.3.2.1,#45,"AOP 기반 권한 검증 시스템"
+1.3.2.3,4,사용자-역할 매핑 관리,1.3.2,Security,High,YuSung011017,Not Started,,3,1.3.2.1,,사용자별 역할 할당 관리
+1.3.3,3,보안 정책 관리 시스템,1.3,Security,High,yubin425,In Progress,,,1.3.2,#14,"정책 기반 보안 관리"
+1.3.3.1,4,정책 엔진 구현,1.3.3,Security,High,yubin425,In Progress,,8,,#28,"규칙 기반 정책 평가 엔진"
+1.3.3.2,4,정책 우선순위 관리,1.3.3,Security,High,yubin425,In Progress,,5,1.3.3.1,#55,"정책 충돌 시 우선순위 해결"
+1.3.3.3,4,정책 평가 결과 캐싱,1.3.3,Security,Medium,yubin425,Not Started,,3,1.3.3.1,,정책 평가 성능 최적화
+1.4,2,User & Access Management,1,User,High,,,Not Started,,,,사용자 및 접근 관리
+1.4.1,3,사용자 관리 시스템,1.4,User,High,,Not Started,,,1.3.1,,"기본 사용자 정보 관리"
+1.4.1.1,4,사용자 CRUD API,1.4.1,User,High,,Not Started,,4,1.3.1.3,,사용자 생성/조회/수정/삭제
+1.4.1.2,4,사용자 프로필 관리,1.4.1,User,Medium,,Not Started,,3,1.4.1.1,,사용자 상세 프로필 관리
+1.4.1.3,4,사용자 상태 관리,1.4.1,User,Medium,,Not Started,,2,1.4.1.1,,사용자 활성/비활성 상태 관리
+1.4.2,3,조직 관리,1.4,User,Medium,,Not Started,,,1.4.1,,"조직 구조 및 계층 관리"
+1.4.2.1,4,조직 CRUD API,1.4.2,User,Medium,,Not Started,,3,1.4.1.1,,조직 생성/조회/수정/삭제
+1.4.2.2,4,조직 계층 관리,1.4.2,User,Medium,,Not Started,,4,1.4.2.1,,상위/하위 조직 계층 구조
+1.4.2.3,4,사용자-조직 매핑,1.4.2,User,Medium,,Not Started,,2,1.4.2.1,,사용자의 조직 소속 관리
+1.4.3,3,감사 및 로깅,1.4,User,High,,Not Started,,,1.3.2,,"사용자 활동 감사 및 로깅"
+1.4.3.1,4,사용자 활동 로깅,1.4.3,User,High,,Not Started,,3,1.4.1.1,,사용자 행위 로그 수집
+1.4.3.2,4,권한 변경 이력,1.4.3,User,High,,Not Started,,2,1.3.2.2,,권한 변경 사항 추적
+1.4.3.3,4,감사 리포트 생성,1.4.3,User,Medium,,Not Started,,4,1.4.3.1,,감사 보고서 자동 생성
+1.5,2,Cloud Management,1,Cloud,High,,,Not Started,,,,클라우드 프로바이더 통합 관리
+1.5.1,3,클라우드 프로바이더 연동,1.5,Cloud,High,,Not Started,,,1.3,,"AWS/GCP/Azure 연동"
+1.5.1.1,4,AWS 프로바이더 연동,1.5.1,Cloud,High,,Not Started,,10,,AWS SDK 통합 및 인증
+1.5.1.2,4,GCP 프로바이더 연동,1.5.1,Cloud,Medium,,Not Started,,8,1.5.1.1,GCP API 통합 및 인증
+1.5.1.3,4,Azure 프로바이더 연동,1.5.1,Cloud,Medium,,Not Started,,8,1.5.1.1,Azure API 통합 및 인증
+1.5.2,3,리소스 발견 및 인벤토리,1.5,Cloud,High,,Not Started,,,1.5.1,,"클라우드 리소스 자동 발견"
+1.5.2.1,4,리소스 자동 스캔,1.5.2,Cloud,High,,Not Started,,7,1.5.1.1,,클라우드 리소스 자동 검색
+1.5.2.2,4,리소스 메타데이터 수집,1.5.2,Cloud,High,,Not Started,,5,1.5.2.1,,리소스 상세 정보 수집
+1.5.2.3,4,리소스 변경 추적,1.5.2,Cloud,Medium,,Not Started,,4,1.5.2.2,,리소스 변경 사항 모니터링
+1.5.3,3,멀티 클라우드 네트워킹,1.5,Cloud,Medium,,Not Started,,,1.5.2,,"클라우드 간 네트워크 관리"
+1.5.3.1,4,VPC/VNet 통합 관리,1.5.3,Cloud,Medium,,Not Started,,6,1.5.2.1,,가상 네트워크 통합 관리
+1.5.3.2,4,클라우드 간 연결 설정,1.5.3,Cloud,Low,,Not Started,,8,1.5.3.1,,클라우드 프로바이더 간 네트워크 연결
+1.6,2,Resource Orchestration,1,Resource,High,,,Not Started,,,,리소스 오케스트레이션 및 자동화
+1.6.1,3,배포 관리,1.6,Resource,High,,Not Started,,,1.5,,"리소스 배포 및 관리"
+1.6.1.1,4,배포 파이프라인 구축,1.6.1,Resource,High,,Not Started,,8,1.5.2.1,,자동화된 배포 파이프라인
+1.6.1.2,4,롤백 시스템,1.6.1,Resource,High,,Not Started,,5,1.6.1.1,,배포 실패 시 롤백 기능
+1.6.1.3,4,배포 이력 관리,1.6.1,Resource,Medium,,Not Started,,3,1.6.1.1,,배포 내역 추적 및 관리
+1.6.2,3,스케일링 관리,1.6,Resource,High,,Not Started,,,1.6.1,,"자동 스케일링 관리"
+1.6.2.1,4,오토 스케일링 정책,1.6.2,Resource,High,,Not Started,,6,1.6.1.1,,자동 스케일링 규칙 관리
+1.6.2.2,4,로드밸런서 관리,1.6.2,Resource,High,,Not Started,,5,1.6.2.1,,로드밸런서 설정 및 관리
+1.6.2.3,4,스케일링 이벤트 로깅,1.6.2,Resource,Medium,,Not Started,,2,1.6.2.1,,스케일링 활동 로그 관리
+1.6.3,3,워크플로우 자동화,1.6,Resource,Medium,,Not Started,,,1.6.2,,"복잡한 워크플로우 자동화"
+1.6.3.1,4,워크플로우 정의 DSL,1.6.3,Resource,Medium,,Not Started,,7,1.6.1.1,,워크플로우 정의 언어
+1.6.3.2,4,워크플로우 실행 엔진,1.6.3,Resource,Medium,,Not Started,,8,1.6.3.1,,워크플로우 실행 시스템
+1.7,2,Monitoring & Analytics,1,Monitoring,High,,,Not Started,,,,모니터링 및 분석 시스템
+1.7.1,3,플랫폼 상태 모니터링,1.7,Monitoring,High,grovince,In Progress,,,1.5,#15,"실시간 플랫폼 상태 모니터링"
+1.7.1.1,4,실시간 메트릭 수집,1.7.1,Monitoring,High,grovince,In Progress,,7,,#39,"시스템 메트릭 실시간 수집"
+1.7.1.2,4,헬스체크 시스템,1.7.1,Monitoring,High,grovince,Not Started,,4,1.7.1.1,,서비스 상태 확인 시스템
+1.7.1.3,4,성능 지표 추적,1.7.1,Monitoring,High,grovince,Not Started,,5,1.7.1.1,,성능 KPI 추적 시스템
+1.7.2,3,알림 관리,1.7,Monitoring,High,,Not Started,,,1.7.1,,"알림 및 경고 시스템"
+1.7.2.1,4,알림 규칙 엔진,1.7.2,Monitoring,High,,Not Started,,5,1.7.1.1,,임계값 기반 알림 시스템
+1.7.2.2,4,알림 채널 관리,1.7.2,Monitoring,High,,Not Started,,3,1.7.2.1,,이메일/SMS/슬랙 알림 채널
+1.7.2.3,4,알림 에스컬레이션,1.7.2,Monitoring,Medium,,Not Started,,4,1.7.2.1,,단계별 알림 에스컬레이션
+1.7.3,3,리포팅 및 대시보드,1.7,Monitoring,High,,Not Started,,,1.7.2,,"보고서 및 대시보드"
+1.7.3.1,4,커스텀 대시보드,1.7.3,Monitoring,High,,Not Started,,8,1.7.1.1,,사용자 정의 대시보드
+1.7.3.2,4,자동 리포트 생성,1.7.3,Monitoring,Medium,,Not Started,,6,1.7.1.3,,정기 보고서 자동 생성
+1.8,2,Cost Management,1,Cost,High,,,Not Started,,,,비용 관리 및 최적화
+1.8.1,3,비용 추적,1.8,Cost,High,,Not Started,,,1.5,,"실시간 비용 추적"
+1.8.1.1,4,클라우드 비용 수집,1.8.1,Cost,High,,Not Started,,6,1.5.2.1,,클라우드별 비용 데이터 수집
+1.8.1.2,4,비용 태그 기반 분류,1.8.1,Cost,High,,Not Started,,4,1.8.1.1,,태그 기반 비용 분류
+1.8.1.3,4,비용 추세 분석,1.8.1,Cost,Medium,,Not Started,,5,1.8.1.2,,비용 변화 추세 분석
+1.8.2,3,예산 관리,1.8,Cost,High,,Not Started,,,1.8.1,,"예산 설정 및 관리"
+1.8.2.1,4,예산 설정 API,1.8.2,Cost,High,,Not Started,,3,1.8.1.1,,프로젝트별 예산 설정
+1.8.2.2,4,예산 초과 알림,1.8.2,Cost,High,,Not Started,,4,1.8.2.1,,예산 임계값 알림 시스템
+1.8.2.3,4,예산 승인 워크플로우,1.8.2,Cost,Medium,,Not Started,,6,1.8.2.1,,예산 증액 승인 프로세스
+1.8.3,3,비용 최적화,1.8,Cost,Medium,,Not Started,,,1.8.2,,"비용 최적화 제안"
+1.8.3.1,4,리소스 사용률 분석,1.8.3,Cost,Medium,,Not Started,,7,1.7.1.3,,리소스 효율성 분석
+1.8.3.2,4,최적화 제안 엔진,1.8.3,Cost,Medium,,Not Started,,10,1.8.3.1,,AI 기반 비용 최적화 제안
+1.9,2,Infrastructure as Code,1,IaC,Medium,,,Not Started,,,,인프라 코드화 관리
+1.9.1,3,템플릿 관리,1.9,IaC,Medium,,Not Started,,,1.6,,"IaC 템플릿 관리"
+1.9.1.1,4,Terraform 템플릿 지원,1.9.1,IaC,Medium,,Not Started,,8,1.6.1.1,,Terraform 템플릿 관리
+1.9.1.2,4,CloudFormation 템플릿 지원,1.9.1,IaC,Medium,,Not Started,,6,1.9.1.1,,AWS CloudFormation 지원
+1.9.1.3,4,템플릿 버전 관리,1.9.1,IaC,Medium,,Not Started,,4,1.9.1.1,,템플릿 버전 관리 시스템
+1.9.2,3,설정 관리,1.9,IaC,Medium,,Not Started,,,1.9.1,,"구성 관리 및 변수 관리"
+1.9.2.1,4,변수 관리 시스템,1.9.2,IaC,Medium,,Not Started,,5,1.9.1.3,,템플릿 변수 관리
+1.9.2.2,4,환경별 설정 분리,1.9.2,IaC,Medium,,Not Started,,4,1.9.2.1,,개발/스테이징/프로덕션 설정 분리
+1.9.3,3,배포 파이프라인,1.9,IaC,Medium,,Not Started,,,1.9.2,,"IaC 배포 자동화"
+1.9.3.1,4,CI/CD 통합,1.9.3,IaC,Medium,,Not Started,,7,1.9.2.2,,CI/CD 파이프라인 연동
+1.9.3.2,4,배포 검증 시스템,1.9.3,IaC,Medium,,Not Started,,6,1.9.3.1,,배포 전 검증 시스템
+1.10,2,Integration & API,1,Integration,Medium,,,Not Started,,,,통합 및 API 관리
+1.10.1,3,API 게이트웨이,1.10,Integration,Medium,,Not Started,,,1.3,,"통합 API 게이트웨이"
+1.10.1.1,4,API 라우팅 시스템,1.10.1,Integration,Medium,,Not Started,,6,1.3.2.2,,API 요청 라우팅
+1.10.1.2,4,속도 제한 시스템,1.10.1,Integration,Medium,,Not Started,,4,1.10.1.1,,API 호출 제한 관리
+1.10.1.3,4,API 키 관리,1.10.1,Integration,Medium,,Not Started,,3,1.10.1.1,,API 키 생성 및 관리
+1.10.2,3,웹훅 관리,1.10,Integration,Medium,,Not Started,,,1.10.1,,"웹훅 및 이벤트 관리"
+1.10.2.1,4,웹훅 등록 시스템,1.10.2,Integration,Medium,,Not Started,,4,1.10.1.1,,웹훅 엔드포인트 등록
+1.10.2.2,4,이벤트 발행 시스템,1.10.2,Integration,Medium,,Not Started,,5,1.10.2.1,,시스템 이벤트 발행
+1.10.3,3,서드파티 통합,1.10,Integration,Low,,Not Started,,,1.10.2,,"외부 서비스 통합"
+1.10.3.1,4,Slack 통합,1.10.3,Integration,Low,,Not Started,,3,1.10.2.2,,슬랙 알림 통합
+1.10.3.2,4,GitHub 통합,1.10.3,Integration,Low,,Not Started,,4,1.10.2.2,,GitHub 웹훅 연동
+1.11,2,UI/UX Management,1,UI,Medium,,,Not Started,,,,사용자 인터페이스 관리
+1.11.1,3,메뉴 관리,1.11,UI,Medium,,Not Started,,,1.3.2,,"동적 메뉴 시스템"
+1.11.1.1,4,권한 기반 메뉴,1.11.1,UI,Medium,,Not Started,,5,1.3.2.2,,사용자 권한별 메뉴 표시
+1.11.1.2,4,메뉴 설정 관리,1.11.1,UI,Medium,,Not Started,,3,1.11.1.1,,메뉴 구조 설정 관리
+1.11.1.3,4,다국어 메뉴 지원,1.11.1,UI,Low,,Not Started,,4,1.11.1.2,,메뉴 다국어 지원
+1.11.2,3,대시보드 관리,1.11,UI,Medium,,Not Started,,,1.7.3,,"커스터마이징 대시보드"
+1.11.2.1,4,위젯 시스템,1.11.2,UI,Medium,,Not Started,,8,1.7.3.1,,드래그앤드롭 위젯 시스템
+1.11.2.2,4,대시보드 레이아웃,1.11.2,UI,Medium,,Not Started,,5,1.11.2.1,,반응형 대시보드 레이아웃
+1.11.3,3,테마 관리,1.11,UI,Low,,Not Started,,,1.11.2,,"UI 테마 및 스타일 관리"
+1.11.3.1,4,다크/라이트 테마,1.11.3,UI,Low,,Not Started,,3,1.11.2.2,,테마 전환 기능
+1.11.3.2,4,커스텀 테마 생성,1.11.3,UI,Low,,Not Started,,6,1.11.3.1,,사용자 정의 테마 생성
+1.12,2,Notification & Communication,1,Notification,Medium,,,Not Started,,,,알림 및 커뮤니케이션
+1.12.1,3,알림 시스템,1.12,Notification,Medium,,Not Started,,,1.7.2,,"다채널 알림 시스템"
+1.12.1.1,4,이메일 알림,1.12.1,Notification,Medium,,Not Started,,4,1.7.2.2,,이메일 알림 서비스
+1.12.1.2,4,SMS 알림,1.12.1,Notification,Low,,Not Started,,3,1.12.1.1,,SMS 알림 서비스
+1.12.1.3,4,인앱 알림,1.12.1,Notification,Medium,,Not Started,,5,1.12.1.1,,실시간 인앱 알림
+1.12.2,3,메시지 관리,1.12,Notification,Medium,,Not Started,,,1.12.1,,"메시지 큐 및 관리"
+1.12.2.1,4,메시지 큐 시스템,1.12.2,Notification,Medium,,Not Started,,6,1.12.1.1,,비동기 메시지 처리
+1.12.2.2,4,메시지 템플릿 관리,1.12.2,Notification,Medium,,Not Started,,4,1.12.2.1,,알림 메시지 템플릿
+1.12.3,3,커뮤니케이션 채널,1.12,Notification,Low,,Not Started,,,1.12.2,,"외부 커뮤니케이션 채널"
+1.12.3.1,4,Slack 채널 연동,1.12.3,Notification,Low,,Not Started,,3,1.12.2.2,,슬랙 채널 알림
+1.12.3.2,4,Teams 연동,1.12.3,Notification,Low,,Not Started,,3,1.12.3.1,,Microsoft Teams 연동
+1.13,2,Common Infrastructure,1,Common,High,,,Not Started,,,,공통 인프라 및 유틸리티
+1.13.1,3,전역 예외 처리 및 로깅,1.13,Common,High,hyobin-yang,In Progress,,,1.1,#16,"전역 예외 처리 및 표준 에러 응답"
+1.13.1.1,4,전역 예외 처리 핸들러,1.13.1,Common,High,hyobin-yang,In Progress,,4,,#26,"GlobalExceptionHandler 구현"
+1.13.1.2,4,표준 에러 응답 정의,1.13.1,Common,High,hyobin-yang,In Progress,,3,1.13.1.1,#26,"표준화된 에러 응답 형식"
+1.13.1.3,4,구조화 로깅 시스템,1.13.1,Common,High,hyobin-yang,In Progress,,5,1.13.1.1,#46,"JSON 기반 구조화 로깅"
+1.13.1.4,4,비즈니스 예외 가이드 적용,1.13.1,Common,High,hyobin-yang,Completed,,3,1.13.1.2,#42,"비즈니스 예외 처리 표준화"
+1.13.2,3,공통 유틸리티,1.13,Common,Medium,,Not Started,,,1.13.1,,"공통 유틸리티 라이브러리"
+1.13.2.1,4,데이터 검증 유틸리티,1.13.2,Common,Medium,,Not Started,,3,1.13.1.2,,공통 데이터 검증 함수
+1.13.2.2,4,날짜/시간 유틸리티,1.13.2,Common,Medium,,Not Started,,2,1.13.2.1,,날짜 시간 처리 유틸리티
+1.13.2.3,4,암호화 유틸리티,1.13.2,Common,High,,Not Started,,4,1.13.2.1,,공통 암호화/복호화 함수
+1.13.3,3,설정 관리 시스템,1.13,Common,Medium,,Not Started,,,1.13.2,,"중앙집중식 설정 관리"
+1.13.3.1,4,환경별 설정 분리,1.13.3,Common,Medium,,Not Started,,3,1.13.2.3,,개발/운영 환경 설정 분리
+1.13.3.2,4,동적 설정 로딩,1.13.3,Common,Medium,,Not Started,,4,1.13.3.1,,런타임 설정 변경 지원
+1.14,2,CI/CD Pipeline,1,DevOps,High,KwonSunJae,In Progress,,,1.13,,CI/CD 파이프라인 구축
+1.14.1,3,테스트 자동화,1.14,DevOps,High,KwonSunJae,In Progress,,,1.13.1,#52,"자동화된 테스트 파이프라인"
+1.14.1.1,4,단위 테스트 자동화,1.14.1,DevOps,High,KwonSunJae,Not Started,,5,1.13.1.4,,JUnit 기반 단위 테스트
+1.14.1.2,4,통합 테스트 자동화,1.14.1,DevOps,High,KwonSunJae,Not Started,,7,1.14.1.1,,스프링 부트 통합 테스트
+1.14.1.3,4,코드 커버리지 측정,1.14.1,DevOps,High,KwonSunJae,Not Started,,3,1.14.1.2,,Jacoco 커버리지 리포트
+1.14.2,3,빌드 및 배포 자동화,1.14,DevOps,High,KwonSunJae,Not Started,,,1.14.1,,"자동화된 빌드 및 배포"
+1.14.2.1,4,Maven 빌드 최적화,1.14.2,DevOps,High,KwonSunJae,Not Started,,3,1.14.1.3,,빌드 성능 최적화
+1.14.2.2,4,Docker 이미지 빌드,1.14.2,DevOps,High,KwonSunJae,Not Started,,4,1.14.2.1,,컨테이너 이미지 생성
+1.14.2.3,4,배포 파이프라인 구축,1.14.2,DevOps,High,KwonSunJae,Not Started,,6,1.14.2.2,,자동 배포 시스템
+1.14.3,3,품질 게이트,1.14,DevOps,High,KwonSunJae,Not Started,,,1.14.2,,"코드 품질 관리"
+1.14.3.1,4,SonarQube 연동,1.14.3,DevOps,Medium,KwonSunJae,Not Started,,4,1.14.2.1,,정적 코드 분석
+1.14.3.2,4,보안 스캔 자동화,1.14.3,DevOps,Medium,KwonSunJae,Not Started,,3,1.14.3.1,,보안 취약점 검사
+1.14.3.3,4,PR 머지 정책 설정,1.14.3,DevOps,High,KwonSunJae,In Progress,,2,1.14.1.3,,테스트 통과 필수 정책
