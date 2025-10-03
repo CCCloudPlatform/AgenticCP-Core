@@ -36,9 +36,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: agenticcp
       SPRING_DATASOURCE_PASSWORD: agenticcppassword
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      APP_REDIS_ENABLED: "true"
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - agenticcp-network
     healthcheck:
@@ -62,6 +67,21 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    networks:
+      - agenticcp-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: agenticcp-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     networks:
       - agenticcp-network
 

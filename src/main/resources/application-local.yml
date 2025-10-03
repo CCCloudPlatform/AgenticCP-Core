@@ -15,9 +15,16 @@ spring:
       password: admin123
   
   cache:
-    type: simple
+    type: redis
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
 
 logging:
+app:
+  redis:
+    enabled: ${APP_REDIS_ENABLED:true}
   level:
     root: INFO
     com.agenticcp.core: DEBUG
