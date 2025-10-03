@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 로컬 환경용 Logback 설정 -->
+    <springProfile name="local">
+        <property name="LOG_LEVEL" value="${LOG_LEVEL:-DEBUG}"/>
+        <property name="LOG_PATH" value="./logs"/>
+
+        <!-- 파일 출력용 appender  -->
+        <appender name="LOCAL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/agenticcp-local.log</file>
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/agenticcp-local.log.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>3</maxHistory>
+                <totalSizeCap>500MB</totalSizeCap>
+                <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            </rollingPolicy>
+        </appender>
+
+        <!-- 비동기 래퍼 -->
+        <appender name="ASYNC_LOCAL_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="LOCAL_FILE"/>
+            <queueSize>4096</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
+
+        <!-- 콘솔 패턴 -->
+        <property name="CONSOLE_LOG_PATTERN"
+                  value="%cyan([%X{CORRELATION_ID:-NO-CORR}]) %d{HH:mm:ss.SSS} %highlight(%-5level) %green(%logger{36}) %magenta([%thread]) %boldWhite([ip=%X{clientIp} ua=%X{userAgent} sid=%X{sessionId} ten=%X{tenantId}]) - %msg%n"/>
+
+        <root level="${LOG_LEVEL}">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_LOCAL_FILE"/>
+        </root>
+
+    </springProfile>
+</included>

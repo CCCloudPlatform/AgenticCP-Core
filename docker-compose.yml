@@ -41,10 +41,6 @@ services:
         condition: service_healthy
     networks:
       - agenticcp-network
-    volumes:
-      - ./logs:/app/logs
-      # 개발용: 소스코드 실시간 반영 (선택사항)
-      # - ./src:/app/src
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
       interval: 30s

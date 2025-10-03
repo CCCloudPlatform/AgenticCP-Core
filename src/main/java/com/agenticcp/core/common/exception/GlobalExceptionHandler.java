@@ -38,7 +38,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Object> handleBusinessException(BusinessException e) {
         BaseErrorCode errorCode = e.getErrorCode();
-        log.warn("BusinessException Caused by: {}, Message: {}", e.getClass().getSimpleName(), e.getMessage());
+        
+        // Security 도메인 예외에 대한 특별한 로깅
+        if (errorCode.getCode().startsWith("SECURITY_")) {
+            log.warn("Security BusinessException: {} - {}", errorCode.getCode(), e.getMessage());
+        } else {
+            log.warn("BusinessException Caused by: {}, Message: {}", e.getClass().getSimpleName(), e.getMessage());
+        }
+        
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(ApiResponse.error(errorCode, e.getMessage()));
