@@ -51,7 +51,15 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     RETRY_EXHAUSTED(HttpStatus.INTERNAL_SERVER_ERROR, 8071, "모든 재시도가 실패했습니다."),
     RETRY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8072, "재시도 중 오류가 발생했습니다."),
     CACHE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 8073, "캐시를 사용할 수 없습니다."),
-    FALLBACK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8074, "폴백 처리에 실패했습니다.");
+    FALLBACK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8074, "폴백 처리에 실패했습니다."),
+    
+    // 헬스체크 관련 (8081-8090)
+    HEALTH_CHECK_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8081, "헬스체크 수행에 실패했습니다."),
+    COMPONENT_NOT_FOUND(HttpStatus.NOT_FOUND, 8082, "요청한 컴포넌트를 찾을 수 없습니다."),
+    HEALTH_INDICATOR_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 8083, "헬스 인디케이터 오류가 발생했습니다."),
+    CACHE_EVICTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8084, "캐시 제거에 실패했습니다."),
+    HEALTH_SUMMARY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8085, "헬스체크 요약 생성에 실패했습니다."),
+    COMPONENT_HEALTH_CHECK_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8086, "컴포넌트 헬스체크에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
