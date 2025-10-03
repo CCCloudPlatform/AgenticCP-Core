@@ -255,14 +255,20 @@ class PolicyEngineServiceTest {
             String resourceType = "EC2_INSTANCE";
             String action = "CREATE";
             Set<String> mockKeys = Set.of("policy_evaluation:EC2_INSTANCE:CREATE:user1");
-            when(redisTemplate.keys(anyString())).thenReturn(mockKeys);
+            
+            // keys() 호출 시 mockKeys 반환하도록 설정
+            when(redisTemplate.keys("policy_evaluation:EC2_INSTANCE:CREATE:*")).thenReturn(mockKeys);
             
             // When
             policyEngineService.evictPolicyCache(resourceType, action);
             
             // Then
-            verify(redisTemplate, atLeastOnce()).delete(anyString());
-            verify(redisTemplate, atLeastOnce()).delete(any(Set.class));
+            // 1. 특정 키 삭제 호출 확인
+            verify(redisTemplate).delete("applicable_policies:EC2_INSTANCE:CREATE");
+            // 2. keys() 메서드 호출 확인
+            verify(redisTemplate).keys("policy_evaluation:EC2_INSTANCE:CREATE:*");
+            // 3. Set으로 삭제 호출 확인
+            verify(redisTemplate).delete(mockKeys);
         }
         
         @Test
@@ -271,6 +277,8 @@ class PolicyEngineServiceTest {
             // Given
             Set<String> mockKeys1 = Set.of("policy_evaluation:key1", "policy_evaluation:key2");
             Set<String> mockKeys2 = Set.of("applicable_policies:key1", "applicable_policies:key2");
+            
+            // 각 keys() 호출에 대한 반환 값 설정
             when(redisTemplate.keys("policy_evaluation:*")).thenReturn(mockKeys1);
             when(redisTemplate.keys("applicable_policies:*")).thenReturn(mockKeys2);
             
@@ -278,7 +286,12 @@ class PolicyEngineServiceTest {
             policyEngineService.evictAllPolicyCache();
             
             // Then
-            verify(redisTemplate, times(2)).delete(any(Set.class));
+            // 1. keys() 메서드 호출 확인
+            verify(redisTemplate).keys("policy_evaluation:*");
+            verify(redisTemplate).keys("applicable_policies:*");
+            // 2. 각 키 Set에 대한 삭제 호출 확인
+            verify(redisTemplate).delete(mockKeys1);
+            verify(redisTemplate).delete(mockKeys2);
         }
     }
     
