@@ -3,6 +3,8 @@ package com.agenticcp.core;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest(properties = {
         "app.redis.enabled=false",
@@ -10,6 +12,13 @@ import org.springframework.test.context.ActiveProfiles;
 })
 @ActiveProfiles("test")
 class AgenticCpCoreApplicationTests {
+
+    @DynamicPropertySource
+    static void injectTestCipherKey(DynamicPropertyRegistry registry) {
+        registry.add("config.cipher.key", () -> "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=");
+        // 필요 시 키 누락 동작을 READ_ONLY로 강제하려면 아래 주석 해제
+        // registry.add("config.cipher.missingKeyBehavior", () -> "READ_ONLY");
+    }
 
     @Test
     void contextLoads() {

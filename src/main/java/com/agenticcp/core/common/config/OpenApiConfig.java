@@ -22,7 +22,12 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("AgenticCP Core API")
                         .version("1.0.0")
-                        .description("멀티 클라우드 플랫폼 통합 관리 API")
+                        .description("멀티 클라우드 플랫폼 통합 관리 API\n\n" +
+                                "보안 정책:\n" +
+                                "- ENCRYPTED 설정은 기본적으로 마스킹(***).\n" +
+                                "- showSecret=true 요청은 관리자 권한(ROLE_ADMIN/ROLE_PLATFORM_ADMIN) 필요.\n" +
+                                "- showSecret=true 응답은 Cache-Control/Pragma no-store/no-cache 적용.\n" +
+                                "- 복호화 실패(PLATFORM_6017), 암호문 포맷 오류(PLATFORM_6019) 표준 에러코드 사용.")
                         .contact(new Contact()
                                 .name("AgenticCP Team")
                                 .email("support@agenticcp.com"))

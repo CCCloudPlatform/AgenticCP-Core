@@ -43,6 +43,12 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
+# 테스트용 암호화 키 설정 (테스트 컨텍스트 로딩용)
+config:
+  cipher:
+    key: "${CONFIG_CIPHER_KEY:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}"
+    missingKeyBehavior: READ_ONLY
+
 # 테스트용 JWT 설정
 jwt:
   secret: test-secret-key-for-testing-purposes-only-very-long-key
