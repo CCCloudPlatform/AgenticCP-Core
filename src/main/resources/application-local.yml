@@ -13,6 +13,7 @@ spring:
     user:
       name: admin
       password: admin123
+      roles: ADMIN
   
   cache:
     type: simple
