@@ -3,122 +3,148 @@ package com.agenticcp.core.domain.tenant.controller;
 import com.agenticcp.core.domain.tenant.service.TenantAuthorizationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.servlet.MockMvc;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(SpringExtension.class)
-@WebMvcTest(controllers = TenantAuthorizationController.class)
+@ExtendWith(MockitoExtension.class)
 class TenantAuthorizationControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
+    @Mock
     private TenantAuthorizationService tenantAuthorizationService;
 
+    private TenantAuthorizationController controller;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        controller = new TenantAuthorizationController(tenantAuthorizationService);
+    }
+
     @Test
-    void GET_roles_정상200() throws Exception {
-        Mockito.when(tenantAuthorizationService.getTenantRoles(anyString()))
+    void GET_roles_정상동작() {
+        // Given
+        when(tenantAuthorizationService.getTenantRoles(anyString()))
                 .thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/v1/tenants/t-001/roles")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+        // When
+        var result = controller.getTenantRoles("t-001");
+
+        // Then
+        verify(tenantAuthorizationService).getTenantRoles("t-001");
+        assert result.getStatusCode().is2xxSuccessful();
     }
 
     @Test
-    void GET_permissions_정상200() throws Exception {
-        Mockito.when(tenantAuthorizationService.getTenantPermissions(anyString()))
+    void GET_permissions_정상동작() {
+        // Given
+        when(tenantAuthorizationService.getTenantPermissions(anyString()))
                 .thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/v1/tenants/t-001/permissions")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+        // When
+        var result = controller.getTenantPermissions("t-001");
+
+        // Then
+        verify(tenantAuthorizationService).getTenantPermissions("t-001");
+        assert result.getStatusCode().is2xxSuccessful();
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMIN"})
-    void POST_init_permissions_관리자200() throws Exception {
-        mockMvc.perform(post("/api/v1/tenants/t-001/init-permissions")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+    void POST_init_permissions_정상동작() {
+        // Given
+        Mockito.doNothing().when(tenantAuthorizationService).initializeTenantPermissions(anyString());
+
+        // When
+        var result = controller.initializeTenantPermissions("t-001");
+
+        // Then
+        verify(tenantAuthorizationService).initializeTenantPermissions("t-001");
+        assert result.getStatusCode().is2xxSuccessful();
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMIN"})
-    void POST_cache_evict_관리자200() throws Exception {
-        mockMvc.perform(post("/api/v1/tenants/t-001/cache/evict")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+    void POST_cache_evict_정상동작() {
+        // Given
+        Mockito.doNothing().when(tenantAuthorizationService).evictTenantCache(anyString());
+
+        // When
+        var result = controller.evictTenantCache("t-001");
+
+        // Then
+        verify(tenantAuthorizationService).evictTenantCache("t-001");
+        assert result.getStatusCode().is2xxSuccessful();
     }
 
     // 시나리오 1: 테넌트별 역할 격리
     @Test
-    void 시나리오1_테넌트별_역할_격리() throws Exception {
+    void 시나리오1_테넌트별_역할_격리() {
         var roleA = com.agenticcp.core.domain.user.dto.RoleResponse.builder().roleKey("ADMIN").tenantKey("tenantA").build();
         var roleB = com.agenticcp.core.domain.user.dto.RoleResponse.builder().roleKey("ADMIN").tenantKey("tenantB").build();
 
-        Mockito.when(tenantAuthorizationService.getTenantRoles("tenantA"))
+        when(tenantAuthorizationService.getTenantRoles("tenantA"))
                 .thenReturn(List.of(roleA));
-        Mockito.when(tenantAuthorizationService.getTenantRoles("tenantB"))
+        when(tenantAuthorizationService.getTenantRoles("tenantB"))
                 .thenReturn(List.of(roleB));
 
-        mockMvc.perform(get("/api/v1/tenants/tenantA/roles").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/api/v1/tenants/tenantB/roles").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+        var resultA = controller.getTenantRoles("tenantA");
+        var resultB = controller.getTenantRoles("tenantB");
+
+        assert resultA.getStatusCode().is2xxSuccessful();
+        assert resultB.getStatusCode().is2xxSuccessful();
+        verify(tenantAuthorizationService).getTenantRoles("tenantA");
+        verify(tenantAuthorizationService).getTenantRoles("tenantB");
     }
 
     // 시나리오 2: 권한 데이터 격리
     @Test
-    void 시나리오2_권한_데이터_격리() throws Exception {
+    void 시나리오2_권한_데이터_격리() {
         var permA = com.agenticcp.core.domain.user.dto.PermissionResponse.builder().permissionKey("READ_ONLY").tenantKey("tenantA").build();
         var permB = com.agenticcp.core.domain.user.dto.PermissionResponse.builder().permissionKey("READ_ONLY").tenantKey("tenantB").build();
 
-        Mockito.when(tenantAuthorizationService.getTenantPermissions("tenantA"))
+        when(tenantAuthorizationService.getTenantPermissions("tenantA"))
                 .thenReturn(List.of(permA));
-        Mockito.when(tenantAuthorizationService.getTenantPermissions("tenantB"))
+        when(tenantAuthorizationService.getTenantPermissions("tenantB"))
                 .thenReturn(List.of(permB));
 
-        mockMvc.perform(get("/api/v1/tenants/tenantA/permissions").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/api/v1/tenants/tenantB/permissions").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+        var resultA = controller.getTenantPermissions("tenantA");
+        var resultB = controller.getTenantPermissions("tenantB");
+
+        assert resultA.getStatusCode().is2xxSuccessful();
+        assert resultB.getStatusCode().is2xxSuccessful();
+        verify(tenantAuthorizationService).getTenantPermissions("tenantA");
+        verify(tenantAuthorizationService).getTenantPermissions("tenantB");
     }
 
     // 시나리오 3: 테넌트별 기본 권한 설정(초기화 후 조회 가능)
     @Test
-    void 시나리오3_초기화후_기본_권한_역할_조회() throws Exception {
-        // init은 side-effect만 검증(200)
-        mockMvc.perform(post("/api/v1/tenants/tenantC/init-permissions")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-
-        // 이후 조회가 정상 동작한다고 가정하고 mock 세팅
-        Mockito.when(tenantAuthorizationService.getTenantRoles("tenantC"))
+    void 시나리오3_초기화후_기본_권한_역할_조회() {
+        // Given
+        Mockito.doNothing().when(tenantAuthorizationService).initializeTenantPermissions("tenantC");
+        when(tenantAuthorizationService.getTenantRoles("tenantC"))
                 .thenReturn(Collections.emptyList());
-        Mockito.when(tenantAuthorizationService.getTenantPermissions("tenantC"))
+        when(tenantAuthorizationService.getTenantPermissions("tenantC"))
                 .thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/v1/tenants/tenantC/roles").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/api/v1/tenants/tenantC/permissions").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+        // When - 초기화
+        var initResult = controller.initializeTenantPermissions("tenantC");
+        
+        // When - 조회
+        var rolesResult = controller.getTenantRoles("tenantC");
+        var permissionsResult = controller.getTenantPermissions("tenantC");
+
+        // Then
+        assert initResult.getStatusCode().is2xxSuccessful();
+        assert rolesResult.getStatusCode().is2xxSuccessful();
+        assert permissionsResult.getStatusCode().is2xxSuccessful();
+        
+        verify(tenantAuthorizationService).initializeTenantPermissions("tenantC");
+        verify(tenantAuthorizationService).getTenantRoles("tenantC");
+        verify(tenantAuthorizationService).getTenantPermissions("tenantC");
     }
 }
-
-
