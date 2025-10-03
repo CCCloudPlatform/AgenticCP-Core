@@ -1,6 +1,8 @@
 package com.agenticcp.core.domain.monitoring.health.integration;
 
 import com.agenticcp.core.domain.monitoring.health.dto.*;
+import com.agenticcp.core.domain.monitoring.health.exception.ComponentNotFoundException;
+import com.agenticcp.core.domain.monitoring.health.indicator.HealthIndicator;
 import com.agenticcp.core.domain.monitoring.health.service.AdvancedHealthCheckService;
 import com.agenticcp.core.domain.platform.entity.PlatformHealth;
 import com.agenticcp.core.domain.platform.repository.PlatformHealthRepository;
@@ -11,9 +13,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 /**
  * 헬스체크 단위 테스트 클래스
@@ -33,13 +39,17 @@ class HealthCheckIntegrationTest {
     @Mock
     private PlatformHealthRepository platformHealthRepository;
     
+    @Mock
+    private List<HealthIndicator> healthIndicators;
+    
+    @Mock
+    private HealthIndicator databaseIndicator;
+    
     private AdvancedHealthCheckService advancedHealthCheckService;
 
     @BeforeEach
     void setUp() {
-        // Mock된 헬스체크 인디케이터들 생성
-        List<com.agenticcp.core.domain.monitoring.health.indicator.HealthIndicator> mockIndicators = Arrays.asList();
-        advancedHealthCheckService = new AdvancedHealthCheckService(mockIndicators, platformHealthRepository);
+        advancedHealthCheckService = new AdvancedHealthCheckService(healthIndicators, platformHealthRepository);
     }
 
     /**
@@ -50,6 +60,9 @@ class HealthCheckIntegrationTest {
      */
     @Test
     void getOverallHealth_ShouldPerformHealthCheckAndSaveToDatabase() {
+        // Given - 빈 헬스 인디케이터 리스트 설정
+        when(healthIndicators.iterator()).thenReturn(Collections.emptyIterator());
+        
         // When
         HealthStatusResponse response = advancedHealthCheckService.getOverallHealth();
 
@@ -66,6 +79,11 @@ class HealthCheckIntegrationTest {
 
     @Test
     void getComponentHealth_ShouldCheckSpecificComponent() {
+        // Given - Mock 설정으로 database 컴포넌트가 존재하도록 설정
+        when(healthIndicators.stream()).thenReturn(Arrays.asList(databaseIndicator).stream());
+        when(databaseIndicator.getName()).thenReturn("database");
+        when(databaseIndicator.check()).thenReturn(HealthIndicatorResult.healthy("Database is healthy"));
+
         // When
         ComponentHealthStatus response = advancedHealthCheckService.getComponentHealth("database");
 
@@ -80,18 +98,21 @@ class HealthCheckIntegrationTest {
     }
 
     @Test
-    void getComponentHealth_WithNonExistentComponent_ShouldReturnUnknown() {
-        // When
-        ComponentHealthStatus response = advancedHealthCheckService.getComponentHealth("nonexistent");
+    void getComponentHealth_WithNonExistentComponent_ShouldThrowComponentNotFoundException() {
+        // Given - 빈 스트림으로 설정하여 컴포넌트가 존재하지 않도록 함
+        when(healthIndicators.stream()).thenReturn(Stream.empty());
 
-        // Then
-        assertThat(response.getComponent()).isEqualTo("nonexistent");
-        assertThat(response.getStatus()).isEqualTo(PlatformHealth.HealthStatus.UNKNOWN);
-        assertThat(response.getMessage()).isEqualTo("Component not found");
+        // When & Then
+        assertThatThrownBy(() -> advancedHealthCheckService.getComponentHealth("nonexistent"))
+                .isInstanceOf(ComponentNotFoundException.class)
+                .hasMessage("Component 'nonexistent' not found");
     }
 
     @Test
     void getHealthSummary_ShouldReturnSummaryFromDatabase() {
+        // Given - 빈 헬스 인디케이터 리스트 설정
+        when(healthIndicators.iterator()).thenReturn(Collections.emptyIterator());
+        
         // Given - Perform some health checks first
         advancedHealthCheckService.getOverallHealth();
 
@@ -109,6 +130,9 @@ class HealthCheckIntegrationTest {
 
     @Test
     void healthCheck_ShouldSaveCorrectDataToDatabase() {
+        // Given - 빈 헬스 인디케이터 리스트 설정
+        when(healthIndicators.iterator()).thenReturn(Collections.emptyIterator());
+        
         // When
         advancedHealthCheckService.getOverallHealth();
 

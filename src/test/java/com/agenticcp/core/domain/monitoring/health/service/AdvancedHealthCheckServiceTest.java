@@ -1,7 +1,10 @@
 package com.agenticcp.core.domain.monitoring.health.service;
 
 import com.agenticcp.core.domain.monitoring.health.dto.*;
+import com.agenticcp.core.domain.monitoring.health.exception.ComponentNotFoundException;
+import com.agenticcp.core.domain.monitoring.health.exception.HealthCheckException;
 import com.agenticcp.core.domain.monitoring.health.indicator.HealthIndicator;
+import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.platform.entity.PlatformHealth;
 import com.agenticcp.core.domain.platform.repository.PlatformHealthRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,10 +15,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -135,21 +141,17 @@ class AdvancedHealthCheckServiceTest {
      * 개별 컴포넌트 헬스체크 테스트 - 컴포넌트가 존재하지 않을 때
      * 
      * 존재하지 않는 컴포넌트의 헬스체크를 요청했을 때,
-     * UNKNOWN 상태가 반환되는지 확인합니다.
+     * ComponentNotFoundException이 발생하는지 확인합니다.
      */
     @Test
-    void getComponentHealth_WhenComponentNotFound_ShouldReturnUnknownStatus() {
+    void getComponentHealth_WhenComponentNotFound_ShouldThrowComponentNotFoundException() {
         // Given
-        when(healthIndicators.stream()).thenReturn(Arrays.<HealthIndicator>asList().stream());
+        when(healthIndicators.stream()).thenReturn(Stream.empty());
 
-        // When
-        ComponentHealthStatus response = advancedHealthCheckService.getComponentHealth("nonexistent");
-
-        // Then
-        assertThat(response.getComponent()).isEqualTo("nonexistent");
-        assertThat(response.getStatus()).isEqualTo(PlatformHealth.HealthStatus.UNKNOWN);
-        assertThat(response.getMessage()).isEqualTo("Component not found");
-        assertThat(response.getResponseTime()).isGreaterThanOrEqualTo(0);
+        // When & Then
+        assertThatThrownBy(() -> advancedHealthCheckService.getComponentHealth("nonexistent"))
+                .isInstanceOf(ComponentNotFoundException.class)
+                .hasMessage("Component 'nonexistent' not found");
     }
 
     /**
@@ -193,22 +195,77 @@ class AdvancedHealthCheckServiceTest {
      * 예외 처리 테스트 - 헬스체크 실패 시
      * 
      * 헬스체크 인디케이터에서 예외가 발생했을 때,
-     * 서비스가 안전하게 처리하고 CRITICAL 상태를 반환하는지 확인합니다.
+     * HealthCheckException이 발생하는지 확인합니다.
      */
     @Test
-    void getOverallHealth_WhenException_ShouldHandleGracefully() {
+    void getOverallHealth_WhenException_ShouldThrowHealthCheckException() {
         // Given
         when(databaseIndicator.getName()).thenReturn("database");
         when(databaseIndicator.check()).thenThrow(new RuntimeException("Health check failed"));
         when(healthIndicators.iterator()).thenReturn(Arrays.asList(databaseIndicator).iterator());
 
+        // When & Then
+        assertThatThrownBy(() -> advancedHealthCheckService.getOverallHealth())
+                .isInstanceOf(HealthCheckException.class)
+                .hasMessageContaining("Health indicator error for database")
+                .hasMessageContaining("Health check failed");
+    }
+
+    /**
+     * 존재하지 않는 컴포넌트 헬스체크 테스트
+     * 
+     * 요청한 컴포넌트가 존재하지 않을 때 ComponentNotFoundException이 발생하는지 확인합니다.
+     */
+    @Test
+    void getComponentHealth_WithNonExistentComponent_ShouldThrowComponentNotFoundException() {
+        // Given
+        String nonExistentComponent = "nonexistent";
+        when(healthIndicators.stream()).thenReturn(Stream.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> advancedHealthCheckService.getComponentHealth(nonExistentComponent))
+                .isInstanceOf(ComponentNotFoundException.class)
+                .hasMessage("Component 'nonexistent' not found");
+    }
+
+    /**
+     * 헬스 인디케이터 오류 테스트
+     * 
+     * 헬스 인디케이터에서 예외가 발생했을 때 HealthCheckException이 발생하는지 확인합니다.
+     */
+    @Test
+    void getOverallHealth_WhenHealthIndicatorThrowsException_ShouldThrowHealthCheckException() {
+        // Given
+        when(databaseIndicator.getName()).thenReturn("database");
+        when(databaseIndicator.check()).thenThrow(new RuntimeException("Database connection failed"));
+        when(healthIndicators.iterator()).thenReturn(Arrays.asList(databaseIndicator).iterator());
+
+        // When & Then
+        assertThatThrownBy(() -> advancedHealthCheckService.getOverallHealth())
+                .isInstanceOf(HealthCheckException.class)
+                .hasMessageContaining("Health indicator error for database")
+                .hasMessageContaining("Database connection failed");
+    }
+
+    /**
+     * 개별 컴포넌트 헬스체크에서 예외 발생 테스트
+     * 
+     * 개별 컴포넌트 헬스체크에서 예외가 발생했을 때 적절한 처리가 되는지 확인합니다.
+     */
+    @Test
+    void getComponentHealth_WhenException_ShouldHandleGracefully() {
+        // Given
+        String componentName = "database";
+        when(databaseIndicator.getName()).thenReturn(componentName);
+        when(databaseIndicator.check()).thenThrow(new RuntimeException("Database connection failed"));
+        when(healthIndicators.stream()).thenReturn(Arrays.asList(databaseIndicator).stream());
+
         // When
-        HealthStatusResponse response = advancedHealthCheckService.getOverallHealth();
+        ComponentHealthStatus response = advancedHealthCheckService.getComponentHealth(componentName);
 
         // Then
-        assertThat(response.getOverallStatus()).isEqualTo(PlatformHealth.HealthStatus.CRITICAL);
-        assertThat(response.getComponents()).hasSize(1);
-        assertThat(response.getComponents().get("database").getStatus()).isEqualTo(PlatformHealth.HealthStatus.CRITICAL);
-        assertThat(response.getComponents().get("database").getMessage()).contains("Health check failed");
+        assertThat(response.getComponent()).isEqualTo(componentName);
+        assertThat(response.getStatus()).isEqualTo(PlatformHealth.HealthStatus.CRITICAL);
+        assertThat(response.getMessage()).contains("Health check failed");
     }
 }
