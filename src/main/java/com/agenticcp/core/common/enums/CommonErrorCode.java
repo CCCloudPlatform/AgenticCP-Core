@@ -23,8 +23,7 @@ import org.springframework.http.HttpStatus;
  *
  * @see BaseErrorCode
  * @see ErrorCategory
- * @author hyobinyang
- * @since 2025-09-22
+ * @author AgenticCP Team
  */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
