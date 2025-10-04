@@ -13,7 +13,7 @@ import com.agenticcp.core.common.dto.BaseErrorCode;
  *
  * @see BaseErrorCode
  * @see CommonErrorCode
- * @author hyobinyang
+ * @author AgenticCP Team
  * @since 2025-09-22
  */
 public enum ErrorCategory {
