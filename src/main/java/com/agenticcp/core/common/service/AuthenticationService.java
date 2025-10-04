@@ -2,12 +2,17 @@ package com.agenticcp.core.common.service;
 
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
+import com.agenticcp.core.common.dto.auth.RegisterRequest;
 import com.agenticcp.core.common.dto.auth.TokenResponse;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
 import com.agenticcp.core.common.enums.AuthErrorCode;
+import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.common.security.JwtService;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.tenant.service.TenantService;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.enums.UserErrorCode;
 import com.agenticcp.core.domain.user.service.UserService;
@@ -18,6 +23,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,6 +46,7 @@ import static com.agenticcp.core.common.security.JwtConstants.TOKEN_TYPE_ACCESS;
 public class AuthenticationService {
 
     private final UserService userService;
+    private final TenantService tenantService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     @Autowired(required = false)
@@ -233,6 +240,93 @@ public class AuthenticationService {
             
         } catch (Exception e) {
             log.error("[AuthenticationService] blacklistToken - error", e);
+        }
+    }
+
+    /**
+     * 사용자 회원가입
+     */
+    public TokenResponse register(RegisterRequest registerRequest) {
+        log.info("[AuthenticationService] register - username={} email={}", 
+                registerRequest.getUsername(), 
+                registerRequest.getEmail());
+        
+        try {
+            // 1. 사용자명 중복 체크
+            if (userService.getUserByUsername(registerRequest.getUsername()).isPresent()) {
+                log.warn("[AuthenticationService] register - username already exists username={}", 
+                        registerRequest.getUsername());
+                throw new BusinessException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
+            }
+            
+            // 2. 이메일 중복 체크
+            if (userService.getUserByEmail(registerRequest.getEmail()).isPresent()) {
+                log.warn("[AuthenticationService] register - email already exists email={}", 
+                        registerRequest.getEmail());
+                throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
+            }
+            
+            // 3. 테넌트 조회 (있는 경우)
+            Tenant tenant = null;
+            if (StringUtils.hasText(registerRequest.getTenantKey())) {
+                tenant = tenantService.getTenantByKey(registerRequest.getTenantKey())
+                        .orElseThrow(() -> {
+                            log.warn("[AuthenticationService] register - invalid tenant key tenantKey={}", 
+                                    registerRequest.getTenantKey());
+                            return new BusinessException(AuthErrorCode.INVALID_TENANT_KEY);
+                        });
+                
+                // 테넌트가 활성 상태인지 확인
+                if (tenant.getStatus() != Status.ACTIVE) {
+                    log.warn("[AuthenticationService] register - inactive tenant tenantKey={}", 
+                            registerRequest.getTenantKey());
+                    throw new BusinessException(AuthErrorCode.INVALID_TENANT_KEY, "비활성화된 테넌트입니다.");
+                }
+            }
+            
+            // 4. User 엔티티 생성
+            User newUser = User.builder()
+                    .username(registerRequest.getUsername())
+                    .email(registerRequest.getEmail())
+                    .name(registerRequest.getName())
+                    .passwordHash(registerRequest.getPassword()) // UserService.createUser에서 해싱됨
+                    .tenant(tenant)
+                    .role(UserRole.VIEWER) // 기본 역할
+                    .status(Status.ACTIVE) // 활성 상태
+                    .twoFactorEnabled(false)
+                    .failedLoginAttempts(0)
+                    .timezone("UTC")
+                    .language("ko")
+                    .build();
+            
+            // 5. 사용자 저장 (비밀번호 자동 해싱)
+            User savedUser = userService.createUser(newUser);
+            
+            // 6. JWT 토큰 생성
+            String accessToken = jwtService.generateAccessToken(savedUser);
+            String refreshToken = jwtService.generateRefreshToken(savedUser);
+            
+            // 7. 리프레시 토큰을 Redis에 저장
+            String refreshTokenKey = "refresh_token:" + savedUser.getUsername();
+            if (redisTemplate != null) {
+                redisTemplate.opsForValue().set(refreshTokenKey, refreshToken, 7, TimeUnit.DAYS);
+            }
+            
+            log.info("[AuthenticationService] register - success username={}", savedUser.getUsername());
+            
+            return TokenResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType(TOKEN_TYPE_ACCESS)
+                    .expiresIn(3600L) // 1시간
+                    .refreshExpiresIn(604800L) // 7일
+                    .build();
+                    
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[AuthenticationService] register - error", e);
+            throw new BusinessException(AuthErrorCode.REGISTRATION_FAILED, e.getMessage());
         }
     }
 }

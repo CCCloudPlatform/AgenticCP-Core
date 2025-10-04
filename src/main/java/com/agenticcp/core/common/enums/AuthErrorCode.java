@@ -35,7 +35,13 @@ public enum AuthErrorCode implements BaseErrorCode {
     
     // 사용자 정보 관련 (1300-1399)
     USER_INFO_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1301, "사용자 정보 조회에 실패했습니다."),
-    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, 1302, "인증이 필요합니다.");
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, 1302, "인증이 필요합니다."),
+    
+    // 회원가입 관련 (1400-1499)
+    REGISTRATION_FAILED(HttpStatus.BAD_REQUEST, 1401, "회원가입에 실패했습니다."),
+    USERNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, 1402, "이미 사용 중인 사용자명입니다."),
+    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, 1403, "이미 사용 중인 이메일입니다."),
+    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 1404, "유효하지 않은 테넌트 키입니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
