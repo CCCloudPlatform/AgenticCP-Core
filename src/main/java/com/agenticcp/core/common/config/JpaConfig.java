@@ -1,12 +1,14 @@
 package com.agenticcp.core.common.config;
 
 import com.agenticcp.core.common.interceptor.TenantAwareInterceptor;
+import com.agenticcp.core.common.repository.TenantAwareRepositoryImpl;
 import org.hibernate.cfg.AvailableSettings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
  * JPA 설정 클래스
@@ -18,6 +20,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  */
 @Configuration
 @EnableJpaAuditing
+@EnableJpaRepositories(
+    basePackages = "com.agenticcp.core.domain",
+    repositoryBaseClass = TenantAwareRepositoryImpl.class
+)
 public class JpaConfig {
 
     @Autowired
