@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+
+    <property name="AUDIT_LOG_PATH" value="${AUDIT_LOG_PATH:-./logs}"/>
+    <property name="AUDIT_MAX_FILE_SIZE" value="${AUDIT_MAX_FILE_SIZE:-50MB}"/>
+    <property name="AUDIT_MAX_HISTORY" value="${AUDIT_MAX_HISTORY:-90}"/>
+    <property name="AUDIT_TOTAL_SIZE_CAP" value="${AUDIT_TOTAL_SIZE_CAP:-5GB}"/>
+
+    <springProfile name="local,default">
+        <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${AUDIT_LOG_PATH}/audit-local.log</file>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <message/>
+                    <arguments/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>
+                            {
+                                "context": {
+                                    "correlationId": "%X{CORRELATION_ID:-}",
+                                    "tenantId": "%X{tenantId:-}",
+                                    "userId": "%X{userId:-}",
+                                    "sessionId": "%X{sessionId:-}",
+                                    "clientIp": "%X{clientIp:-}",
+                                    "userAgent": "%X{userAgent:-}"
+                                },
+                                "environment": "local"
+                            }
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${AUDIT_LOG_PATH}/audit-local.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>${AUDIT_MAX_FILE_SIZE}</maxFileSize>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>1GB</totalSizeCap>
+                <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            </rollingPolicy>
+        </appender>
+
+        <appender name="ASYNC_AUDIT" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="AUDIT_FILE"/>
+            <queueSize>2048</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
+    </springProfile>
+
+    <springProfile name="prod">
+        <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${AUDIT_LOG_PATH}/audit.log</file>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <message/>
+                    <arguments/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>
+                            {
+                                "context": {
+                                    "correlationId": "%X{CORRELATION_ID:-}",
+                                    "tenantId": "%X{tenantId:-}",
+                                    "userId": "%X{userId:-}",
+                                    "sessionId": "%X{sessionId:-}",
+                                    "clientIp": "%X{clientIp:-}",
+                                    "userAgent": "%X{userAgent:-}"
+                                },
+                                "environment": "prod"
+                            }
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${AUDIT_LOG_PATH}/audit.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>${AUDIT_MAX_FILE_SIZE}</maxFileSize>
+                <maxHistory>${AUDIT_MAX_HISTORY}</maxHistory>
+                <totalSizeCap>${AUDIT_TOTAL_SIZE_CAP}</totalSizeCap>
+                <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            </rollingPolicy>
+        </appender>
+
+        <appender name="ASYNC_AUDIT" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="AUDIT_FILE"/>
+            <queueSize>8192</queueSize>
+            <discardingThreshold>80</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
+    </springProfile>
+
+    <springProfile name="docker">
+        <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${AUDIT_LOG_PATH}/audit-docker.log</file>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <message/>
+                    <arguments/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>
+                            {
+                                "context": {
+                                    "correlationId": "%X{CORRELATION_ID:-}",
+                                    "tenantId": "%X{tenantId:-}",
+                                    "userId": "%X{userId:-}",
+                                    "sessionId": "%X{sessionId:-}",
+                                    "clientIp": "%X{clientIp:-}",
+                                    "userAgent": "%X{userAgent:-}"
+                                },
+                                "environment": "docker"
+                            }
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${AUDIT_LOG_PATH}/audit-docker.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>${AUDIT_MAX_FILE_SIZE}</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>2GB</totalSizeCap>
+                <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            </rollingPolicy>
+        </appender>
+
+        <appender name="ASYNC_AUDIT" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="AUDIT_FILE"/>
+            <queueSize>2048</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
+    </springProfile>
+
+    <logger name="AUDIT" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_AUDIT"/>
+    </logger>
+
+    <logger name="com.agenticcp.core.common.audit" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_AUDIT"/>
+    </logger>
+
+</included>
