@@ -3,6 +3,7 @@ package com.agenticcp.core.controller;
 import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
+import com.agenticcp.core.common.dto.auth.RegisterRequest;
 import com.agenticcp.core.common.dto.auth.TokenResponse;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
 import com.agenticcp.core.common.enums.AuthErrorCode;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +36,29 @@ public class AuthController {
 
     private final AuthenticationService authenticationService;
     private final JwtService jwtService;
+
+    /**
+     * 회원가입
+     */
+    @PostMapping("/register")
+    @Operation(summary = "사용자 회원가입", description = "새로운 사용자를 등록하고 JWT 토큰을 발급받습니다.")
+    public ResponseEntity<ApiResponse<TokenResponse>> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        log.info("[AuthController] register - username={} email={}", 
+                registerRequest.getUsername(), 
+                registerRequest.getEmail());
+        
+        try {
+            TokenResponse tokenResponse = authenticationService.register(registerRequest);
+            
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success(tokenResponse, "회원가입에 성공했습니다."));
+            
+        } catch (Exception e) {
+            log.error("[AuthController] register - error", e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(AuthErrorCode.REGISTRATION_FAILED, e.getMessage()));
+        }
+    }
 
     /**
      * 로그인

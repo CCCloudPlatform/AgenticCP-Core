@@ -121,10 +121,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Long tenantId = jwtService.extractTenantId(token);
             List<String> permissions = jwtService.extractPermissions(token);
             
-            // 권한 목록 생성
-            List<SimpleGrantedAuthority> authorities = permissions.stream()
-                    .map(SimpleGrantedAuthority::new)
-                    .collect(Collectors.toList());
+            // 권한 목록 생성 (null 체크)
+            List<SimpleGrantedAuthority> authorities = permissions != null
+                    ? permissions.stream()
+                            .map(SimpleGrantedAuthority::new)
+                            .collect(Collectors.toList())
+                    : new java.util.ArrayList<>();
             
             // 역할도 권한에 추가
             if (role != null) {
@@ -136,7 +138,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(username, null, authorities);
             
             // 추가 정보 설정
-            authentication.setDetails(new JwtAuthenticationDetails(email, tenantId, permissions));
+            authentication.setDetails(new JwtAuthenticationDetails(email, tenantId, 
+                    permissions != null ? permissions : List.of()));
             
             // SecurityContext에 설정
             SecurityContextHolder.getContext().setAuthentication(authentication);
