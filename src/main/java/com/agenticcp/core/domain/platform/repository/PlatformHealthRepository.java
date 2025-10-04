@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.platform.repository;
 
+import com.agenticcp.core.common.repository.TenantAwareRepository;
 import com.agenticcp.core.domain.platform.entity.PlatformHealth;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PlatformHealthRepository extends JpaRepository<PlatformHealth, Long> {
+public interface PlatformHealthRepository extends TenantAwareRepository<PlatformHealth, Long> {
 
     Optional<PlatformHealth> findByServiceName(String serviceName);
 

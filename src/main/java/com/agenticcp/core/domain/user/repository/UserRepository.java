@@ -3,8 +3,8 @@ package com.agenticcp.core.domain.user.repository;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
+import com.agenticcp.core.common.repository.TenantAwareRepository;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends TenantAwareRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
 

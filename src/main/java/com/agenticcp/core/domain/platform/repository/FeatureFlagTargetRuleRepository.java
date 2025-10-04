@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.platform.repository;
 
+import com.agenticcp.core.common.repository.TenantAwareRepository;
 import com.agenticcp.core.domain.platform.entity.FeatureFlagTargetRule;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -18,7 +18,7 @@ import java.util.Optional;
  * @version 1.0.0
  */
 @Repository
-public interface FeatureFlagTargetRuleRepository extends JpaRepository<FeatureFlagTargetRule, Long> {
+public interface FeatureFlagTargetRuleRepository extends TenantAwareRepository<FeatureFlagTargetRule, Long> {
 
     /**
      * 기능 플래그 ID로 활성화된 타겟팅 규칙 목록 조회 (우선순위 내림차순)

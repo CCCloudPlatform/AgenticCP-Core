@@ -1,9 +1,9 @@
 package com.agenticcp.core.domain.security.repository;
 
+import com.agenticcp.core.common.repository.TenantAwareRepository;
 import com.agenticcp.core.domain.security.entity.SecurityPolicy;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface SecurityPolicyRepository extends JpaRepository<SecurityPolicy, Long> {
+public interface SecurityPolicyRepository extends TenantAwareRepository<SecurityPolicy, Long> {
 
     Optional<SecurityPolicy> findByPolicyKey(String policyKey);
 
