@@ -10,9 +10,9 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.common.security.JwtService;
 import com.agenticcp.core.domain.user.entity.User;
-import com.agenticcp.core.domain.user.enums.RoleType;
+import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.user.enums.UserErrorCode;
-import com.agenticcp.core.domain.user.enums.UserStatus;
+import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.user.service.UserService;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.tenant.service.TenantService;
@@ -91,8 +91,8 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .passwordHash(encodedPassword)
                 .name(request.getName())
-                .role(RoleType.VIEWER) // 기본 역할 부여
-                .status(UserStatus.ACTIVE) // 기본 상태 활성
+                .role(UserRole.VIEWER) // 기본 역할 부여
+                .status(Status.ACTIVE) // 기본 상태 활성
                 .tenant(tenant)
                 .build();
 
