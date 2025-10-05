@@ -14,6 +14,7 @@
         </encoder>
     </appender>
 
+    <include resource="logback-audit.xml" optional="false"/>
     <springProfile name="local,default">
         <include resource="logback-local.xml" optional="false"/>
     </springProfile>
