@@ -35,10 +35,10 @@ public enum UserErrorCode implements BaseErrorCode {
     INVALID_USER_STATUS(HttpStatus.BAD_REQUEST, 2013, "유효하지 않은 사용자 상태입니다."),
     INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, 2014, "비밀번호 형식이 올바르지 않습니다."),
     
-    // 사용자 인증 관련 (2021-2030)
-    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, 2021, "잘못된 인증 정보입니다."),
-    TOO_MANY_FAILED_ATTEMPTS(HttpStatus.FORBIDDEN, 2022, "로그인 시도 횟수를 초과했습니다."),
-    PASSWORD_EXPIRED(HttpStatus.UNAUTHORIZED, 2023, "비밀번호가 만료되었습니다."),
+    // 사용자 인증 관련 (2021-2030) - 인증 관련은 AuthErrorCode 사용
+    // INVALID_CREDENTIALS는 AuthErrorCode.INVALID_CREDENTIALS 사용
+    // TOO_MANY_FAILED_ATTEMPTS는 AuthErrorCode.ACCOUNT_LOCKED 사용
+    // PASSWORD_EXPIRED는 AuthErrorCode.INVALID_CREDENTIALS 사용
     
     // 사용자 권한 관련 (2031-2040)
     INSUFFICIENT_PERMISSIONS(HttpStatus.FORBIDDEN, 2031, "권한이 부족합니다."),
