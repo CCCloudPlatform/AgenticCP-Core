@@ -93,7 +93,7 @@ class MetricsControllerTest {
                 Pageable pageable = PageRequest.of(0, 10);
                 List<Metric> metrics = Arrays.asList(testMetric, createTestMetric("memory.usage"));
                 Page<Metric> metricPage = new PageImpl<>(metrics, pageable, 2);
-                when(metricRepository.findAllForCurrentTenant()).thenReturn(metrics);
+                when(metricRepository.findByTenantId(anyString(), any(Pageable.class))).thenReturn(metricPage);
 
                 // When
                 ResponseEntity<ApiResponse<Page<Metric>>> response = 
@@ -103,7 +103,7 @@ class MetricsControllerTest {
                 assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(response.getBody().isSuccess()).isTrue();
                 assertThat(response.getBody().getData().getContent()).hasSize(2);
-                verify(metricRepository).findAllForCurrentTenant();
+                verify(metricRepository).findByTenantId(anyString(), any(Pageable.class));
             } finally {
                 TenantContextHolder.clear();
             }
@@ -189,7 +189,7 @@ class MetricsControllerTest {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn("test-tenant");
                 
                 Pageable pageable = PageRequest.of(0, 10);
-                when(metricRepository.findAllForCurrentTenant()).thenReturn(Collections.emptyList());
+                when(metricRepository.findByTenantId(anyString(), any(Pageable.class))).thenReturn(Page.empty());
 
                 // When
                 ResponseEntity<ApiResponse<Page<Metric>>> response = 
@@ -637,7 +637,7 @@ class MetricsControllerTest {
                 
                 Pageable pageable = PageRequest.of(0, 10);
                 RuntimeException runtimeException = new RuntimeException("Database connection failed");
-                when(metricRepository.findAllForCurrentTenant()).thenThrow(runtimeException);
+                when(metricRepository.findByTenantId(anyString(), any(Pageable.class))).thenThrow(runtimeException);
 
                 // When & Then
                 assertThatThrownBy(() -> metricsController.getMetrics(null, null, pageable))
