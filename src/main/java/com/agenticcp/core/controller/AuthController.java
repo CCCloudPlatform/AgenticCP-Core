@@ -47,7 +47,7 @@ public class AuthController {
         log.info("[AuthController] register - username={}", request.getUsername());
         TokenResponse tokenResponse = authenticationService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("회원가입에 성공했습니다.", tokenResponse));
+                .body(ApiResponse.success(tokenResponse, "회원가입에 성공했습니다."));
     }
 
     /**
