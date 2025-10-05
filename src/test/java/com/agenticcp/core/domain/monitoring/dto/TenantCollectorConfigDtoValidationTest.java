@@ -34,24 +34,24 @@ class TenantCollectorConfigDtoValidationTest {
     @Test
     @DisplayName("유효한 DTO - 모든 검증 통과")
     void validateDto_ValidData_ShouldPass() {
-        // Given
+        // Given - 모든 필드가 유효한 값으로 설정된 DTO를 생성하는 상황
         TenantCollectorConfigDto dto = TenantCollectorConfigDto.builder()
-                .tenantId("test-tenant-123")
-                .collectorType(CollectorType.SYSTEM)
-                .isEnabled(true)
-                .collectionInterval(60000L)
-                .retryCount(3)
-                .timeout(30000L)
-                .priority(1)
-                .dailyMetricLimit(10000L)
-                .storageQuotaMb(1000L)
+                .tenantId("test-tenant-123")  // 유효한 테넌트 ID (50자 이하)
+                .collectorType(CollectorType.SYSTEM)  // 유효한 수집기 타입
+                .isEnabled(true)  // 활성화 상태
+                .collectionInterval(60000L)  // 유효한 수집 주기 (1분, 최대 1분 이하)
+                .retryCount(3)  // 유효한 재시도 횟수 (1-10 범위)
+                .timeout(30000L)  // 유효한 타임아웃 (양수)
+                .priority(1)  // 유효한 우선순위 (1-1000 범위)
+                .dailyMetricLimit(10000L)  // 유효한 일일 메트릭 제한 (양수)
+                .storageQuotaMb(1000L)  // 유효한 저장 공간 할당량 (양수)
                 .build();
 
-        // When
+        // When - Jakarta Validation을 통해 DTO의 유효성을 검증하는 경우
         Set<ConstraintViolation<TenantCollectorConfigDto>> violations = validator.validate(dto);
 
-        // Then
-        assertThat(violations).isEmpty();
+        // Then - 모든 검증 규칙을 통과하므로 검증 오류가 없어야 함
+        assertThat(violations).isEmpty();  // 검증 오류가 없는지 확인
     }
 
     @Test
@@ -166,7 +166,7 @@ class TenantCollectorConfigDtoValidationTest {
         // Then
         assertThat(violations).hasSize(1);
         assertThat(violations.iterator().next().getMessage())
-                .contains("수집 주기는 최대 24시간(86400000ms) 이하여야 합니다");
+                .contains("메트릭 수집 주기는 1분(60000ms) 이하여야 합니다");
     }
 
     @Test

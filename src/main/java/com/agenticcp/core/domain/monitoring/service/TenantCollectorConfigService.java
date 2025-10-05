@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 public class TenantCollectorConfigService {
 
     private final TenantCollectorConfigRepository repository;
+    private final TenantDataRetentionService retentionService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -95,6 +96,15 @@ public class TenantCollectorConfigService {
         
         TenantCollectorConfig config = convertToEntity(configDto);
         TenantCollectorConfig savedConfig = repository.save(config);
+        
+        // 테넌트별 기본 데이터 보관 정책 자동 생성 (30일)
+        try {
+            retentionService.createDefaultRetentionPolicy(configDto.getTenantId());
+            log.info("테넌트별 기본 보관 정책 자동 생성 완료: tenantId={}", configDto.getTenantId());
+        } catch (Exception e) {
+            log.warn("테넌트별 기본 보관 정책 생성 실패 (설정은 생성됨): tenantId={}, error={}", 
+                    configDto.getTenantId(), e.getMessage());
+        }
         
         log.info("수집기 설정 생성 완료: id={}", savedConfig.getId());
         return convertToDto(savedConfig);
