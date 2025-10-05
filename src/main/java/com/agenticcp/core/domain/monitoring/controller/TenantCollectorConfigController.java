@@ -2,17 +2,22 @@ package com.agenticcp.core.domain.monitoring.controller;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.dto.ApiResponse;
-import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.common.enums.CommonErrorCode;
+import com.agenticcp.core.domain.monitoring.dto.QuotaRequestDto;
 import com.agenticcp.core.domain.monitoring.dto.TenantCollectorConfigDto;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import com.agenticcp.core.domain.monitoring.service.TenantCollectorConfigService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 테넌트별 수집기 설정 API 컨트롤러
@@ -25,6 +30,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/monitoring/collectors/configs")
 @RequiredArgsConstructor
+@Validated
 public class TenantCollectorConfigController {
 
     private final TenantCollectorConfigService configService;
@@ -34,17 +40,12 @@ public class TenantCollectorConfigController {
      */
     @GetMapping("/enabled")
     public ResponseEntity<ApiResponse<List<TenantCollectorConfigDto>>> getEnabledConfigs() {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("활성화된 수집기 설정 조회: tenantId={}", tenantId);
-            
-            List<TenantCollectorConfigDto> configs = configService.getEnabledConfigsByTenant(tenantId);
-            
-            return ResponseEntity.ok(ApiResponse.success(configs));
-        } catch (Exception e) {
-            log.error("활성화된 수집기 설정 조회 중 오류 발생", e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "활성화된 수집기 설정 조회 중 오류가 발생했습니다.");
-        }
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("활성화된 수집기 설정 조회: tenantId={}", tenantId);
+        
+        List<TenantCollectorConfigDto> configs = configService.getEnabledConfigsByTenant(tenantId);
+        
+        return ResponseEntity.ok(ApiResponse.success(configs));
     }
 
     /**
@@ -52,17 +53,12 @@ public class TenantCollectorConfigController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<TenantCollectorConfigDto>>> getAllConfigs() {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("모든 수집기 설정 조회: tenantId={}", tenantId);
-            
-            List<TenantCollectorConfigDto> configs = configService.getAllConfigsByTenant(tenantId);
-            
-            return ResponseEntity.ok(ApiResponse.success(configs));
-        } catch (Exception e) {
-            log.error("수집기 설정 조회 중 오류 발생", e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "수집기 설정 조회 중 오류가 발생했습니다.");
-        }
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("모든 수집기 설정 조회: tenantId={}", tenantId);
+        
+        List<TenantCollectorConfigDto> configs = configService.getAllConfigsByTenant(tenantId);
+        
+        return ResponseEntity.ok(ApiResponse.success(configs));
     }
 
     /**
@@ -70,18 +66,13 @@ public class TenantCollectorConfigController {
      */
     @GetMapping("/{collectorType}")
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> getConfigByType(
-            @PathVariable CollectorType collectorType) {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("특정 수집기 설정 조회: tenantId={}, collectorType={}", tenantId, collectorType);
-            
-            TenantCollectorConfigDto config = configService.getConfigByTenantAndType(tenantId, collectorType);
-            
-            return ResponseEntity.ok(ApiResponse.success(config));
-        } catch (Exception e) {
-            log.error("특정 수집기 설정 조회 중 오류 발생: collectorType={}", collectorType, e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "수집기 설정 조회 중 오류가 발생했습니다.");
-        }
+            @PathVariable @NotNull CollectorType collectorType) {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("특정 수집기 설정 조회: tenantId={}, collectorType={}", tenantId, collectorType);
+        
+        TenantCollectorConfigDto config = configService.getConfigByTenantAndType(tenantId, collectorType);
+        
+        return ResponseEntity.ok(ApiResponse.success(config));
     }
 
     /**
@@ -89,32 +80,27 @@ public class TenantCollectorConfigController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> createConfig(
-            @RequestBody TenantCollectorConfigDto configDto) {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("수집기 설정 생성: tenantId={}, collectorType={}", tenantId, configDto.getCollectorType());
-            
-            // 테넌트 ID 설정 (보안상 현재 테넌트로 고정)
-            TenantCollectorConfigDto requestDto = TenantCollectorConfigDto.builder()
-                    .tenantId(tenantId)
-                    .collectorType(configDto.getCollectorType())
-                    .isEnabled(configDto.getIsEnabled())
-                    .collectionInterval(configDto.getCollectionInterval())
-                    .retryCount(configDto.getRetryCount())
-                    .timeout(configDto.getTimeout())
-                    .targetMetrics(configDto.getTargetMetrics())
-                    .collectorSettings(configDto.getCollectorSettings())
-                    .priority(configDto.getPriority())
-                    .metadata(configDto.getMetadata())
-                    .build();
-            
-            TenantCollectorConfigDto createdConfig = configService.createConfig(requestDto);
-            
-            return ResponseEntity.ok(ApiResponse.success(createdConfig));
-        } catch (Exception e) {
-            log.error("수집기 설정 생성 중 오류 발생", e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "수집기 설정 생성 중 오류가 발생했습니다.");
-        }
+            @Valid @RequestBody TenantCollectorConfigDto configDto) {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("수집기 설정 생성: tenantId={}, collectorType={}", tenantId, configDto.getCollectorType());
+        
+        // 테넌트 ID 설정 (보안상 현재 테넌트로 고정)
+        TenantCollectorConfigDto requestDto = TenantCollectorConfigDto.builder()
+                .tenantId(tenantId)
+                .collectorType(configDto.getCollectorType())
+                .isEnabled(configDto.getIsEnabled())
+                .collectionInterval(configDto.getCollectionInterval())
+                .retryCount(configDto.getRetryCount())
+                .timeout(configDto.getTimeout())
+                .targetMetrics(configDto.getTargetMetrics())
+                .collectorSettings(configDto.getCollectorSettings())
+                .priority(configDto.getPriority())
+                .metadata(configDto.getMetadata())
+                .build();
+        
+        TenantCollectorConfigDto createdConfig = configService.createConfig(requestDto);
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(createdConfig));
     }
 
     /**
@@ -122,51 +108,41 @@ public class TenantCollectorConfigController {
      */
     @PutMapping("/{configId}")
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> updateConfig(
-            @PathVariable Long configId,
-            @RequestBody TenantCollectorConfigDto configDto) {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("수집기 설정 수정: configId={}, tenantId={}", configId, tenantId);
-            
-            // 테넌트 ID 설정 (보안상 현재 테넌트로 고정)
-            TenantCollectorConfigDto requestDto = TenantCollectorConfigDto.builder()
-                    .tenantId(tenantId)
-                    .collectorType(configDto.getCollectorType())
-                    .isEnabled(configDto.getIsEnabled())
-                    .collectionInterval(configDto.getCollectionInterval())
-                    .retryCount(configDto.getRetryCount())
-                    .timeout(configDto.getTimeout())
-                    .targetMetrics(configDto.getTargetMetrics())
-                    .collectorSettings(configDto.getCollectorSettings())
-                    .priority(configDto.getPriority())
-                    .metadata(configDto.getMetadata())
-                    .build();
-            
-            TenantCollectorConfigDto updatedConfig = configService.updateConfig(configId, requestDto);
-            
-            return ResponseEntity.ok(ApiResponse.success(updatedConfig));
-        } catch (Exception e) {
-            log.error("수집기 설정 수정 중 오류 발생: configId={}", configId, e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "수집기 설정 수정 중 오류가 발생했습니다.");
-        }
+            @PathVariable @Positive Long configId,
+            @Valid @RequestBody TenantCollectorConfigDto configDto) {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("수집기 설정 수정: configId={}, tenantId={}", configId, tenantId);
+        
+        // 테넌트 ID 설정 (보안상 현재 테넌트로 고정)
+        TenantCollectorConfigDto requestDto = TenantCollectorConfigDto.builder()
+                .tenantId(tenantId)
+                .collectorType(configDto.getCollectorType())
+                .isEnabled(configDto.getIsEnabled())
+                .collectionInterval(configDto.getCollectionInterval())
+                .retryCount(configDto.getRetryCount())
+                .timeout(configDto.getTimeout())
+                .targetMetrics(configDto.getTargetMetrics())
+                .collectorSettings(configDto.getCollectorSettings())
+                .priority(configDto.getPriority())
+                .metadata(configDto.getMetadata())
+                .build();
+        
+        TenantCollectorConfigDto updatedConfig = configService.updateConfig(configId, requestDto);
+        
+        return ResponseEntity.ok(ApiResponse.success(updatedConfig));
     }
 
     /**
      * 수집기 설정 삭제
      */
     @DeleteMapping("/{configId}")
-    public ResponseEntity<ApiResponse<String>> deleteConfig(@PathVariable Long configId) {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("수집기 설정 삭제: configId={}, tenantId={}", configId, tenantId);
-            
-            configService.deleteConfig(configId);
-            
-            return ResponseEntity.ok(ApiResponse.success("수집기 설정이 삭제되었습니다."));
-        } catch (Exception e) {
-            log.error("수집기 설정 삭제 중 오류 발생: configId={}", configId, e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "수집기 설정 삭제 중 오류가 발생했습니다.");
-        }
+    public ResponseEntity<Void> deleteConfig(@PathVariable @Positive Long configId) {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("수집기 설정 삭제: configId={}, tenantId={}", configId, tenantId);
+        
+        configService.deleteConfig(configId);
+        
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -174,19 +150,14 @@ public class TenantCollectorConfigController {
      */
     @PatchMapping("/{configId}/toggle")
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> toggleConfig(
-            @PathVariable Long configId,
+            @PathVariable @Positive Long configId,
             @RequestParam boolean enabled) {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("수집기 활성화 상태 변경: configId={}, enabled={}, tenantId={}", configId, enabled, tenantId);
-            
-            TenantCollectorConfigDto updatedConfig = configService.toggleConfig(configId, enabled);
-            
-            return ResponseEntity.ok(ApiResponse.success(updatedConfig));
-        } catch (Exception e) {
-            log.error("수집기 활성화 상태 변경 중 오류 발생: configId={}, enabled={}", configId, enabled, e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "수집기 활성화 상태 변경 중 오류가 발생했습니다.");
-        }
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("수집기 활성화 상태 변경: configId={}, enabled={}, tenantId={}", configId, enabled, tenantId);
+        
+        TenantCollectorConfigDto updatedConfig = configService.toggleConfig(configId, enabled);
+        
+        return ResponseEntity.ok(ApiResponse.success(updatedConfig));
     }
 
     /**
@@ -194,17 +165,12 @@ public class TenantCollectorConfigController {
      */
     @GetMapping("/enabled/types")
     public ResponseEntity<ApiResponse<List<CollectorType>>> getEnabledCollectorTypes() {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("활성화된 수집기 타입 조회: tenantId={}", tenantId);
-            
-            List<CollectorType> types = configService.getEnabledCollectorTypesByTenant(tenantId);
-            
-            return ResponseEntity.ok(ApiResponse.success(types));
-        } catch (Exception e) {
-            log.error("활성화된 수집기 타입 조회 중 오류 발생", e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "활성화된 수집기 타입 조회 중 오류가 발생했습니다.");
-        }
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("활성화된 수집기 타입 조회: tenantId={}", tenantId);
+        
+        List<CollectorType> types = configService.getEnabledCollectorTypesByTenant(tenantId);
+        
+        return ResponseEntity.ok(ApiResponse.success(types));
     }
 
     /**
@@ -212,16 +178,75 @@ public class TenantCollectorConfigController {
      */
     @GetMapping("/enabled/count")
     public ResponseEntity<ApiResponse<Long>> getEnabledCollectorCount() {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("활성화된 수집기 수 조회: tenantId={}", tenantId);
-            
-            long count = configService.countEnabledByTenant(tenantId);
-            
-            return ResponseEntity.ok(ApiResponse.success(count));
-        } catch (Exception e) {
-            log.error("활성화된 수집기 수 조회 중 오류 발생", e);
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "활성화된 수집기 수 조회 중 오류가 발생했습니다.");
-        }
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("활성화된 수집기 수 조회: tenantId={}", tenantId);
+        
+        long count = configService.countEnabledByTenant(tenantId);
+        
+        return ResponseEntity.ok(ApiResponse.success(count));
+    }
+
+    // ===== 할당량 관련 API =====
+    
+    /**
+     * 테넌트별 할당량 설정
+     * 
+     * @param quotaRequest 할당량 설정 요청 정보
+     * @return 할당량 설정 완료 메시지
+     */
+    @PostMapping("/quota")
+    public ResponseEntity<ApiResponse<String>> setQuota(@Valid @RequestBody QuotaRequestDto quotaRequest) {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("테넌트별 할당량 설정: tenantId={}, dailyLimit={}, storageQuota={}, action={}", 
+                tenantId, quotaRequest.getDailyMetricLimit(), quotaRequest.getStorageQuotaMb(), 
+                quotaRequest.getQuotaExceededAction());
+        
+        configService.setQuotaForTenant(
+                tenantId, 
+                quotaRequest.getDailyMetricLimit(), 
+                quotaRequest.getStorageQuotaMb(), 
+                quotaRequest.getQuotaExceededAction()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success("할당량 설정이 완료되었습니다."));
+    }
+    
+    /**
+     * 테넌트별 할당량 조회
+     */
+    @GetMapping("/quota")
+    public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> getQuota() {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("테넌트별 할당량 조회: tenantId={}", tenantId);
+        
+        TenantCollectorConfigDto quota = configService.getQuotaForTenant(tenantId);
+        
+        return ResponseEntity.ok(ApiResponse.success(quota));
+    }
+    
+    /**
+     * 할당량 초과 여부 확인
+     */
+    @GetMapping("/quota/exceeded")
+    public ResponseEntity<ApiResponse<Boolean>> isQuotaExceeded() {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("할당량 초과 여부 확인: tenantId={}", tenantId);
+        
+        boolean isExceeded = configService.isQuotaExceeded(tenantId);
+        
+        return ResponseEntity.ok(ApiResponse.success(isExceeded));
+    }
+    
+    /**
+     * 할당량 초과 처리
+     */
+    @PostMapping("/quota/handle-exceeded")
+    public ResponseEntity<ApiResponse<String>> handleQuotaExceeded() {
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("할당량 초과 처리: tenantId={}", tenantId);
+        
+        configService.handleQuotaExceeded(tenantId);
+        
+        return ResponseEntity.ok(ApiResponse.success("할당량 초과 처리가 완료되었습니다."));
     }
 }
