@@ -15,16 +15,18 @@ spring:
       password: admin123
   
   cache:
-    type: redis
+    type: simple
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 2000ms
+      connect-timeout: 2000ms
 
 logging:
 app:
   redis:
-    enabled: ${APP_REDIS_ENABLED:true}
+    enabled: ${APP_REDIS_ENABLED:false}
   level:
     root: INFO
     com.agenticcp.core: DEBUG
