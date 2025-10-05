@@ -29,9 +29,10 @@ import java.util.List;
     @Index(name = "idx_metrics_type", columnList = "metric_type"),
     @Index(name = "idx_metrics_collected_at", columnList = "collected_at"),
     @Index(name = "idx_metrics_source", columnList = "source"),
-    @Index(name = "idx_metrics_status", columnList = "status")
-    // TODO: 테넌트 도메인 구현 후 활성화 예정
-    // @Index(name = "idx_metrics_tenant_id", columnList = "tenant_id")
+    @Index(name = "idx_metrics_status", columnList = "status"),
+    @Index(name = "idx_metrics_tenant_id", columnList = "tenant_id"),
+    @Index(name = "idx_metrics_tenant_name", columnList = "tenant_id, metric_name"),
+    @Index(name = "idx_metrics_tenant_time", columnList = "tenant_id, collected_at")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -104,16 +105,15 @@ public class Metric extends BaseEntity {
 
     /**
      * 테넌트 ID (멀티테넌트 지원)
-     * TODO: 테넌트 도메인 구현 후 활성화 예정
      * - TenantAwareRepository 상속 시 자동 테넌트 필터링 지원
      * - 테넌트별 데이터 격리 및 권한 관리
      */
-    // @Column(name = "tenant_id")
-    // private String tenantId;
+    @Column(name = "tenant_id")
+    private String tenantId;
 
     @Builder
     public Metric(String metricName, Double metricValue, String unit, MetricType metricType, 
-                  LocalDateTime collectedAt, String source, Status status, String metadata) {
+                  LocalDateTime collectedAt, String source, Status status, String metadata, String tenantId) {
         this.metricName = metricName;
         this.metricValue = metricValue;
         this.unit = unit;
@@ -122,6 +122,7 @@ public class Metric extends BaseEntity {
         this.source = source;
         this.status = status;
         this.metadata = metadata;
+        this.tenantId = tenantId;
     }
 
     /**
@@ -142,6 +143,15 @@ public class Metric extends BaseEntity {
      */
     public void updateStatus(Status status) {
         this.status = status;
+    }
+
+    /**
+     * 테넌트 ID 설정
+     * 
+     * @param tenantId 테넌트 ID
+     */
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     /**
