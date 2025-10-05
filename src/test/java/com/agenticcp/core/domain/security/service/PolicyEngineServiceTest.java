@@ -20,7 +20,6 @@ import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Collection;
 import java.util.List;
 // import java.util.Optional;
 import java.util.Set;
@@ -131,7 +130,14 @@ class PolicyEngineServiceTest {
             // Given
             PolicyEvaluationResult cachedResult = PolicyEvaluationResult.allow("캐시된 결과");
             cachedResult.setExpirationMinutes(5); // 만료되지 않은 캐시 (5분 후 만료)
-            when(valueOperations.get(anyString())).thenReturn(cachedResult);
+            
+            // 평가 결과 캐시 키에 대해서만 cachedResult 반환
+            String evaluationCacheKey = "policy_evaluation:EC2_INSTANCE:CREATE:user123:tenant1";
+            when(valueOperations.get(evaluationCacheKey)).thenReturn(cachedResult);
+            
+            // 정책 목록 캐시 키에 대해서는 null 반환 (캐시 미스)
+            String policiesCacheKey = "applicable_policies:EC2_INSTANCE:CREATE";
+            when(valueOperations.get(policiesCacheKey)).thenReturn(null);
             
             // When
             PolicyEvaluationResult result = policyEngineService.evaluatePolicy(testRequest);
@@ -264,11 +270,11 @@ class PolicyEngineServiceTest {
             
             // Then
             // 1. 특정 키 삭제 호출 확인
-            verify(redisTemplate).delete("applicable_policies:EC2_INSTANCE:CREATE");
+            verify(redisTemplate, times(1)).delete("applicable_policies:EC2_INSTANCE:CREATE");
             // 2. keys() 메서드 호출 확인
-            verify(redisTemplate).keys("policy_evaluation:EC2_INSTANCE:CREATE:*");
+            verify(redisTemplate, times(1)).keys("policy_evaluation:EC2_INSTANCE:CREATE:*");
             // 3. Set으로 삭제 호출 확인
-            verify(redisTemplate).delete(mockKeys);
+            verify(redisTemplate, times(1)).delete(mockKeys);
         }
         
         @Test
@@ -287,11 +293,11 @@ class PolicyEngineServiceTest {
             
             // Then
             // 1. keys() 메서드 호출 확인
-            verify(redisTemplate).keys("policy_evaluation:*");
-            verify(redisTemplate).keys("applicable_policies:*");
+            verify(redisTemplate, times(1)).keys("policy_evaluation:*");
+            verify(redisTemplate, times(1)).keys("applicable_policies:*");
             // 2. 각 키 Set에 대한 삭제 호출 확인
-            verify(redisTemplate).delete(mockKeys1);
-            verify(redisTemplate).delete(mockKeys2);
+            verify(redisTemplate, times(1)).delete(mockKeys1);
+            verify(redisTemplate, times(1)).delete(mockKeys2);
         }
     }
     
