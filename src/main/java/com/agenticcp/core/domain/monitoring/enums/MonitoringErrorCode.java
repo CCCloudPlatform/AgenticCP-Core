@@ -39,19 +39,28 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     COLLECTOR_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8053, "수집기 생성에 실패했습니다."),
     INVALID_COLLECTOR_TYPE(HttpStatus.BAD_REQUEST, 8054, "유효하지 않은 수집기 타입입니다."),
     METRICS_COLLECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8055, "메트릭 수집에 실패했습니다."),
-
-    // 저장소 관련 (8061-8070)
-    STORAGE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, 8061, "저장소가 비활성화되어 있습니다."),
-    STORAGE_CONNECTION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8062, "저장소 연결에 실패했습니다."),
-    STORAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 8063, "저장소를 찾을 수 없습니다."),
-    STORAGE_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8064, "저장소 생성에 실패했습니다."),
-    INVALID_STORAGE_TYPE(HttpStatus.BAD_REQUEST, 8065, "유효하지 않은 저장소 타입입니다."),
     
-    // 재시도 관련 (8071-8080) - Issue #39 Task 8
-    RETRY_EXHAUSTED(HttpStatus.INTERNAL_SERVER_ERROR, 8071, "모든 재시도가 실패했습니다."),
-    RETRY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8072, "재시도 중 오류가 발생했습니다."),
-    CACHE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 8073, "캐시를 사용할 수 없습니다."),
-    FALLBACK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8074, "폴백 처리에 실패했습니다.");
+    // 테넌트 수집기 설정 관련 (8061-8070)
+    COLLECTOR_CONFIG_NOT_FOUND(HttpStatus.NOT_FOUND, 8061, "수집기 설정을 찾을 수 없습니다."),
+    COLLECTOR_CONFIG_ALREADY_EXISTS(HttpStatus.CONFLICT, 8062, "이미 존재하는 수집기 설정입니다."),
+    INVALID_TENANT_ID(HttpStatus.BAD_REQUEST, 8063, "유효하지 않은 테넌트 ID입니다."),
+    INVALID_COLLECTION_INTERVAL(HttpStatus.BAD_REQUEST, 8064, "유효하지 않은 수집 주기입니다."),
+    INVALID_RETRY_COUNT(HttpStatus.BAD_REQUEST, 8065, "유효하지 않은 재시도 횟수입니다."),
+    INVALID_TIMEOUT(HttpStatus.BAD_REQUEST, 8066, "유효하지 않은 타임아웃입니다."),
+    CONFIG_CONVERSION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8067, "설정 변환에 실패했습니다."),
+
+    // 저장소 관련 (8071-8080)
+    STORAGE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, 8071, "저장소가 비활성화되어 있습니다."),
+    STORAGE_CONNECTION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8072, "저장소 연결에 실패했습니다."),
+    STORAGE_NOT_FOUND(HttpStatus.NOT_FOUND, 8073, "저장소를 찾을 수 없습니다."),
+    STORAGE_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8074, "저장소 생성에 실패했습니다."),
+    INVALID_STORAGE_TYPE(HttpStatus.BAD_REQUEST, 8075, "유효하지 않은 저장소 타입입니다."),
+    
+    // 재시도 관련 (8081-8090) - Issue #39 Task 8
+    RETRY_EXHAUSTED(HttpStatus.INTERNAL_SERVER_ERROR, 8081, "모든 재시도가 실패했습니다."),
+    RETRY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8082, "재시도 중 오류가 발생했습니다."),
+    CACHE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, 8083, "캐시를 사용할 수 없습니다."),
+    FALLBACK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8084, "폴백 처리에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
