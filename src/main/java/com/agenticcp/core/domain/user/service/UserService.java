@@ -239,14 +239,14 @@ public class UserService {
     // 회원가입을 위한 추가 메서드들
     public boolean existsByUsername(String username) {
         log.info("[UserService] existsByUsername - username={}", LogMaskingUtils.mask(username, 2, 2));
-        boolean exists = userRepository.existsByUsername(username);
+        boolean exists = getUserByUsername(username).isPresent();
         log.info("[UserService] existsByUsername - exists={} username={}", exists, LogMaskingUtils.mask(username, 2, 2));
         return exists;
     }
 
     public boolean existsByEmail(String email) {
         log.info("[UserService] existsByEmail - email={}", LogMaskingUtils.mask(email, 2, 2));
-        boolean exists = userRepository.existsByEmail(email);
+        boolean exists = getUserByEmail(email).isPresent();
         log.info("[UserService] existsByEmail - exists={} email={}", exists, LogMaskingUtils.mask(email, 2, 2));
         return exists;
     }
