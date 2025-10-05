@@ -1,8 +1,7 @@
 package com.agenticcp.core.domain.monitoring.service;
 
 import com.agenticcp.core.common.exception.BusinessException;
-// TODO: 테넌트 도메인 구현 후 활성화 예정
-// import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.monitoring.config.RetryConfig;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
@@ -68,17 +67,21 @@ public class MetricsCollectionService {
     private final MetricsCollectorFactory metricsCollectorFactory;
     private final MetricsStorageFactory metricsStorageFactory;
     private final MetricsCache metricsCache;
+    private final TenantCollectorConfigService tenantCollectorConfigService;
 
     /**
      * 1분마다 자동으로 메트릭 수집 실행
+     * 테넌트별 설정에 따라 다른 수집기 사용
      */
     @Scheduled(fixedRate = DEFAULT_TIMEOUT)
     @Transactional
     public void collectMetricsScheduled() {
         try {
             log.info("Starting scheduled metrics collection...");
-            collectSystemMetrics();
-            collectApplicationMetrics();
+            
+            // 테넌트별 수집기 설정에 따른 메트릭 수집
+            collectMetricsByTenantConfig();
+            
             log.info("Scheduled metrics collection completed successfully");
         } catch (BusinessException e) {
             log.error("Business error during scheduled metrics collection: {}", e.getMessage(), e);
@@ -390,8 +393,7 @@ public class MetricsCollectionService {
                     .metricType(metricType)
                     .collectedAt(collectedAt)
                     .metadata(convertMetadataToString(metadata))
-                    // TODO: 테넌트 도메인 구현 후 활성화 예정
-                    // .tenantId(TenantContextHolder.getCurrentTenantKeyOrThrow())
+                    .tenantId(getCurrentTenantId())
                     .build();
 
             metricRepository.save(metric);
@@ -448,6 +450,221 @@ public class MetricsCollectionService {
         } catch (Exception e) {
             log.error("Error checking threshold violations for metric: {}", metric.getMetricName(), e);
             // 임계값 확인 실패는 메트릭 저장을 중단시키지 않음
+        }
+    }
+
+    /**
+     * 테넌트별 수집기 설정에 따른 메트릭 수집
+     * 
+     * 각 테넌트의 설정에 따라 활성화된 수집기만 사용하여 메트릭을 수집합니다.
+     */
+    private void collectMetricsByTenantConfig() {
+        try {
+            String tenantId = getCurrentTenantId();
+            log.debug("테넌트별 메트릭 수집 시작: tenantId={}", tenantId);
+            
+            // 테넌트별 활성화된 수집기 설정 조회
+            List<CollectorType> enabledCollectors = tenantCollectorConfigService.getEnabledCollectorTypesByTenant(tenantId);
+            
+            if (enabledCollectors.isEmpty()) {
+                log.debug("테넌트 {}에 활성화된 수집기가 없습니다. 기본 수집기 사용", tenantId);
+                // 기본 수집기 사용 (하위 호환성)
+                collectSystemMetrics();
+                collectApplicationMetrics();
+                return;
+            }
+            
+            // 활성화된 수집기별로 메트릭 수집
+            for (CollectorType collectorType : enabledCollectors) {
+                try {
+                    collectMetricsByType(tenantId, collectorType);
+                } catch (Exception e) {
+                    log.warn("수집기 {} 메트릭 수집 실패: {}", collectorType, e.getMessage());
+                    // 개별 수집기 실패는 전체 프로세스를 중단시키지 않음
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("테넌트별 메트릭 수집 중 오류 발생", e);
+            // 테넌트별 수집 실패 시 기본 수집기 사용
+            collectSystemMetrics();
+            collectApplicationMetrics();
+        }
+    }
+
+    /**
+     * 수집기 타입별 메트릭 수집
+     */
+    private void collectMetricsByType(String tenantId, CollectorType collectorType) {
+        try {
+            log.debug("수집기별 메트릭 수집: tenantId={}, collectorType={}", tenantId, collectorType);
+            
+            switch (collectorType) {
+                case SYSTEM -> {
+                    // 시스템 메트릭 수집
+                    SystemMetrics systemMetrics = systemMetricsCollector.collectSystemMetrics();
+                    saveSystemMetricsWithTenantId(systemMetrics, tenantId);
+                }
+                case APPLICATION -> {
+                    // 애플리케이션 메트릭 수집
+                    MetricsCollector appCollector = metricsCollectorFactory.createCollector(CollectorType.APPLICATION);
+                    if (appCollector != null && appCollector.isEnabled()) {
+                        List<Metric> appMetrics = appCollector.collectApplicationMetrics();
+                        saveMetricsWithTenantId(appMetrics, tenantId);
+                    }
+                }
+                case CUSTOM -> {
+                    // 커스텀 메트릭 수집
+                    MetricsCollector customCollector = metricsCollectorFactory.createCollector(CollectorType.CUSTOM);
+                    if (customCollector != null && customCollector.isEnabled()) {
+                        List<Metric> customMetrics = customCollector.collectApplicationMetrics();
+                        saveMetricsWithTenantId(customMetrics, tenantId);
+                    }
+                }
+                case EXTERNAL -> {
+                    // 외부 메트릭 수집 (추후 구현)
+                    log.debug("외부 메트릭 수집기는 아직 구현되지 않았습니다: {}", collectorType);
+                }
+                default -> {
+                    log.warn("지원되지 않는 수집기 타입: {}", collectorType);
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("수집기 {} 메트릭 수집 중 오류 발생: {}", collectorType, e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * 테넌트 ID를 포함한 시스템 메트릭 저장
+     */
+    private void saveSystemMetricsWithTenantId(SystemMetrics systemMetrics, String tenantId) {
+        try {
+            LocalDateTime collectedAt = systemMetrics.getCollectedAt();
+            Map<String, Object> metadata = systemMetrics.getMetadata();
+
+            // CPU 사용률 저장
+            if (systemMetrics.getCpuUsage() != null) {
+                saveMetricWithTenantId("cpu.usage", systemMetrics.getCpuUsage(), "%", 
+                          Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
+            }
+
+            // 메모리 사용률 저장
+            if (systemMetrics.getMemoryUsage() != null) {
+                saveMetricWithTenantId("memory.usage", systemMetrics.getMemoryUsage(), "%", 
+                          Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
+            }
+
+            // 메모리 사용량 저장
+            if (systemMetrics.getMemoryUsedMB() != null) {
+                saveMetricWithTenantId("memory.used", systemMetrics.getMemoryUsedMB().doubleValue(), "MB", 
+                          Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
+            }
+
+            // 메모리 총량 저장
+            if (systemMetrics.getMemoryTotalMB() != null) {
+                saveMetricWithTenantId("memory.total", systemMetrics.getMemoryTotalMB().doubleValue(), "MB", 
+                          Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
+            }
+
+            // 디스크 사용률 저장
+            if (systemMetrics.getDiskUsage() != null) {
+                saveMetricWithTenantId("disk.usage", systemMetrics.getDiskUsage(), "%", 
+                          Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
+            }
+
+            // 디스크 사용량 저장
+            if (systemMetrics.getDiskUsedGB() != null) {
+                saveMetricWithTenantId("disk.used", systemMetrics.getDiskUsedGB().doubleValue(), "GB", 
+                          Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
+            }
+
+            // 디스크 총량 저장
+            if (systemMetrics.getDiskTotalGB() != null) {
+                saveMetricWithTenantId("disk.total", systemMetrics.getDiskTotalGB().doubleValue(), "GB", 
+                          Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
+            }
+        } catch (Exception e) {
+            log.error("Error saving system metrics to database for tenant: {}", tenantId, e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 데이터 저장 중 오류가 발생했습니다.");
+        }
+    }
+
+    /**
+     * 테넌트 ID를 포함한 메트릭 목록 저장
+     */
+    private void saveMetricsWithTenantId(List<Metric> metrics, String tenantId) {
+        if (metrics == null || metrics.isEmpty()) {
+            log.debug("저장할 메트릭이 없습니다: tenantId={}", tenantId);
+            return;
+        }
+        
+        int successCount = 0;
+        int failureCount = 0;
+        
+        for (Metric metric : metrics) {
+            try {
+                // 테넌트 ID 설정
+                metric.setTenantId(tenantId);
+                metricRepository.save(metric);
+                checkThresholdViolations(metric);
+                successCount++;
+                log.debug("메트릭 저장 성공: {} = {} {} (tenantId={})", 
+                    metric.getMetricName(), metric.getMetricValue(), metric.getUnit(), tenantId);
+            } catch (Exception e) {
+                failureCount++;
+                log.warn("메트릭 저장 실패: name={}, tenantId={}, error={}", 
+                    metric.getMetricName(), tenantId, e.getMessage());
+            }
+        }
+        
+        log.info("메트릭 저장 완료: tenantId={}, 성공={}, 실패={}", tenantId, successCount, failureCount);
+    }
+
+    /**
+     * 테넌트 ID를 포함한 개별 메트릭 저장
+     */
+    private void saveMetricWithTenantId(String metricName, Double metricValue, String unit, 
+                                       Metric.MetricType metricType, LocalDateTime collectedAt, 
+                                       Map<String, Object> metadata, String tenantId) {
+        try {
+            Metric metric = Metric.builder()
+                    .metricName(metricName)
+                    .metricValue(metricValue)
+                    .unit(unit)
+                    .metricType(metricType)
+                    .collectedAt(collectedAt)
+                    .metadata(convertMetadataToString(metadata))
+                    .tenantId(tenantId)
+                    .build();
+
+            metricRepository.save(metric);
+            
+            // ✅ 임계값 위반 확인
+            checkThresholdViolations(metric);
+            
+            log.debug("Saved metric: {} = {} {} (tenantId={})", metricName, metricValue, unit, tenantId);
+        } catch (Exception e) {
+            log.error("Error saving metric: {} = {} {} (tenantId={})", metricName, metricValue, unit, tenantId, e);
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
+                "메트릭 저장 중 오류가 발생했습니다.");
+        }
+    }
+
+    /**
+     * 현재 테넌트 ID 조회
+     * 테넌트 컨텍스트가 없는 경우 시스템 메트릭용 기본값 반환
+     * 
+     * @return 현재 테넌트 ID 또는 시스템 기본값
+     */
+    private String getCurrentTenantId() {
+        try {
+            return TenantContextHolder.getCurrentTenantKeyOrThrow();
+        } catch (Exception e) {
+            log.debug("No tenant context available, using system default tenant");
+            return "system"; // 시스템 메트릭용 기본 테넌트 ID
         }
     }
 }
