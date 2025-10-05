@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.monitoring.controller;
 import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.common.enums.CommonErrorCode;
@@ -47,14 +48,16 @@ public class MetricsController {
             log.info("Retrieving metrics: metricName={}, metricType={}, page={}, size={}", 
                     metricName, metricType, pageable.getPageNumber(), pageable.getPageSize());
             
+            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
             Page<Metric> metrics;
             if (metricName != null) {
-                List<Metric> metricList = metricRepository.findLatestByMetricName(metricName, pageable);
+                List<Metric> metricList = metricRepository.findLatestByMetricName(metricName, tenantId, pageable);
                 metrics = new org.springframework.data.domain.PageImpl<>(metricList, pageable, metricList.size());
             } else if (metricType != null) {
-                metrics = metricRepository.findByMetricType(metricType, pageable);
+                metrics = metricRepository.findByMetricType(metricType, tenantId, pageable);
             } else {
-                metrics = metricRepository.findAll(pageable);
+                List<Metric> metricList = metricRepository.findAllForCurrentTenant();
+                metrics = new org.springframework.data.domain.PageImpl<>(metricList, pageable, metricList.size());
             }
             
             // 목록 조회: 빈 결과도 정상 응답
@@ -91,11 +94,12 @@ public class MetricsController {
                     "시작 시간이 종료 시간보다 늦을 수 없습니다.");
             }
             
+            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
             List<Metric> metrics;
             if (startTime != null && endTime != null) {
-                metrics = metricRepository.findByMetricNameAndTimeRange(metricName, startTime, endTime);
+                metrics = metricRepository.findByMetricNameAndTimeRange(metricName, tenantId, startTime, endTime);
             } else {
-                metrics = metricRepository.findLatestByMetricName(metricName, Pageable.ofSize(100));
+                metrics = metricRepository.findLatestByMetricName(metricName, tenantId, Pageable.ofSize(100));
             }
             
             if (metrics.isEmpty()) {
@@ -124,8 +128,9 @@ public class MetricsController {
         try {
             log.info("Retrieving metrics trend: since={}", since);
             
+            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
             LocalDateTime sinceTime = since != null ? since : LocalDateTime.now().minusHours(1);
-            List<Metric> metrics = metricRepository.findSince(sinceTime);
+            List<Metric> metrics = metricRepository.findSince(tenantId, sinceTime);
             
             // 목록 조회: 빈 결과도 정상 응답
             return ResponseEntity.ok(ApiResponse.success(metrics));
@@ -164,7 +169,8 @@ public class MetricsController {
         try {
             log.info("Retrieving metric names");
             
-            List<String> metricNames = metricRepository.findDistinctMetricNames();
+            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+            List<String> metricNames = metricRepository.findDistinctMetricNames(tenantId);
             
             // 목록 조회: 빈 결과도 정상 응답
             return ResponseEntity.ok(ApiResponse.success(metricNames));
