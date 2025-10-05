@@ -5,9 +5,11 @@ import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.domain.monitoring.dto.QuotaRequestDto;
 import com.agenticcp.core.domain.monitoring.dto.TenantCollectorConfigDto;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
+import com.agenticcp.core.domain.monitoring.enums.QuotaExceededAction;
 import com.agenticcp.core.domain.monitoring.service.TenantCollectorConfigService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -166,8 +168,8 @@ class TenantCollectorConfigControllerTest {
 
             // When & Then
             assertThatThrownBy(() -> controller.getConfigByType(testCollectorType))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("수집기 설정 조회 중 오류가 발생했습니다.");
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("수집기 설정을 찾을 수 없습니다.");
         }
     }
 
@@ -191,7 +193,7 @@ class TenantCollectorConfigControllerTest {
             ResponseEntity<ApiResponse<TenantCollectorConfigDto>> response = controller.createConfig(testConfigDto);
 
             // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().isSuccess()).isTrue();
             assertThat(response.getBody().getData().getTenantId()).isEqualTo(testTenantId);
@@ -218,7 +220,7 @@ class TenantCollectorConfigControllerTest {
             // When & Then
             assertThatThrownBy(() -> controller.createConfig(testConfigDto))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("수집기 설정 생성 중 오류가 발생했습니다.");
+                    .hasMessageContaining("이미 존재하는 수집기 설정입니다.");
         }
     }
 
@@ -268,8 +270,8 @@ class TenantCollectorConfigControllerTest {
 
             // When & Then
             assertThatThrownBy(() -> controller.updateConfig(configId, testConfigDto))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("수집기 설정 수정 중 오류가 발생했습니다.");
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("수집기 설정을 찾을 수 없습니다.");
         }
     }
 
@@ -291,13 +293,11 @@ class TenantCollectorConfigControllerTest {
             doNothing().when(configService).deleteConfig(configId);
 
             // When
-            ResponseEntity<ApiResponse<String>> response = controller.deleteConfig(configId);
+            ResponseEntity<Void> response = controller.deleteConfig(configId);
 
             // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody()).isNotNull();
-            assertThat(response.getBody().isSuccess()).isTrue();
-            assertThat(response.getBody().getData()).isEqualTo("수집기 설정이 삭제되었습니다.");
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            assertThat(response.getBody()).isNull();
             verify(configService).deleteConfig(configId);
         }
     }
@@ -320,8 +320,8 @@ class TenantCollectorConfigControllerTest {
 
             // When & Then
             assertThatThrownBy(() -> controller.deleteConfig(configId))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("수집기 설정 삭제 중 오류가 발생했습니다.");
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("수집기 설정을 찾을 수 없습니다.");
         }
     }
 
@@ -373,8 +373,8 @@ class TenantCollectorConfigControllerTest {
 
             // When & Then
             assertThatThrownBy(() -> controller.toggleConfig(configId, enabled))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("수집기 활성화 상태 변경 중 오류가 발생했습니다.");
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("수집기 설정을 찾을 수 없습니다.");
         }
     }
 
@@ -453,8 +453,8 @@ class TenantCollectorConfigControllerTest {
 
             // When & Then
             assertThatThrownBy(() -> controller.getEnabledConfigs())
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("활성화된 수집기 설정 조회 중 오류가 발생했습니다.");
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("테넌트 컨텍스트가 설정되지 않았습니다.");
         }
     }
 
@@ -485,7 +485,7 @@ class TenantCollectorConfigControllerTest {
             ResponseEntity<ApiResponse<TenantCollectorConfigDto>> response = controller.createConfig(requestDto);
 
             // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().isSuccess()).isTrue();
             
@@ -494,6 +494,188 @@ class TenantCollectorConfigControllerTest {
                 dto.getTenantId().equals(testTenantId) && 
                 dto.getCollectorType().equals(testCollectorType)
             ));
+        }
+    }
+
+    // ===== 할당량 관련 API 테스트 =====
+
+    @Test
+    @DisplayName("테넌트별 할당량 설정 API - 성공")
+    void setQuota_Success() {
+        // 테스트 케이스: 테넌트별 할당량 설정 API 성공
+        // 목적: 할당량 설정 API가 정상적으로 작동하는지 확인
+        // 검증 항목:
+        // 1. HTTP 상태 코드가 200 OK인지
+        // 2. 응답이 성공 상태인지
+        // 3. configService.setQuotaForTenant()가 호출되는지
+        
+        try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
+            // Given
+            mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
+            
+            QuotaRequestDto quotaRequest = QuotaRequestDto.builder()
+                    .dailyMetricLimit(10000L)
+                    .storageQuotaMb(1000L)
+                    .quotaExceededAction(QuotaExceededAction.WARN_ONLY)
+                    .build();
+            
+            // When
+            ResponseEntity<ApiResponse<String>> response = controller.setQuota(quotaRequest);
+            
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().isSuccess()).isTrue();
+            assertThat(response.getBody().getData()).isEqualTo("할당량 설정이 완료되었습니다.");
+            
+            verify(configService).setQuotaForTenant(testTenantId, 10000L, 1000L, QuotaExceededAction.WARN_ONLY);
+        }
+    }
+
+    @Test
+    @DisplayName("테넌트별 할당량 조회 API - 성공")
+    void getQuota_Success() {
+        // 테스트 케이스: 테넌트별 할당량 조회 API 성공
+        // 목적: 할당량 조회 API가 정상적으로 작동하는지 확인
+        // 검증 항목:
+        // 1. HTTP 상태 코드가 200 OK인지
+        // 2. 응답이 성공 상태인지
+        // 3. 할당량 정보가 정상적으로 반환되는지
+        // 4. configService.getQuotaForTenant()가 호출되는지
+        
+        try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
+            // Given
+            mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
+            
+            testConfigDto = TenantCollectorConfigDto.builder()
+                    .tenantId(testTenantId)
+                    .collectorType(testCollectorType)
+                    .dailyMetricLimit(10000L)
+                    .storageQuotaMb(1000L)
+                    .currentDailyUsage(5000L)
+                    .currentStorageUsageMb(500L)
+                    .quotaExceededAction(QuotaExceededAction.WARN_ONLY)
+                    .build();
+            
+            when(configService.getQuotaForTenant(testTenantId)).thenReturn(testConfigDto);
+            
+            // When
+            ResponseEntity<ApiResponse<TenantCollectorConfigDto>> response = controller.getQuota();
+            
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().isSuccess()).isTrue();
+            assertThat(response.getBody().getData()).isEqualTo(testConfigDto);
+            
+            verify(configService).getQuotaForTenant(testTenantId);
+        }
+    }
+
+    @Test
+    @DisplayName("할당량 초과 여부 확인 API - 성공")
+    void isQuotaExceeded_Success() {
+        // 테스트 케이스: 할당량 초과 여부 확인 API 성공
+        // 목적: 할당량 초과 여부 확인 API가 정상적으로 작동하는지 확인
+        // 검증 항목:
+        // 1. HTTP 상태 코드가 200 OK인지
+        // 2. 응답이 성공 상태인지
+        // 3. 할당량 초과 여부가 정상적으로 반환되는지
+        // 4. configService.isQuotaExceeded()가 호출되는지
+        
+        try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
+            // Given
+            mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
+            
+            when(configService.isQuotaExceeded(testTenantId)).thenReturn(true);
+            
+            // When
+            ResponseEntity<ApiResponse<Boolean>> response = controller.isQuotaExceeded();
+            
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().isSuccess()).isTrue();
+            assertThat(response.getBody().getData()).isTrue();
+            
+            verify(configService).isQuotaExceeded(testTenantId);
+        }
+    }
+
+    @Test
+    @DisplayName("할당량 초과 처리 API - 성공")
+    void handleQuotaExceeded_Success() {
+        // 테스트 케이스: 할당량 초과 처리 API 성공
+        // 목적: 할당량 초과 처리 API가 정상적으로 작동하는지 확인
+        // 검증 항목:
+        // 1. HTTP 상태 코드가 200 OK인지
+        // 2. 응답이 성공 상태인지
+        // 3. configService.handleQuotaExceeded()가 호출되는지
+        
+        try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
+            // Given
+            mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
+            
+            // When
+            ResponseEntity<ApiResponse<String>> response = controller.handleQuotaExceeded();
+            
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().isSuccess()).isTrue();
+            assertThat(response.getBody().getData()).isEqualTo("할당량 초과 처리가 완료되었습니다.");
+            
+            verify(configService).handleQuotaExceeded(testTenantId);
+        }
+    }
+
+    @Test
+    @DisplayName("테넌트별 할당량 설정 API - 테넌트 컨텍스트 없음")
+    void setQuota_NoTenantContext() {
+        // 테스트 케이스: 테넌트별 할당량 설정 API - 테넌트 컨텍스트 없음
+        // 목적: 테넌트 컨텍스트가 없을 때 적절한 예외가 발생하는지 확인
+        // 검증 항목:
+        // 1. BusinessException이 발생하는지
+        // 2. 적절한 에러 메시지가 포함되는지
+        
+        try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
+            // Given
+            mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
+                    .thenThrow(new BusinessException(CommonErrorCode.TENANT_CONTEXT_NOT_SET));
+            
+            QuotaRequestDto quotaRequest = QuotaRequestDto.builder()
+                    .dailyMetricLimit(10000L)
+                    .storageQuotaMb(1000L)
+                    .quotaExceededAction(QuotaExceededAction.WARN_ONLY)
+                    .build();
+            
+            // When & Then
+            assertThatThrownBy(() -> controller.setQuota(quotaRequest))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("테넌트 컨텍스트가 설정되지 않았습니다");
+        }
+    }
+
+    @Test
+    @DisplayName("테넌트별 할당량 조회 API - 서비스 오류")
+    void getQuota_ServiceError() {
+        // 테스트 케이스: 테넌트별 할당량 조회 API - 서비스 오류
+        // 목적: 서비스에서 오류가 발생할 때 적절한 예외가 발생하는지 확인
+        // 검증 항목:
+        // 1. BusinessException이 발생하는지
+        // 2. 적절한 에러 메시지가 포함되는지
+        
+        try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
+            // Given
+            mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
+            
+            when(configService.getQuotaForTenant(testTenantId))
+                    .thenThrow(new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, "서비스 오류"));
+            
+            // When & Then
+            assertThatThrownBy(() -> controller.getQuota())
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("서비스 오류");
         }
     }
 }
