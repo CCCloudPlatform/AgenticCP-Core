@@ -56,8 +56,7 @@ public class MetricsController {
             } else if (metricType != null) {
                 metrics = metricRepository.findByMetricType(metricType, tenantId, pageable);
             } else {
-                List<Metric> metricList = metricRepository.findAllForCurrentTenant();
-                metrics = new org.springframework.data.domain.PageImpl<>(metricList, pageable, metricList.size());
+                metrics = metricRepository.findByTenantId(tenantId, pageable);
             }
             
             // 목록 조회: 빈 결과도 정상 응답

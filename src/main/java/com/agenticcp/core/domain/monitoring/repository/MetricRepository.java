@@ -1,8 +1,6 @@
 package com.agenticcp.core.domain.monitoring.repository;
 
-import com.agenticcp.core.common.repository.TenantAwareRepository;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,7 +17,7 @@ import java.util.List;
  * - 테넌트별 데이터 격리
  */
 @Repository
-public interface MetricRepository extends TenantAwareRepository<Metric, Long> {
+public interface MetricRepository extends JpaRepository<Metric, Long> {
 
     /**
      * 특정 메트릭 이름으로 최신 데이터 조회 (테넌트 필터링 적용)
@@ -65,4 +63,16 @@ public interface MetricRepository extends TenantAwareRepository<Metric, Long> {
      */
     @Query("DELETE FROM Metric m WHERE m.tenantId = :tenantId AND m.collectedAt < :cutoffDate")
     int deleteOldMetrics(@Param("tenantId") String tenantId, @Param("cutoffDate") LocalDateTime cutoffDate);
+
+    /**
+     * 테넌트별 모든 메트릭 조회 (페이징 지원)
+     */
+    @Query("SELECT m FROM Metric m WHERE m.tenantId = :tenantId ORDER BY m.collectedAt DESC")
+    Page<Metric> findByTenantId(@Param("tenantId") String tenantId, Pageable pageable);
+
+    /**
+     * 테넌트별 모든 메트릭 조회 (리스트)
+     */
+    @Query("SELECT m FROM Metric m WHERE m.tenantId = :tenantId ORDER BY m.collectedAt DESC")
+    List<Metric> findByTenantId(@Param("tenantId") String tenantId);
 }
