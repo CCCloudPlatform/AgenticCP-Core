@@ -275,31 +275,37 @@ public class TargetingConditionEvaluator {
      * @param rule 평가할 규칙
      * @param tenantId 테넌트 ID
      * @return 규칙 매칭 여부
+     * @throws BusinessException tenantId가 없거나 평가 중 오류 발생 시
      */
     private boolean evaluateCloudEnvironmentRule(FeatureFlagTargetRule rule, String tenantId) {
+        // 1. tenantId 필수 검증
         if (tenantId == null || tenantId.trim().isEmpty()) {
             log.warn("[TargetingConditionEvaluator] TenantId is required for CLOUD_ENVIRONMENT rule evaluation");
-            return false;
+            throw new BusinessException(
+                    TargetingRuleErrorCode.TENANT_ID_REQUIRED_FOR_ENVIRONMENT_RULE,
+                    "클라우드 환경 규칙 평가를 위해 테넌트 ID가 필요합니다.");
         }
         
         try {
-            // 1. 현재 테넌트의 클라우드 환경 감지
+            // 2. 현재 테넌트의 클라우드 환경 감지
             MultiCloudEnvironment currentEnvironment = 
                 multiCloudEnvironmentService.detectEnvironment(tenantId);
             
             log.debug("[TargetingConditionEvaluator] Detected environment for tenantId={}: {}", 
                       LogMaskingUtils.mask(tenantId, 2, 2), currentEnvironment);
             
-            // 2. ruleValue에서 대상 환경 목록 파싱
+            // 3. ruleValue에서 대상 환경 목록 파싱
             List<String> targetEnvironments = parseJsonArray(rule.getRuleValue());
             
             if (targetEnvironments.isEmpty()) {
-                log.warn("[TargetingConditionEvaluator] No target environments specified in rule: {}", 
+                log.warn("[TargetingConditionEvaluator] Empty target environments in rule: {}", 
                          rule.getId());
-                return false;
+                throw new BusinessException(
+                        TargetingRuleErrorCode.RULE_VALUE_EMPTY_ARRAY,
+                        "규칙 값 배열이 비어있습니다. 최소 하나 이상의 환경 타입이 필요합니다.");
             }
             
-            // 3. 현재 환경이 대상 환경에 포함되는지 확인
+            // 4. 현재 환경이 대상 환경에 포함되는지 확인
             boolean matched = targetEnvironments.contains(currentEnvironment.name().toLowerCase());
             
             log.debug("[TargetingConditionEvaluator] CLOUD_ENVIRONMENT rule evaluation - " +
@@ -308,11 +314,14 @@ public class TargetingConditionEvaluator {
             
             return matched;
             
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("[TargetingConditionEvaluator] Error evaluating CLOUD_ENVIRONMENT rule: {}", 
                       rule.getId(), e);
-            throw new BusinessException(TargetingRuleErrorCode.TARGETING_EVALUATION_ERROR, 
-                    "클라우드 환경 규칙 평가 중 오류가 발생했습니다");
+            throw new BusinessException(
+                    TargetingRuleErrorCode.CLOUD_ENVIRONMENT_DETECTION_FAILED, 
+                    "클라우드 환경 규칙 평가 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
 
