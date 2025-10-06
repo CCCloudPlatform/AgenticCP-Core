@@ -19,16 +19,16 @@ import java.util.List;
 public interface CloudResourceRepository extends JpaRepository<CloudResource, Long> {
     
     /**
-     * 테넌트 ID로 클라우드 리소스 목록 조회
+     * 테넌트 키로 클라우드 리소스 목록 조회
      * 
-     * @param tenantId 테넌트 ID
+     * @param tenantKey 테넌트 키 (tenantKey)
      * @return 클라우드 리소스 목록
      */
     @Query("SELECT cr FROM CloudResource cr " +
            "JOIN FETCH cr.provider " +
-           "WHERE cr.tenant.tenantId = :tenantId " +
+           "WHERE cr.tenant.tenantKey = :tenantKey " +
            "AND cr.isDeleted = false")
-    List<CloudResource> findByTenantId(@Param("tenantId") String tenantId);
+    List<CloudResource> findByTenantId(@Param("tenantKey") String tenantKey);
     
     /**
      * 리소스 ID로 조회

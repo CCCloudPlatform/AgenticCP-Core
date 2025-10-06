@@ -26,19 +26,19 @@ public class CloudResourceService {
     private final CloudResourceRepository cloudResourceRepository;
     
     /**
-     * 테넌트 ID로 클라우드 리소스 목록 조회
+     * 테넌트 키로 클라우드 리소스 목록 조회
      * 
-     * @param tenantId 테넌트 ID
+     * @param tenantKey 테넌트 키 (tenantKey)
      * @return 클라우드 리소스 목록
      */
-    public List<CloudResource> getResourcesByTenant(String tenantId) {
-        log.info("[CloudResourceService] getResourcesByTenant - tenantId={}", 
-                LogMaskingUtils.mask(tenantId, 2, 2));
+    public List<CloudResource> getResourcesByTenant(String tenantKey) {
+        log.info("[CloudResourceService] getResourcesByTenant - tenantKey={}", 
+                LogMaskingUtils.mask(tenantKey, 2, 2));
         
-        List<CloudResource> resources = cloudResourceRepository.findByTenantId(tenantId);
+        List<CloudResource> resources = cloudResourceRepository.findByTenantId(tenantKey);
         
         log.info("[CloudResourceService] getResourcesByTenant - success count={} tenantId={}", 
-                resources.size(), LogMaskingUtils.mask(tenantId, 2, 2));
+                resources.size(), LogMaskingUtils.mask(tenantKey, 2, 2));
         
         return resources;
     }
