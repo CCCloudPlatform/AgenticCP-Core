@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.platform.service;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.platform.dto.targeting.TargetRuleEvaluationRequest;
 import com.agenticcp.core.domain.platform.dto.targeting.TargetRuleEvaluationResponse;
+import com.agenticcp.core.domain.platform.enums.MultiCloudEnvironment;
 import com.agenticcp.core.domain.platform.enums.TargetingRuleErrorCode;
 import com.agenticcp.core.domain.platform.entity.FeatureFlag;
 import com.agenticcp.core.domain.platform.entity.FeatureFlagTargetRule;
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -35,6 +35,9 @@ class TargetingConditionEvaluatorTest {
 
     @Mock
     private FeatureFlagTargetRuleRepository targetingRuleRepository;
+    
+    @Mock
+    private MultiCloudEnvironmentService multiCloudEnvironmentService;
 
     private ObjectMapper objectMapper;
     private TargetingConditionEvaluator targetingConditionEvaluator;
@@ -46,7 +49,8 @@ class TargetingConditionEvaluatorTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        targetingConditionEvaluator = new TargetingConditionEvaluator(targetingRuleRepository, objectMapper);
+        targetingConditionEvaluator = new TargetingConditionEvaluator(
+                targetingRuleRepository, objectMapper, multiCloudEnvironmentService);
         testFeatureFlag = FeatureFlag.builder()
                 .flagKey("test-feature")
                 .flagName("테스트 기능")
@@ -229,5 +233,170 @@ class TargetingConditionEvaluatorTest {
         assertThat(result.getMatchedRuleName()).isEqualTo("높은 우선순위 규칙");
         
         verify(targetingRuleRepository).findActiveRulesByFeatureFlagId(1L, false);
+    }
+    
+    @Test
+    @DisplayName("클라우드 환경 규칙 매칭 성공 - MULTI_CLOUD")
+    void evaluateTargeting_CloudEnvironmentRule_MultiCloud_Match() {
+        // given
+        FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
+                .featureFlag(testFeatureFlag)
+                .ruleName("멀티클라우드 전용")
+                .ruleType(FeatureFlagTargetRule.RuleType.CLOUD_ENVIRONMENT)
+                .ruleValue("[\"multi_cloud\", \"hybrid\"]")
+                .priority(100)
+                .isEnabled(true)
+                .build();
+        cloudEnvRule.setId(10L);
+        
+        given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
+                .willReturn(List.of(cloudEnvRule));
+        given(multiCloudEnvironmentService.detectEnvironment("tenant123"))
+                .willReturn(MultiCloudEnvironment.MULTI_CLOUD);
+        
+        // when
+        TargetRuleEvaluationResponse result = targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, testEvaluationRequest);
+        
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getMatchedRuleId()).isEqualTo(10L);
+        assertThat(result.getMatchedRuleName()).isEqualTo("멀티클라우드 전용");
+        assertThat(result.getMatchedRuleType()).isEqualTo("CLOUD_ENVIRONMENT");
+        
+        verify(multiCloudEnvironmentService).detectEnvironment("tenant123");
+        verify(targetingRuleRepository).findActiveRulesByFeatureFlagId(1L, false);
+    }
+    
+    @Test
+    @DisplayName("클라우드 환경 규칙 매칭 성공 - HYBRID")
+    void evaluateTargeting_CloudEnvironmentRule_Hybrid_Match() {
+        // given
+        FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
+                .featureFlag(testFeatureFlag)
+                .ruleName("하이브리드 환경 전용")
+                .ruleType(FeatureFlagTargetRule.RuleType.CLOUD_ENVIRONMENT)
+                .ruleValue("[\"multi_cloud\", \"hybrid\"]")
+                .priority(100)
+                .isEnabled(true)
+                .build();
+        cloudEnvRule.setId(11L);
+        
+        given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
+                .willReturn(List.of(cloudEnvRule));
+        given(multiCloudEnvironmentService.detectEnvironment("tenant123"))
+                .willReturn(MultiCloudEnvironment.HYBRID);
+        
+        // when
+        TargetRuleEvaluationResponse result = targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, testEvaluationRequest);
+        
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getMatchedRuleId()).isEqualTo(11L);
+        assertThat(result.getMatchedRuleName()).isEqualTo("하이브리드 환경 전용");
+        
+        verify(multiCloudEnvironmentService).detectEnvironment("tenant123");
+    }
+    
+    @Test
+    @DisplayName("클라우드 환경 규칙 매칭 실패 - SINGLE_CLOUD는 제외")
+    void evaluateTargeting_CloudEnvironmentRule_SingleCloud_NoMatch() {
+        // given
+        FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
+                .featureFlag(testFeatureFlag)
+                .ruleName("멀티클라우드 전용")
+                .ruleType(FeatureFlagTargetRule.RuleType.CLOUD_ENVIRONMENT)
+                .ruleValue("[\"multi_cloud\", \"hybrid\"]")
+                .priority(100)
+                .isEnabled(true)
+                .build();
+        cloudEnvRule.setId(12L);
+        
+        given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
+                .willReturn(List.of(cloudEnvRule));
+        given(multiCloudEnvironmentService.detectEnvironment("tenant123"))
+                .willReturn(MultiCloudEnvironment.SINGLE_CLOUD); // 단일 클라우드
+        
+        // when
+        TargetRuleEvaluationResponse result = targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, testEvaluationRequest);
+        
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getResult()).isFalse();
+        assertThat(result.getMatchedRuleId()).isNull();
+        assertThat(result.getEvaluationDetails()).hasSize(1);
+        assertThat(result.getEvaluationDetails().get(0).getMatched()).isFalse();
+        
+        verify(multiCloudEnvironmentService).detectEnvironment("tenant123");
+    }
+    
+    @Test
+    @DisplayName("클라우드 환경 규칙 평가 - 모든 클라우드 환경 허용")
+    void evaluateTargeting_CloudEnvironmentRule_AllEnvironments_Match() {
+        // given
+        FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
+                .featureFlag(testFeatureFlag)
+                .ruleName("모든 클라우드 환경")
+                .ruleType(FeatureFlagTargetRule.RuleType.CLOUD_ENVIRONMENT)
+                .ruleValue("[\"single_cloud\", \"multi_cloud\", \"hybrid\", \"on_premise\"]")
+                .priority(100)
+                .isEnabled(true)
+                .build();
+        cloudEnvRule.setId(13L);
+        
+        given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
+                .willReturn(List.of(cloudEnvRule));
+        given(multiCloudEnvironmentService.detectEnvironment("tenant123"))
+                .willReturn(MultiCloudEnvironment.SINGLE_CLOUD);
+        
+        // when
+        TargetRuleEvaluationResponse result = targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, testEvaluationRequest);
+        
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getResult()).isTrue();
+        assertThat(result.getMatchedRuleId()).isEqualTo(13L);
+        
+        verify(multiCloudEnvironmentService).detectEnvironment("tenant123");
+    }
+    
+    @Test
+    @DisplayName("클라우드 환경 규칙 평가 - tenantId 없음")
+    void evaluateTargeting_CloudEnvironmentRule_NoTenantId_NoMatch() {
+        // given
+        FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
+                .featureFlag(testFeatureFlag)
+                .ruleName("멀티클라우드 전용")
+                .ruleType(FeatureFlagTargetRule.RuleType.CLOUD_ENVIRONMENT)
+                .ruleValue("[\"multi_cloud\"]")
+                .priority(100)
+                .isEnabled(true)
+                .build();
+        cloudEnvRule.setId(14L);
+        
+        TargetRuleEvaluationRequest requestWithoutTenantId = TargetRuleEvaluationRequest.builder()
+                .userId("user123")
+                .tenantId(null) // tenantId 없음
+                .build();
+        
+        given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
+                .willReturn(List.of(cloudEnvRule));
+        
+        // when
+        TargetRuleEvaluationResponse result = targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, requestWithoutTenantId);
+        
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getResult()).isFalse();
+        assertThat(result.getEvaluationDetails().get(0).getMatched()).isFalse();
+        
+        // multiCloudEnvironmentService는 호출되지 않아야 함
+        verify(multiCloudEnvironmentService, never()).detectEnvironment(any());
     }
 }
