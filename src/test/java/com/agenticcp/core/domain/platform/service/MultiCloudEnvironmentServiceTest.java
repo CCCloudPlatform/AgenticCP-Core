@@ -205,6 +205,59 @@ class MultiCloudEnvironmentServiceTest {
         assertThat(result).isEqualTo(MultiCloudEnvironment.ON_PREMISE);
     }
     
+    @Test
+    @DisplayName("멀티클라우드 환경 감지 - Provider 없는 리소스는 무시")
+    void detectEnvironment_ResourcesWithoutProvider_IgnoresAndReturnsOnPremise() {
+        // Given
+        String tenantId = "tenant-no-provider";
+        CloudResource resourceWithoutProvider = CloudResource.builder()
+                .resourceId("resource-no-provider")
+                .resourceName("Resource Without Provider")
+                .provider(null)  // Provider 없음
+                .build();
+        
+        when(cloudResourceService.getResourcesByTenant(tenantId))
+                .thenReturn(List.of(resourceWithoutProvider));
+        
+        // When
+        MultiCloudEnvironment result = multiCloudEnvironmentService.detectEnvironment(tenantId);
+        
+        // Then
+        assertThat(result).isEqualTo(MultiCloudEnvironment.ON_PREMISE);
+    }
+    
+    @Test
+    @DisplayName("멀티클라우드 환경 감지 - 일부 리소스만 Provider 있음")
+    void detectEnvironment_MixedResources_IgnoresNullProviders() {
+        // Given
+        String tenantId = "tenant-mixed";
+        CloudProvider awsProvider = CloudProvider.builder()
+                .providerType(CloudProvider.ProviderType.AWS)
+                .providerKey("aws")
+                .build();
+        
+        CloudResource validResource = CloudResource.builder()
+                .resourceId("valid-resource")
+                .resourceName("Valid Resource")
+                .provider(awsProvider)
+                .build();
+        
+        CloudResource invalidResource = CloudResource.builder()
+                .resourceId("invalid-resource")
+                .resourceName("Invalid Resource")
+                .provider(null)  // Provider 없음
+                .build();
+        
+        when(cloudResourceService.getResourcesByTenant(tenantId))
+                .thenReturn(List.of(validResource, invalidResource));
+        
+        // When
+        MultiCloudEnvironment result = multiCloudEnvironmentService.detectEnvironment(tenantId);
+        
+        // Then
+        assertThat(result).isEqualTo(MultiCloudEnvironment.SINGLE_CLOUD);
+    }
+    
     /**
      * 목 CloudResource 리스트 생성 헬퍼 메서드
      */
