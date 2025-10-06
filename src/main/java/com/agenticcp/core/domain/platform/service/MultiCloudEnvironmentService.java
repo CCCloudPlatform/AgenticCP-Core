@@ -3,6 +3,8 @@ package com.agenticcp.core.domain.platform.service;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.service.CloudResourceService;
 import com.agenticcp.core.domain.platform.enums.MultiCloudEnvironment;
+import com.agenticcp.core.domain.platform.enums.TargetingRuleErrorCode;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.util.LogMaskingUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,34 +36,57 @@ public class MultiCloudEnvironmentService {
      * 
      * @param tenantId 테넌트 ID
      * @return 감지된 환경 타입
+     * @throws BusinessException 환경 감지 중 오류 발생 시
      */
     public MultiCloudEnvironment detectEnvironment(String tenantId) {
         log.info("[MultiCloudEnvironmentService] detectEnvironment - tenantId={}", 
                 LogMaskingUtils.mask(tenantId, 2, 2));
         
-        // 테넌트의 클라우드 리소스 조회
-        List<CloudResource> resources = cloudResourceService.getResourcesByTenant(tenantId);
-        
-        if (resources == null || resources.isEmpty()) {
-            log.warn("[MultiCloudEnvironmentService] No cloud resources found for tenant: {}", 
-                    LogMaskingUtils.mask(tenantId, 2, 2));
-            return MultiCloudEnvironment.ON_PREMISE; // 리소스 없으면 온프레미스로 간주
+        try {
+            // 테넌트의 클라우드 리소스 조회
+            List<CloudResource> resources = cloudResourceService.getResourcesByTenant(tenantId);
+            
+            if (resources == null || resources.isEmpty()) {
+                log.warn("[MultiCloudEnvironmentService] No cloud resources found for tenant: {}", 
+                        LogMaskingUtils.mask(tenantId, 2, 2));
+                return MultiCloudEnvironment.ON_PREMISE; // 리소스 없으면 온프레미스로 간주
+            }
+            
+            // 프로바이더 타입 추출 (Provider null 체크 추가)
+            Set<String> providers = resources.stream()
+                    .filter(r -> {
+                        if (r.getProvider() == null) {
+                            log.warn("[MultiCloudEnvironmentService] CloudResource without provider found: resourceId={}", 
+                                    r.getResourceId());
+                            return false;
+                        }
+                        return true;
+                    })
+                    .map(r -> r.getProvider().getProviderType().name())
+                    .collect(Collectors.toSet());
+            
+            if (providers.isEmpty()) {
+                log.warn("[MultiCloudEnvironmentService] CloudResources exist but no valid providers found for tenant: {}", 
+                         LogMaskingUtils.mask(tenantId, 2, 2));
+                return MultiCloudEnvironment.ON_PREMISE;
+            }
+            
+            log.debug("[MultiCloudEnvironmentService] Detected providers: {}", providers);
+            
+            // 환경 타입 결정
+            MultiCloudEnvironment environment = determineEnvironment(providers);
+            
+            log.info("[MultiCloudEnvironmentService] detectEnvironment - result={} tenantId={}", 
+                    environment, LogMaskingUtils.mask(tenantId, 2, 2));
+            
+            return environment;
+            
+        } catch (Exception e) {
+            log.error("[MultiCloudEnvironmentService] Error detecting environment for tenant: {}", 
+                      LogMaskingUtils.mask(tenantId, 2, 2), e);
+            throw new BusinessException(TargetingRuleErrorCode.CLOUD_ENVIRONMENT_DETECTION_FAILED, 
+                    "클라우드 환경 감지 중 오류가 발생했습니다: " + e.getMessage());
         }
-        
-        // 프로바이더 타입 추출
-        Set<String> providers = resources.stream()
-                .map(r -> r.getProvider().getProviderType().name())
-                .collect(Collectors.toSet());
-        
-        log.debug("[MultiCloudEnvironmentService] Detected providers: {}", providers);
-        
-        // 환경 타입 결정
-        MultiCloudEnvironment environment = determineEnvironment(providers);
-        
-        log.info("[MultiCloudEnvironmentService] detectEnvironment - result={} tenantId={}", 
-                environment, LogMaskingUtils.mask(tenantId, 2, 2));
-        
-        return environment;
     }
     
     /**
