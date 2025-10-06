@@ -366,8 +366,8 @@ class TargetingConditionEvaluatorTest {
     }
     
     @Test
-    @DisplayName("클라우드 환경 규칙 평가 - tenantId 없음")
-    void evaluateTargeting_CloudEnvironmentRule_NoTenantId_NoMatch() {
+    @DisplayName("클라우드 환경 규칙 평가 - tenantId 없음 시 예외 발생")
+    void evaluateTargeting_CloudEnvironmentRule_NoTenantId_ThrowsException() {
         // given
         FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
                 .featureFlag(testFeatureFlag)
@@ -387,16 +387,74 @@ class TargetingConditionEvaluatorTest {
         given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
                 .willReturn(List.of(cloudEnvRule));
         
-        // when
-        TargetRuleEvaluationResponse result = targetingConditionEvaluator.evaluateTargeting(
-                testFeatureFlag, requestWithoutTenantId);
-        
-        // then
-        assertThat(result).isNotNull();
-        assertThat(result.getResult()).isFalse();
-        assertThat(result.getEvaluationDetails().get(0).getMatched()).isFalse();
+        // when & then
+        assertThatThrownBy(() -> targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, requestWithoutTenantId))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", 
+                        TargetingRuleErrorCode.TENANT_ID_REQUIRED_FOR_ENVIRONMENT_RULE);
         
         // multiCloudEnvironmentService는 호출되지 않아야 함
         verify(multiCloudEnvironmentService, never()).detectEnvironment(any());
+    }
+    
+    @Test
+    @DisplayName("클라우드 환경 규칙 평가 - 빈 ruleValue 배열 시 예외 발생")
+    void evaluateTargeting_CloudEnvironmentRule_EmptyRuleValue_ThrowsException() {
+        // given
+        FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
+                .featureFlag(testFeatureFlag)
+                .ruleName("빈 환경 규칙")
+                .ruleType(FeatureFlagTargetRule.RuleType.CLOUD_ENVIRONMENT)
+                .ruleValue("[]")  // 빈 배열
+                .priority(100)
+                .isEnabled(true)
+                .build();
+        cloudEnvRule.setId(15L);
+        
+        given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
+                .willReturn(List.of(cloudEnvRule));
+        given(multiCloudEnvironmentService.detectEnvironment("tenant123"))
+                .willReturn(MultiCloudEnvironment.MULTI_CLOUD);
+        
+        // when & then
+        assertThatThrownBy(() -> targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, testEvaluationRequest))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", 
+                        TargetingRuleErrorCode.RULE_VALUE_EMPTY_ARRAY);
+        
+        verify(multiCloudEnvironmentService).detectEnvironment("tenant123");
+    }
+    
+    @Test
+    @DisplayName("클라우드 환경 규칙 평가 - 환경 감지 실패 시 예외 발생")
+    void evaluateTargeting_CloudEnvironmentRule_DetectionFailed_ThrowsException() {
+        // given
+        FeatureFlagTargetRule cloudEnvRule = FeatureFlagTargetRule.builder()
+                .featureFlag(testFeatureFlag)
+                .ruleName("멀티클라우드 전용")
+                .ruleType(FeatureFlagTargetRule.RuleType.CLOUD_ENVIRONMENT)
+                .ruleValue("[\"multi_cloud\"]")
+                .priority(100)
+                .isEnabled(true)
+                .build();
+        cloudEnvRule.setId(16L);
+        
+        given(targetingRuleRepository.findActiveRulesByFeatureFlagId(1L, false))
+                .willReturn(List.of(cloudEnvRule));
+        given(multiCloudEnvironmentService.detectEnvironment("tenant123"))
+                .willThrow(new BusinessException(
+                        TargetingRuleErrorCode.CLOUD_ENVIRONMENT_DETECTION_FAILED,
+                        "환경 감지 실패"));
+        
+        // when & then
+        assertThatThrownBy(() -> targetingConditionEvaluator.evaluateTargeting(
+                testFeatureFlag, testEvaluationRequest))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", 
+                        TargetingRuleErrorCode.CLOUD_ENVIRONMENT_DETECTION_FAILED);
+        
+        verify(multiCloudEnvironmentService).detectEnvironment("tenant123");
     }
 }
