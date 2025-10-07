@@ -4,6 +4,9 @@ import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.health.dto.*;
 import com.agenticcp.core.domain.monitoring.health.service.AdvancedHealthCheckService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +28,7 @@ import java.util.Map;
 @RequestMapping("/api/health")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Advanced Health", description = "고급 헬스체크 API")
 public class AdvancedHealthController {
     
     private final AdvancedHealthCheckService advancedHealthCheckService;
@@ -37,6 +41,7 @@ public class AdvancedHealthController {
      * 
      * @return 전체 헬스체크 결과
      */
+    @Operation(summary = "전체 헬스체크", description = "모든 컴포넌트의 상태를 종합하여 반환합니다")
     @GetMapping("/advanced")
     public ResponseEntity<ApiResponse<HealthStatusResponse>> getOverallHealth() {
         log.info("Advanced health check requested");
@@ -61,8 +66,11 @@ public class AdvancedHealthController {
      * @param name 컴포넌트 이름 (database, system, application 등)
      * @return 컴포넌트 헬스체크 결과
      */
+    @Operation(summary = "컴포넌트 헬스체크", description = "지정한 컴포넌트의 상태를 확인합니다")
     @GetMapping("/component/{name}")
-    public ResponseEntity<ApiResponse<ComponentHealthStatus>> getComponentHealth(@PathVariable String name) {
+    public ResponseEntity<ApiResponse<ComponentHealthStatus>> getComponentHealth(
+            @Parameter(description = "컴포넌트 이름", required = true)
+            @PathVariable String name) {
         log.info("Component health check requested for: {}", name);
         
         try {
@@ -85,6 +93,7 @@ public class AdvancedHealthController {
      * 
      * @return 헬스체크 요약 정보
      */
+    @Operation(summary = "헬스체크 요약", description = "전체 서비스 상태에 대한 요약 통계를 제공합니다")
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<HealthCheckSummary>> getHealthSummary() {
         log.info("Health check summary requested");
@@ -108,6 +117,7 @@ public class AdvancedHealthController {
      * 
      * @return 컴포넌트 목록
      */
+    @Operation(summary = "헬스체크 가능 컴포넌트 목록", description = "헬스체크 대상 컴포넌트 리스트를 반환합니다")
     @GetMapping("/components")
     public ResponseEntity<ApiResponse<Map<String, String>>> getAvailableComponents() {
         log.info("Available components requested");
