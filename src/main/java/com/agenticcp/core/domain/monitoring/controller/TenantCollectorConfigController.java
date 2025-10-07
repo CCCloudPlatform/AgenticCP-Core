@@ -6,6 +6,9 @@ import com.agenticcp.core.domain.monitoring.dto.QuotaRequestDto;
 import com.agenticcp.core.domain.monitoring.dto.TenantCollectorConfigDto;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import com.agenticcp.core.domain.monitoring.service.TenantCollectorConfigService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -17,7 +20,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 테넌트별 수집기 설정 API 컨트롤러
@@ -31,6 +33,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/monitoring/collectors/configs")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = "Metric Collector Configuration", description = "테넌트별 메트릭 수집기 설정 및 할당량 관리 API")
 public class TenantCollectorConfigController {
 
     private final TenantCollectorConfigService configService;
@@ -38,6 +41,7 @@ public class TenantCollectorConfigController {
     /**
      * 현재 테넌트의 활성화된 수집기 설정 조회
      */
+    @Operation(summary = "활성화된 수집기 설정 조회", description = "현재 테넌트의 활성 설정만 조회합니다")
     @GetMapping("/enabled")
     public ResponseEntity<ApiResponse<List<TenantCollectorConfigDto>>> getEnabledConfigs() {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -51,6 +55,7 @@ public class TenantCollectorConfigController {
     /**
      * 현재 테넌트의 모든 수집기 설정 조회
      */
+    @Operation(summary = "모든 수집기 설정 조회", description = "현재 테넌트의 전체 수집기 설정을 조회합니다")
     @GetMapping
     public ResponseEntity<ApiResponse<List<TenantCollectorConfigDto>>> getAllConfigs() {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -64,8 +69,10 @@ public class TenantCollectorConfigController {
     /**
      * 특정 수집기 설정 조회
      */
+    @Operation(summary = "특정 수집기 설정 조회", description = "수집기 타입으로 설정을 조회합니다")
     @GetMapping("/{collectorType}")
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> getConfigByType(
+            @Parameter(description = "수집기 타입", required = true)
             @PathVariable @NotNull CollectorType collectorType) {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
         log.info("특정 수집기 설정 조회: tenantId={}, collectorType={}", tenantId, collectorType);
@@ -78,6 +85,7 @@ public class TenantCollectorConfigController {
     /**
      * 수집기 설정 생성
      */
+    @Operation(summary = "수집기 설정 생성", description = "현재 테넌트 기준으로 수집기 설정을 생성합니다")
     @PostMapping
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> createConfig(
             @Valid @RequestBody TenantCollectorConfigDto configDto) {
@@ -106,8 +114,10 @@ public class TenantCollectorConfigController {
     /**
      * 수집기 설정 수정
      */
+    @Operation(summary = "수집기 설정 수정", description = "설정 식별자와 요청 본문으로 설정을 수정합니다")
     @PutMapping("/{configId}")
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> updateConfig(
+            @Parameter(description = "설정 ID", required = true)
             @PathVariable @Positive Long configId,
             @Valid @RequestBody TenantCollectorConfigDto configDto) {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -135,8 +145,11 @@ public class TenantCollectorConfigController {
     /**
      * 수집기 설정 삭제
      */
+    @Operation(summary = "수집기 설정 삭제", description = "설정 식별자로 설정을 삭제합니다")
     @DeleteMapping("/{configId}")
-    public ResponseEntity<Void> deleteConfig(@PathVariable @Positive Long configId) {
+    public ResponseEntity<Void> deleteConfig(
+            @Parameter(description = "설정 ID", required = true)
+            @PathVariable @Positive Long configId) {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
         log.info("수집기 설정 삭제: configId={}, tenantId={}", configId, tenantId);
         
@@ -148,9 +161,12 @@ public class TenantCollectorConfigController {
     /**
      * 수집기 활성화/비활성화
      */
+    @Operation(summary = "수집기 활성/비활성 전환", description = "설정의 활성 상태를 변경합니다")
     @PatchMapping("/{configId}/toggle")
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> toggleConfig(
+            @Parameter(description = "설정 ID", required = true)
             @PathVariable @Positive Long configId,
+            @Parameter(description = "활성화 여부", required = true)
             @RequestParam boolean enabled) {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
         log.info("수집기 활성화 상태 변경: configId={}, enabled={}, tenantId={}", configId, enabled, tenantId);
@@ -163,6 +179,7 @@ public class TenantCollectorConfigController {
     /**
      * 현재 테넌트의 활성화된 수집기 타입 목록 조회
      */
+    @Operation(summary = "활성 수집기 타입 목록", description = "활성화된 수집기 타입만 반환합니다")
     @GetMapping("/enabled/types")
     public ResponseEntity<ApiResponse<List<CollectorType>>> getEnabledCollectorTypes() {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -176,6 +193,7 @@ public class TenantCollectorConfigController {
     /**
      * 현재 테넌트의 활성화된 수집기 수 조회
      */
+    @Operation(summary = "활성 수집기 개수", description = "활성화된 수집기 설정의 개수를 반환합니다")
     @GetMapping("/enabled/count")
     public ResponseEntity<ApiResponse<Long>> getEnabledCollectorCount() {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -194,6 +212,7 @@ public class TenantCollectorConfigController {
      * @param quotaRequest 할당량 설정 요청 정보
      * @return 할당량 설정 완료 메시지
      */
+    @Operation(summary = "할당량 설정", description = "일일 제한/스토리지/초과 시 액션을 설정합니다")
     @PostMapping("/quota")
     public ResponseEntity<ApiResponse<String>> setQuota(@Valid @RequestBody QuotaRequestDto quotaRequest) {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -214,6 +233,7 @@ public class TenantCollectorConfigController {
     /**
      * 테넌트별 할당량 조회
      */
+    @Operation(summary = "할당량 조회", description = "현재 테넌트의 할당량 설정을 조회합니다")
     @GetMapping("/quota")
     public ResponseEntity<ApiResponse<TenantCollectorConfigDto>> getQuota() {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -227,6 +247,7 @@ public class TenantCollectorConfigController {
     /**
      * 할당량 초과 여부 확인
      */
+    @Operation(summary = "할당량 초과 여부", description = "현재 테넌트의 할당량 초과 여부를 반환합니다")
     @GetMapping("/quota/exceeded")
     public ResponseEntity<ApiResponse<Boolean>> isQuotaExceeded() {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -240,6 +261,7 @@ public class TenantCollectorConfigController {
     /**
      * 할당량 초과 처리
      */
+    @Operation(summary = "할당량 초과 처리", description = "초과 시 후속 조치를 수행합니다")
     @PostMapping("/quota/handle-exceeded")
     public ResponseEntity<ApiResponse<String>> handleQuotaExceeded() {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();

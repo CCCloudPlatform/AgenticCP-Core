@@ -10,6 +10,8 @@ import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import com.agenticcp.core.domain.monitoring.service.MetricsCollectionService;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/monitoring/metrics")
 @RequiredArgsConstructor
+@Tag(name = "Metric Monitoring", description = "메트릭 조회/수집 API")
 public class MetricsController {
 
     private final MetricRepository metricRepository;
@@ -38,6 +41,7 @@ public class MetricsController {
     /**
      * 메트릭 목록 조회
      */
+    @Operation(summary = "메트릭 목록 조회", description = "필터(이름/타입)와 페이징으로 메트릭 목록을 조회합니다")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<Metric>>> getMetrics(
             @RequestParam(required = false) String metricName,
@@ -71,6 +75,7 @@ public class MetricsController {
     /**
      * 특정 메트릭 조회
      */
+    @Operation(summary = "특정 메트릭 조회", description = "메트릭 이름과 시간 범위로 데이터 조회")
     @GetMapping("/{metricName}")
     public ResponseEntity<ApiResponse<List<Metric>>> getMetricByName(
             @PathVariable String metricName,
@@ -120,6 +125,7 @@ public class MetricsController {
     /**
      * 메트릭 트렌드 조회
      */
+    @Operation(summary = "메트릭 트렌드 조회", description = "기준 시점부터 최신까지 트렌드 조회")
     @GetMapping("/trend")
     public ResponseEntity<ApiResponse<List<Metric>>> getMetricsTrend(
             @RequestParam(required = false) LocalDateTime since) {
@@ -143,6 +149,7 @@ public class MetricsController {
     /**
      * 수동 메트릭 수집
      */
+    @Operation(summary = "수동 메트릭 수집", description = "즉시 메트릭 수집 작업을 실행합니다")
     @PostMapping("/collect")
     public ResponseEntity<ApiResponse<String>> collectMetrics() {
         try {
@@ -163,6 +170,7 @@ public class MetricsController {
     /**
      * 메트릭 이름 목록 조회
      */
+    @Operation(summary = "메트릭 이름 목록 조회", description = "현재 테넌트에서 관측된 메트릭 이름 목록을 조회합니다")
     @GetMapping("/names")
     public ResponseEntity<ApiResponse<List<String>>> getMetricNames() {
         try {
