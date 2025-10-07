@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.notification.controller;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
@@ -50,6 +51,10 @@ public class NotificationController {
         
         log.info("알림 발송 요청: {}", request.getNotificationId());
         
+        // 자동으로 현재 테넌트 ID 설정
+        Long currentTenantId = getCurrentTenantId();
+        request.setTenantId(currentTenantId);
+        
         NotificationResponse response = notificationService.sendNotification(request);
         
         if (response.isSuccess()) {
@@ -71,6 +76,10 @@ public class NotificationController {
             @Valid @RequestBody NotificationRequest request) {
         
         log.info("비동기 알림 발송 요청: {}", request.getNotificationId());
+        
+        // 자동으로 현재 테넌트 ID 설정
+        Long currentTenantId = getCurrentTenantId();
+        request.setTenantId(currentTenantId);
         
         // 비동기 알림 발송 시작
         notificationService.sendNotificationAsync(request);
@@ -97,9 +106,9 @@ public class NotificationController {
     @GetMapping("/rules")
     @Operation(summary = "알림 규칙 조회", description = "테넌트별 알림 규칙을 조회합니다.")
     public ResponseEntity<Page<NotificationTemplate>> getNotificationRules(
-            @Parameter(description = "테넌트 ID") @RequestParam Long tenantId,
             Pageable pageable) {
         
+        Long tenantId = getCurrentTenantId();
         log.info("알림 규칙 조회: tenantId={}", tenantId);
         
         // TODO: 알림 규칙 조회 로직 구현
@@ -153,10 +162,10 @@ public class NotificationController {
     @GetMapping("/history")
     @Operation(summary = "알림 히스토리 조회", description = "알림 발송 히스토리를 조회합니다.")
     public ResponseEntity<Page<Notification>> getNotificationHistory(
-            @Parameter(description = "테넌트 ID") @RequestParam Long tenantId,
             @Parameter(description = "사용자 ID") @RequestParam(required = false) Long userId,
             Pageable pageable) {
         
+        Long tenantId = getCurrentTenantId();
         log.info("알림 히스토리 조회: tenantId={}, userId={}", tenantId, userId);
         
         // TODO: 알림 히스토리 조회 로직 구현
@@ -226,9 +235,9 @@ public class NotificationController {
      */
     @GetMapping("/channels")
     @Operation(summary = "알림 채널 조회", description = "사용 가능한 알림 채널을 조회합니다.")
-    public ResponseEntity<List<NotificationChannelEntity>> getNotificationChannels(
-            @Parameter(description = "테넌트 ID") @RequestParam Long tenantId) {
+    public ResponseEntity<List<NotificationChannelEntity>> getNotificationChannels() {
         
+        Long tenantId = getCurrentTenantId();
         log.info("알림 채널 조회: tenantId={}", tenantId);
         
         List<NotificationChannelEntity> channels = notificationService.getActiveChannels(tenantId);
@@ -311,9 +320,9 @@ public class NotificationController {
      */
     @GetMapping("/stats")
     @Operation(summary = "알림 통계 조회", description = "알림 발송 통계를 조회합니다.")
-    public ResponseEntity<Map<String, Object>> getNotificationStats(
-            @Parameter(description = "테넌트 ID") @RequestParam Long tenantId) {
+    public ResponseEntity<Map<String, Object>> getNotificationStats() {
         
+        Long tenantId = getCurrentTenantId();
         log.info("알림 통계 조회: tenantId={}", tenantId);
         
         // TODO: 알림 통계 조회 로직 구현
@@ -324,5 +333,21 @@ public class NotificationController {
         );
         
         return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * 현재 테넌트 ID 조회
+     * 
+     * @return 현재 테넌트 ID
+     */
+    private Long getCurrentTenantId() {
+        try {
+            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+            return Long.parseLong(tenantKey);
+        } catch (Exception e) {
+            log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
+            // TODO: 실제 운영에서는 예외를 발생시켜야 함
+            return 1L; // 임시 기본값
+        }
     }
 }

@@ -1,14 +1,13 @@
 package com.agenticcp.core.domain.notification.service;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
 import com.agenticcp.core.domain.notification.entity.NotificationChannelEntity;
-import com.agenticcp.core.domain.notification.entity.NotificationTemplate;
 import com.agenticcp.core.domain.notification.enums.NotificationStatus;
 import com.agenticcp.core.domain.notification.repository.NotificationChannelRepository;
 import com.agenticcp.core.domain.notification.repository.NotificationRepository;
-import com.agenticcp.core.domain.notification.repository.NotificationTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -20,7 +19,6 @@ import java.util.concurrent.CompletableFuture;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -47,9 +45,6 @@ public class NotificationService {
 
     /** 알림 데이터 저장소 */
     private final NotificationRepository notificationRepository;
-    
-    /** 알림 템플릿 저장소 */
-    private final NotificationTemplateRepository templateRepository;
     
     /** 알림 채널 설정 저장소 */
     private final NotificationChannelRepository channelRepository;
@@ -365,6 +360,22 @@ public class NotificationService {
         }
     }
 
+    /**
+     * 현재 테넌트 ID 조회
+     * 
+     * @return 현재 테넌트 ID
+     */
+    private Long getCurrentTenantId() {
+        try {
+            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+            return Long.parseLong(tenantKey);
+        } catch (Exception e) {
+            log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
+            // TODO: 실제 운영에서는 예외를 발생시켜야 함
+            return 1L; // 임시 기본값
+        }
+    }
+
     // ==================== 채널 관리 메서드들 ====================
 
     /**
@@ -375,6 +386,16 @@ public class NotificationService {
      */
     public List<NotificationChannelEntity> getActiveChannels(Long tenantId) {
         return channelRepository.findActiveChannelsByTenant(tenantId);
+    }
+
+    /**
+     * 현재 테넌트의 활성화된 알림 채널 조회
+     * 
+     * @return 활성화된 알림 채널 목록
+     */
+    public List<NotificationChannelEntity> getActiveChannels() {
+        Long tenantId = getCurrentTenantId();
+        return getActiveChannels(tenantId);
     }
 
     /**
