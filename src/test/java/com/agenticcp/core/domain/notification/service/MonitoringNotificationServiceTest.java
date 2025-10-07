@@ -1,20 +1,21 @@
 package com.agenticcp.core.domain.notification.service;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.MetricDto;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.enums.NotificationPriority;
 import com.agenticcp.core.domain.notification.enums.NotificationStatus;
-import com.agenticcp.core.domain.notification.enums.NotificationType;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,9 +34,15 @@ class MonitoringNotificationServiceTest {
     private MonitoringNotificationService monitoringNotificationService;
 
     private MetricDto testMetric;
+    private MockedStatic<TenantContextHolder> tenantContextHolderMock;
 
     @BeforeEach
     void setUp() {
+        // TenantContextHolder Mock 설정
+        tenantContextHolderMock = mockStatic(TenantContextHolder.class);
+        tenantContextHolderMock.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
+                .thenReturn("123"); // 테스트용 테넌트 키
+        
         testMetric = MetricDto.builder()
                 .id(1L)
                 .metricName("cpu.usage")
@@ -47,6 +54,13 @@ class MonitoringNotificationServiceTest {
                 .status(MetricDto.Status.ACTIVE)
                 .tenantId("123")
                 .build();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (tenantContextHolderMock != null) {
+            tenantContextHolderMock.close();
+        }
     }
 
     /**

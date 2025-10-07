@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.notification.service;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.enums.ChannelType;
@@ -8,12 +9,14 @@ import com.agenticcp.core.domain.notification.enums.NotificationType;
 import com.agenticcp.core.domain.notification.entity.NotificationChannelEntity;
 import com.agenticcp.core.domain.notification.repository.NotificationChannelRepository;
 import com.agenticcp.core.domain.notification.repository.NotificationRepository;
-import com.agenticcp.core.domain.notification.repository.NotificationTemplateRepository;
+import com.agenticcp.core.domain.notification.service.NotificationChannelFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -33,9 +36,6 @@ class NotificationServiceTest {
     private NotificationRepository notificationRepository;
 
     @Mock
-    private NotificationTemplateRepository templateRepository;
-
-    @Mock
     private NotificationChannelRepository channelRepository;
 
     @Mock
@@ -50,13 +50,19 @@ class NotificationServiceTest {
     @InjectMocks
     private NotificationService notificationService;
 
+    private MockedStatic<TenantContextHolder> tenantContextHolderMock;
+
     private NotificationRequest testRequest;
 
     @BeforeEach
     void setUp() {
+        // TenantContextHolder Mock 설정
+        tenantContextHolderMock = mockStatic(TenantContextHolder.class);
+        tenantContextHolderMock.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
+                .thenReturn("1"); // 테스트용 테넌트 키
+        
         testRequest = NotificationRequest.builder()
                 .notificationId("test-notification-001")
-                .tenantId(1L)
                 .userId(1L)
                 .title("테스트 알림")
                 .content("이것은 테스트 알림입니다.")
@@ -70,6 +76,13 @@ class NotificationServiceTest {
 
         // Mock NotificationRepository 설정 - save 메서드가 저장된 엔티티를 반환하도록 설정
         when(notificationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (tenantContextHolderMock != null) {
+            tenantContextHolderMock.close();
+        }
     }
 
     /**

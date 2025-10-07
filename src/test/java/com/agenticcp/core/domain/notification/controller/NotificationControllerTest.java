@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.notification.controller;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.NotificationChannelEntity;
@@ -9,12 +10,13 @@ import com.agenticcp.core.domain.notification.enums.NotificationStatus;
 import com.agenticcp.core.domain.notification.enums.NotificationType;
 import com.agenticcp.core.domain.notification.service.MonitoringNotificationService;
 import com.agenticcp.core.domain.notification.service.NotificationService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
@@ -44,7 +47,7 @@ class NotificationControllerTest {
     @InjectMocks
     private NotificationController notificationController;
 
-    private ObjectMapper objectMapper;
+    private MockedStatic<TenantContextHolder> tenantContextHolderMock;
 
     private NotificationRequest testRequest;
     private NotificationResponse testResponse;
@@ -52,11 +55,13 @@ class NotificationControllerTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
+        // TenantContextHolder Mock 설정
+        tenantContextHolderMock = mockStatic(TenantContextHolder.class);
+        tenantContextHolderMock.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
+                .thenReturn("1"); // 테스트용 테넌트 키
         
         testRequest = NotificationRequest.builder()
                 .notificationId("test-001")
-                .tenantId(1L)
                 .title("테스트 알림")
                 .content("테스트 내용")
                 .type(NotificationType.ALERT)
@@ -80,12 +85,19 @@ class NotificationControllerTest {
                 .build();
     }
 
+    @AfterEach
+    void tearDown() {
+        if (tenantContextHolderMock != null) {
+            tenantContextHolderMock.close();
+        }
+    }
+
     /**
      * 알림 발송 API 성공 테스트
      * 
      * Given: 유효한 알림 요청 데이터
      * When: POST /api/notifications/send 요청
-     * Then: 200 OK와 함께 성공 응답 반환
+     * Then: 200 OK와 함께 성공 응답 반환, 자동으로 테넌트 ID 설정됨
      */
     @Test
     void testSendNotification_Success() {
@@ -102,6 +114,9 @@ class NotificationControllerTest {
         assertEquals("test-001", response.getBody().getNotificationId());
         assertEquals(NotificationStatus.SENT, response.getBody().getStatus());
         assertTrue(response.getBody().isSuccess());
+        
+        // 자동 테넌트 ID 설정 검증
+        assertEquals(1L, testRequest.getTenantId());
     }
 
     /**
@@ -139,7 +154,7 @@ class NotificationControllerTest {
      * 
      * Given: 유효한 알림 요청 데이터
      * When: POST /api/notifications/send-async 요청
-     * Then: 202 Accepted와 함께 처리 중 상태 반환
+     * Then: 202 Accepted와 함께 처리 중 상태 반환, 자동으로 테넌트 ID 설정됨
      */
     @Test
     void testSendNotificationAsync_Success() {
@@ -151,13 +166,16 @@ class NotificationControllerTest {
         assertNotNull(response.getBody());
         assertEquals("test-001", response.getBody().get("notificationId"));
         assertEquals("PROCESSING", response.getBody().get("status"));
+        
+        // 자동 테넌트 ID 설정 검증
+        assertEquals(1L, testRequest.getTenantId());
     }
 
     /**
      * 알림 채널 목록 조회 API 성공 테스트
      * 
      * Given: 활성화된 이메일 채널이 존재
-     * When: GET /api/notifications/channels/{tenantId} 요청
+     * When: GET /api/notifications/channels 요청
      * Then: 200 OK와 함께 채널 목록 반환
      */
     @Test
@@ -168,7 +186,7 @@ class NotificationControllerTest {
                 .thenReturn(channels);
 
         // When
-        ResponseEntity<List<NotificationChannelEntity>> response = notificationController.getNotificationChannels(1L);
+        ResponseEntity<List<NotificationChannelEntity>> response = notificationController.getNotificationChannels();
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
