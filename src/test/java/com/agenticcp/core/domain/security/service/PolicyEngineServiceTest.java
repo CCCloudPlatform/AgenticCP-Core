@@ -89,6 +89,18 @@ class PolicyEngineServiceTest {
         
         // Redis 템플릿 모킹
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        
+        // ObjectMapper 모킹
+        when(objectMapper.getTypeFactory()).thenReturn(com.fasterxml.jackson.databind.type.TypeFactory.defaultInstance());
+        
+        // PolicyEngineService에 redisTemplate 주입 (리플렉션 사용)
+        try {
+            java.lang.reflect.Field redisTemplateField = PolicyEngineService.class.getDeclaredField("redisTemplate");
+            redisTemplateField.setAccessible(true);
+            redisTemplateField.set(policyEngineService, redisTemplate);
+        } catch (Exception e) {
+            // 리플렉션 실패 시 무시
+        }
     }
     
     @Nested
@@ -130,6 +142,8 @@ class PolicyEngineServiceTest {
             // Given
             PolicyEvaluationResult cachedResult = PolicyEvaluationResult.allow("캐시된 결과");
             cachedResult.setExpirationMinutes(5); // 만료되지 않은 캐시 (5분 후 만료)
+            cachedResult.setEvaluatedAt(LocalDateTime.now().minusMinutes(2)); // 2분 전에 평가됨 (만료되지 않음)
+            cachedResult.setExpired(false); // 명시적으로 만료되지 않음으로 설정
             
             // 평가 결과 캐시 키에 대해서만 cachedResult 반환
             String evaluationCacheKey = "policy_evaluation:EC2_INSTANCE:CREATE:user123:tenant1";
