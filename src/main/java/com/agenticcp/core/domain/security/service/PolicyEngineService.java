@@ -7,8 +7,8 @@ import com.agenticcp.core.domain.security.enums.PolicyDecision;
 import com.agenticcp.core.domain.security.enums.SecurityErrorCode;
 import com.agenticcp.core.domain.security.repository.SecurityPolicyRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,15 +29,25 @@ import java.util.stream.Collectors;
  * @since 2024-01-01
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
 public class PolicyEngineService {
     
     private final SecurityPolicyRepository securityPolicyRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    
+    @Autowired(required = false) // RedisTemplate이 필수가 아님을 명시
+    private RedisTemplate<String, Object> redisTemplate;
+    
     private final PolicyJsonParser policyJsonParser;
     private final ObjectMapper objectMapper;
+    
+    public PolicyEngineService(SecurityPolicyRepository securityPolicyRepository, 
+                              PolicyJsonParser policyJsonParser, 
+                              ObjectMapper objectMapper) {
+        this.securityPolicyRepository = securityPolicyRepository;
+        this.policyJsonParser = policyJsonParser;
+        this.objectMapper = objectMapper;
+    }
     
     private static final String CACHE_KEY_PREFIX = "policy_evaluation:";
     private static final String CACHE_KEY_POLICIES = "applicable_policies:";
@@ -101,11 +111,13 @@ public class PolicyEngineService {
     private List<SecurityPolicy> getApplicablePolicies(PolicyEvaluationRequest request) {
         String cacheKey = CACHE_KEY_POLICIES + request.getResourceType() + ":" + request.getAction();
         
-        // 캐시에서 확인
-        @SuppressWarnings("unchecked")
-        List<SecurityPolicy> cachedPolicies = (List<SecurityPolicy>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedPolicies != null) {
-            return cachedPolicies;
+        // 캐시에서 확인 (Redis가 사용 가능한 경우에만)
+        if (redisTemplate != null) {
+            @SuppressWarnings("unchecked")
+            List<SecurityPolicy> cachedPolicies = (List<SecurityPolicy>) redisTemplate.opsForValue().get(cacheKey);
+            if (cachedPolicies != null) {
+                return cachedPolicies;
+            }
         }
         
         List<SecurityPolicy> policies = new ArrayList<>();
@@ -129,8 +141,10 @@ public class PolicyEngineService {
                 .comparing(SecurityPolicy::getPriority, Comparator.reverseOrder())
                 .thenComparing(SecurityPolicy::getCreatedAt, Comparator.reverseOrder()));
         
-        // 캐시에 저장
-        redisTemplate.opsForValue().set(cacheKey, filteredPolicies, Duration.ofMinutes(CACHE_TTL_MINUTES));
+        // 캐시에 저장 (Redis가 사용 가능한 경우에만)
+        if (redisTemplate != null) {
+            redisTemplate.opsForValue().set(cacheKey, filteredPolicies, Duration.ofMinutes(CACHE_TTL_MINUTES));
+        }
         
         return filteredPolicies;
     }
@@ -746,6 +760,9 @@ public class PolicyEngineService {
      * @return 캐시된 결과
      */
     private PolicyEvaluationResult getCachedResult(PolicyEvaluationRequest request) {
+        if (redisTemplate == null) {
+            return null;
+        }
         String cacheKey = generateCacheKey(request);
         return (PolicyEvaluationResult) redisTemplate.opsForValue().get(cacheKey);
     }
@@ -757,6 +774,9 @@ public class PolicyEngineService {
      * @param result 정책 평가 결과
      */
     private void cacheResult(PolicyEvaluationRequest request, PolicyEvaluationResult result) {
+        if (redisTemplate == null) {
+            return;
+        }
         String cacheKey = generateCacheKey(request);
         result.setExpirationMinutes(CACHE_TTL_MINUTES);
         redisTemplate.opsForValue().set(cacheKey, result, Duration.ofMinutes(CACHE_TTL_MINUTES));
@@ -783,6 +803,9 @@ public class PolicyEngineService {
      * @param action 액션
      */
     public void evictPolicyCache(String resourceType, String action) {
+        if (redisTemplate == null) {
+            return;
+        }
         String cacheKey = CACHE_KEY_POLICIES + resourceType + ":" + action;
         redisTemplate.delete(cacheKey);
         
@@ -797,6 +820,9 @@ public class PolicyEngineService {
      * 모든 정책 캐시 무효화
      */
     public void evictAllPolicyCache() {
+        if (redisTemplate == null) {
+            return;
+        }
         Set<String> keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
         if (keys != null && !keys.isEmpty()) {
             redisTemplate.delete(keys);

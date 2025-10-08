@@ -10,18 +10,11 @@
         <property name="MAX_HISTORY" value="${MAX_HISTORY:-14}"/>
         <property name="TOTAL_SIZE_CAP" value="${TOTAL_SIZE_CAP:-3GB}"/>
 
-        <!-- 애플리케이션 일반 로그 (JSON, 압축 롤링) -->
+        <!-- 애플리케이션 일반 로그 (패턴, 압축 롤링) -->
         <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>${LOG_PATH}/${APP_NAME}.log</file>
-            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-                <providers>
-                    <timestamp fieldName="@timestamp" timeZone="Asia/Seoul"/>
-                    <logLevel fieldName="level"/>
-                    <loggerName fieldName="logger"/>
-                    <threadName fieldName="thread"/>
-                    <message fieldName="message"/>
-                    <mdc fieldName="mdc"/>
-                </providers>
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
                 <fileNamePattern>${LOG_PATH}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
@@ -32,19 +25,11 @@
             </rollingPolicy>
         </appender>
 
-        <!-- 에러 전용 파일 (WARN 이상, 스택트레이스 포함) -->
+        <!-- 에러 전용 파일 (WARN 이상, 스택트레이스 포함, 패턴) -->
         <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>${LOG_PATH}/${APP_NAME}-error.log</file>
-            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-                <providers>
-                    <timestamp fieldName="@timestamp" timeZone="Asia/Seoul"/>
-                    <logLevel fieldName="level"/>
-                    <loggerName fieldName="logger"/>
-                    <threadName fieldName="thread"/>
-                    <message fieldName="message"/>
-                    <mdc fieldName="mdc"/>
-                    <stackTrace fieldName="stacktrace"/>
-                </providers>
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
             </encoder>
             <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
                 <level>WARN</level>
