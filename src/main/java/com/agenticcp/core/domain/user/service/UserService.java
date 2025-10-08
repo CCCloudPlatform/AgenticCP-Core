@@ -235,4 +235,27 @@ public class UserService {
         userRepository.save(user);
         log.info("[UserService] deleteUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
     }
+
+    // 회원가입을 위한 추가 메서드들
+    public boolean existsByUsername(String username) {
+        log.info("[UserService] existsByUsername - username={}", LogMaskingUtils.mask(username, 2, 2));
+        boolean exists = getUserByUsername(username).isPresent();
+        log.info("[UserService] existsByUsername - exists={} username={}", exists, LogMaskingUtils.mask(username, 2, 2));
+        return exists;
+    }
+
+    public boolean existsByEmail(String email) {
+        log.info("[UserService] existsByEmail - email={}", LogMaskingUtils.mask(email, 2, 2));
+        boolean exists = getUserByEmail(email).isPresent();
+        log.info("[UserService] existsByEmail - exists={} email={}", exists, LogMaskingUtils.mask(email, 2, 2));
+        return exists;
+    }
+
+    @Transactional
+    public User saveUser(User user) {
+        log.info("[UserService] saveUser - username={}", LogMaskingUtils.mask(user.getUsername(), 2, 2));
+        User saved = userRepository.save(user);
+        log.info("[UserService] saveUser - success username={}", LogMaskingUtils.mask(saved.getUsername(), 2, 2));
+        return saved;
+    }
 }

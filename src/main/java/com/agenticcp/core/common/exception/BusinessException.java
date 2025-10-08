@@ -27,7 +27,7 @@ import lombok.Getter;
  *
  * @see BaseErrorCode
  * @see GlobalExceptionHandler
- * @author hyobinyang
+ * @author AgenticCP Team
  * @since 2025.09.22
  */
 @Getter
