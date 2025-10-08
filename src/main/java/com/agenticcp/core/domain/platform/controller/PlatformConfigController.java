@@ -4,6 +4,9 @@ import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.exception.AuthorizationException;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.service.PlatformConfigService;
+import com.agenticcp.core.domain.platform.service.ConfigHistoryQueryService;
+import com.agenticcp.core.domain.platform.dto.ConfigHistoryResponse;
+import org.springframework.data.domain.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,7 @@ import java.util.List;
 public class PlatformConfigController {
 
     private final PlatformConfigService platformConfigService;
+    private final ConfigHistoryQueryService configHistoryQueryService;
 
     @GetMapping
     @Operation(summary = "모든 플랫폼 설정 조회")
@@ -152,5 +156,15 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<Void>> deleteConfig(@PathVariable String configKey) {
         platformConfigService.deleteConfig(configKey);
         return ResponseEntity.ok(ApiResponse.success(null, "플랫폼 설정이 삭제되었습니다."));
+    }
+
+    @GetMapping("/{configKey}/history")
+    @Operation(summary = "플랫폼 설정 변경 이력 조회")
+    public ResponseEntity<ApiResponse<Page<ConfigHistoryResponse>>> getConfigHistory(
+            @PathVariable String configKey,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<ConfigHistoryResponse> history = configHistoryQueryService.getHistory(configKey, page, size);
+        return ResponseEntity.ok(ApiResponse.success(history));
     }
 }
