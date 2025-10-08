@@ -42,25 +42,37 @@ public class ConfigAuditService {
                                 String userId,
                                 String reason,
                                 String valueType) {
-        // 스켈레톤: 운영 로그 남기기 (자세한 저장/조회 로직은 후속 커밋에서 구현)
+        // 액션 정규화 (CREATE/UPDATE/DELETE 등으로 제한)
+        String normalizedAction = normalizeAction(action);
+
+        // 운영 로그
         if (log.isDebugEnabled()) {
-            log.debug("[ConfigAuditService] action={} key={} userId={} reason={}", action, configKey, userId, reason);
+            log.debug("[ConfigAuditService] action={} key={} userId={} reason={} type={}",
+                    normalizedAction, configKey, userId, reason, valueType);
         }
 
         Map<String, Object> details = new HashMap<>();
         details.put("configKey", configKey);
         details.put("oldValue", safeString(oldValue));
         details.put("newValue", safeString(newValue));
-        details.put("action", action);
+        details.put("action", normalizedAction);
         details.put("reason", safeString(reason));
         details.put("valueType", safeString(valueType));
+        // AuditLog 스키마 정렬: eventType/eventCategory를 details에 명시 (로거 파이프라인과 호환)
+        details.put("eventType", "CONFIGURATION_CHANGE");
+        details.put("eventCategory", "CONFIGURE");
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("eventType", "CONFIGURATION_CHANGE");
+        metadata.put("eventCategory", "CONFIGURE");
+        metadata.put("resourceType", "PlatformConfig");
 
         AuditEventDto event = new AuditEventDto(
-                action,
+                normalizedAction,
                 AuditResourceType.PLATFORM_CONFIG,
                 null,                 // httpMethod - 후속 단계에서 채움
                 null,                 // requestPath - 후속 단계에서 채움
-                "Platform Config " + action,
+                "Platform Config " + normalizedAction,
                 "PlatformConfigController", // 기본값(후속 단계에서 정확히 채움)
                 "",                  // methodName - 후속 단계에서 채움
                 AuditSeverity.INFO,
@@ -72,7 +84,7 @@ public class ConfigAuditService {
                 true,
                 null,
                 Map.of("configKey", configKey, "valueType", valueType),
-                null,
+                metadata,
                 details
         );
 
@@ -93,6 +105,19 @@ public class ConfigAuditService {
 
     private String safeString(String value) {
         return value == null ? "" : value;
+    }
+
+    private String normalizeAction(String action) {
+        if (action == null) {
+            return "UPDATE"; // 기본값
+        }
+        String upper = action.trim().toUpperCase();
+        return switch (upper) {
+            case "CREATE", "CREATED", "ADD", "ADDED" -> "CREATE";
+            case "UPDATE", "UPDATED", "MODIFY", "MODIFIED", "CHANGE", "CHANGED" -> "UPDATE";
+            case "DELETE", "DELETED", "REMOVE", "REMOVED" -> "DELETE";
+            default -> upper;
+        };
     }
 }
 
