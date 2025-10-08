@@ -4,6 +4,7 @@ import com.agenticcp.core.common.audit.AuditLogger;
 import com.agenticcp.core.common.dto.AuditEventDto;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
+import com.agenticcp.core.common.util.EncryptedValueMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,8 +54,9 @@ public class ConfigAuditService {
 
         Map<String, Object> details = new HashMap<>();
         details.put("configKey", configKey);
-        details.put("oldValue", safeString(oldValue));
-        details.put("newValue", safeString(newValue));
+        boolean encryptedType = EncryptedValueMasker.isEncryptedType(valueType);
+        details.put("oldValue", EncryptedValueMasker.maskForAudit(oldValue, encryptedType));
+        details.put("newValue", EncryptedValueMasker.maskForAudit(newValue, encryptedType));
         details.put("action", normalizedAction);
         details.put("reason", safeString(reason));
         details.put("valueType", safeString(valueType));
