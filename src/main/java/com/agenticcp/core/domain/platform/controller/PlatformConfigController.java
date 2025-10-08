@@ -164,6 +164,8 @@ public class PlatformConfigController {
             @PathVariable String configKey,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        // 관리자 전용 조회
+        enforceAdmin();
         Page<ConfigHistoryResponse> history = configHistoryQueryService.getHistory(configKey, page, size);
         return ResponseEntity.ok(ApiResponse.success(history));
     }
