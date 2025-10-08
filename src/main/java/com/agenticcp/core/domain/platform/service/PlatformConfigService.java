@@ -149,6 +149,17 @@ public class PlatformConfigService {
 
         PlatformConfig saved = platformConfigRepository.save(platformConfig);
         log.info("[PlatformConfigService] createConfig - success configKey={}", LogMaskingUtils.mask(saved.getConfigKey(), 2, 2));
+
+        // 감사 기록(CREATE): ENCRYPTED 타입은 평문 대신 마스킹 처리
+        String maskedNew = (saved.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED || Boolean.TRUE.equals(saved.getIsEncrypted()))
+                ? "***" : (saved.getConfigValue() == null ? "" : saved.getConfigValue());
+        configAuditService.logCreate(
+                saved.getConfigKey(),
+                maskedNew,
+                null, // userId
+                null, // reason
+                saved.getConfigType() != null ? saved.getConfigType().name() : null
+        );
         return saved;
     }
 
@@ -220,9 +231,22 @@ public class PlatformConfigService {
             throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_DELETE);
         }
         
+        // 감사 기록(DELETE)용 이전 값 보관 및 마스킹
+        String prevStoredValue = config.getConfigValue();
+        boolean prevEncrypted = (config.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) || Boolean.TRUE.equals(config.getIsEncrypted());
+
         config.setIsDeleted(true);
         platformConfigRepository.save(config);
         log.info("[PlatformConfigService] deleteConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+
+        String maskedOld = prevEncrypted ? "***" : (prevStoredValue == null ? "" : prevStoredValue);
+        configAuditService.logDelete(
+                configKey,
+                maskedOld,
+                null, // userId
+                null, // reason
+                config.getConfigType() != null ? config.getConfigType().name() : null
+        );
     }
 
     @Transactional
