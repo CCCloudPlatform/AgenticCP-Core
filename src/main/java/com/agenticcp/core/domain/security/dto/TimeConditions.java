@@ -86,10 +86,21 @@ public class TimeConditions {
         /**
          * 시간 범위가 유효한지 확인
          * 
+         * <p>시작 시간과 종료 시간이 모두 null이 아니고,
+         * 같은 시간이 아니면 유효한 시간 범위로 간주합니다.
+         * 자정을 넘나드는 시간 범위(예: 22:00-06:00)도 유효합니다.</p>
+         * 
          * @return 유효하면 true, 그렇지 않으면 false
          */
         public boolean isValid() {
-            return startTime != null && endTime != null && !startTime.isAfter(endTime);
+            if (startTime == null || endTime == null) {
+                return false;
+            }
+            // 시작 시간과 종료 시간이 같으면 무효한 범위
+            if (startTime.equals(endTime)) {
+                return false;
+            }
+            return true;
         }
         
         /**
