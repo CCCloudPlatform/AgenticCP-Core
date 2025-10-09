@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "metric_tags", indexes = {
     @Index(name = "idx_metric_tags_metric_id", columnList = "metric_id"),
     @Index(name = "idx_metric_tags_name", columnList = "name"),
-    @Index(name = "idx_metric_tags_name_value", columnList = "name, value"),
+    @Index(name = "idx_metric_tags_name_value", columnList = "name,value"),
     @Index(name = "idx_metric_tags_category", columnList = "category")
 })
 @Getter

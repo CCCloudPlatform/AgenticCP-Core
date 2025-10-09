@@ -20,8 +20,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "metric_metadata", indexes = {
     @Index(name = "idx_metric_metadata_metric_id", columnList = "metric_id"),
-    @Index(name = "idx_metric_metadata_key", columnList = "key"),
-    @Index(name = "idx_metric_metadata_key_value", columnList = "key, value")
+    @Index(name = "idx_metric_metadata_key", columnList = "`key`")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -37,13 +36,13 @@ public class MetricMetadata extends BaseEntity {
     /**
      * 메타데이터 키 (예: hostname, region, instance_type)
      */
-    @Column(name = "key", nullable = false, length = 100)
+    @Column(name = "`key`", nullable = false, length = 100)
     private String key;
 
     /**
      * 메타데이터 값
      */
-    @Column(name = "value", columnDefinition = "TEXT")
+    @Column(name = "`value`", columnDefinition = "TEXT")
     private String value;
 
     /**
