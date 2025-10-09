@@ -1,11 +1,11 @@
 package com.agenticcp.core.domain.notification.controller;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
 import com.agenticcp.core.domain.notification.entity.NotificationChannelEntity;
-import com.agenticcp.core.domain.notification.entity.NotificationTemplate;
 import com.agenticcp.core.domain.notification.service.NotificationService;
 import com.agenticcp.core.domain.notification.service.MonitoringNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -45,14 +46,18 @@ public class NotificationController {
      * @return 알림 응답
      */
     @PostMapping("/send")
-    @Operation(summary = "알림 발송", description = "실시간 알림을 발송합니다.")
+    @Operation(
+        summary = "알림 발송", 
+        description = "실시간 알림을 발송합니다. 지정된 채널(이메일 등)을 통해 즉시 알림을 전송합니다."
+    )
     public ResponseEntity<NotificationResponse> sendNotification(
+            @Parameter(description = "알림 발송 요청 정보")
             @Valid @RequestBody NotificationRequest request) {
         
         log.info("알림 발송 요청: {}", request.getNotificationId());
         
         // 자동으로 현재 테넌트 ID 설정
-        Long currentTenantId = getCurrentTenantId();
+        String currentTenantId = getCurrentTenantId();
         request.setTenantId(currentTenantId);
         
         NotificationResponse response = notificationService.sendNotification(request);
@@ -71,14 +76,18 @@ public class NotificationController {
      * @return 알림 응답 (비동기 처리)
      */
     @PostMapping("/send-async")
-    @Operation(summary = "비동기 알림 발송", description = "알림을 비동기로 발송하여 응답 시간을 단축합니다.")
+    @Operation(
+        summary = "비동기 알림 발송", 
+        description = "알림을 비동기로 발송하여 응답 시간을 단축합니다. 즉시 PROCESSING 상태를 반환하고 백그라운드에서 알림을 발송합니다."
+    )
     public ResponseEntity<Map<String, Object>> sendNotificationAsync(
+            @Parameter(description = "알림 발송 요청 정보")
             @Valid @RequestBody NotificationRequest request) {
         
         log.info("비동기 알림 발송 요청: {}", request.getNotificationId());
         
         // 자동으로 현재 테넌트 ID 설정
-        Long currentTenantId = getCurrentTenantId();
+        String currentTenantId = getCurrentTenantId();
         request.setTenantId(currentTenantId);
         
         // 비동기 알림 발송 시작
@@ -97,147 +106,49 @@ public class NotificationController {
     }
 
     /**
-     * 알림 규칙 조회
-     * 
-     * @param tenantId 테넌트 ID
-     * @param pageable 페이징 정보
-     * @return 알림 규칙 목록
-     */
-    @GetMapping("/rules")
-    @Operation(summary = "알림 규칙 조회", description = "테넌트별 알림 규칙을 조회합니다.")
-    public ResponseEntity<Page<NotificationTemplate>> getNotificationRules(
-            Pageable pageable) {
-        
-        Long tenantId = getCurrentTenantId();
-        log.info("알림 규칙 조회: tenantId={}", tenantId);
-        
-        // TODO: 알림 규칙 조회 로직 구현
-        return ResponseEntity.ok(Page.empty());
-    }
-
-    /**
-     * 알림 규칙 생성
-     * 
-     * @param template 알림 템플릿
-     * @return 생성된 알림 템플릿
-     */
-    @PostMapping("/rules")
-    @Operation(summary = "알림 규칙 생성", description = "새로운 알림 규칙을 생성합니다.")
-    public ResponseEntity<NotificationTemplate> createNotificationRule(
-            @Valid @RequestBody NotificationTemplate template) {
-        
-        log.info("알림 규칙 생성: {}", template.getTemplateName());
-        
-        // TODO: 알림 규칙 생성 로직 구현
-        return ResponseEntity.ok(template);
-    }
-
-    /**
-     * 알림 규칙 수정
-     * 
-     * @param ruleId 규칙 ID
-     * @param template 수정할 템플릿
-     * @return 수정된 알림 템플릿
-     */
-    @PutMapping("/rules/{ruleId}")
-    @Operation(summary = "알림 규칙 수정", description = "기존 알림 규칙을 수정합니다.")
-    public ResponseEntity<NotificationTemplate> updateNotificationRule(
-            @Parameter(description = "규칙 ID") @PathVariable Long ruleId,
-            @Valid @RequestBody NotificationTemplate template) {
-        
-        log.info("알림 규칙 수정: ruleId={}", ruleId);
-        
-        // TODO: 알림 규칙 수정 로직 구현
-        return ResponseEntity.ok(template);
-    }
-
-    /**
      * 알림 히스토리 조회
      * 
-     * @param tenantId 테넌트 ID
      * @param userId 사용자 ID (선택사항)
      * @param pageable 페이징 정보
      * @return 알림 히스토리
      */
     @GetMapping("/history")
-    @Operation(summary = "알림 히스토리 조회", description = "알림 발송 히스토리를 조회합니다.")
-    public ResponseEntity<Page<Notification>> getNotificationHistory(
-            @Parameter(description = "사용자 ID") @RequestParam(required = false) Long userId,
+    @Operation(
+        summary = "알림 히스토리 조회", 
+        description = "발송된 알림의 이력을 조회합니다. 사용자 ID를 지정하면 해당 사용자의 알림만 조회합니다."
+    )
+    public ResponseEntity<ApiResponse<Page<Notification>>> getNotificationHistory(
+            @Parameter(description = "사용자 ID (선택사항)", example = "1") 
+            @RequestParam(required = false) Long userId,
+            @Parameter(description = "페이징 정보 (page, size, sort)", example = "page=0&size=20&sort=createdAt,desc")
             Pageable pageable) {
         
-        Long tenantId = getCurrentTenantId();
+        String tenantId = getCurrentTenantId();
         log.info("알림 히스토리 조회: tenantId={}, userId={}", tenantId, userId);
         
-        // TODO: 알림 히스토리 조회 로직 구현
-        return ResponseEntity.ok(Page.empty());
-    }
-
-    /**
-     * 알림 테스트 발송
-     * 
-     * @param request 테스트 알림 요청
-     * @return 테스트 알림 응답
-     */
-    @PostMapping("/test")
-    @Operation(summary = "알림 테스트 발송", description = "알림 시스템을 테스트합니다.")
-    public ResponseEntity<NotificationResponse> sendTestNotification(
-            @Valid @RequestBody NotificationRequest request) {
+        Page<Notification> history;
+        if (userId != null) {
+            history = notificationService.getNotificationHistoryByUser(tenantId, userId, pageable);
+        } else {
+            history = notificationService.getNotificationHistory(tenantId, pageable);
+        }
         
-        log.info("알림 테스트 발송: {}", request.getNotificationId());
-        
-        // 테스트용 알림 요청 생성
-        NotificationRequest testRequest = NotificationRequest.builder()
-                .notificationId("test_" + System.currentTimeMillis())
-                .tenantId(request.getTenantId())
-                .userId(request.getUserId())
-                .title("테스트 알림")
-                .content("이것은 알림 시스템 테스트입니다.")
-                .type(request.getType())
-                .priority(request.getPriority())
-                .recipient(request.getRecipient())
-                .channelId(request.getChannelId())
-                .build();
-        
-        NotificationResponse response = notificationService.sendNotification(testRequest);
-        
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * 모니터링 알림 발송 (내부 API)
-     * 
-     * @param alertData 알림 데이터
-     * @return 알림 응답
-     */
-    @PostMapping("/monitoring/send")
-    @Operation(summary = "모니터링 알림 발송", description = "모니터링 시스템에서 알림을 발송합니다.")
-    public ResponseEntity<NotificationResponse> sendMonitoringAlert(
-            @RequestBody Map<String, Object> alertData) {
-        
-        log.info("모니터링 알림 발송: {}", alertData);
-        
-        // TODO: 모니터링 알림 발송 로직 구현
-        NotificationResponse response = NotificationResponse.builder()
-                .notificationId("monitoring_" + System.currentTimeMillis())
-                .status(com.agenticcp.core.domain.notification.enums.NotificationStatus.SENT)
-                .message("모니터링 알림이 발송되었습니다.")
-                .success(true)
-                .build();
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(history));
     }
 
     /**
      * 알림 채널 목록 조회
      * 
-     * @param tenantId 테넌트 ID
      * @return 알림 채널 목록
      */
     @GetMapping("/channels")
-    @Operation(summary = "알림 채널 조회", description = "사용 가능한 알림 채널을 조회합니다.")
+    @Operation(
+        summary = "알림 채널 조회", 
+        description = "테넌트에 설정된 알림 채널 목록을 조회합니다. 이메일, 슬랙 등 다양한 채널을 지원합니다."
+    )
     public ResponseEntity<List<NotificationChannelEntity>> getNotificationChannels() {
         
-        Long tenantId = getCurrentTenantId();
+        String tenantId = getCurrentTenantId();
         log.info("알림 채널 조회: tenantId={}", tenantId);
         
         List<NotificationChannelEntity> channels = notificationService.getActiveChannels(tenantId);
@@ -315,14 +226,16 @@ public class NotificationController {
     /**
      * 알림 통계 조회
      * 
-     * @param tenantId 테넌트 ID
      * @return 알림 통계
      */
     @GetMapping("/stats")
-    @Operation(summary = "알림 통계 조회", description = "알림 발송 통계를 조회합니다.")
+    @Operation(
+        summary = "알림 통계 조회", 
+        description = "테넌트의 알림 발송 통계를 조회합니다. 총 발송 수, 타입별 통계 등을 제공합니다."
+    )
     public ResponseEntity<Map<String, Object>> getNotificationStats() {
         
-        Long tenantId = getCurrentTenantId();
+        String tenantId = getCurrentTenantId();
         log.info("알림 통계 조회: tenantId={}", tenantId);
         
         // TODO: 알림 통계 조회 로직 구현
@@ -338,16 +251,15 @@ public class NotificationController {
     /**
      * 현재 테넌트 ID 조회
      * 
-     * @return 현재 테넌트 ID
+     * @return 현재 테넌트 ID (tenantKey)
      */
-    private Long getCurrentTenantId() {
+    private String getCurrentTenantId() {
         try {
-            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            return Long.parseLong(tenantKey);
+            return TenantContextHolder.getCurrentTenantKeyOrThrow();
         } catch (Exception e) {
             log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
             // TODO: 실제 운영에서는 예외를 발생시켜야 함
-            return 1L; // 임시 기본값
+            return "default"; // 임시 기본값
         }
     }
 }

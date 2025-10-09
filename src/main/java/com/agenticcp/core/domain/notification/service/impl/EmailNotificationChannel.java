@@ -71,6 +71,11 @@ public class EmailNotificationChannel implements NotificationChannel {
 
     @Override
     public boolean testConnection() {
+        if (mailSender == null) {
+            log.warn("JavaMailSender가 설정되지 않았습니다.");
+            return false;
+        }
+        
         try {
             // 간단한 테스트 이메일 발송
             SimpleMailMessage testMessage = new SimpleMailMessage();
