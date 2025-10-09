@@ -78,7 +78,7 @@ class NotificationControllerTest {
                 .build();
 
         testChannel = NotificationChannelEntity.builder()
-                .tenantId(1L)
+                .tenantId("1")
                 .channelName("테스트 이메일 채널")
                 .channelType(ChannelType.EMAIL)
                 .isActive(true)
@@ -116,7 +116,7 @@ class NotificationControllerTest {
         assertTrue(response.getBody().isSuccess());
         
         // 자동 테넌트 ID 설정 검증
-        assertEquals(1L, testRequest.getTenantId());
+        assertEquals("1", testRequest.getTenantId());
     }
 
     /**
@@ -168,7 +168,7 @@ class NotificationControllerTest {
         assertEquals("PROCESSING", response.getBody().get("status"));
         
         // 자동 테넌트 ID 설정 검증
-        assertEquals(1L, testRequest.getTenantId());
+        assertEquals("1", testRequest.getTenantId());
     }
 
     /**
@@ -182,7 +182,7 @@ class NotificationControllerTest {
     void testGetNotificationChannels_Success() {
         // Given
         List<NotificationChannelEntity> channels = Arrays.asList(testChannel);
-        when(notificationService.getActiveChannels(anyLong()))
+        when(notificationService.getActiveChannels(any(String.class)))
                 .thenReturn(channels);
 
         // When

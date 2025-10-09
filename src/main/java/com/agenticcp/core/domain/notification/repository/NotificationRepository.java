@@ -28,12 +28,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /**
      * 테넌트별 알림 조회
      */
-    Page<Notification> findByTenantIdAndIsDeletedFalse(Long tenantId, Pageable pageable);
+    Page<Notification> findByTenantIdAndIsDeletedFalse(String tenantId, Pageable pageable);
 
     /**
      * 사용자별 알림 조회
      */
-    Page<Notification> findByTenantIdAndUserIdAndIsDeletedFalse(Long tenantId, Long userId, Pageable pageable);
+    Page<Notification> findByTenantIdAndUserIdAndIsDeletedFalse(String tenantId, Long userId, Pageable pageable);
 
     /**
      * 상태별 알림 조회
@@ -56,13 +56,13 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
      * 알림 타입별 통계
      */
     @Query("SELECT n.notificationType, COUNT(n) FROM Notification n WHERE n.tenantId = :tenantId AND n.isDeleted = false GROUP BY n.notificationType")
-    List<Object[]> getNotificationStatsByType(@Param("tenantId") Long tenantId);
+    List<Object[]> getNotificationStatsByType(@Param("tenantId") String tenantId);
 
     /**
      * 기간별 알림 조회
      */
     @Query("SELECT n FROM Notification n WHERE n.tenantId = :tenantId AND n.createdAt BETWEEN :startDate AND :endDate AND n.isDeleted = false")
-    List<Notification> findByTenantIdAndCreatedAtBetween(@Param("tenantId") Long tenantId, 
+    List<Notification> findByTenantIdAndCreatedAtBetween(@Param("tenantId") String tenantId, 
                                                         @Param("startDate") LocalDateTime startDate, 
                                                         @Param("endDate") LocalDateTime endDate);
 

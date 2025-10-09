@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -18,13 +19,14 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "alerts")
 @Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Alert extends BaseEntity {
 
     @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
+    private String tenantId;
 
     @Column(name = "alert_name", nullable = false)
     private String alertName;
@@ -42,6 +44,7 @@ public class Alert extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @Builder.Default
     private AlertStatus status = AlertStatus.ACTIVE;
 
     @Column(name = "condition", columnDefinition = "JSON", nullable = false)
@@ -54,6 +57,7 @@ public class Alert extends BaseEntity {
     private String recipients; // JSON 형태로 저장
 
     @Column(name = "is_enabled", nullable = false)
+    @Builder.Default
     private Boolean isEnabled = true;
 
     @Column(name = "check_interval")
@@ -69,5 +73,6 @@ public class Alert extends BaseEntity {
     private LocalDateTime lastTriggered;
 
     @Column(name = "trigger_count")
+    @Builder.Default
     private Integer triggerCount = 0;
 }

@@ -20,7 +20,7 @@ import java.util.Map;
 public class NotificationRequest {
     
     private String notificationId;
-    private Long tenantId;
+    private String tenantId;
     private Long userId;
     private String title;
     private String content;

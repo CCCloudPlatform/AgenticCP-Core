@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 public class NotificationChannelEntity extends BaseEntity {
 
     @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
+    private String tenantId;
 
     @Column(name = "channel_name", nullable = false)
     private String channelName;

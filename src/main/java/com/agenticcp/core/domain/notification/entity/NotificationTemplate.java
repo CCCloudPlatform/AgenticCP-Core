@@ -22,7 +22,7 @@ import java.util.Map;
 public class NotificationTemplate extends BaseEntity {
 
     @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
+    private String tenantId;
 
     @Column(name = "template_name", nullable = false)
     private String templateName;

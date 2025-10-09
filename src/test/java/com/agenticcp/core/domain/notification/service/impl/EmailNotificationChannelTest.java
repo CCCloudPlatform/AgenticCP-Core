@@ -37,7 +37,7 @@ class EmailNotificationChannelTest {
         
         testRequest = NotificationRequest.builder()
                 .notificationId("test-email-001")
-                .tenantId(1L)
+                .tenantId("1")
                 .userId(1L)
                 .title("테스트 이메일")
                 .content("이것은 테스트 이메일입니다.")

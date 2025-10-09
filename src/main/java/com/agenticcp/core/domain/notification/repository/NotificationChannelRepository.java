@@ -19,21 +19,21 @@ public interface NotificationChannelRepository extends JpaRepository<Notificatio
     /**
      * 테넌트별 활성 채널 조회
      */
-    List<NotificationChannelEntity> findByTenantIdAndIsActiveTrueAndIsDeletedFalse(Long tenantId);
+    List<NotificationChannelEntity> findByTenantIdAndIsActiveTrueAndIsDeletedFalse(String tenantId);
 
     /**
      * 채널명으로 조회
      */
-    Optional<NotificationChannelEntity> findByTenantIdAndChannelNameAndIsDeletedFalse(Long tenantId, String channelName);
+    Optional<NotificationChannelEntity> findByTenantIdAndChannelNameAndIsDeletedFalse(String tenantId, String channelName);
 
     /**
      * 타입별 채널 조회
      */
-    List<NotificationChannelEntity> findByTenantIdAndChannelTypeAndIsActiveTrueAndIsDeletedFalse(Long tenantId, ChannelType channelType);
+    List<NotificationChannelEntity> findByTenantIdAndChannelTypeAndIsActiveTrueAndIsDeletedFalse(String tenantId, ChannelType channelType);
 
     /**
      * 활성화된 채널 조회
      */
     @Query("SELECT nc FROM NotificationChannelEntity nc WHERE nc.tenantId = :tenantId AND nc.isActive = true AND nc.isDeleted = false")
-    List<NotificationChannelEntity> findActiveChannelsByTenant(@Param("tenantId") Long tenantId);
+    List<NotificationChannelEntity> findActiveChannelsByTenant(@Param("tenantId") String tenantId);
 }

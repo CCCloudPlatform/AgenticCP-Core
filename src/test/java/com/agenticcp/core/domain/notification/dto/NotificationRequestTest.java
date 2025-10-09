@@ -25,7 +25,7 @@ class NotificationRequestTest {
     void testBuilder_Success() {
         // Given
         String notificationId = "test-001";
-        Long tenantId = 1L;
+        String tenantId = "1";
         Long userId = 100L;
         String title = "테스트 알림";
         String content = "테스트 내용";
@@ -77,7 +77,7 @@ class NotificationRequestTest {
         // When
         NotificationRequest request = NotificationRequest.builder()
                 .notificationId("test-002")
-                .tenantId(1L)
+                .tenantId("1")
                 .title("테스트")
                 .content("내용")
                 .type(NotificationType.ALERT)
@@ -87,7 +87,7 @@ class NotificationRequestTest {
         // Then
         assertNotNull(request);
         assertEquals("test-002", request.getNotificationId());
-        assertEquals(1L, request.getTenantId());
+        assertEquals("1", request.getTenantId());
         assertNull(request.getUserId());
         assertNull(request.getRecipient());
         assertNull(request.getData());
@@ -100,7 +100,7 @@ class NotificationRequestTest {
         // Given
         NotificationRequest request = NotificationRequest.builder()
                 .notificationId("test-003")
-                .tenantId(1L)
+                .tenantId("1")
                 .title("테스트 알림")
                 .content("테스트 내용")
                 .type(NotificationType.ALERT)
@@ -123,7 +123,7 @@ class NotificationRequestTest {
         // Given
         NotificationRequest request1 = NotificationRequest.builder()
                 .notificationId("test-004")
-                .tenantId(1L)
+                .tenantId("1")
                 .title("테스트")
                 .content("내용")
                 .type(NotificationType.ALERT)
@@ -132,7 +132,7 @@ class NotificationRequestTest {
 
         NotificationRequest request2 = NotificationRequest.builder()
                 .notificationId("test-004")
-                .tenantId(1L)
+                .tenantId("1")
                 .title("테스트")
                 .content("내용")
                 .type(NotificationType.ALERT)
@@ -141,7 +141,7 @@ class NotificationRequestTest {
 
         NotificationRequest request3 = NotificationRequest.builder()
                 .notificationId("test-005")
-                .tenantId(1L)
+                .tenantId("1")
                 .title("테스트")
                 .content("내용")
                 .type(NotificationType.ALERT)

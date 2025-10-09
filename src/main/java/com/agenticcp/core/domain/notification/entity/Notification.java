@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 public class Notification extends BaseEntity {
 
     @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
+    private String tenantId;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;

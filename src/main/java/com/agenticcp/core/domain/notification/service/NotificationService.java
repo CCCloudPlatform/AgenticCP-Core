@@ -5,11 +5,15 @@ import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
 import com.agenticcp.core.domain.notification.entity.NotificationChannelEntity;
+import com.agenticcp.core.domain.notification.enums.NotificationPriority;
 import com.agenticcp.core.domain.notification.enums.NotificationStatus;
+import com.agenticcp.core.domain.notification.enums.NotificationType;
 import com.agenticcp.core.domain.notification.repository.NotificationChannelRepository;
 import com.agenticcp.core.domain.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.concurrent.CompletableFuture;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -103,25 +108,6 @@ public class NotificationService {
                     .errorMessage(e.getMessage())
                     .build();
         }
-    }
-
-    /**
-     * 모니터링 알림 발송 (Alert 엔티티 기반)
-     * 
-     * <p>모니터링 도메인의 Alert 엔티티와 연동하여 알림을 발송합니다.</p>
-     * <p>feature/39 브랜치의 모니터링 도메인이 머지된 후 구현 예정입니다.</p>
-     * 
-     * @param alertId 모니터링 Alert ID
-     * @param alertData 알림 데이터 (메트릭 정보, 임계값 등)
-     * @return 알림 발송 결과
-     * @deprecated 모니터링 도메인 머지 후 구현 예정
-     */
-    @Transactional
-    public NotificationResponse sendMonitoringAlert(Long alertId, Map<String, Object> alertData) {
-        // TODO: Alert 엔티티에서 알림 정보를 가져와서 알림 발송
-        // 이 부분은 모니터링 도메인과의 연동에서 구현
-        // feature/39 브랜치 머지 후 구현 예정
-        return null;
     }
 
     /**
@@ -363,17 +349,84 @@ public class NotificationService {
     /**
      * 현재 테넌트 ID 조회
      * 
-     * @return 현재 테넌트 ID
+     * @return 현재 테넌트 ID (tenantKey)
      */
-    private Long getCurrentTenantId() {
+    private String getCurrentTenantId() {
         try {
-            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            return Long.parseLong(tenantKey);
+            return TenantContextHolder.getCurrentTenantKeyOrThrow();
         } catch (Exception e) {
             log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
             // TODO: 실제 운영에서는 예외를 발생시켜야 함
-            return 1L; // 임시 기본값
+            return "default"; // 임시 기본값
         }
+    }
+
+    // ==================== 알림 히스토리 조회 메서드들 ====================
+
+    /**
+     * 테넌트별 알림 히스토리 조회
+     * 
+     * @param tenantId 테넌트 ID
+     * @param pageable 페이징 정보
+     * @return 알림 히스토리
+     */
+    public Page<Notification> getNotificationHistory(String tenantId, Pageable pageable) {
+        log.info("알림 히스토리 조회: tenantId={}", tenantId);
+        return notificationRepository.findByTenantIdAndIsDeletedFalse(tenantId, pageable);
+    }
+
+    /**
+     * 테넌트 및 사용자별 알림 히스토리 조회
+     * 
+     * @param tenantId 테넌트 ID
+     * @param userId 사용자 ID
+     * @param pageable 페이징 정보
+     * @return 알림 히스토리
+     */
+    public Page<Notification> getNotificationHistoryByUser(String tenantId, Long userId, Pageable pageable) {
+        log.info("사용자별 알림 히스토리 조회: tenantId={}, userId={}", tenantId, userId);
+        return notificationRepository.findByTenantIdAndUserIdAndIsDeletedFalse(tenantId, userId, pageable);
+    }
+
+    /**
+     * 기간별 알림 조회
+     * 
+     * @param tenantId 테넌트 ID
+     * @param startDate 시작 일시
+     * @param endDate 종료 일시
+     * @return 알림 목록
+     */
+    public List<Notification> getNotificationsByDateRange(String tenantId, LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("기간별 알림 조회: tenantId={}, startDate={}, endDate={}", tenantId, startDate, endDate);
+        return notificationRepository.findByTenantIdAndCreatedAtBetween(tenantId, startDate, endDate);
+    }
+
+    /**
+     * 알림 통계 조회
+     * 
+     * @param tenantId 테넌트 ID
+     * @return 알림 통계
+     */
+    public Map<String, Object> getNotificationStats(String tenantId) {
+        log.info("알림 통계 조회: tenantId={}", tenantId);
+        
+        List<Object[]> statsByType = notificationRepository.getNotificationStatsByType(tenantId);
+        
+        Map<String, Object> stats = new HashMap<>();
+        long totalCount = 0;
+        Map<String, Long> byType = new HashMap<>();
+        
+        for (Object[] stat : statsByType) {
+            String type = stat[0].toString();
+            Long count = ((Number) stat[1]).longValue();
+            byType.put(type, count);
+            totalCount += count;
+        }
+        
+        stats.put("totalCount", totalCount);
+        stats.put("byType", byType);
+        
+        return stats;
     }
 
     // ==================== 채널 관리 메서드들 ====================
@@ -384,7 +437,7 @@ public class NotificationService {
      * @param tenantId 테넌트 ID
      * @return 활성화된 알림 채널 목록
      */
-    public List<NotificationChannelEntity> getActiveChannels(Long tenantId) {
+    public List<NotificationChannelEntity> getActiveChannels(String tenantId) {
         return channelRepository.findActiveChannelsByTenant(tenantId);
     }
 
@@ -394,7 +447,7 @@ public class NotificationService {
      * @return 활성화된 알림 채널 목록
      */
     public List<NotificationChannelEntity> getActiveChannels() {
-        Long tenantId = getCurrentTenantId();
+        String tenantId = getCurrentTenantId();
         return getActiveChannels(tenantId);
     }
 
