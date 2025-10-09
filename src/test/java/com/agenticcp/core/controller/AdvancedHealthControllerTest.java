@@ -112,9 +112,9 @@ class AdvancedHealthControllerTest {
                 advancedHealthController.getOverallHealth();
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody().isSuccess()).isFalse();
-        assertThat(response.getBody().getMessage()).contains("Health check failed");
+        assertThat(response.getBody().getMessage()).contains("Health check service error");
     }
 
     /**
