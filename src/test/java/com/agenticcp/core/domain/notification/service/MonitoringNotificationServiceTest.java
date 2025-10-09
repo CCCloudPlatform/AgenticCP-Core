@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.notification.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.domain.notification.dto.MetricDto;
+import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.enums.NotificationPriority;
@@ -33,7 +33,7 @@ class MonitoringNotificationServiceTest {
     @InjectMocks
     private MonitoringNotificationService monitoringNotificationService;
 
-    private MetricDto testMetric;
+    private Metric testMetric;
     private MockedStatic<TenantContextHolder> tenantContextHolderMock;
 
     @BeforeEach
@@ -43,15 +43,14 @@ class MonitoringNotificationServiceTest {
         tenantContextHolderMock.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
                 .thenReturn("123"); // 테스트용 테넌트 키
         
-        testMetric = MetricDto.builder()
-                .id(1L)
+        testMetric = Metric.builder()
                 .metricName("cpu.usage")
                 .metricValue(85.5)
                 .unit("%")
-                .metricType(MetricDto.MetricType.SYSTEM)
+                .metricType(Metric.MetricType.SYSTEM)
                 .collectedAt(LocalDateTime.now())
                 .source("system-monitor")
-                .status(MetricDto.Status.ACTIVE)
+                .status(Metric.Status.ACTIVE)
                 .tenantId("123")
                 .build();
     }
@@ -103,7 +102,16 @@ class MonitoringNotificationServiceTest {
     @Test
     void testSendThresholdViolationAlert_UrgentPriority() {
         // Given
-        testMetric.setMetricValue(95.0); // 90% 이상으로 설정하여 URGENT 우선순위 테스트
+        Metric urgentMetric = Metric.builder()
+                .metricName("cpu.usage")
+                .metricValue(95.0) // 90% 이상으로 설정하여 URGENT 우선순위 테스트
+                .unit("%")
+                .metricType(Metric.MetricType.SYSTEM)
+                .collectedAt(LocalDateTime.now())
+                .source("system-monitor")
+                .status(Metric.Status.ACTIVE)
+                .tenantId("123")
+                .build();
         Double thresholdValue = 90.0;
         String operator = ">";
 
@@ -117,7 +125,7 @@ class MonitoringNotificationServiceTest {
                 .thenReturn(mockResponse);
 
         // When
-        monitoringNotificationService.sendThresholdViolationAlert(testMetric, thresholdValue, operator);
+        monitoringNotificationService.sendThresholdViolationAlert(urgentMetric, thresholdValue, operator);
 
         // Then
         verify(notificationService, times(1)).sendNotification(argThat(request -> 
@@ -202,17 +210,16 @@ class MonitoringNotificationServiceTest {
     }
 
     @Test
-    void testSendThresholdViolationAlert_WithMetricDto() {
+    void testSendThresholdViolationAlert_WithMetric() {
         // Given
-        MetricDto memoryMetric = MetricDto.builder()
-                .id(2L)
+        Metric memoryMetric = Metric.builder()
                 .metricName("memory.usage")
                 .metricValue(75.0)
                 .unit("%")
-                .metricType(MetricDto.MetricType.SYSTEM)
+                .metricType(Metric.MetricType.SYSTEM)
                 .collectedAt(LocalDateTime.now())
                 .source("system-monitor")
-                .status(MetricDto.Status.ACTIVE)
+                .status(Metric.Status.ACTIVE)
                 .tenantId("123")
                 .build();
 

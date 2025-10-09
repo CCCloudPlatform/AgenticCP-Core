@@ -3,7 +3,7 @@ package com.agenticcp.core.domain.notification.service;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
-import com.agenticcp.core.domain.notification.dto.MetricDto;
+import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.notification.enums.NotificationPriority;
 import com.agenticcp.core.domain.notification.enums.NotificationType;
 import lombok.RequiredArgsConstructor;
@@ -34,11 +34,11 @@ public class MonitoringNotificationService {
      * 
      * <p>MetricsCollectionService.checkThresholdViolations()에서 호출됩니다.</p>
      * 
-     * @param metric 메트릭 DTO (메트릭 정보 포함) - 임시로 사용, feature/39 머지 후 Metric 엔티티로 교체 예정
+     * @param metric 메트릭 엔티티 (메트릭 정보 포함)
      * @param thresholdValue 임계값
      * @param operator 비교 연산자 (>, <, >=, <=, ==)
      */
-    public void sendThresholdViolationAlert(MetricDto metric, Double thresholdValue, String operator) {
+    public void sendThresholdViolationAlert(Metric metric, Double thresholdValue, String operator) {
         try {
             log.warn("🚨 임계값 위반 감지: {} {} {} {} (tenantId: {})", 
                 metric.getMetricName(), metric.getMetricValue(), operator, thresholdValue, metric.getTenantId());
@@ -95,17 +95,17 @@ public class MonitoringNotificationService {
      * @param thresholdValue 임계값
      * @param operator 비교 연산자 (>, <, >=, <=, ==)
      * @param tenantId 테넌트 ID
-     * @deprecated MetricDto 기반 메서드 사용 권장
+     * @deprecated Metric 엔티티 기반 메서드 사용 권장
      */
     @Deprecated
     public void sendThresholdViolationAlert(String metricName, Double metricValue, 
                                            Double thresholdValue, String operator, String tenantId) {
         try {
-            // 임시 MetricDto 객체 생성 (기존 호환성을 위해)
-            MetricDto tempMetric = MetricDto.builder()
+            // 임시 Metric 객체 생성 (기존 호환성을 위해)
+            Metric tempMetric = Metric.builder()
                     .metricName(metricName)
                     .metricValue(metricValue)
-                    .metricType(MetricDto.MetricType.SYSTEM)
+                    .metricType(Metric.MetricType.SYSTEM)
                     .collectedAt(LocalDateTime.now())
                     .source("legacy")
                     .tenantId(tenantId)
@@ -129,7 +129,7 @@ public class MonitoringNotificationService {
      */
     public void sendCollectionFailureAlert(String collectorType, String errorMessage, String tenantId) {
         try {
-            Long currentTenantId = getCurrentTenantId();
+            String currentTenantId = getCurrentTenantId();
             log.error("📊 메트릭 수집 실패: {} (tenantId: {})", collectorType, currentTenantId);
 
             // 알림 데이터 구성
@@ -179,7 +179,7 @@ public class MonitoringNotificationService {
     public void sendSystemStatusChangeAlert(String serviceName, String previousStatus, 
                                           String currentStatus, String tenantId) {
         try {
-            Long currentTenantId = getCurrentTenantId();
+            String currentTenantId = getCurrentTenantId();
             log.warn("🔄 시스템 상태 변화: {} {} -> {} (tenantId: {})", 
                 serviceName, previousStatus, currentStatus, currentTenantId);
 
@@ -224,7 +224,7 @@ public class MonitoringNotificationService {
     /**
      * 메트릭 정보에 따른 우선순위 결정
      */
-    private NotificationPriority determinePriority(MetricDto metric, Double thresholdValue) {
+    private NotificationPriority determinePriority(Metric metric, Double thresholdValue) {
         String metricName = metric.getMetricName();
         Double metricValue = metric.getMetricValue();
         
@@ -240,7 +240,7 @@ public class MonitoringNotificationService {
         }
         
         // 메트릭 타입별 우선순위 조정
-        if (metric.getMetricType() == MetricDto.MetricType.SYSTEM) {
+        if (metric.getMetricType() == Metric.MetricType.SYSTEM) {
             // 시스템 메트릭은 더 높은 우선순위
             if (metricValue >= thresholdValue * 1.2) {
                 return NotificationPriority.HIGH;
@@ -266,7 +266,7 @@ public class MonitoringNotificationService {
     /**
      * 임계값 위반 알림 내용 생성
      */
-    private String buildThresholdViolationContent(MetricDto metric, Double thresholdValue, String operator) {
+    private String buildThresholdViolationContent(Metric metric, Double thresholdValue, String operator) {
         return String.format(
             "메트릭 '%s'의 값이 임계값을 초과했습니다.\n\n" +
             "메트릭 정보:\n" +
@@ -327,16 +327,15 @@ public class MonitoringNotificationService {
     /**
      * 현재 테넌트 ID 조회
      * 
-     * @return 현재 테넌트 ID
+     * @return 현재 테넌트 ID (tenantKey)
      */
-    private Long getCurrentTenantId() {
+    private String getCurrentTenantId() {
         try {
-            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            return Long.parseLong(tenantKey);
+            return TenantContextHolder.getCurrentTenantKeyOrThrow();
         } catch (Exception e) {
             log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
             // TODO: 실제 운영에서는 예외를 발생시켜야 함
-            return 1L; // 임시 기본값
+            return "default"; // 임시 기본값
         }
     }
 }
