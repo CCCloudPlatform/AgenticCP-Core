@@ -30,7 +30,7 @@ class HealthCheckExceptionTest {
         assertThat(exception.getErrorCode()).isEqualTo(MonitoringErrorCode.HEALTH_CHECK_FAILED);
         assertThat(exception.getMessage()).isEqualTo(MonitoringErrorCode.HEALTH_CHECK_FAILED.getMessage());
         assertThat(exception.getErrorCode().getHttpStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8081");
+        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8091");
     }
 
     @Test
@@ -49,7 +49,7 @@ class HealthCheckExceptionTest {
         assertThat(exception.getErrorCode()).isEqualTo(MonitoringErrorCode.HEALTH_INDICATOR_ERROR);
         assertThat(exception.getMessage()).isEqualTo(customMessage);
         assertThat(exception.getErrorCode().getHttpStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8083");
+        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8093");
     }
 
     @Test

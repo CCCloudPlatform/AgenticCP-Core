@@ -33,7 +33,7 @@ class ComponentNotFoundExceptionTest {
         assertThat(exception.getErrorCode()).isEqualTo(MonitoringErrorCode.COMPONENT_NOT_FOUND);
         assertThat(exception.getMessage()).isEqualTo("Component 'database' not found");
         assertThat(exception.getErrorCode().getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8082");
+        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8092");
     }
 
     @Test
@@ -66,7 +66,7 @@ class ComponentNotFoundExceptionTest {
         assertThat(exception.getErrorCode()).isEqualTo(MonitoringErrorCode.COMPONENT_NOT_FOUND);
         assertThat(exception.getMessage()).isEqualTo(customMessage);
         assertThat(exception.getErrorCode().getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8082");
+        assertThat(exception.getErrorCode().getCode()).isEqualTo("MONITORING_8092");
     }
 
     @Test
