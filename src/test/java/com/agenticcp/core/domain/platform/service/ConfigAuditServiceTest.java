@@ -52,14 +52,23 @@ public class ConfigAuditServiceTest {
         assertEquals(AuditResourceType.PLATFORM_CONFIG, event.resourceType());
         assertEquals(AuditSeverity.INFO, event.severity());
 
-        Map<String, Object> metadata = event.metadata(); // details 맵이 metadata로 전달됨
+        // requestData에서 상세 정보 확인
+        Map<String, Object> requestData = event.requestData();
+        assertNotNull(requestData);
+        assertEquals("secure.key", requestData.get("configKey"));
+        assertEquals("***", requestData.get("oldValue"));
+        assertEquals("***", requestData.get("newValue"));
+        assertEquals("ENCRYPTED", requestData.get("valueType"));
+        assertEquals("CONFIGURATION_CHANGE", requestData.get("eventType"));
+        assertEquals("CONFIGURE", requestData.get("eventCategory"));
+        
+        // metadata에서 메타 정보 확인
+        Map<String, Object> metadata = event.metadata();
         assertNotNull(metadata);
-        assertEquals("secure.key", metadata.get("configKey"));
-        assertEquals("***", metadata.get("oldValue"));
-        assertEquals("***", metadata.get("newValue"));
-        assertEquals("ENCRYPTED", metadata.get("valueType"));
         assertEquals("CONFIGURATION_CHANGE", metadata.get("eventType"));
         assertEquals("CONFIGURE", metadata.get("eventCategory"));
+        assertEquals("PlatformConfig", metadata.get("resourceType"));
+        assertEquals("secure.key", metadata.get("resourceId"));
     }
 
     @Test
@@ -85,18 +94,24 @@ public class ConfigAuditServiceTest {
         assertNull(event.error());
         assertTrue(event.success());
 
-        // responseData에는 eventType/eventCategory/resourceType 요약 메타가 들어감
-        Map<String, Object> responseData = event.responseData();
-        assertNotNull(responseData);
-        assertEquals("CONFIGURATION_CHANGE", responseData.get("eventType"));
-        assertEquals("CONFIGURE", responseData.get("eventCategory"));
-        assertEquals("PlatformConfig", responseData.get("resourceType"));
+        // responseData는 설정 변경 시에는 null (응답 데이터 없음)
+        assertNull(event.responseData());
 
-        // metadata(details)에는 값들이 원문으로(비민감) 들어감
+        // requestData에는 상세 정보가 들어감
+        Map<String, Object> requestData = event.requestData();
+        assertEquals("NUMBER", requestData.get("valueType"));
+        assertEquals("10", requestData.get("oldValue"));
+        assertEquals("20", requestData.get("newValue"));
+        assertEquals("plain.key", requestData.get("configKey"));
+        assertEquals("CONFIGURATION_CHANGE", requestData.get("eventType"));
+        assertEquals("CONFIGURE", requestData.get("eventCategory"));
+        
+        // metadata에는 메타 정보가 들어감
         Map<String, Object> metadata = event.metadata();
-        assertEquals("NUMBER", metadata.get("valueType"));
-        assertEquals("10", metadata.get("oldValue"));
-        assertEquals("20", metadata.get("newValue"));
+        assertEquals("CONFIGURATION_CHANGE", metadata.get("eventType"));
+        assertEquals("CONFIGURE", metadata.get("eventCategory"));
+        assertEquals("PlatformConfig", metadata.get("resourceType"));
+        assertEquals("plain.key", metadata.get("resourceId"));
     }
 }
 

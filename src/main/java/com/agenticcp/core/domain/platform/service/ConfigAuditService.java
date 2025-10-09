@@ -46,11 +46,9 @@ public class ConfigAuditService {
         // 액션 정규화 (CREATE/UPDATE/DELETE 등으로 제한)
         String normalizedAction = normalizeAction(action);
 
-        // 운영 로그
-        if (log.isDebugEnabled()) {
-            log.debug("[ConfigAuditService] action={} key={} userId={} reason={} type={}",
-                    normalizedAction, configKey, userId, reason, valueType);
-        }
+        // 운영 로그 - INFO 레벨로 변경하여 항상 출력
+        log.info("[ConfigAuditService] logConfigChange called - action={} key={} userId={} reason={} type={}",
+                normalizedAction, configKey, userId, reason, valueType);
 
         Map<String, Object> details = new HashMap<>();
         details.put("configKey", configKey);
@@ -68,29 +66,32 @@ public class ConfigAuditService {
         metadata.put("eventType", "CONFIGURATION_CHANGE");
         metadata.put("eventCategory", "CONFIGURE");
         metadata.put("resourceType", "PlatformConfig");
+        metadata.put("resourceId", configKey);
 
         AuditEventDto event = new AuditEventDto(
-                normalizedAction,
-                AuditResourceType.PLATFORM_CONFIG,
-                null,                 // httpMethod - 후속 단계에서 채움
-                null,                 // requestPath - 후속 단계에서 채움
-                "Platform Config " + normalizedAction,
-                "PlatformConfigController", // 기본값(후속 단계에서 정확히 채움)
-                "",                  // methodName - 후속 단계에서 채움
-                AuditSeverity.INFO,
-                Instant.now(),
-                null,                 // requestId - 컨텍스트 연계 예정
-                null,                 // tenantId - 컨텍스트 연계 예정
-                userId,
-                null,                 // clientIp - 컨텍스트 연계 예정
-                true,
-                null,
-                Map.of("configKey", configKey, "valueType", valueType),
-                metadata,
-                details
+                normalizedAction,                    // action
+                AuditResourceType.PLATFORM_CONFIG,   // resourceType
+                null,                                // httpMethod
+                null,                                // requestPath
+                "Platform Config " + normalizedAction, // operationSummary
+                "PlatformConfigController",          // controllerName
+                "",                                  // methodName
+                AuditSeverity.INFO,                  // severity
+                Instant.now(),                       // timestamp
+                null,                                // requestId
+                null,                                // tenantId
+                userId,                              // userId
+                null,                                // clientIp
+                true,                                // success
+                null,                                // error
+                details,                            // requestData (상세 정보)
+                null,                               // responseData (응답 데이터 없음)
+                metadata                            // metadata (메타 정보)
         );
 
+        log.info("[ConfigAuditService] Calling auditLogger.log() for configKey={}", configKey);
         auditLogger.log(event);
+        log.info("[ConfigAuditService] auditLogger.log() completed for configKey={}", configKey);
     }
 
     public void logCreate(String configKey, String newValue, String userId, String reason, String valueType) {

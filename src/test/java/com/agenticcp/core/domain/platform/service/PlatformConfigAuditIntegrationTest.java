@@ -78,10 +78,10 @@ public class PlatformConfigAuditIntegrationTest {
         AuditEventDto event = captor.getValue();
 
         assertEquals("UPDATE", event.action());
-        assertNotNull(event.metadata());
-        assertEquals("***", event.metadata().get("oldValue"));
-        assertEquals("***", event.metadata().get("newValue"));
-        assertEquals("ENCRYPTED", event.metadata().get("valueType"));
+        assertNotNull(event.requestData());
+        assertEquals("***", event.requestData().get("oldValue"));
+        assertEquals("***", event.requestData().get("newValue"));
+        assertEquals("ENCRYPTED", event.requestData().get("valueType"));
     }
 
     @Test
@@ -109,8 +109,8 @@ public class PlatformConfigAuditIntegrationTest {
         assertEquals("CREATE", event.action());
         assertEquals("plain.key", event.requestData().get("configKey"));
         assertEquals("STRING", event.requestData().get("valueType"));
-        assertEquals("123", event.metadata().get("newValue"));
-        assertEquals("", event.metadata().get("oldValue")); // EncryptedValueMasker.safeString()이 null을 ""로 변환
+        assertEquals("123", event.requestData().get("newValue"));
+        assertEquals("", event.requestData().get("oldValue")); // EncryptedValueMasker.safeString()이 null을 ""로 변환
     }
 }
 

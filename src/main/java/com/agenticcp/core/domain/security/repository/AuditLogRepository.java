@@ -20,6 +20,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
             AuditLog.EventType eventType,
             Pageable pageable
     );
+
+    long countByResourceType(String resourceType);
 }
 
 

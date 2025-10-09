@@ -153,6 +153,8 @@ public class PlatformConfigService {
         // 감사 기록(CREATE): ENCRYPTED 타입은 평문 대신 마스킹 처리
         String maskedNew = (saved.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED || Boolean.TRUE.equals(saved.getIsEncrypted()))
                 ? "***" : (saved.getConfigValue() == null ? "" : saved.getConfigValue());
+        
+        log.info("[PlatformConfigService] About to call configAuditService.logCreate for configKey={}", saved.getConfigKey());
         configAuditService.logCreate(
                 saved.getConfigKey(),
                 maskedNew,
@@ -160,6 +162,7 @@ public class PlatformConfigService {
                 null, // reason
                 saved.getConfigType() != null ? saved.getConfigType().name() : null
         );
+        log.info("[PlatformConfigService] configAuditService.logCreate completed for configKey={}", saved.getConfigKey());
         return saved;
     }
 
