@@ -110,7 +110,7 @@ public class PlatformConfigAuditIntegrationTest {
         assertEquals("plain.key", event.requestData().get("configKey"));
         assertEquals("STRING", event.requestData().get("valueType"));
         assertEquals("123", event.metadata().get("newValue"));
-        assertNull(event.metadata().get("oldValue"));
+        assertEquals("", event.metadata().get("oldValue")); // EncryptedValueMasker.safeString()이 null을 ""로 변환
     }
 }
 
