@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.platform.controller;
 
 import com.agenticcp.core.common.audit.AuditController;
+import com.agenticcp.core.common.audit.AuditRequired;
 import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
@@ -27,8 +28,7 @@ import java.util.List;
     resourceType = AuditResourceType.PLATFORM_CONFIG,
     defaultSeverity = AuditSeverity.HIGH,
     defaultIncludeRequestData = true,
-    targetHttpMethods = {"POST", "PUT", "DELETE"},
-    excludeMethods = {"getAllConfigs", "getConfigByKey", "getConfigsByType", "getSystemConfigs", "getConfigHistory"}
+    targetHttpMethods = {"POST", "PUT", "DELETE"}
 )
 public class PlatformConfigController {
 
@@ -37,6 +37,13 @@ public class PlatformConfigController {
 
     @GetMapping
     @Operation(summary = "모든 플랫폼 설정 조회")
+    @AuditRequired(
+        action = "getAllConfigsWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 모든 플랫폼 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getAllConfigs(
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
         boolean reveal = Boolean.TRUE.equals(showSecret);
@@ -54,6 +61,13 @@ public class PlatformConfigController {
 
     @GetMapping("/{configKey}")
     @Operation(summary = "특정 플랫폼 설정 조회")
+    @AuditRequired(
+        action = "getConfigByKeyWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 특정 플랫폼 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<PlatformConfig>> getConfigByKey(
             @PathVariable String configKey,
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
@@ -75,6 +89,13 @@ public class PlatformConfigController {
 
     @GetMapping("/type/{configType}")
     @Operation(summary = "설정 타입별 조회")
+    @AuditRequired(
+        action = "getConfigsByTypeWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 설정 타입별 플랫폼 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getConfigsByType(
             @PathVariable PlatformConfig.ConfigType configType,
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
@@ -93,6 +114,13 @@ public class PlatformConfigController {
 
     @GetMapping("/system")
     @Operation(summary = "시스템 설정 조회")
+    @AuditRequired(
+        action = "getSystemConfigsWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 시스템 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getSystemConfigs(
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
         boolean reveal = Boolean.TRUE.equals(showSecret);
@@ -147,6 +175,13 @@ public class PlatformConfigController {
 
     @GetMapping("/{configKey}/history")
     @Operation(summary = "플랫폼 설정 변경 이력 조회")
+    @AuditRequired(
+        action = "getConfigHistory",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.MEDIUM,
+        includeRequestData = true,
+        description = "관리자가 플랫폼 설정 변경 이력을 조회"
+    )
     public ResponseEntity<ApiResponse<Page<ConfigHistoryResponse>>> getConfigHistory(
             @PathVariable String configKey,
             @RequestParam(defaultValue = "0") int page,
