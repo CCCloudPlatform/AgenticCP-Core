@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 이력 조회 API 통합 테스트 (웹 레이어 단위)
+ * - 하이브리드 접근법: RDBMS 기반 설정 이력 조회
  * - 시간순 정렬/페이지네이션 응답 형태 검증
  * - 관리자 권한 제한(403) 검증: 간단히 pre-check 훅으로 대행
  * - ENCRYPTED 응답 마스킹은 서비스/유틸 테스트로 검증되므로 여기선 필드 존재만 확인

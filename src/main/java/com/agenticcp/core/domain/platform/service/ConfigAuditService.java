@@ -5,13 +5,20 @@ import com.agenticcp.core.common.dto.AuditEventDto;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.util.EncryptedValueMasker;
+import com.agenticcp.core.domain.security.entity.AuditLog;
+import com.agenticcp.core.domain.security.repository.AuditLogRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 플랫폼 설정 변경에 대한 감사(이력) 기록 서비스 - 스켈레톤
@@ -25,6 +32,8 @@ import java.util.Map;
 public class ConfigAuditService {
 
     private final AuditLogger auditLogger;
+    private final AuditLogRepository auditLogRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * 설정 변경 감사 기록 (공통 엔트리 포인트)
@@ -89,9 +98,15 @@ public class ConfigAuditService {
                 metadata                            // metadata (메타 정보)
         );
 
+        // 1. 파일 기반 감사 로그 기록
         log.info("[ConfigAuditService] Calling auditLogger.log() for configKey={}", configKey);
         auditLogger.log(event);
         log.info("[ConfigAuditService] auditLogger.log() completed for configKey={}", configKey);
+        
+        // 2. RDBMS 기반 설정 이력 기록 (조회용)
+        saveToDatabase(configKey, normalizedAction, userId, reason, valueType, 
+                      EncryptedValueMasker.maskForAudit(oldValue, encryptedType),
+                      EncryptedValueMasker.maskForAudit(newValue, encryptedType));
     }
 
     public void logCreate(String configKey, String newValue, String userId, String reason, String valueType) {
@@ -121,6 +136,51 @@ public class ConfigAuditService {
             case "DELETE", "DELETED", "REMOVE", "REMOVED" -> "DELETE";
             default -> upper;
         };
+    }
+
+    /**
+     * 설정 변경 이력을 RDBMS에 저장 (조회용)
+     */
+    @Transactional
+    private void saveToDatabase(String configKey, String action, String userId, String reason, 
+                               String valueType, String oldValue, String newValue) {
+        try {
+            // 변경 상세 정보를 JSON으로 저장
+            Map<String, Object> changeDetails = new HashMap<>();
+            changeDetails.put("configKey", configKey);
+            changeDetails.put("oldValue", oldValue);
+            changeDetails.put("newValue", newValue);
+            changeDetails.put("action", action);
+            changeDetails.put("reason", safeString(reason));
+            changeDetails.put("valueType", safeString(valueType));
+            
+            String detailsJson = objectMapper.writeValueAsString(changeDetails);
+            
+            // AuditLog 엔티티 생성
+            AuditLog auditLog = AuditLog.builder()
+                    .eventId(UUID.randomUUID().toString())
+                    .eventType(AuditLog.EventType.CONFIGURATION_CHANGE)
+                    .eventCategory(AuditLog.EventCategory.CONFIGURE)
+                    .eventName("Platform Config " + action)
+                    .description(String.format("Config '%s' %s", configKey, action))
+                    .resourceType("PlatformConfig")
+                    .resourceId(configKey)
+                    .action(action)
+                    .result(AuditLog.Result.SUCCESS)
+                    .eventTimestamp(LocalDateTime.now())
+                    .details(detailsJson)
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            
+            log.info("[ConfigAuditService] Config history saved to database: configKey={}, action={}", 
+                    configKey, action);
+                    
+        } catch (JsonProcessingException e) {
+            log.error("[ConfigAuditService] Failed to save config history to database: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("[ConfigAuditService] Unexpected error saving config history: {}", e.getMessage(), e);
+        }
     }
 }
 
