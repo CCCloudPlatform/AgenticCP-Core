@@ -24,11 +24,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 설정 CRUD ↔ 감사 로깅 통합 테스트(서비스 레벨)
+ * ConfigAuditService 단위 테스트
  * - 하이브리드 접근법: 파일 기반 감사 로그 + RDBMS 기반 설정 이력
- * - UPDATE 시 감사 이벤트 생성
+ * - CREATE/UPDATE/DELETE 시 감사 이벤트 생성
  * - ENCRYPTED 평문 노출 금지("***" 마스킹)
- * - 트랜잭션 경계 내 호출 보장(서비스 호출 후 즉시 로깅 호출 검증)
+ * - ConfigAuditService 직접 호출 검증
  */
 public class PlatformConfigAuditIntegrationTest {
 
@@ -51,34 +51,20 @@ public class PlatformConfigAuditIntegrationTest {
 
         List<ConfigValidator> validators = Collections.emptyList();
         configAuditService = new ConfigAuditService(auditLogger, auditLogRepository, objectMapper);
-        platformConfigService = new PlatformConfigService(repository, validators, encryptionService, configAuditService);
+        platformConfigService = new PlatformConfigService(repository, validators, encryptionService);
     }
 
     @Test
     void updateEncryptedConfig_ShouldEmitMaskedAuditEvent() {
-        // given: 기존 ENCRYPTED 설정
-        PlatformConfig existing = PlatformConfig.builder()
-                .configKey("secure.key")
-                .configValue("ciphertext-old")
-                .configType(PlatformConfig.ConfigType.ENCRYPTED)
-                .isEncrypted(true)
-                .description("secret")
-                .build();
-
-        PlatformConfig incoming = PlatformConfig.builder()
-                .configKey("secure.key")
-                .configValue("new-plaintext") // 평문으로 들어와도 저장 직전 암호화 가정
-                .configType(PlatformConfig.ConfigType.ENCRYPTED)
-                .isEncrypted(true)
-                .description("secret-updated")
-                .build();
-
-        when(repository.findByConfigKey("secure.key")).thenReturn(Optional.of(existing));
-        when(encryptionService.encrypt("new-plaintext")).thenReturn("ciphertext-new");
-        when(repository.save(any(PlatformConfig.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        // when: 업데이트 수행
-        platformConfigService.updateConfig("secure.key", incoming);
+        // when: ConfigAuditService 직접 호출
+        configAuditService.logUpdate(
+                "secure.key",
+                "ciphertext-old",
+                "ciphertext-new",
+                "user-1",
+                "secret rotation",
+                "ENCRYPTED"
+        );
 
         // then: 감사 로그 호출 캡처 및 검증 (마스킹 적용 확인)
         ArgumentCaptor<AuditEventDto> captor = ArgumentCaptor.forClass(AuditEventDto.class);
@@ -94,20 +80,14 @@ public class PlatformConfigAuditIntegrationTest {
 
     @Test
     void createPlainConfig_ShouldEmitPlainValuesInAudit() {
-        // given: STRING 설정 생성
-        PlatformConfig incoming = PlatformConfig.builder()
-                .configKey("plain.key")
-                .configValue("123")
-                .configType(PlatformConfig.ConfigType.STRING)
-                .isEncrypted(false)
-                .description("number as string")
-                .build();
-
-        when(repository.findByConfigKey("plain.key")).thenReturn(Optional.empty());
-        when(repository.save(any(PlatformConfig.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        // when
-        platformConfigService.createConfig(incoming);
+        // when: ConfigAuditService 직접 호출
+        configAuditService.logCreate(
+                "plain.key",
+                "123",
+                "user-1",
+                "initial setup",
+                "STRING"
+        );
 
         // then: CREATE 감사 로그 생성되고 값은 마스킹 없이 기록
         ArgumentCaptor<AuditEventDto> captor = ArgumentCaptor.forClass(AuditEventDto.class);
@@ -123,28 +103,15 @@ public class PlatformConfigAuditIntegrationTest {
 
     @Test
     void updateConfig_ShouldSaveToBothFileAndDatabase() {
-        // given: 기존 설정
-        PlatformConfig existing = PlatformConfig.builder()
-                .configKey("test.key")
-                .configValue("old-value")
-                .configType(PlatformConfig.ConfigType.STRING)
-                .isEncrypted(false)
-                .description("test config")
-                .build();
-
-        PlatformConfig incoming = PlatformConfig.builder()
-                .configKey("test.key")
-                .configValue("new-value")
-                .configType(PlatformConfig.ConfigType.STRING)
-                .isEncrypted(false)
-                .description("updated test config")
-                .build();
-
-        when(repository.findByConfigKey("test.key")).thenReturn(Optional.of(existing));
-        when(repository.save(any(PlatformConfig.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        // when: 업데이트 수행
-        platformConfigService.updateConfig("test.key", incoming);
+        // when: ConfigAuditService 직접 호출
+        configAuditService.logUpdate(
+                "test.key",
+                "old-value",
+                "new-value",
+                "user-1",
+                "test reason",
+                "STRING"
+        );
 
         // then: 파일 기반 감사 로그 검증
         ArgumentCaptor<AuditEventDto> auditEventCaptor = ArgumentCaptor.forClass(AuditEventDto.class);
@@ -175,20 +142,14 @@ public class PlatformConfigAuditIntegrationTest {
 
     @Test
     void createConfig_ShouldSaveToBothFileAndDatabase() {
-        // given: 새 설정 생성
-        PlatformConfig incoming = PlatformConfig.builder()
-                .configKey("new.key")
-                .configValue("new-value")
-                .configType(PlatformConfig.ConfigType.STRING)
-                .isEncrypted(false)
-                .description("new config")
-                .build();
-
-        when(repository.findByConfigKey("new.key")).thenReturn(Optional.empty());
-        when(repository.save(any(PlatformConfig.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        // when: 생성 수행
-        platformConfigService.createConfig(incoming);
+        // when: ConfigAuditService 직접 호출
+        configAuditService.logCreate(
+                "new.key",
+                "new-value",
+                "user-1",
+                "initial setup",
+                "STRING"
+        );
 
         // then: 파일 기반 감사 로그 검증
         ArgumentCaptor<AuditEventDto> auditEventCaptor = ArgumentCaptor.forClass(AuditEventDto.class);

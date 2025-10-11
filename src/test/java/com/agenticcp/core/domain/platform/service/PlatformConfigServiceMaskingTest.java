@@ -23,16 +23,14 @@ public class PlatformConfigServiceMaskingTest {
 
     private PlatformConfigRepository repository;
     private EncryptionService encryptionService;
-    private ConfigAuditService configAuditService;
     private PlatformConfigService service;
 
     @BeforeEach
     void setUp() {
         repository = Mockito.mock(PlatformConfigRepository.class);
         encryptionService = Mockito.mock(EncryptionService.class);
-        configAuditService = Mockito.mock(ConfigAuditService.class);
         List<ConfigValidator> validators = Collections.emptyList();
-        service = new PlatformConfigService(repository, validators, encryptionService, configAuditService);
+        service = new PlatformConfigService(repository, validators, encryptionService);
     }
 
     @Test

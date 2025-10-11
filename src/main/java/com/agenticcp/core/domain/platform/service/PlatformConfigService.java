@@ -34,7 +34,6 @@ public class PlatformConfigService {
     private final PlatformConfigRepository platformConfigRepository;
     private final List<ConfigValidator> configValidators;
     private final EncryptionService encryptionService;
-    private final ConfigAuditService configAuditService;
 
     public List<PlatformConfig> getAllConfigs() {
         log.info("[PlatformConfigService] getAllConfigs");
@@ -149,20 +148,6 @@ public class PlatformConfigService {
 
         PlatformConfig saved = platformConfigRepository.save(platformConfig);
         log.info("[PlatformConfigService] createConfig - success configKey={}", LogMaskingUtils.mask(saved.getConfigKey(), 2, 2));
-
-        // 감사 기록(CREATE): ENCRYPTED 타입은 평문 대신 마스킹 처리
-        String maskedNew = (saved.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED || Boolean.TRUE.equals(saved.getIsEncrypted()))
-                ? "***" : (saved.getConfigValue() == null ? "" : saved.getConfigValue());
-        
-        log.info("[PlatformConfigService] About to call configAuditService.logCreate for configKey={}", saved.getConfigKey());
-        configAuditService.logCreate(
-                saved.getConfigKey(),
-                maskedNew,
-                null, // userId
-                null, // reason
-                saved.getConfigType() != null ? saved.getConfigType().name() : null
-        );
-        log.info("[PlatformConfigService] configAuditService.logCreate completed for configKey={}", saved.getConfigKey());
         return saved;
     }
 
@@ -176,9 +161,6 @@ public class PlatformConfigService {
             throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_MODIFY);
         }
         
-        // 감사용 이전 값/타입 보관 (평문 금지 원칙 고려)
-        String prevStoredValue = existingConfig.getConfigValue();
-        PlatformConfig.ConfigType prevType = existingConfig.getConfigType();
 
         // 업데이트할 설정에 키 설정 (검증을 위해)
         updatedConfig.setConfigKey(configKey);
@@ -205,22 +187,6 @@ public class PlatformConfigService {
         
         PlatformConfig saved = platformConfigRepository.save(existingConfig);
         log.info("[PlatformConfigService] updateConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-
-        // 감사 기록: ENCRYPTED 타입은 평문 노출 금지 → 마스킹("***") 또는 저장된 암호문만
-        String maskedOld = (prevType == PlatformConfig.ConfigType.ENCRYPTED || Boolean.TRUE.equals(existingConfig.getIsEncrypted()))
-                ? "***" : (prevStoredValue == null ? "" : prevStoredValue);
-        String maskedNew = (updatedConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED || Boolean.TRUE.equals(existingConfig.getIsEncrypted()))
-                ? "***" : (saved.getConfigValue() == null ? "" : saved.getConfigValue());
-
-        // userId, reason은 후속 단계에서 컨텍스트 연계로 주입 예정
-        configAuditService.logUpdate(
-                configKey,
-                maskedOld,
-                maskedNew,
-                null, // userId
-                null, // reason
-                saved.getConfigType() != null ? saved.getConfigType().name() : null
-        );
         return saved;
     }
 
@@ -234,22 +200,10 @@ public class PlatformConfigService {
             throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_DELETE);
         }
         
-        // 감사 기록(DELETE)용 이전 값 보관 및 마스킹
-        String prevStoredValue = config.getConfigValue();
-        boolean prevEncrypted = (config.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) || Boolean.TRUE.equals(config.getIsEncrypted());
 
         config.setIsDeleted(true);
         platformConfigRepository.save(config);
         log.info("[PlatformConfigService] deleteConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-
-        String maskedOld = prevEncrypted ? "***" : (prevStoredValue == null ? "" : prevStoredValue);
-        configAuditService.logDelete(
-                configKey,
-                maskedOld,
-                null, // userId
-                null, // reason
-                config.getConfigType() != null ? config.getConfigType().name() : null
-        );
     }
 
     @Transactional
