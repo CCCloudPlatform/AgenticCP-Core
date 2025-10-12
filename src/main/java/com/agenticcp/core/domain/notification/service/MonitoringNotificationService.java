@@ -1,6 +1,5 @@
 package com.agenticcp.core.domain.notification.service;
 
-import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
@@ -62,7 +61,7 @@ public class MonitoringNotificationService {
             // 알림 요청 생성
             NotificationRequest request = NotificationRequest.builder()
                     .notificationId(generateNotificationId("threshold", metric.getMetricName()))
-                    .tenantId(getCurrentTenantId())
+                    .tenantId(metric.getTenantId())
                     .title("메트릭 임계값 위반 알림")
                     .content(buildThresholdViolationContent(metric, thresholdValue, operator))
                     .type(NotificationType.ALERT)
@@ -129,8 +128,7 @@ public class MonitoringNotificationService {
      */
     public void sendCollectionFailureAlert(String collectorType, String errorMessage, String tenantId) {
         try {
-            String currentTenantId = getCurrentTenantId();
-            log.error("📊 메트릭 수집 실패: {} (tenantId: {})", collectorType, currentTenantId);
+            log.error("📊 메트릭 수집 실패: {} (tenantId: {})", collectorType, tenantId);
 
             // 알림 데이터 구성
             Map<String, Object> alertData = new HashMap<>();
@@ -141,7 +139,7 @@ public class MonitoringNotificationService {
             // 알림 요청 생성
             NotificationRequest request = NotificationRequest.builder()
                     .notificationId(generateNotificationId("collection_failure", collectorType))
-                    .tenantId(currentTenantId)
+                    .tenantId(tenantId)
                     .title("메트릭 수집 실패 알림")
                     .content(buildCollectionFailureContent(collectorType, errorMessage))
                     .type(NotificationType.SYSTEM)
@@ -179,9 +177,8 @@ public class MonitoringNotificationService {
     public void sendSystemStatusChangeAlert(String serviceName, String previousStatus, 
                                           String currentStatus, String tenantId) {
         try {
-            String currentTenantId = getCurrentTenantId();
             log.warn("🔄 시스템 상태 변화: {} {} -> {} (tenantId: {})", 
-                serviceName, previousStatus, currentStatus, currentTenantId);
+                serviceName, previousStatus, currentStatus, tenantId);
 
             // 알림 우선순위 결정
             NotificationPriority priority = determineSystemStatusPriority(currentStatus);
@@ -196,7 +193,7 @@ public class MonitoringNotificationService {
             // 알림 요청 생성
             NotificationRequest request = NotificationRequest.builder()
                     .notificationId(generateNotificationId("status_change", serviceName))
-                    .tenantId(currentTenantId)
+                    .tenantId(tenantId)
                     .title("시스템 상태 변화 알림")
                     .content(buildSystemStatusChangeContent(serviceName, previousStatus, currentStatus))
                     .type(NotificationType.SYSTEM)
@@ -322,20 +319,5 @@ public class MonitoringNotificationService {
         return String.format("%s_%s_%s_%d", 
             type, identifier, LocalDateTime.now().toString().replace(":", "-"), 
             System.currentTimeMillis() % 10000);
-    }
-
-    /**
-     * 현재 테넌트 ID 조회
-     * 
-     * @return 현재 테넌트 ID (tenantKey)
-     */
-    private String getCurrentTenantId() {
-        try {
-            return TenantContextHolder.getCurrentTenantKeyOrThrow();
-        } catch (Exception e) {
-            log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
-            // TODO: 실제 운영에서는 예외를 발생시켜야 함
-            return "default"; // 임시 기본값
-        }
     }
 }

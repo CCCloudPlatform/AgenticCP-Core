@@ -68,6 +68,7 @@ public class MetricsCollectionService {
     private final MetricsStorageFactory metricsStorageFactory;
     private final MetricsCache metricsCache;
     private final TenantCollectorConfigService tenantCollectorConfigService;
+    private final com.agenticcp.core.domain.notification.service.MonitoringNotificationService monitoringNotificationService;
 
     /**
      * 1분마다 자동으로 메트릭 수집 실행
@@ -429,6 +430,8 @@ public class MetricsCollectionService {
 
     /**
      * 임계값 위반 확인
+     * 
+     * <p>메트릭 값이 임계값을 위반하면 알림 시스템을 통해 즉시 알림을 발송합니다.</p>
      */
     private void checkThresholdViolations(Metric metric) {
         try {
@@ -443,8 +446,19 @@ public class MetricsCollectionService {
                         threshold.getThresholdValue(),
                         threshold.getThresholdType());
                     
-                    // TODO: 알림 발송 로직 구현
-                    // sendAlert(threshold, metric);
+                    // 알림 발송
+                    try {
+                        monitoringNotificationService.sendThresholdViolationAlert(
+                            metric, 
+                            threshold.getThresholdValue(), 
+                            threshold.getOperator()
+                        );
+                        log.info("✅ Threshold violation alert sent successfully for metric: {}", metric.getMetricName());
+                    } catch (Exception alertException) {
+                        log.error("❌ Failed to send threshold violation alert for metric: {}", 
+                            metric.getMetricName(), alertException);
+                        // 알림 발송 실패는 메트릭 저장을 중단시키지 않음
+                    }
                 }
             }
         } catch (Exception e) {
