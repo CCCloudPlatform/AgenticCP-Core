@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.notification.service;
 
 import com.agenticcp.core.domain.notification.enums.ChannelType;
-import com.agenticcp.core.domain.notification.service.impl.EmailNotificationChannel;
+import com.agenticcp.core.domain.notification.service.impl.SlackNotificationChannel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,37 +21,37 @@ import static org.mockito.Mockito.*;
 class NotificationChannelFactoryTest {
 
     @Mock
-    private EmailNotificationChannel emailChannel;
+    private SlackNotificationChannel slackChannel;
 
     private NotificationChannelFactory channelFactory;
 
     @BeforeEach
     void setUp() {
-        when(emailChannel.getChannelType()).thenReturn(ChannelType.EMAIL.toString());
+        when(slackChannel.getChannelType()).thenReturn(ChannelType.SLACK.toString());
         
         // Mock 채널 리스트로 팩토리 생성
-        List<NotificationChannel> channelList = List.of(emailChannel);
+        List<NotificationChannel> channelList = List.of(slackChannel);
         channelFactory = new NotificationChannelFactory(channelList);
     }
 
     /**
-     * 이메일 채널 조회 성공 테스트
+     * 슬랙 채널 조회 성공 테스트
      * 
-     * Given: EMAIL 타입의 채널이 팩토리에 등록됨
-     * When: EMAIL 채널 타입으로 채널 조회 요청
-     * Then: 해당 이메일 채널 인스턴스가 반환됨
+     * Given: SLACK 타입의 채널이 팩토리에 등록됨
+     * When: SLACK 채널 타입으로 채널 조회 요청
+     * Then: 해당 슬랙 채널 인스턴스가 반환됨
      */
     @Test
-    void testGetChannel_EmailChannel_Success() {
+    void testGetChannel_SlackChannel_Success() {
         // Given
-        String channelType = "EMAIL";
+        String channelType = "SLACK";
 
         // When
         NotificationChannel result = channelFactory.getChannel(channelType);
 
         // Then
         assertNotNull(result);
-        assertEquals("EMAIL", result.getChannelType());
+        assertEquals("SLACK", result.getChannelType());
     }
 
     /**
@@ -94,7 +94,7 @@ class NotificationChannelFactoryTest {
      * 
      * Given: 팩토리에 등록된 채널들
      * When: 지원하는 채널 타입 목록 조회
-     * Then: EMAIL을 포함한 지원 채널 타입 목록 반환
+     * Then: SLACK을 포함한 지원 채널 타입 목록 반환
      */
     @Test
     void testGetSupportedChannelTypes_Success() {
@@ -103,20 +103,20 @@ class NotificationChannelFactoryTest {
 
         // Then
         assertNotNull(supportedTypes);
-        assertTrue(supportedTypes.contains("EMAIL"));
+        assertTrue(supportedTypes.contains("SLACK"));
     }
 
     /**
      * 지원하는 채널 타입 확인 테스트
      * 
-     * Given: EMAIL 채널 타입
+     * Given: SLACK 채널 타입
      * When: 채널 지원 여부 확인
      * Then: true 반환
      */
     @Test
     void testIsChannelSupported_SupportedChannel_ReturnsTrue() {
         // Given
-        String channelType = "EMAIL";
+        String channelType = "SLACK";
 
         // When
         boolean isSupported = channelFactory.isChannelSupported(channelType);
@@ -163,14 +163,14 @@ class NotificationChannelFactoryTest {
     /**
      * 채널 팩토리 초기화 테스트
      * 
-     * Given: 이메일 채널이 포함된 채널 리스트
+     * Given: 슬랙 채널이 포함된 채널 리스트
      * When: NotificationChannelFactory 초기화
-     * Then: 팩토리가 정상적으로 초기화되고 EMAIL 채널 지원
+     * Then: 팩토리가 정상적으로 초기화되고 SLACK 채널 지원
      */
     @Test
     void testChannelFactory_Initialization() {
         // Then
         assertNotNull(channelFactory);
-        assertTrue(channelFactory.getSupportedChannelTypes().contains("EMAIL"));
+        assertTrue(channelFactory.getSupportedChannelTypes().contains("SLACK"));
     }
 }

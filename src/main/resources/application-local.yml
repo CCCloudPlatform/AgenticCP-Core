@@ -43,6 +43,11 @@ config:
     # 키 누락 시 동작 방침(FAIL/READ_ONLY). 기본 FAIL.
     # missingKeyBehavior: FAIL
 
+# 슬랙 웹훅 설정
+slack:
+  webhook:
+    url: ${SLACK_WEBHOOK_URL:https://hooks.slack.com/services/YOUR/WEBHOOK/URL}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
