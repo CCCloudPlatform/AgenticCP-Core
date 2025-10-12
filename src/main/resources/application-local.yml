@@ -5,15 +5,6 @@ spring:
     password: agenticcppassword
     driver-class-name: com.mysql.cj.jdbc.Driver
   
-  jpa:
-    hibernate:
-      ddl-auto: update
-  
-  security:
-    user:
-      name: admin
-      password: admin123
-      roles: ADMIN
   
   cache:
     type: simple
@@ -24,10 +15,11 @@ spring:
       timeout: 2000ms
       connect-timeout: 2000ms
 
-logging:
 app:
   redis:
     enabled: ${APP_REDIS_ENABLED:false}
+
+logging:
   level:
     root: INFO
     com.agenticcp.core: DEBUG
