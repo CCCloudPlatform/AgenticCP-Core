@@ -1,0 +1,474 @@
+# Audit Logging Pattern (감사 로깅 패턴)
+
+## 개요
+
+감사 로깅은 **보안, 컴플라이언스, 디버깅**을 위해 시스템의 중요한 작업과 이벤트를 기록하는 필수 시스템입니다.
+
+### 주요 목적
+- **보안 감사**: 사용자 행위 추적 및 보안 사고 대응
+- **컴플라이언스**: 규정 준수를 위한 감사 증적 생성
+- **운영 모니터링**: 시스템 사용 현황 및 성능 분석
+- **문제 해결**: 장애 발생 시 원인 분석 및 복구
+
+---
+
+## 필수 규칙
+
+### 1. 클래스 레벨 감사 로깅 (@AuditController)
+
+**언제 사용하는가?**
+- ✅ CRUD 컨트롤러에서 대부분의 메서드가 동일한 리소스 타입을 다룰 때
+- ✅ 관리자 기능에서 모든 작업이 중요하고 감사가 필요할 때
+- ✅ 보안 민감한 컨트롤러에서 모든 접근을 기록해야 할 때
+- ✅ 클래스 내 모든 메서드에 동일한 감사 정책을 적용할 때
+
+**기본 구조:**
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+@AuditController(
+    resourceType = AuditResourceType.USER,
+    defaultSeverity = AuditSeverity.HIGH,
+    defaultIncludeRequestData = true,
+    targetHttpMethods = {"POST", "PUT", "PATCH", "DELETE"},
+    excludeMethods = {"healthCheck", "ping"}
+)
+public class UserController {
+    
+    @PostMapping
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserCreateRequest request) {
+        // 자동으로 감사 로깅 적용됨
+        // - action: "createUser"
+        // - resourceType: USER
+        // - severity: HIGH
+        // - requestData 포함
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+        // 자동으로 감사 로깅 적용됨
+        // - action: "deleteUser"
+        // - severity: HIGH (클래스 레벨에서 상속)
+    }
+    
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        // excludeMethods에 포함되어 감사 로깅 제외됨
+    }
+}
+```
+
+**주요 속성:**
+```java
+@AuditController(
+    resourceType = AuditResourceType.USER,              // 필수: 리소스 타입
+    defaultSeverity = AuditSeverity.HIGH,               // 기본 심각도
+    defaultIncludeRequestData = true,                   // 요청 데이터 포함 여부
+    defaultIncludeResponseData = false,                 // 응답 데이터 포함 여부
+    targetHttpMethods = {"POST", "PUT", "PATCH", "DELETE"},  // 대상 HTTP 메서드
+    excludeMethods = {"healthCheck"}                    // 제외할 메서드명
+)
+```
+
+### 2. 메서드 레벨 감사 로깅 (@AuditRequired)
+
+**언제 사용하는가?**
+- ✅ 특정 메서드만 감사가 필요할 때
+- ✅ 메서드별로 다른 감사 정책이 필요할 때
+- ✅ 클래스가 여러 리소스 타입을 다룰 때 (혼재된 리소스)
+- ✅ 특정 메서드에서만 요청/응답 데이터가 필요할 때
+
+**기본 구조:**
+```java
+@RestController
+@RequestMapping("/api/v1/admin")
+public class AdminController {
+    
+    @PostMapping("/users")
+    @AuditRequired(
+        action = "createUser",
+        resourceType = AuditResourceType.USER,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 새 사용자를 생성합니다"
+    )
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserCreateRequest request) {
+        // 사용자 생성만 감사 로깅됨
+    }
+    
+    @PostMapping("/tenants")
+    @AuditRequired(
+        action = "createTenant",
+        resourceType = AuditResourceType.TENANT,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        description = "관리자가 새 테넌트를 생성합니다"
+    )
+    public ResponseEntity<ApiResponse<TenantResponse>> createTenant(@Valid @RequestBody TenantCreateRequest request) {
+        // 테넌트 생성만 감사 로깅됨
+    }
+    
+    @GetMapping("/dashboard")
+    public ResponseEntity<ApiResponse<DashboardResponse>> getDashboard() {
+        // 감사 로깅 없음 (중요도가 낮은 조회)
+    }
+}
+```
+
+**주요 속성:**
+```java
+@AuditRequired(
+    action = "deleteUser",                    // 필수: 액션명 (명확하고 구체적)
+    resourceType = AuditResourceType.USER,    // 필수: 리소스 타입
+    description = "사용자 삭제",              // 선택: 액션 설명
+    includeRequestData = true,                // 선택: 요청 데이터 포함 여부
+    includeResponseData = false,              // 선택: 응답 데이터 포함 여부
+    severity = AuditSeverity.CRITICAL         // 선택: 심각도
+)
+```
+
+### 3. AuditResourceType (리소스 타입)
+
+```java
+public enum AuditResourceType {
+    USER,                // 사용자 관리
+    TENANT,              // 테넌트 관리
+    ROLE,                // 역할 관리
+    PERMISSION,          // 권한 관리
+    SECURITY,            // 보안 설정
+    PLATFORM,            // 플랫폼 설정
+    CLOUD,               // 클라우드 리소스
+    MONITORING,          // 모니터링
+    COST,                // 비용 관리
+    NOTIFICATION,        // 알림
+    INTEGRATION,         // 통합
+    CONFIGURATION        // 설정
+}
+```
+
+### 4. AuditSeverity (심각도)
+
+```java
+public enum AuditSeverity {
+    INFO,         // 일반 정보성 작업 (조회 등)
+    LOW,          // 낮은 중요도 (일반 설정 변경)
+    MEDIUM,       // 중간 중요도 (리소스 생성/수정)
+    HIGH,         // 높은 중요도 (사용자/권한 변경)
+    CRITICAL      // 매우 중요 (보안 설정, 삭제, 관리자 작업)
+}
+```
+
+### 5. 클래스 vs 메서드 레벨 선택 가이드
+
+```java
+// ✅ 클래스 레벨 사용 (좋은 예)
+@AuditController(
+    resourceType = AuditResourceType.USER,
+    defaultSeverity = AuditSeverity.HIGH
+)
+public class UserController {
+    // 모든 메서드가 USER 리소스 타입
+    // 모든 쓰기 작업이 중요
+}
+
+// ✅ 메서드 레벨 사용 (좋은 예)
+public class AdminController {
+    
+    @AuditRequired(resourceType = AuditResourceType.USER, ...)
+    public void createUser() { }
+    
+    @AuditRequired(resourceType = AuditResourceType.TENANT, ...)
+    public void createTenant() { }
+    
+    @AuditRequired(resourceType = AuditResourceType.SECURITY, ...)
+    public void updateSecurityPolicy() { }
+    // 여러 리소스 타입이 혼재
+}
+
+// ✅ 클래스 + 메서드 조합 (메서드가 오버라이드)
+@AuditController(
+    resourceType = AuditResourceType.USER,
+    defaultSeverity = AuditSeverity.MEDIUM
+)
+public class UserController {
+    
+    @PostMapping
+    public void createUser() {
+        // 클래스 레벨 설정 사용: MEDIUM
+    }
+    
+    @DeleteMapping("/{id}")
+    @AuditRequired(
+        action = "deleteUser",
+        resourceType = AuditResourceType.USER,
+        severity = AuditSeverity.CRITICAL  // 메서드 레벨에서 오버라이드
+    )
+    public void deleteUser(@PathVariable Long id) {
+        // 메서드 레벨 설정 사용: CRITICAL
+    }
+}
+```
+
+---
+
+## 실제 사용 예시
+
+### 예시 1: 사용자 관리 (클래스 레벨)
+
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+@Slf4j
+@Tag(name = "User Management", description = "사용자 관리 API")
+@AuditController(
+    resourceType = AuditResourceType.USER,
+    defaultSeverity = AuditSeverity.HIGH,
+    defaultIncludeRequestData = true,
+    targetHttpMethods = {"POST", "PUT", "PATCH", "DELETE"},
+    excludeMethods = {"healthCheck"}
+)
+public class UserController {
+    
+    private final UserService userService;
+    
+    @PostMapping
+    @Operation(summary = "사용자 생성")
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+        log.info("[UserController] createUser - username={}", 
+                LogMaskingUtils.mask(request.getUsername(), 2, 2));
+        UserResponse user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(user, "사용자 생성에 성공했습니다."));
+        // 감사 로그: action=createUser, resourceType=USER, severity=HIGH, requestData 포함
+    }
+    
+    @PutMapping("/{id}")
+    @Operation(summary = "사용자 수정")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UserUpdateRequest request) {
+        log.info("[UserController] updateUser - id={}", id);
+        UserResponse user = userService.updateUser(id, request);
+        return ResponseEntity.ok(ApiResponse.success(user));
+        // 감사 로그: action=updateUser, resourceType=USER, severity=HIGH
+    }
+    
+    @DeleteMapping("/{id}")
+    @AuditRequired(
+        action = "deleteUser",
+        resourceType = AuditResourceType.USER,
+        severity = AuditSeverity.CRITICAL,  // 메서드 레벨에서 CRITICAL로 오버라이드
+        includeRequestData = true,
+        description = "사용자 영구 삭제"
+    )
+    @Operation(summary = "사용자 삭제")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+        log.info("[UserController] deleteUser - id={}", id);
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+        // 감사 로그: severity=CRITICAL (오버라이드됨)
+    }
+    
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getUsers() {
+        // GET 메서드는 targetHttpMethods에 없으므로 감사 로깅 안 됨
+        return ResponseEntity.ok(ApiResponse.success(userService.getUsers()));
+    }
+}
+```
+
+### 예시 2: 보안 설정 (메서드 레벨 - 높은 심각도)
+
+```java
+@RestController
+@RequestMapping("/api/v1/security")
+@RequiredArgsConstructor
+@Slf4j
+public class SecurityController {
+    
+    private final SecurityService securityService;
+    
+    @PostMapping("/policies")
+    @AuditRequired(
+        action = "createSecurityPolicy",
+        resourceType = AuditResourceType.SECURITY,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        includeResponseData = true,
+        description = "새로운 보안 정책 생성"
+    )
+    public ResponseEntity<ApiResponse<SecurityPolicyResponse>> createPolicy(
+            @Valid @RequestBody SecurityPolicyCreateRequest request) {
+        log.info("[SecurityController] createPolicy");
+        SecurityPolicyResponse policy = securityService.createPolicy(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(policy));
+    }
+    
+    @PutMapping("/mfa")
+    @AuditRequired(
+        action = "updateMfaSettings",
+        resourceType = AuditResourceType.SECURITY,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        description = "다중 인증(MFA) 설정 변경"
+    )
+    public ResponseEntity<ApiResponse<MfaSettingsResponse>> updateMfaSettings(
+            @Valid @RequestBody MfaSettingsRequest request) {
+        log.info("[SecurityController] updateMfaSettings");
+        MfaSettingsResponse settings = securityService.updateMfaSettings(request);
+        return ResponseEntity.ok(ApiResponse.success(settings));
+    }
+}
+```
+
+### 예시 3: 혼재된 리소스 타입 (메서드 레벨)
+
+```java
+@RestController
+@RequestMapping("/api/v1/admin")
+@RequiredArgsConstructor
+@Slf4j
+public class AdminController {
+    
+    private final UserService userService;
+    private final TenantService tenantService;
+    private final PlatformService platformService;
+    
+    @PostMapping("/users")
+    @AuditRequired(
+        action = "adminCreateUser",
+        resourceType = AuditResourceType.USER,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 사용자 생성"
+    )
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @Valid @RequestBody UserCreateRequest request) {
+        UserResponse user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(user));
+    }
+    
+    @PostMapping("/tenants")
+    @AuditRequired(
+        action = "adminCreateTenant",
+        resourceType = AuditResourceType.TENANT,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        description = "관리자가 테넌트 생성"
+    )
+    public ResponseEntity<ApiResponse<TenantResponse>> createTenant(
+            @Valid @RequestBody TenantCreateRequest request) {
+        TenantResponse tenant = tenantService.createTenant(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(tenant));
+    }
+    
+    @PutMapping("/platform/config")
+    @AuditRequired(
+        action = "updatePlatformConfig",
+        resourceType = AuditResourceType.PLATFORM,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        includeResponseData = true,
+        description = "플랫폼 전역 설정 변경"
+    )
+    public ResponseEntity<ApiResponse<PlatformConfigResponse>> updatePlatformConfig(
+            @Valid @RequestBody PlatformConfigRequest request) {
+        PlatformConfigResponse config = platformService.updateConfig(request);
+        return ResponseEntity.ok(ApiResponse.success(config));
+    }
+}
+```
+
+---
+
+## 감사 로그 출력 형식
+
+감사 로그는 JSON 형식으로 별도의 `audit-{profile}.log` 파일에 기록됩니다.
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:45.123Z",
+  "eventId": "audit-1234567890",
+  "action": "deleteUser",
+  "resourceType": "USER",
+  "resourceId": "123",
+  "severity": "CRITICAL",
+  "actor": {
+    "userId": 1,
+    "username": "admin@example.com",
+    "role": "ADMIN",
+    "tenantId": 1
+  },
+  "result": "SUCCESS",
+  "requestData": {
+    "userId": 123,
+    "reason": "Policy violation"
+  },
+  "metadata": {
+    "ipAddress": "192.168.1.100",
+    "userAgent": "Mozilla/5.0...",
+    "duration": 125,
+    "httpMethod": "DELETE",
+    "endpoint": "/api/v1/users/123"
+  }
+}
+```
+
+---
+
+## 애플리케이션 로깅 vs 감사 로깅
+
+### 애플리케이션 로깅 (Slf4j)
+```java
+// 기술적 디버깅, 성능 모니터링용
+log.info("[UserService] createUser - username={}", username);
+log.debug("[UserService] validation passed");
+log.error("[UserService] database error", exception);
+```
+
+### 감사 로깅 (@AuditRequired / @AuditController)
+```java
+// 보안, 컴플라이언스, 감사 증적용
+@AuditRequired(
+    action = "deleteUser",
+    resourceType = AuditResourceType.USER,
+    severity = AuditSeverity.CRITICAL
+)
+public void deleteUser(Long userId) {
+    // 누가, 언제, 무엇을, 어떻게 했는지 기록
+}
+```
+
+**차이점:**
+- **애플리케이션 로그**: 개발자를 위한 기술 정보, 디버깅
+- **감사 로그**: 감사자/컴플라이언스를 위한 비즈니스 이벤트, 보안 추적
+
+---
+
+## 체크리스트
+
+### 감사 로깅을 적용해야 하는 경우
+- [ ] 사용자 생성/수정/삭제
+- [ ] 권한 변경 (역할, 권한 할당)
+- [ ] 보안 설정 변경 (MFA, 정책, 암호화)
+- [ ] 테넌트 관리 작업
+- [ ] 민감한 데이터 접근 (개인정보, 암호화된 설정)
+- [ ] 플랫폼 전역 설정 변경
+- [ ] 관리자 작업
+
+### 감사 로깅을 적용하지 않아도 되는 경우
+- [ ] 단순 조회 (목록, 상세)
+- [ ] 헬스 체크, 상태 확인
+- [ ] 공개 API (인증 불필요)
+- [ ] 성능에 민감한 고빈도 API
+
+### 구현 시 확인사항
+- [ ] 적절한 `AuditResourceType` 선택
+- [ ] 적절한 `AuditSeverity` 설정
+- [ ] `action` 명칭이 명확하고 구체적
+- [ ] 민감 데이터 포함 여부 결정 (`includeRequestData`, `includeResponseData`)
+- [ ] 클래스 vs 메서드 레벨 선택이 적절한지
+- [ ] `excludeMethods` 설정 확인
