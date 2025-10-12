@@ -1,0 +1,542 @@
+---
+alwaysApply: false
+---
+
+# Service Pattern (서비스 패턴)
+
+## 기본 구조
+
+```java
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class ResourceService {
+    
+    private final ResourceRepository resourceRepository;
+    
+    public Resource getResourceById(Long id) {
+        log.info("[ResourceService] getResourceById - id={}", id);
+        Resource resource = resourceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceErrorCode.RESOURCE_NOT_FOUND));
+        log.info("[ResourceService] getResourceById - success id={}", id);
+        return resource;
+    }
+    
+    @Transactional
+    public Resource createResource(ResourceCreateRequest request) {
+        log.info("[ResourceService] createResource - name={}", request.getName());
+        
+        // 비즈니스 검증
+        validateResourceUniqueness(request);
+        
+        // 엔티티 생성
+        Resource resource = Resource.builder()
+                .name(request.getName())
+                .status(Status.ACTIVE)
+                .build();
+        
+        Resource saved = resourceRepository.save(resource);
+        log.info("[ResourceService] createResource - success id={}", saved.getId());
+        return saved;
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. 클래스 레벨 어노테이션
+- `@Slf4j`: 로깅 필수
+- `@Service`: 서비스 레이어 선언
+- `@RequiredArgsConstructor`: 생성자 주입 (필드 주입 금지)
+- `@Transactional(readOnly = true)`: 클래스 레벨에 기본 읽기 전용 설정
+
+### 2. 트랜잭션 관리
+- **기본**: 클래스 레벨에 `@Transactional(readOnly = true)`
+- **조회 메서드**: 별도 어노테이션 불필요 (클래스 레벨 상속)
+- **쓰기 메서드**: `@Transactional` 명시 (readOnly=false가 기본)
+
+```java
+@Transactional(readOnly = true)  // 클래스 레벨
+public class UserService {
+    
+    public User getUserById(Long id) {
+        // readOnly=true (클래스 레벨 상속)
+    }
+    
+    @Transactional  // 메서드 레벨로 오버라이드
+    public User createUser(UserCreateRequest request) {
+        // readOnly=false (쓰기 가능)
+    }
+}
+```
+
+### 3. 의존성 주입
+
+```java
+// ✅ 생성자 주입 (권장)
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+}
+
+// ❌ 필드 주입 (금지)
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;
+}
+```
+
+### 4. 로깅 패턴
+
+```java
+public Resource getResource(Long id) {
+    // 진입 로그
+    log.info("[ServiceName] methodName - id={}", id);
+    
+    // 비즈니스 로직
+    Resource resource = resourceRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(ResourceErrorCode.RESOURCE_NOT_FOUND));
+    
+    // 성공 로그
+    log.info("[ServiceName] methodName - success id={}", id);
+    return resource;
+}
+
+// 민감정보 마스킹
+log.info("[UserService] getUserByEmail - email={}", LogMaskingUtils.mask(email, 2, 2));
+log.info("[TenantService] getTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenantKey));
+```
+
+### 5. 예외 처리
+
+```java
+// ✅ 명확한 예외 던지기
+public User getUserByIdOrThrow(Long id) {
+    return userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+}
+
+// ✅ 비즈니스 검증
+public void createUser(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+}
+
+// ❌ 예외 무시 (금지)
+public User getUser(Long id) {
+    try {
+        return userRepository.findById(id).orElse(null);
+    } catch (Exception e) {
+        return null;  // 예외 숨김 - 절대 금지
+    }
+}
+```
+
+### 6. 메서드 명명 규칙
+- **조회 (단건)**: `getXxxById`, `getXxxByUsername`
+- **조회 (목록)**: `getAllXxx`, `getActiveXxx`, `getXxxByTenant`
+- **생성**: `createXxx`, `saveXxx`
+- **수정**: `updateXxx`, `modifyXxx`
+- **삭제**: `deleteXxx`, `removeXxx`
+- **상태 변경**: `activateXxx`, `suspendXxx`, `lockXxx`
+
+### 7. 비즈니스 로직 구조화
+
+```java
+@Transactional
+public User createUser(UserCreateRequest request) {
+    // 1. 로깅
+    log.info("[UserService] createUser - username={}", request.getUsername());
+    
+    // 2. 검증
+    validateUserUniqueness(request);
+    
+    // 3. 엔티티 생성
+    User user = buildUser(request);
+    
+    // 4. 저장
+    User saved = userRepository.save(user);
+    
+    // 5. 후속 처리 (이벤트, 알림 등)
+    publishUserCreatedEvent(saved);
+    
+    // 6. 성공 로깅
+    log.info("[UserService] createUser - success userId={}", saved.getId());
+    return saved;
+}
+
+// 검증 로직 분리
+private void validateUserUniqueness(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+    if (userRepository.existsByEmail(request.getEmail())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+    }
+}
+
+// 빌더 로직 분리
+private User buildUser(UserCreateRequest request) {
+    return User.builder()
+            .username(request.getUsername())
+            .email(request.getEmail())
+            .name(request.getName())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .status(Status.ACTIVE)
+            .role(UserRole.VIEWER)
+            .build();
+}
+```
+
+## 전체 예시
+
+```java
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+    
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    
+    public List<User> getAllUsers() {
+        log.info("[UserService] getAllUsers");
+        List<User> result = userRepository.findAll();
+        log.info("[UserService] getAllUsers - success count={}", result.size());
+        return result;
+    }
+    
+    public User getUserByIdOrThrow(Long id) {
+        log.info("[UserService] getUserByIdOrThrow - id={}", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+        log.info("[UserService] getUserByIdOrThrow - success id={}", id);
+        return user;
+    }
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        log.info("[UserService] createUser - username={}", 
+                LogMaskingUtils.mask(request.getUsername(), 2, 2));
+        
+        validateUserUniqueness(request);
+        
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .status(Status.ACTIVE)
+                .build();
+        
+        User saved = userRepository.save(user);
+        log.info("[UserService] createUser - success userId={}", saved.getId());
+        return saved;
+    }
+    
+    @Transactional
+    public User updateUser(Long id, UserUpdateRequest request) {
+        log.info("[UserService] updateUser - id={}", id);
+        
+        User user = getUserByIdOrThrow(id);
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        
+        User saved = userRepository.save(user);
+        log.info("[UserService] updateUser - success id={}", id);
+        return saved;
+    }
+    
+    @Transactional
+    public void deleteUser(Long id) {
+        log.info("[UserService] deleteUser - id={}", id);
+        User user = getUserByIdOrThrow(id);
+        user.setIsDeleted(true);
+        userRepository.save(user);
+        log.info("[UserService] deleteUser - success id={}", id);
+    }
+    
+    private void validateUserUniqueness(UserCreateRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+        }
+    }
+}
+```
+# Service Pattern (서비스 패턴)
+
+## 기본 구조
+
+```java
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class ResourceService {
+    
+    private final ResourceRepository resourceRepository;
+    
+    public Resource getResourceById(Long id) {
+        log.info("[ResourceService] getResourceById - id={}", id);
+        Resource resource = resourceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ResourceErrorCode.RESOURCE_NOT_FOUND));
+        log.info("[ResourceService] getResourceById - success id={}", id);
+        return resource;
+    }
+    
+    @Transactional
+    public Resource createResource(ResourceCreateRequest request) {
+        log.info("[ResourceService] createResource - name={}", request.getName());
+        
+        // 비즈니스 검증
+        validateResourceUniqueness(request);
+        
+        // 엔티티 생성
+        Resource resource = Resource.builder()
+                .name(request.getName())
+                .status(Status.ACTIVE)
+                .build();
+        
+        Resource saved = resourceRepository.save(resource);
+        log.info("[ResourceService] createResource - success id={}", saved.getId());
+        return saved;
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. 클래스 레벨 어노테이션
+- `@Slf4j`: 로깅 필수
+- `@Service`: 서비스 레이어 선언
+- `@RequiredArgsConstructor`: 생성자 주입 (필드 주입 금지)
+- `@Transactional(readOnly = true)`: 클래스 레벨에 기본 읽기 전용 설정
+
+### 2. 트랜잭션 관리
+- **기본**: 클래스 레벨에 `@Transactional(readOnly = true)`
+- **조회 메서드**: 별도 어노테이션 불필요 (클래스 레벨 상속)
+- **쓰기 메서드**: `@Transactional` 명시 (readOnly=false가 기본)
+
+```java
+@Transactional(readOnly = true)  // 클래스 레벨
+public class UserService {
+    
+    public User getUserById(Long id) {
+        // readOnly=true (클래스 레벨 상속)
+    }
+    
+    @Transactional  // 메서드 레벨로 오버라이드
+    public User createUser(UserCreateRequest request) {
+        // readOnly=false (쓰기 가능)
+    }
+}
+```
+
+### 3. 의존성 주입
+
+```java
+// ✅ 생성자 주입 (권장)
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+}
+
+// ❌ 필드 주입 (금지)
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;
+}
+```
+
+### 4. 로깅 패턴
+
+```java
+public Resource getResource(Long id) {
+    // 진입 로그
+    log.info("[ServiceName] methodName - id={}", id);
+    
+    // 비즈니스 로직
+    Resource resource = resourceRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(ResourceErrorCode.RESOURCE_NOT_FOUND));
+    
+    // 성공 로그
+    log.info("[ServiceName] methodName - success id={}", id);
+    return resource;
+}
+
+// 민감정보 마스킹
+log.info("[UserService] getUserByEmail - email={}", LogMaskingUtils.mask(email, 2, 2));
+log.info("[TenantService] getTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenantKey));
+```
+
+### 5. 예외 처리
+
+```java
+// ✅ 명확한 예외 던지기
+public User getUserByIdOrThrow(Long id) {
+    return userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+}
+
+// ✅ 비즈니스 검증
+public void createUser(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+}
+
+// ❌ 예외 무시 (금지)
+public User getUser(Long id) {
+    try {
+        return userRepository.findById(id).orElse(null);
+    } catch (Exception e) {
+        return null;  // 예외 숨김 - 절대 금지
+    }
+}
+```
+
+### 6. 메서드 명명 규칙
+- **조회 (단건)**: `getXxxById`, `getXxxByUsername`
+- **조회 (목록)**: `getAllXxx`, `getActiveXxx`, `getXxxByTenant`
+- **생성**: `createXxx`, `saveXxx`
+- **수정**: `updateXxx`, `modifyXxx`
+- **삭제**: `deleteXxx`, `removeXxx`
+- **상태 변경**: `activateXxx`, `suspendXxx`, `lockXxx`
+
+### 7. 비즈니스 로직 구조화
+
+```java
+@Transactional
+public User createUser(UserCreateRequest request) {
+    // 1. 로깅
+    log.info("[UserService] createUser - username={}", request.getUsername());
+    
+    // 2. 검증
+    validateUserUniqueness(request);
+    
+    // 3. 엔티티 생성
+    User user = buildUser(request);
+    
+    // 4. 저장
+    User saved = userRepository.save(user);
+    
+    // 5. 후속 처리 (이벤트, 알림 등)
+    publishUserCreatedEvent(saved);
+    
+    // 6. 성공 로깅
+    log.info("[UserService] createUser - success userId={}", saved.getId());
+    return saved;
+}
+
+// 검증 로직 분리
+private void validateUserUniqueness(UserCreateRequest request) {
+    if (userRepository.existsByUsername(request.getUsername())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+    }
+    if (userRepository.existsByEmail(request.getEmail())) {
+        throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+    }
+}
+
+// 빌더 로직 분리
+private User buildUser(UserCreateRequest request) {
+    return User.builder()
+            .username(request.getUsername())
+            .email(request.getEmail())
+            .name(request.getName())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .status(Status.ACTIVE)
+            .role(UserRole.VIEWER)
+            .build();
+}
+```
+
+## 전체 예시
+
+```java
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+    
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    
+    public List<User> getAllUsers() {
+        log.info("[UserService] getAllUsers");
+        List<User> result = userRepository.findAll();
+        log.info("[UserService] getAllUsers - success count={}", result.size());
+        return result;
+    }
+    
+    public User getUserByIdOrThrow(Long id) {
+        log.info("[UserService] getUserByIdOrThrow - id={}", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+        log.info("[UserService] getUserByIdOrThrow - success id={}", id);
+        return user;
+    }
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        log.info("[UserService] createUser - username={}", 
+                LogMaskingUtils.mask(request.getUsername(), 2, 2));
+        
+        validateUserUniqueness(request);
+        
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .status(Status.ACTIVE)
+                .build();
+        
+        User saved = userRepository.save(user);
+        log.info("[UserService] createUser - success userId={}", saved.getId());
+        return saved;
+    }
+    
+    @Transactional
+    public User updateUser(Long id, UserUpdateRequest request) {
+        log.info("[UserService] updateUser - id={}", id);
+        
+        User user = getUserByIdOrThrow(id);
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        
+        User saved = userRepository.save(user);
+        log.info("[UserService] updateUser - success id={}", id);
+        return saved;
+    }
+    
+    @Transactional
+    public void deleteUser(Long id) {
+        log.info("[UserService] deleteUser - id={}", id);
+        User user = getUserByIdOrThrow(id);
+        user.setIsDeleted(true);
+        userRepository.save(user);
+        log.info("[UserService] deleteUser - success id={}", id);
+    }
+    
+    private void validateUserUniqueness(UserCreateRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+        }
+    }
+}
+```

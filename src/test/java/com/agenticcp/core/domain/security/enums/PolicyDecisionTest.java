@@ -7,114 +7,194 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * PolicyDecision 열거형 테스트
+ * PolicyDecision enum 테스트
  * 
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2024-01-01
  */
-@DisplayName("PolicyDecision 테스트")
+@DisplayName("PolicyDecision Enum 테스트")
 class PolicyDecisionTest {
     
     @Nested
-    @DisplayName("기본 기능 테스트")
-    class BasicFunctionalityTest {
-        
-        @Test
-        @DisplayName("정책 결정 코드 반환")
-        void getCode_ReturnsCorrectCode() {
-            // Given & When & Then
-            assertThat(PolicyDecision.ALLOW.getCode()).isEqualTo("ALLOW");
-            assertThat(PolicyDecision.DENY.getCode()).isEqualTo("DENY");
-            assertThat(PolicyDecision.INCONCLUSIVE.getCode()).isEqualTo("INCONCLUSIVE");
-        }
-        
-        @Test
-        @DisplayName("정책 결정 설명 반환")
-        void getDescription_ReturnsCorrectDescription() {
-            // Given & When & Then
-            assertThat(PolicyDecision.ALLOW.getDescription()).isEqualTo("접근 허용");
-            assertThat(PolicyDecision.DENY.getDescription()).isEqualTo("접근 거부");
-            assertThat(PolicyDecision.INCONCLUSIVE.getDescription()).isEqualTo("결정할 수 없음");
-        }
-        
-        @Test
-        @DisplayName("toString 메서드 테스트")
-        void toString_ReturnsFormattedString() {
-            // Given & When & Then
-            assertThat(PolicyDecision.ALLOW.toString()).isEqualTo("ALLOW (접근 허용)");
-            assertThat(PolicyDecision.DENY.toString()).isEqualTo("DENY (접근 거부)");
-            assertThat(PolicyDecision.INCONCLUSIVE.toString()).isEqualTo("INCONCLUSIVE (결정할 수 없음)");
-        }
-    }
-    
-    @Nested
-    @DisplayName("코드로부터 PolicyDecision 찾기 테스트")
+    @DisplayName("코드 변환 테스트")
     class FromCodeTest {
         
         @Test
-        @DisplayName("유효한 코드로 PolicyDecision 찾기")
-        void fromCode_ValidCode_ReturnsCorrectDecision() {
-            // Given & When & Then
-            assertThat(PolicyDecision.fromCode("ALLOW")).isEqualTo(PolicyDecision.ALLOW);
-            assertThat(PolicyDecision.fromCode("DENY")).isEqualTo(PolicyDecision.DENY);
-            assertThat(PolicyDecision.fromCode("INCONCLUSIVE")).isEqualTo(PolicyDecision.INCONCLUSIVE);
+        @DisplayName("ALLOW 코드로 변환")
+        void fromCode_Allow_ReturnsAllow() {
+            // When
+            PolicyDecision result = PolicyDecision.fromCode("ALLOW");
+            
+            // Then
+            assertThat(result).isEqualTo(PolicyDecision.ALLOW);
         }
         
         @Test
-        @DisplayName("대소문자 구분 없이 PolicyDecision 찾기")
-        void fromCode_CaseInsensitive_ReturnsCorrectDecision() {
-            // Given & When & Then
-            assertThat(PolicyDecision.fromCode("allow")).isEqualTo(PolicyDecision.ALLOW);
-            assertThat(PolicyDecision.fromCode("deny")).isEqualTo(PolicyDecision.DENY);
-            assertThat(PolicyDecision.fromCode("inconclusive")).isEqualTo(PolicyDecision.INCONCLUSIVE);
+        @DisplayName("DENY 코드로 변환")
+        void fromCode_Deny_ReturnsDeny() {
+            // When
+            PolicyDecision result = PolicyDecision.fromCode("DENY");
+            
+            // Then
+            assertThat(result).isEqualTo(PolicyDecision.DENY);
         }
         
         @Test
-        @DisplayName("null 코드로 PolicyDecision 찾기")
-        void fromCode_NullCode_ReturnsNull() {
-            // Given & When & Then
-            assertThat(PolicyDecision.fromCode(null)).isNull();
+        @DisplayName("INCONCLUSIVE 코드로 변환")
+        void fromCode_Inconclusive_ReturnsInconclusive() {
+            // When
+            PolicyDecision result = PolicyDecision.fromCode("INCONCLUSIVE");
+            
+            // Then
+            assertThat(result).isEqualTo(PolicyDecision.INCONCLUSIVE);
         }
         
         @Test
-        @DisplayName("유효하지 않은 코드로 PolicyDecision 찾기")
+        @DisplayName("소문자 코드로 변환")
+        void fromCode_LowerCase_ReturnsCorrectDecision() {
+            // When
+            PolicyDecision allowResult = PolicyDecision.fromCode("allow");
+            PolicyDecision denyResult = PolicyDecision.fromCode("deny");
+            PolicyDecision inconclusiveResult = PolicyDecision.fromCode("inconclusive");
+            
+            // Then
+            assertThat(allowResult).isEqualTo(PolicyDecision.ALLOW);
+            assertThat(denyResult).isEqualTo(PolicyDecision.DENY);
+            assertThat(inconclusiveResult).isEqualTo(PolicyDecision.INCONCLUSIVE);
+        }
+        
+        @Test
+        @DisplayName("null 코드로 변환")
+        void fromCode_Null_ReturnsNull() {
+            // When
+            PolicyDecision result = PolicyDecision.fromCode(null);
+            
+            // Then
+            assertThat(result).isNull();
+        }
+        
+        @Test
+        @DisplayName("잘못된 코드로 변환")
         void fromCode_InvalidCode_ReturnsNull() {
-            // Given & When & Then
-            assertThat(PolicyDecision.fromCode("INVALID")).isNull();
-            assertThat(PolicyDecision.fromCode("")).isNull();
+            // When
+            PolicyDecision result = PolicyDecision.fromCode("INVALID");
+            
+            // Then
+            assertThat(result).isNull();
         }
     }
     
     @Nested
-    @DisplayName("정책 결정 타입 확인 테스트")
-    class DecisionTypeTest {
+    @DisplayName("상태 확인 테스트")
+    class StatusCheckTest {
         
         @Test
-        @DisplayName("ALLOW 타입 확인")
+        @DisplayName("ALLOW 상태 확인")
         void isAllow_AllowDecision_ReturnsTrue() {
-            // Given & When & Then
-            assertThat(PolicyDecision.ALLOW.isAllow()).isTrue();
-            assertThat(PolicyDecision.DENY.isAllow()).isFalse();
-            assertThat(PolicyDecision.INCONCLUSIVE.isAllow()).isFalse();
+            // Given
+            PolicyDecision decision = PolicyDecision.ALLOW;
+            
+            // When & Then
+            assertThat(decision.isAllow()).isTrue();
+            assertThat(decision.isDeny()).isFalse();
+            assertThat(decision.isInconclusive()).isFalse();
         }
         
         @Test
-        @DisplayName("DENY 타입 확인")
+        @DisplayName("DENY 상태 확인")
         void isDeny_DenyDecision_ReturnsTrue() {
-            // Given & When & Then
-            assertThat(PolicyDecision.DENY.isDeny()).isTrue();
-            assertThat(PolicyDecision.ALLOW.isDeny()).isFalse();
-            assertThat(PolicyDecision.INCONCLUSIVE.isDeny()).isFalse();
+            // Given
+            PolicyDecision decision = PolicyDecision.DENY;
+            
+            // When & Then
+            assertThat(decision.isAllow()).isFalse();
+            assertThat(decision.isDeny()).isTrue();
+            assertThat(decision.isInconclusive()).isFalse();
         }
         
         @Test
-        @DisplayName("INCONCLUSIVE 타입 확인")
+        @DisplayName("INCONCLUSIVE 상태 확인")
         void isInconclusive_InconclusiveDecision_ReturnsTrue() {
-            // Given & When & Then
-            assertThat(PolicyDecision.INCONCLUSIVE.isInconclusive()).isTrue();
-            assertThat(PolicyDecision.ALLOW.isInconclusive()).isFalse();
-            assertThat(PolicyDecision.DENY.isInconclusive()).isFalse();
+            // Given
+            PolicyDecision decision = PolicyDecision.INCONCLUSIVE;
+            
+            // When & Then
+            assertThat(decision.isAllow()).isFalse();
+            assertThat(decision.isDeny()).isFalse();
+            assertThat(decision.isInconclusive()).isTrue();
+        }
+    }
+    
+    @Nested
+    @DisplayName("속성 테스트")
+    class AttributeTest {
+        
+        @Test
+        @DisplayName("ALLOW 속성")
+        void attributes_Allow_ReturnsCorrectValues() {
+            // Given
+            PolicyDecision decision = PolicyDecision.ALLOW;
+            
+            // When & Then
+            assertThat(decision.getCode()).isEqualTo("ALLOW");
+            assertThat(decision.getDescription()).isEqualTo("접근 허용");
+        }
+        
+        @Test
+        @DisplayName("DENY 속성")
+        void attributes_Deny_ReturnsCorrectValues() {
+            // Given
+            PolicyDecision decision = PolicyDecision.DENY;
+            
+            // When & Then
+            assertThat(decision.getCode()).isEqualTo("DENY");
+            assertThat(decision.getDescription()).isEqualTo("접근 거부");
+        }
+        
+        @Test
+        @DisplayName("INCONCLUSIVE 속성")
+        void attributes_Inconclusive_ReturnsCorrectValues() {
+            // Given
+            PolicyDecision decision = PolicyDecision.INCONCLUSIVE;
+            
+            // When & Then
+            assertThat(decision.getCode()).isEqualTo("INCONCLUSIVE");
+            assertThat(decision.getDescription()).isEqualTo("결정할 수 없음");
+        }
+        
+        @Test
+        @DisplayName("toString 테스트")
+        void toString_ReturnsFormattedString() {
+            // Given
+            PolicyDecision allow = PolicyDecision.ALLOW;
+            PolicyDecision deny = PolicyDecision.DENY;
+            PolicyDecision inconclusive = PolicyDecision.INCONCLUSIVE;
+            
+            // When & Then
+            assertThat(allow.toString()).isEqualTo("ALLOW (접근 허용)");
+            assertThat(deny.toString()).isEqualTo("DENY (접근 거부)");
+            assertThat(inconclusive.toString()).isEqualTo("INCONCLUSIVE (결정할 수 없음)");
+        }
+    }
+    
+    @Nested
+    @DisplayName("모든 enum 값 테스트")
+    class AllValuesTest {
+        
+        @Test
+        @DisplayName("모든 enum 값 존재")
+        void values_ReturnsAllDecisions() {
+            // When
+            PolicyDecision[] values = PolicyDecision.values();
+            
+            // Then
+            assertThat(values).hasSize(3);
+            assertThat(values).containsExactlyInAnyOrder(
+                PolicyDecision.ALLOW,
+                PolicyDecision.DENY,
+                PolicyDecision.INCONCLUSIVE
+            );
         }
     }
 }

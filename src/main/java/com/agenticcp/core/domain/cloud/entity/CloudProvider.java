@@ -80,7 +80,8 @@ public class CloudProvider extends BaseEntity {
         VMWARE,
         OPENSTACK,
         KUBERNETES,
-        DOCKER
+        DOCKER,
+        ON_PREMISE
     }
 
     public enum AuthenticationType {

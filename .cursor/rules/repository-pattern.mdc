@@ -1,0 +1,476 @@
+---
+alwaysApply: false
+---
+
+# Repository Pattern (리포지토리 패턴)
+
+## 기본 구조
+
+```java
+@Repository
+public interface ResourceRepository extends JpaRepository<Resource, Long> {
+    
+    /**
+     * 이름으로 리소스 조회
+     */
+    Optional<Resource> findByName(String name);
+    
+    /**
+     * 활성 리소스 목록 조회
+     */
+    List<Resource> findByStatus(Status status);
+    
+    /**
+     * 테넌트별 활성 리소스 조회
+     */
+    @Query("SELECT r FROM Resource r WHERE r.tenant = :tenant AND r.status = :status AND r.isDeleted = false")
+    List<Resource> findActiveResourcesByTenant(@Param("tenant") Tenant tenant, @Param("status") Status status);
+    
+    /**
+     * 리소스명 중복 검사
+     */
+    boolean existsByName(String name);
+}
+```
+
+## 필수 규칙
+
+### 1. 인터페이스 선언
+- `@Repository` 어노테이션 필수
+- `JpaRepository<Entity, IdType>` 상속
+- 제네릭 타입 명시: `<Entity, Long>` 또는 `<Entity, String>` 등
+
+### 2. 메서드 명명 규칙
+- **조회 (단건)**: `findByXxx`, `findByXxxAndYyy`
+- **조회 (목록)**: `findAllBy`, `findByXxx`
+- **존재 여부**: `existsByXxx`
+- **개수**: `countByXxx`
+- **삭제**: `deleteByXxx` (사용 지양, Service에서 명시적 처리 권장)
+
+### 3. 반환 타입
+
+```java
+// 단건 조회 - Optional 사용
+Optional<User> findByUsername(String username);
+Optional<User> findById(Long id);  // JpaRepository에서 기본 제공
+
+// 목록 조회 - List 사용
+List<User> findByStatus(Status status);
+List<User> findAll();  // JpaRepository에서 기본 제공
+
+// 페이징 조회 - Page 사용
+Page<User> findByStatus(Status status, Pageable pageable);
+
+// 존재 여부 - boolean
+boolean existsByUsername(String username);
+
+// 개수 - Long
+Long countByStatus(Status status);
+```
+
+### 4. @Query 사용
+
+```java
+// JPQL 사용 (권장)
+@Query("SELECT u FROM User u WHERE u.status = :status AND u.createdAt >= :startDate")
+List<User> findActiveUsersSince(
+    @Param("status") Status status, 
+    @Param("startDate") LocalDateTime startDate
+);
+
+// 복잡한 조인
+@Query("""
+    SELECT u FROM User u 
+    JOIN FETCH u.tenant t 
+    WHERE u.status = :status 
+    AND t.tenantKey = :tenantKey
+    ORDER BY u.createdAt DESC
+    """)
+List<User> findUsersByTenantKey(
+    @Param("tenantKey") String tenantKey, 
+    @Param("status") Status status
+);
+
+// Native Query (최후의 수단)
+@Query(value = """
+    SELECT u.*, COUNT(r.id) as resource_count 
+    FROM users u 
+    LEFT JOIN resources r ON u.id = r.user_id 
+    WHERE u.status = :status 
+    GROUP BY u.id
+    """, nativeQuery = true)
+List<Object[]> findUsersWithResourceCount(@Param("status") String status);
+```
+
+### 5. 파라미터 바인딩
+
+```java
+// ✅ @Param 사용 (명시적, 권장)
+@Query("SELECT u FROM User u WHERE u.username = :username")
+Optional<User> findByUsername(@Param("username") String username);
+
+// ✅ 위치 기반 파라미터 (간단한 경우)
+@Query("SELECT u FROM User u WHERE u.username = ?1")
+Optional<User> findByUsername(String username);
+
+// ❌ SQL Injection 위험 (절대 금지)
+@Query("SELECT u FROM User u WHERE u.username = '" + username + "'")  // 위험!
+```
+
+### 6. 주석 작성
+
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    /**
+     * 사용자명으로 사용자 조회
+     * @param username 사용자명
+     * @return 사용자 정보 (Optional)
+     */
+    Optional<User> findByUsername(String username);
+    
+    /**
+     * 테넌트별 활성 사용자 목록 조회
+     * 삭제되지 않은 사용자만 포함
+     * @param tenant 테넌트
+     * @param status 사용자 상태
+     * @return 활성 사용자 목록
+     */
+    @Query("SELECT u FROM User u WHERE u.tenant = :tenant AND u.status = :status AND u.isDeleted = false")
+    List<User> findActiveUsersByTenant(
+        @Param("tenant") Tenant tenant, 
+        @Param("status") Status status
+    );
+}
+```
+
+## 전체 예시
+
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    /**
+     * 사용자명으로 사용자 조회
+     */
+    Optional<User> findByUsername(String username);
+    
+    /**
+     * 이메일로 사용자 조회
+     */
+    Optional<User> findByEmail(String email);
+    
+    /**
+     * 테넌트로 사용자 목록 조회
+     */
+    List<User> findByTenant(Tenant tenant);
+    
+    /**
+     * 역할로 사용자 목록 조회
+     */
+    List<User> findByRole(UserRole role);
+    
+    /**
+     * 상태로 사용자 목록 조회
+     */
+    List<User> findByStatus(Status status);
+    
+    /**
+     * 테넌트별 활성 사용자 조회
+     */
+    @Query("SELECT u FROM User u WHERE u.tenant = :tenant AND u.status = :status AND u.isDeleted = false")
+    List<User> findActiveUsersByTenant(
+        @Param("tenant") Tenant tenant, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 역할별 활성 사용자 조회
+     */
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.status = :status AND u.isDeleted = false")
+    List<User> findActiveUsersByRole(
+        @Param("role") UserRole role, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 비활성 사용자 조회 (특정 날짜 이전 마지막 로그인)
+     */
+    @Query("SELECT u FROM User u WHERE u.lastLogin < :before AND u.status = :status")
+    List<User> findInactiveUsers(
+        @Param("before") LocalDateTime before, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 로그인 실패 횟수가 많은 사용자 조회
+     */
+    @Query("SELECT u FROM User u WHERE u.failedLoginAttempts >= :maxAttempts AND u.status = :status")
+    List<User> findLockedUsers(
+        @Param("maxAttempts") Integer maxAttempts, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 테넌트별 활성 사용자 수
+     */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.tenant = :tenant AND u.status = :status AND u.isDeleted = false")
+    Long countActiveUsersByTenant(
+        @Param("tenant") Tenant tenant, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 키워드로 사용자 검색 (사용자명, 이메일, 이름)
+     */
+    @Query("SELECT u FROM User u WHERE u.username LIKE %:keyword% OR u.email LIKE %:keyword% OR u.name LIKE %:keyword%")
+    List<User> searchUsers(@Param("keyword") String keyword);
+    
+    /**
+     * 사용자명 중복 검사
+     */
+    boolean existsByUsername(String username);
+    
+    /**
+     * 이메일 중복 검사
+     */
+    boolean existsByEmail(String email);
+}
+```
+# Repository Pattern (리포지토리 패턴)
+
+## 기본 구조
+
+```java
+@Repository
+public interface ResourceRepository extends JpaRepository<Resource, Long> {
+    
+    /**
+     * 이름으로 리소스 조회
+     */
+    Optional<Resource> findByName(String name);
+    
+    /**
+     * 활성 리소스 목록 조회
+     */
+    List<Resource> findByStatus(Status status);
+    
+    /**
+     * 테넌트별 활성 리소스 조회
+     */
+    @Query("SELECT r FROM Resource r WHERE r.tenant = :tenant AND r.status = :status AND r.isDeleted = false")
+    List<Resource> findActiveResourcesByTenant(@Param("tenant") Tenant tenant, @Param("status") Status status);
+    
+    /**
+     * 리소스명 중복 검사
+     */
+    boolean existsByName(String name);
+}
+```
+
+## 필수 규칙
+
+### 1. 인터페이스 선언
+- `@Repository` 어노테이션 필수
+- `JpaRepository<Entity, IdType>` 상속
+- 제네릭 타입 명시: `<Entity, Long>` 또는 `<Entity, String>` 등
+
+### 2. 메서드 명명 규칙
+- **조회 (단건)**: `findByXxx`, `findByXxxAndYyy`
+- **조회 (목록)**: `findAllBy`, `findByXxx`
+- **존재 여부**: `existsByXxx`
+- **개수**: `countByXxx`
+- **삭제**: `deleteByXxx` (사용 지양, Service에서 명시적 처리 권장)
+
+### 3. 반환 타입
+
+```java
+// 단건 조회 - Optional 사용
+Optional<User> findByUsername(String username);
+Optional<User> findById(Long id);  // JpaRepository에서 기본 제공
+
+// 목록 조회 - List 사용
+List<User> findByStatus(Status status);
+List<User> findAll();  // JpaRepository에서 기본 제공
+
+// 페이징 조회 - Page 사용
+Page<User> findByStatus(Status status, Pageable pageable);
+
+// 존재 여부 - boolean
+boolean existsByUsername(String username);
+
+// 개수 - Long
+Long countByStatus(Status status);
+```
+
+### 4. @Query 사용
+
+```java
+// JPQL 사용 (권장)
+@Query("SELECT u FROM User u WHERE u.status = :status AND u.createdAt >= :startDate")
+List<User> findActiveUsersSince(
+    @Param("status") Status status, 
+    @Param("startDate") LocalDateTime startDate
+);
+
+// 복잡한 조인
+@Query("""
+    SELECT u FROM User u 
+    JOIN FETCH u.tenant t 
+    WHERE u.status = :status 
+    AND t.tenantKey = :tenantKey
+    ORDER BY u.createdAt DESC
+    """)
+List<User> findUsersByTenantKey(
+    @Param("tenantKey") String tenantKey, 
+    @Param("status") Status status
+);
+
+// Native Query (최후의 수단)
+@Query(value = """
+    SELECT u.*, COUNT(r.id) as resource_count 
+    FROM users u 
+    LEFT JOIN resources r ON u.id = r.user_id 
+    WHERE u.status = :status 
+    GROUP BY u.id
+    """, nativeQuery = true)
+List<Object[]> findUsersWithResourceCount(@Param("status") String status);
+```
+
+### 5. 파라미터 바인딩
+
+```java
+// ✅ @Param 사용 (명시적, 권장)
+@Query("SELECT u FROM User u WHERE u.username = :username")
+Optional<User> findByUsername(@Param("username") String username);
+
+// ✅ 위치 기반 파라미터 (간단한 경우)
+@Query("SELECT u FROM User u WHERE u.username = ?1")
+Optional<User> findByUsername(String username);
+
+// ❌ SQL Injection 위험 (절대 금지)
+@Query("SELECT u FROM User u WHERE u.username = '" + username + "'")  // 위험!
+```
+
+### 6. 주석 작성
+
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    /**
+     * 사용자명으로 사용자 조회
+     * @param username 사용자명
+     * @return 사용자 정보 (Optional)
+     */
+    Optional<User> findByUsername(String username);
+    
+    /**
+     * 테넌트별 활성 사용자 목록 조회
+     * 삭제되지 않은 사용자만 포함
+     * @param tenant 테넌트
+     * @param status 사용자 상태
+     * @return 활성 사용자 목록
+     */
+    @Query("SELECT u FROM User u WHERE u.tenant = :tenant AND u.status = :status AND u.isDeleted = false")
+    List<User> findActiveUsersByTenant(
+        @Param("tenant") Tenant tenant, 
+        @Param("status") Status status
+    );
+}
+```
+
+## 전체 예시
+
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    
+    /**
+     * 사용자명으로 사용자 조회
+     */
+    Optional<User> findByUsername(String username);
+    
+    /**
+     * 이메일로 사용자 조회
+     */
+    Optional<User> findByEmail(String email);
+    
+    /**
+     * 테넌트로 사용자 목록 조회
+     */
+    List<User> findByTenant(Tenant tenant);
+    
+    /**
+     * 역할로 사용자 목록 조회
+     */
+    List<User> findByRole(UserRole role);
+    
+    /**
+     * 상태로 사용자 목록 조회
+     */
+    List<User> findByStatus(Status status);
+    
+    /**
+     * 테넌트별 활성 사용자 조회
+     */
+    @Query("SELECT u FROM User u WHERE u.tenant = :tenant AND u.status = :status AND u.isDeleted = false")
+    List<User> findActiveUsersByTenant(
+        @Param("tenant") Tenant tenant, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 역할별 활성 사용자 조회
+     */
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.status = :status AND u.isDeleted = false")
+    List<User> findActiveUsersByRole(
+        @Param("role") UserRole role, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 비활성 사용자 조회 (특정 날짜 이전 마지막 로그인)
+     */
+    @Query("SELECT u FROM User u WHERE u.lastLogin < :before AND u.status = :status")
+    List<User> findInactiveUsers(
+        @Param("before") LocalDateTime before, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 로그인 실패 횟수가 많은 사용자 조회
+     */
+    @Query("SELECT u FROM User u WHERE u.failedLoginAttempts >= :maxAttempts AND u.status = :status")
+    List<User> findLockedUsers(
+        @Param("maxAttempts") Integer maxAttempts, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 테넌트별 활성 사용자 수
+     */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.tenant = :tenant AND u.status = :status AND u.isDeleted = false")
+    Long countActiveUsersByTenant(
+        @Param("tenant") Tenant tenant, 
+        @Param("status") Status status
+    );
+    
+    /**
+     * 키워드로 사용자 검색 (사용자명, 이메일, 이름)
+     */
+    @Query("SELECT u FROM User u WHERE u.username LIKE %:keyword% OR u.email LIKE %:keyword% OR u.name LIKE %:keyword%")
+    List<User> searchUsers(@Param("keyword") String keyword);
+    
+    /**
+     * 사용자명 중복 검사
+     */
+    boolean existsByUsername(String username);
+    
+    /**
+     * 이메일 중복 검사
+     */
+    boolean existsByEmail(String email);
+}
+```
