@@ -40,30 +40,4 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
      */
     List<Notification> findByStatusAndIsDeletedFalse(NotificationStatus status);
 
-    /**
-     * 예약된 알림 조회
-     */
-    @Query("SELECT n FROM Notification n WHERE n.scheduledAt <= :now AND n.status = :status AND n.isDeleted = false")
-    List<Notification> findScheduledNotifications(@Param("now") LocalDateTime now, @Param("status") NotificationStatus status);
-
-    /**
-     * 재시도가 필요한 알림 조회
-     */
-    @Query("SELECT n FROM Notification n WHERE n.status = :status AND n.retryCount < :maxRetry AND n.isDeleted = false")
-    List<Notification> findRetryableNotifications(@Param("status") NotificationStatus status, @Param("maxRetry") Integer maxRetry);
-
-    /**
-     * 알림 타입별 통계
-     */
-    @Query("SELECT n.notificationType, COUNT(n) FROM Notification n WHERE n.tenantId = :tenantId AND n.isDeleted = false GROUP BY n.notificationType")
-    List<Object[]> getNotificationStatsByType(@Param("tenantId") String tenantId);
-
-    /**
-     * 기간별 알림 조회
-     */
-    @Query("SELECT n FROM Notification n WHERE n.tenantId = :tenantId AND n.createdAt BETWEEN :startDate AND :endDate AND n.isDeleted = false")
-    List<Notification> findByTenantIdAndCreatedAtBetween(@Param("tenantId") String tenantId, 
-                                                        @Param("startDate") LocalDateTime startDate, 
-                                                        @Param("endDate") LocalDateTime endDate);
-
 }

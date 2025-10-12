@@ -70,42 +70,6 @@ public class NotificationController {
     }
 
     /**
-     * 비동기 알림 발송
-     * 
-     * @param request 알림 요청
-     * @return 알림 응답 (비동기 처리)
-     */
-    @PostMapping("/send-async")
-    @Operation(
-        summary = "비동기 알림 발송", 
-        description = "알림을 비동기로 발송하여 응답 시간을 단축합니다. 즉시 PROCESSING 상태를 반환하고 백그라운드에서 알림을 발송합니다."
-    )
-    public ResponseEntity<Map<String, Object>> sendNotificationAsync(
-            @Parameter(description = "알림 발송 요청 정보")
-            @Valid @RequestBody NotificationRequest request) {
-        
-        log.info("비동기 알림 발송 요청: {}", request.getNotificationId());
-        
-        // 자동으로 현재 테넌트 ID 설정
-        String currentTenantId = getCurrentTenantId();
-        request.setTenantId(currentTenantId);
-        
-        // 비동기 알림 발송 시작
-        notificationService.sendNotificationAsync(request);
-        
-        // 즉시 응답 반환
-        Map<String, Object> response = Map.of(
-            "notificationId", request.getNotificationId(),
-            "status", "PROCESSING",
-            "message", "알림 발송이 비동기로 처리되었습니다.",
-            "timestamp", java.time.LocalDateTime.now()
-        );
-        
-        log.info("비동기 알림 발송 시작 완료: {}", request.getNotificationId());
-        return ResponseEntity.accepted().body(response);
-    }
-
-    /**
      * 알림 히스토리 조회
      * 
      * @param userId 사용자 ID (선택사항)
@@ -208,58 +172,12 @@ public class NotificationController {
     }
 
     /**
-     * 알림 채널 상세 조회
-     * 
-     * @param channelId 채널 ID
-     * @return 알림 채널 상세 정보
-     */
-    @GetMapping("/channels/{channelId}")
-    @Operation(summary = "알림 채널 상세 조회", description = "특정 알림 채널의 상세 정보를 조회합니다.")
-    public ResponseEntity<NotificationChannelEntity> getNotificationChannel(@PathVariable Long channelId) {
-        
-        log.info("알림 채널 상세 조회: channelId={}", channelId);
-        
-        NotificationChannelEntity channel = notificationService.getChannel(channelId);
-        return ResponseEntity.ok(channel);
-    }
-
-    /**
-     * 알림 통계 조회
-     * 
-     * @return 알림 통계
-     */
-    @GetMapping("/stats")
-    @Operation(
-        summary = "알림 통계 조회", 
-        description = "테넌트의 알림 발송 통계를 조회합니다. 총 발송 수, 타입별 통계 등을 제공합니다."
-    )
-    public ResponseEntity<Map<String, Object>> getNotificationStats() {
-        
-        String tenantId = getCurrentTenantId();
-        log.info("알림 통계 조회: tenantId={}", tenantId);
-        
-        // TODO: 알림 통계 조회 로직 구현
-        Map<String, Object> stats = Map.of(
-            "totalSent", 0,
-            "successRate", 0.0,
-            "failureRate", 0.0
-        );
-        
-        return ResponseEntity.ok(stats);
-    }
-
-    /**
      * 현재 테넌트 ID 조회
      * 
      * @return 현재 테넌트 ID (tenantKey)
+     * @throws RuntimeException 테넌트 컨텍스트를 찾을 수 없는 경우
      */
     private String getCurrentTenantId() {
-        try {
-            return TenantContextHolder.getCurrentTenantKeyOrThrow();
-        } catch (Exception e) {
-            log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
-            // TODO: 실제 운영에서는 예외를 발생시켜야 함
-            return "default"; // 임시 기본값
-        }
+        return TenantContextHolder.getCurrentTenantKeyOrThrow();
     }
 }

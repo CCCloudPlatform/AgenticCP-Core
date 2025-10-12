@@ -1,6 +1,5 @@
 package com.agenticcp.core.domain.notification.service;
 
-import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
@@ -111,84 +110,6 @@ public class NotificationService {
     }
 
     /**
-     * 예약된 알림 처리
-     * 
-     * <p>현재 시간에 도달한 예약된 알림들을 발송합니다.</p>
-     * <p>스케줄러에 의해 주기적으로 호출되어야 합니다.</p>
-     * 
-     * <p>처리 과정:</p>
-     * <ol>
-     *   <li>현재 시간에 도달한 PENDING 상태의 알림 조회</li>
-     *   <li>각 알림을 NotificationRequest로 변환</li>
-     *   <li>알림 발송 수행</li>
-     * </ol>
-     * 
-     * @see NotificationRepository#findScheduledNotifications(LocalDateTime, NotificationStatus)
-     */
-    @Transactional
-    public void processScheduledNotifications() {
-        // 현재 시간에 도달한 예약된 알림 조회
-        List<Notification> scheduledNotifications = notificationRepository
-                .findScheduledNotifications(LocalDateTime.now(), NotificationStatus.PENDING);
-
-        // 각 예약된 알림 처리
-        for (Notification notification : scheduledNotifications) {
-            try {
-                // Notification 엔티티를 NotificationRequest로 변환
-                NotificationRequest request = convertToRequest(notification);
-                // 알림 발송
-                sendNotification(request);
-            } catch (Exception e) {
-                log.error("예약된 알림 처리 실패: {}", notification.getNotificationId(), e);
-            }
-        }
-    }
-
-    /**
-     * 재시도가 필요한 알림 처리
-     * 
-     * <p>실패한 알림 중 재시도 가능한 알림들을 다시 발송합니다.</p>
-     * <p>스케줄러에 의해 주기적으로 호출되어야 합니다.</p>
-     * 
-     * <p>재시도 조건:</p>
-     * <ul>
-     *   <li>상태가 FAILED인 알림</li>
-     *   <li>재시도 횟수가 최대 재시도 횟수(3회) 미만</li>
-     * </ul>
-     * 
-     * <p>처리 과정:</p>
-     * <ol>
-     *   <li>재시도 가능한 알림 조회</li>
-     *   <li>재시도 횟수 증가</li>
-     *   <li>알림 재발송</li>
-     * </ol>
-     * 
-     * @see NotificationRepository#findRetryableNotifications(NotificationStatus, Integer)
-     */
-    @Transactional
-    public void processRetryableNotifications() {
-        // 재시도 가능한 알림 조회 (FAILED 상태, 재시도 횟수 3회 미만)
-        List<Notification> retryableNotifications = notificationRepository
-                .findRetryableNotifications(NotificationStatus.FAILED, 3);
-
-        // 각 재시도 가능한 알림 처리
-        for (Notification notification : retryableNotifications) {
-            try {
-                // 재시도 횟수 증가
-                notification.setRetryCount(notification.getRetryCount() + 1);
-                notificationRepository.save(notification);
-
-                // Notification 엔티티를 NotificationRequest로 변환
-                NotificationRequest request = convertToRequest(notification);
-                // 알림 재발송
-                sendNotification(request);
-            } catch (Exception e) {
-                log.error("재시도 알림 처리 실패: {}", notification.getNotificationId(), e);
-            }
-        }
-    }
-
-    /**
      * 알림 엔티티 생성
      * 
      * <p>NotificationRequest를 Notification 엔티티로 변환합니다.</p>
@@ -276,33 +197,6 @@ public class NotificationService {
     }
 
     /**
-     * Notification 엔티티를 NotificationRequest로 변환
-     * 
-     * <p>데이터베이스에 저장된 Notification 엔티티를 NotificationRequest로 변환합니다.</p>
-     * <p>예약된 알림 처리나 재시도 시 사용됩니다.</p>
-     * 
-     * @param notification 변환할 Notification 엔티티
-     * @return NotificationRequest 객체
-     */
-    private NotificationRequest convertToRequest(Notification notification) {
-        return NotificationRequest.builder()
-                .notificationId(notification.getNotificationId())                    // 알림 고유 ID
-                .tenantId(notification.getTenantId())                              // 테넌트 ID
-                .userId(notification.getUserId())                                  // 사용자 ID
-                .templateId(notification.getTemplateId() != null ? notification.getTemplateId().toString() : null)  // 템플릿 ID (String 변환)
-                .channelId(notification.getChannelId().toString())                 // 채널 ID (String 변환)
-                .title(notification.getTitle())                                    // 알림 제목
-                .content(notification.getContent())                                // 알림 내용
-                .type(notification.getNotificationType())                          // 알림 타입
-                .priority(notification.getPriority())                              // 우선순위
-                .data(convertJsonToMap(notification.getData()))                    // 추가 데이터 (JSON → Map)
-                .metadata(convertJsonToMap(notification.getMetadata()))             // 메타데이터 (JSON → Map)
-                .scheduledAt(notification.getScheduledAt())                       // 예약 시간
-                .retryCount(notification.getRetryCount())                          // 재시도 횟수
-                .build();
-    }
-
-    /**
      * Map을 JSON 문자열로 변환
      * 
      * <p>알림 데이터나 메타데이터를 JSON 형태로 변환하여 데이터베이스에 저장합니다.</p>
@@ -346,21 +240,6 @@ public class NotificationService {
         }
     }
 
-    /**
-     * 현재 테넌트 ID 조회
-     * 
-     * @return 현재 테넌트 ID (tenantKey)
-     */
-    private String getCurrentTenantId() {
-        try {
-            return TenantContextHolder.getCurrentTenantKeyOrThrow();
-        } catch (Exception e) {
-            log.warn("테넌트 컨텍스트를 찾을 수 없습니다. 기본값 사용: {}", e.getMessage());
-            // TODO: 실제 운영에서는 예외를 발생시켜야 함
-            return "default"; // 임시 기본값
-        }
-    }
-
     // ==================== 알림 히스토리 조회 메서드들 ====================
 
     /**
@@ -388,47 +267,6 @@ public class NotificationService {
         return notificationRepository.findByTenantIdAndUserIdAndIsDeletedFalse(tenantId, userId, pageable);
     }
 
-    /**
-     * 기간별 알림 조회
-     * 
-     * @param tenantId 테넌트 ID
-     * @param startDate 시작 일시
-     * @param endDate 종료 일시
-     * @return 알림 목록
-     */
-    public List<Notification> getNotificationsByDateRange(String tenantId, LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("기간별 알림 조회: tenantId={}, startDate={}, endDate={}", tenantId, startDate, endDate);
-        return notificationRepository.findByTenantIdAndCreatedAtBetween(tenantId, startDate, endDate);
-    }
-
-    /**
-     * 알림 통계 조회
-     * 
-     * @param tenantId 테넌트 ID
-     * @return 알림 통계
-     */
-    public Map<String, Object> getNotificationStats(String tenantId) {
-        log.info("알림 통계 조회: tenantId={}", tenantId);
-        
-        List<Object[]> statsByType = notificationRepository.getNotificationStatsByType(tenantId);
-        
-        Map<String, Object> stats = new HashMap<>();
-        long totalCount = 0;
-        Map<String, Long> byType = new HashMap<>();
-        
-        for (Object[] stat : statsByType) {
-            String type = stat[0].toString();
-            Long count = ((Number) stat[1]).longValue();
-            byType.put(type, count);
-            totalCount += count;
-        }
-        
-        stats.put("totalCount", totalCount);
-        stats.put("byType", byType);
-        
-        return stats;
-    }
-
     // ==================== 채널 관리 메서드들 ====================
 
     /**
@@ -439,16 +277,6 @@ public class NotificationService {
      */
     public List<NotificationChannelEntity> getActiveChannels(String tenantId) {
         return channelRepository.findActiveChannelsByTenant(tenantId);
-    }
-
-    /**
-     * 현재 테넌트의 활성화된 알림 채널 조회
-     * 
-     * @return 활성화된 알림 채널 목록
-     */
-    public List<NotificationChannelEntity> getActiveChannels() {
-        String tenantId = getCurrentTenantId();
-        return getActiveChannels(tenantId);
     }
 
     /**
@@ -526,17 +354,6 @@ public class NotificationService {
     }
 
     /**
-     * 알림 채널 상세 조회
-     * 
-     * @param channelId 조회할 채널 ID
-     * @return 알림 채널 정보
-     */
-    public NotificationChannelEntity getChannel(Long channelId) {
-        return channelRepository.findById(channelId)
-                .orElseThrow(() -> new RuntimeException("채널을 찾을 수 없습니다: " + channelId));
-    }
-
-    /**
      * 채널 설정 검증
      * 
      * @param channel 검증할 채널
@@ -587,39 +404,4 @@ public class NotificationService {
         }
     }
 
-    /**
-     * 비동기 예약된 알림 처리
-     * 
-     * <p>예약된 알림들을 비동기로 처리합니다.</p>
-     */
-    @Async("notificationExecutor")
-    public CompletableFuture<Void> processScheduledNotificationsAsync() {
-        try {
-            log.info("비동기 예약된 알림 처리 시작");
-            processScheduledNotifications();
-            log.info("비동기 예약된 알림 처리 완료");
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            log.error("비동기 예약된 알림 처리 실패", e);
-            return CompletableFuture.failedFuture(e);
-        }
-    }
-
-    /**
-     * 비동기 재시도 가능한 알림 처리
-     * 
-     * <p>재시도가 필요한 알림들을 비동기로 처리합니다.</p>
-     */
-    @Async("notificationExecutor")
-    public CompletableFuture<Void> processRetryableNotificationsAsync() {
-        try {
-            log.info("비동기 재시도 가능한 알림 처리 시작");
-            processRetryableNotifications();
-            log.info("비동기 재시도 가능한 알림 처리 완료");
-            return CompletableFuture.completedFuture(null);
-        } catch (Exception e) {
-            log.error("비동기 재시도 가능한 알림 처리 실패", e);
-            return CompletableFuture.failedFuture(e);
-        }
-    }
 }
