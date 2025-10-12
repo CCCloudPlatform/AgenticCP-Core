@@ -124,7 +124,12 @@ public class FeatureFlagTargetRule extends BaseEntity {
         /**
          * 퍼센트 롤아웃 (이번에는 설정만 지원)
          */
-        PERCENTAGE_ROLLOUT
+        PERCENTAGE_ROLLOUT,
+        
+        /**
+         * 클라우드 환경별 타겟팅 (SINGLE_CLOUD, MULTI_CLOUD, HYBRID, ON_PREMISE)
+         */
+        CLOUD_ENVIRONMENT
     }
 
     /**

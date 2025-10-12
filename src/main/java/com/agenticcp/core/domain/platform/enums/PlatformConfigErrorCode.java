@@ -41,7 +41,13 @@ public enum PlatformConfigErrorCode implements BaseErrorCode {
     SYSTEM_CONFIG_CANNOT_MODIFY(HttpStatus.FORBIDDEN, 6014, "시스템 설정은 수정할 수 없습니다."),
     
     // 검증 서비스 관련 에러
-    VALIDATION_SERVICE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 6015, "설정 검증 중 오류가 발생했습니다.");
+    VALIDATION_SERVICE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 6015, "설정 검증 중 오류가 발생했습니다."),
+
+    // 암복호화/보안 관련 에러 (PLATFORM 도메인 6000-6999 범위)
+    ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 6016, "설정 암호화에 실패했습니다."),
+    DECRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 6017, "설정 복호화에 실패했습니다."),
+    ENCRYPTION_KEY_MISSING(HttpStatus.INTERNAL_SERVER_ERROR, 6018, "암호화 키가 구성되지 않았습니다."),
+    ENCRYPTED_PAYLOAD_INVALID(HttpStatus.BAD_REQUEST, 6019, "암호문 형식이 올바르지 않습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;

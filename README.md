@@ -47,6 +47,21 @@ CloudPlatform 2.0 Core Application - Spring Boot 기반의 멀티 클라우드 �
 
 ### 🚀 빠른 시작
 
+#### 환경변수 설정
+
+애플리케이션 실행 전에 필요한 환경변수를 설정해야 합니다:
+
+```bash
+# 환경변수 예시 파일 복사
+cp env.example .env
+
+# .env 파일을 편집하여 실제 값으로 변경
+# 특히 다음 값들은 반드시 변경하세요:
+# - DATABASE_PASSWORD: 안전한 데이터베이스 비밀번호
+# - JWT_SECRET: 안전한 JWT 시크릿 (base64 인코딩)
+# - CONFIG_CIPHER_KEY: 안전한 암호화 키 (base64 인코딩)
+```
+
 #### 방법 1: 하이브리드 모드 (권장) - 개발자 친화적
 ```bash
 # 1. 저장소 클론

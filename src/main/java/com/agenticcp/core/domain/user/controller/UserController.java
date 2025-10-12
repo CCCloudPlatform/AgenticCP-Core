@@ -4,7 +4,6 @@ import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.service.UserService;
 import com.agenticcp.core.common.enums.UserRole;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
