@@ -166,7 +166,7 @@ class PolicyPriorityServiceTest {
         }
 
         @Test
-        @DisplayName("기존 정책이 있을 때 평균값 계산")
+        @DisplayName("기존 정책이 있을 때 최저 우선순위 할당")
         void testAssignAutoPriority_WithExistingPolicies() {
             List<SecurityPolicy> existingPolicies = Arrays.asList(
                 createTestPolicy(1L, 100),
@@ -179,8 +179,8 @@ class PolicyPriorityServiceTest {
 
             Integer priority = policyPriorityService.assignAutoPriority("tenant1");
 
-            // 평균 200을 10 단위로 반올림 = 200
-            assertThat(priority).isEqualTo(200);
+            // 최저 우선순위 100보다 10 낮게 = 90
+            assertThat(priority).isEqualTo(90);
         }
 
         @Test
@@ -196,8 +196,25 @@ class PolicyPriorityServiceTest {
 
             Integer priority = policyPriorityService.assignAutoPriority(null);
 
-            // 평균 850을 10 단위로 반올림 = 850
-            assertThat(priority).isEqualTo(850);
+            // 최저 우선순위 800보다 10 낮게 = 790
+            assertThat(priority).isEqualTo(790);
+        }
+
+        @Test
+        @DisplayName("최소값 한계 도달 시 MIN_PRIORITY 반환")
+        void testAssignAutoPriority_MinimumLimit() {
+            List<SecurityPolicy> existingPolicies = Arrays.asList(
+                createTestPolicy(1L, 5),  // MIN_PRIORITY(1)에 가까운 값
+                createTestPolicy(2L, 10)
+            );
+
+            when(policyRepository.findByTenantIdAndIsEnabledTrue(anyString()))
+                .thenReturn(existingPolicies);
+
+            Integer priority = policyPriorityService.assignAutoPriority("tenant1");
+
+            // 5-10 = -5이지만, MIN_PRIORITY 제한으로 1 반환
+            assertThat(priority).isEqualTo(PolicyPriorityService.MIN_PRIORITY);
         }
     }
 

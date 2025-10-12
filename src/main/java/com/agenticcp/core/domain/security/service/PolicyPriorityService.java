@@ -92,7 +92,8 @@ public class PolicyPriorityService {
     
     /**
      * 자동 우선순위 할당
-     * 기존 정책들의 우선순위를 분석하여 적절한 우선순위 자동 할당
+     * 기존 정책들 중 가장 낮은 우선순위보다 10 낮은 값을 자동 할당
+     * 새로 생성된 정책은 기본적으로 낮은 우선순위로 시작하며, 필요시 관리자가 수동으로 조정 가능
      * @param tenantId 테넌트 ID (null이면 전역)
      * @return 할당된 우선순위
      */
@@ -106,26 +107,30 @@ public class PolicyPriorityService {
             existingPolicies = policyRepository.findByIsGlobalTrueAndIsEnabledTrue();
         }
         
+        // 기존 정책이 없으면 기본값 반환
         if (existingPolicies.isEmpty()) {
+            log.warn("기존 정책이 없어 기본 우선순위 {}가 할당되었습니다. 필요시 정책 우선순위를 수동으로 조정하세요.", DEFAULT_PRIORITY);
             return DEFAULT_PRIORITY;
         }
         
-        // 평균 우선순위 계산
-        double avgPriority = existingPolicies.stream()
+        // 기존 정책 중 가장 낮은 우선순위 찾기
+        Integer minPriority = existingPolicies.stream()
             .map(SecurityPolicy::getPriority)
             .filter(Objects::nonNull)
-            .mapToInt(Integer::intValue)
-            .average()
+            .min(Integer::compareTo)
             .orElse(DEFAULT_PRIORITY);
         
-        // 평균에 가까운 값 반환 (10 단위로 반올림)
-        int newPriority = ((int) Math.round(avgPriority / 10.0)) * 10;
+        // 가장 낮은 우선순위보다 10 낮게 설정 (더 낮은 우선순위)
+        int newPriority = minPriority - 10;
         
-        // 범위 검증
-        newPriority = Math.max(MIN_PRIORITY, Math.min(MAX_PRIORITY, newPriority));
-        
-        log.debug("자동 우선순위 할당: {} (평균: {}, 정책 개수: {})", 
-            newPriority, avgPriority, existingPolicies.size());
+        // 범위 검증 (최소값 이하로 떨어지면 최소값 사용)
+        if (newPriority < MIN_PRIORITY) {
+            newPriority = MIN_PRIORITY;
+            log.warn("최소 우선순위 한계에 도달하여 {}가 할당되었습니다. 기존 정책들의 우선순위 재조정을 권장합니다.", MIN_PRIORITY);
+        } else {
+            log.warn("새 정책에 최저 우선순위 {}가 자동 할당되었습니다. (기존 최저: {}, 정책 개수: {}) 정책이 중요한 경우 우선순위를 수동으로 높여주세요.", 
+                newPriority, minPriority, existingPolicies.size());
+        }
         
         return newPriority;
     }
