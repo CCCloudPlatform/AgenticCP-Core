@@ -529,6 +529,115 @@ class PolicyPriorityServiceTest {
 
             assertThat(nextPriority).isEqualTo(320);
         }
+
+        @Test
+        @DisplayName("위로 찾지 못하면 아래로 탐색")
+        void testFindNextAvailablePriority_SearchDown() {
+            // 900부터 위는 모두 사용 중, 아래는 비어있음
+            when(policyRepository.findByTenantIdAndIsEnabledTrue(anyString()))
+                .thenReturn(Arrays.asList(
+                    createTestPolicy(1L, 900),
+                    createTestPolicy(2L, 910),
+                    createTestPolicy(3L, 920),
+                    createTestPolicy(4L, 930),
+                    createTestPolicy(5L, 940),
+                    createTestPolicy(6L, 950),
+                    createTestPolicy(7L, 960),
+                    createTestPolicy(8L, 970),
+                    createTestPolicy(9L, 980),
+                    createTestPolicy(10L, 990),
+                    createTestPolicy(11L, 1000)
+                ));
+
+            Integer nextPriority = policyPriorityService.findNextAvailablePriority("tenant1", 900);
+
+            // 위로는 모두 사용 중이므로 아래로 탐색: 890
+            assertThat(nextPriority).isEqualTo(890);
+        }
+
+        @Test
+        @DisplayName("currentPriority가 null이면 DEFAULT_PRIORITY부터 탐색")
+        void testFindNextAvailablePriority_NullCurrent() {
+            when(policyRepository.findByTenantIdAndIsEnabledTrue(anyString()))
+                .thenReturn(Arrays.asList(
+                    createTestPolicy(1L, 100),
+                    createTestPolicy(2L, 200)
+                ));
+
+            Integer nextPriority = policyPriorityService.findNextAvailablePriority("tenant1", null);
+
+            // DEFAULT_PRIORITY(500)부터 시작하므로 500 반환
+            assertThat(nextPriority).isEqualTo(500);
+        }
+
+        @Test
+        @DisplayName("전역 정책에 대한 다음 우선순위 찾기")
+        void testFindNextAvailablePriority_GlobalPolicy() {
+            when(policyRepository.findByIsGlobalTrueAndIsEnabledTrue())
+                .thenReturn(Arrays.asList(
+                    createTestPolicy(1L, 700),
+                    createTestPolicy(2L, 710)
+                ));
+
+            Integer nextPriority = policyPriorityService.findNextAvailablePriority(null, 700);
+
+            assertThat(nextPriority).isEqualTo(720);
+        }
+
+        @Test
+        @DisplayName("모든 우선순위가 사용 중이면 현재 값 반환")
+        void testFindNextAvailablePriority_AllUsed() {
+            // 1부터 1000까지 10단위로 모든 우선순위 사용 중
+            List<SecurityPolicy> allPriorities = new ArrayList<>();
+            for (int i = 1; i <= 1000; i += 10) {
+                allPriorities.add(createTestPolicy((long) i, i));
+            }
+
+            when(policyRepository.findByTenantIdAndIsEnabledTrue(anyString()))
+                .thenReturn(allPriorities);
+
+            Integer nextPriority = policyPriorityService.findNextAvailablePriority("tenant1", 500);
+
+            // 모든 우선순위가 사용 중이므로 현재 값 그대로 반환
+            assertThat(nextPriority).isEqualTo(500);
+        }
+
+        @Test
+        @DisplayName("빈 공간이 중간에 있을 때")
+        void testFindNextAvailablePriority_GapInMiddle() {
+            when(policyRepository.findByTenantIdAndIsEnabledTrue(anyString()))
+                .thenReturn(Arrays.asList(
+                    createTestPolicy(1L, 100),
+                    createTestPolicy(2L, 200),
+                    createTestPolicy(3L, 300),
+                    // 310 비어있음!
+                    createTestPolicy(4L, 320),
+                    createTestPolicy(5L, 330)
+                ));
+
+            Integer nextPriority = policyPriorityService.findNextAvailablePriority("tenant1", 300);
+
+            // 300은 사용 중, 310은 비어있음
+            assertThat(nextPriority).isEqualTo(310);
+        }
+
+        @Test
+        @DisplayName("최소값 근처에서 아래로 탐색")
+        void testFindNextAvailablePriority_NearMinimum() {
+            when(policyRepository.findByTenantIdAndIsEnabledTrue(anyString()))
+                .thenReturn(Arrays.asList(
+                    createTestPolicy(1L, 1),
+                    createTestPolicy(2L, 11),
+                    createTestPolicy(3L, 21),
+                    createTestPolicy(4L, 31)
+                    // 41부터 위로는 비어있음
+                ));
+
+            Integer nextPriority = policyPriorityService.findNextAvailablePriority("tenant1", 11);
+
+            // 위로 탐색하면 21은 사용 중, 31도 사용 중, 41은 비어있음
+            assertThat(nextPriority).isEqualTo(41);
+        }
     }
 }
 
