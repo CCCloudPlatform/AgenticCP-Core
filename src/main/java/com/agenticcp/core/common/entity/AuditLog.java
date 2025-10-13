@@ -25,11 +25,12 @@ import java.time.Instant;
     @Index(name = "idx_audit_logs_severity", columnList = "severity"),
     @Index(name = "idx_audit_logs_success", columnList = "success")
 })
-@Data
+@Getter
+@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class AuditLog extends BaseEntity {
 
     @Column(name = "action", nullable = false, length = 100)
