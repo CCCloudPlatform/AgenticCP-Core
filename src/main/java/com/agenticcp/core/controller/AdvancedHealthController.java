@@ -1,6 +1,6 @@
 package com.agenticcp.core.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.health.dto.*;
 import com.agenticcp.core.domain.monitoring.health.service.AdvancedHealthCheckService;
