@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-10-02
  */
 @Entity
 @Table(name = "metric_thresholds", indexes = {
