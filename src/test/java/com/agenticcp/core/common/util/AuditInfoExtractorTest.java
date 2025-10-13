@@ -2,7 +2,7 @@ package com.agenticcp.core.common.util;
 
 import com.agenticcp.core.common.audit.AuditController;
 import com.agenticcp.core.common.audit.AuditRequired;
-import com.agenticcp.core.common.dto.AuditContextDto;
+import com.agenticcp.core.common.dto.audit.AuditContextDto;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import io.swagger.v3.oas.annotations.Operation;

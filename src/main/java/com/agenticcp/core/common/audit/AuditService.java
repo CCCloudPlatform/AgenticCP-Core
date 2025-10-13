@@ -1,12 +1,16 @@
 package com.agenticcp.core.common.audit;
 
+import com.agenticcp.core.common.context.AuditChangeContext;
 import com.agenticcp.core.common.context.AuditContextProvider;
-import com.agenticcp.core.common.dto.AuditContextDto;
+import com.agenticcp.core.common.dto.audit.AuditContextDto;
+import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.util.AuditInfoExtractor;
+import com.agenticcp.core.common.util.ChangeTracker;
 import com.agenticcp.core.common.util.ResponseDataExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -14,7 +18,8 @@ import java.util.Map;
 /**
  * 감사 로깅 처리 서비스
  * 
- * Aspect에서 추출한 감사 메타데이터를 바탕으로 감사 로깅의 전체 흐름을 실행합니다.
+ * Aspect에서 추출한 감사 메타데이터를 바탕으로 감사 이벤트를 생성하고 발행합니다.
+ * 실제 로깅 및 DB 저장은 이벤트 리스너들이 처리합니다.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
@@ -24,8 +29,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuditService {
 
-    private final AuditLogger auditLogger;
+    private final ApplicationEventPublisher eventPublisher;
     private final AuditContextProvider auditContextProvider;
+    private final ChangeTracker changeTracker;
 
     public Object audit(ProceedingJoinPoint joinPoint, AuditContextDto auditInfo) throws Throwable {
         var mdcContext = auditContextProvider.getCurrentContext();
@@ -62,14 +68,44 @@ public class AuditService {
             }
             eventBuilder.success(true);
             
+            try {
+                Map<String, Object> newValue = changeTracker.extractNewValue(result);
+                if (newValue != null && !newValue.isEmpty()) {
+                    eventBuilder.newValue(newValue);
+                }
+            } catch (Exception changeException) {
+                log.debug("변경 후 값 추출 실패 (무시): {}", changeException.getMessage());
+            }
+            
         } catch (Exception e) {
             businessException = e;
             eventBuilder.success(false).error(e.getMessage());
         } finally {
             try {
-                auditLogger.log(eventBuilder.build());
-            } catch (Exception logException) {
-                log.error("감사 로그 기록 중 오류 발생 [Action: {}]: {}", finalContext.action(), logException.getMessage(), logException);
+                Map<String, Object> oldValue = AuditChangeContext.getOldValue();
+                String targetResourceId = AuditChangeContext.getTargetResourceId();
+                
+                if (oldValue != null) {
+                    eventBuilder.oldValue(oldValue);
+                    log.debug("변경 전 값 포함 [Action: {}]", finalContext.action());
+                }
+                
+                if (targetResourceId != null) {
+                    eventBuilder.targetResourceId(targetResourceId);
+                }
+                
+                AuditEventDto auditEventDto = eventBuilder.build();
+                AuditPublishEvent event = new AuditPublishEvent(this, auditEventDto);
+                eventPublisher.publishEvent(event);
+                
+                log.debug("감사 이벤트 발행 완료 [Action: {}, Success: {}]", 
+                         auditEventDto.action(), auditEventDto.success());
+                
+            } catch (Exception publishException) {
+                log.error("감사 이벤트 발행 중 오류 발생 [Action: {}]: {}", 
+                         finalContext.action(), publishException.getMessage(), publishException);
+            } finally {
+                AuditChangeContext.clear();
             }
         }
 
@@ -79,5 +115,4 @@ public class AuditService {
         return result;
     }
 
-    // TODO: [NEXT FEATURE] 마스킹 기능 구현
 }

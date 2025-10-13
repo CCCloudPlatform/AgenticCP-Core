@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.user.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.user.dto.CreatePermissionRequest;
 import com.agenticcp.core.domain.user.dto.PermissionResponse;
 import com.agenticcp.core.domain.user.dto.UpdatePermissionRequest;
