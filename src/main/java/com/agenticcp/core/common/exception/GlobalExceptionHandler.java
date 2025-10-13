@@ -1,7 +1,7 @@
 package com.agenticcp.core.common.exception;
 
-import com.agenticcp.core.common.dto.ApiResponse;
-import com.agenticcp.core.common.dto.BaseErrorCode;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
