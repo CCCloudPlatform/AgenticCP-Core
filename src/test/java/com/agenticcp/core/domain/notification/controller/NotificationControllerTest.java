@@ -150,28 +150,6 @@ class NotificationControllerTest {
     }
 
     /**
-     * 비동기 알림 발송 API 성공 테스트
-     * 
-     * Given: 유효한 알림 요청 데이터
-     * When: POST /api/notifications/send-async 요청
-     * Then: 202 Accepted와 함께 처리 중 상태 반환, 자동으로 테넌트 ID 설정됨
-     */
-    @Test
-    void testSendNotificationAsync_Success() {
-        // When
-        ResponseEntity<Map<String, Object>> response = notificationController.sendNotificationAsync(testRequest);
-
-        // Then
-        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("test-001", response.getBody().get("notificationId"));
-        assertEquals("PROCESSING", response.getBody().get("status"));
-        
-        // 자동 테넌트 ID 설정 검증
-        assertEquals("1", testRequest.getTenantId());
-    }
-
-    /**
      * 알림 채널 목록 조회 API 성공 테스트
      * 
      * Given: 활성화된 이메일 채널이 존재

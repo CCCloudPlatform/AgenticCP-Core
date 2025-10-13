@@ -1,10 +1,19 @@
 package com.agenticcp.core.domain.notification.service;
 
+import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.common.enums.UserRole;
+import com.agenticcp.core.domain.notification.config.NotificationChannelConfig;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
+import com.agenticcp.core.domain.notification.enums.ChannelType;
+import com.agenticcp.core.domain.notification.repository.NotificationChannelRepository;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.notification.enums.NotificationPriority;
 import com.agenticcp.core.domain.notification.enums.NotificationType;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.tenant.repository.TenantRepository;
+import com.agenticcp.core.domain.user.entity.User;
+import com.agenticcp.core.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 모니터링 도메인과 연동되는 알림 서비스
@@ -27,6 +37,10 @@ import java.util.Map;
 public class MonitoringNotificationService {
 
     private final NotificationService notificationService;
+    private final NotificationChannelRepository channelRepository;
+    private final NotificationChannelConfig channelConfig;
+    private final TenantRepository tenantRepository;
+    private final UserRepository userRepository;
 
     /**
      * 메트릭 임계값 위반 알림 발송
@@ -58,10 +72,19 @@ public class MonitoringNotificationService {
             alertData.put("violationTime", LocalDateTime.now());
             alertData.put("severity", priority.name());
 
+            // 채널 ID 조회 (설정 기반 - 확장 가능)
+            String channelId = getChannelIdForNotification(
+                metric.getTenantId(), 
+                NotificationType.ALERT, 
+                priority
+            );
+            
             // 알림 요청 생성
             NotificationRequest request = NotificationRequest.builder()
                     .notificationId(generateNotificationId("threshold", metric.getMetricName()))
                     .tenantId(metric.getTenantId())
+                    .userId(getTenantAdminUserId(metric.getTenantId()))  // 테넌트별 관리자 ID 조회
+                    .channelId(channelId)  // 설정 기반으로 동적 조회 (SLACK/DISCORD 등)
                     .title("메트릭 임계값 위반 알림")
                     .content(buildThresholdViolationContent(metric, thresholdValue, operator))
                     .type(NotificationType.ALERT)
@@ -136,10 +159,19 @@ public class MonitoringNotificationService {
             alertData.put("errorMessage", errorMessage);
             alertData.put("failureTime", LocalDateTime.now());
 
+            // 채널 ID 조회 (설정 기반)
+            String channelId = getChannelIdForNotification(
+                tenantId, 
+                NotificationType.SYSTEM, 
+                NotificationPriority.HIGH
+            );
+            
             // 알림 요청 생성
             NotificationRequest request = NotificationRequest.builder()
                     .notificationId(generateNotificationId("collection_failure", collectorType))
                     .tenantId(tenantId)
+                    .userId(getTenantAdminUserId(tenantId))  // 테넌트별 관리자 ID 조회
+                    .channelId(channelId)  // 설정 기반으로 동적 조회
                     .title("메트릭 수집 실패 알림")
                     .content(buildCollectionFailureContent(collectorType, errorMessage))
                     .type(NotificationType.SYSTEM)
@@ -190,10 +222,19 @@ public class MonitoringNotificationService {
             alertData.put("currentStatus", currentStatus);
             alertData.put("changeTime", LocalDateTime.now());
 
+            // 채널 ID 조회 (설정 기반)
+            String channelId = getChannelIdForNotification(
+                tenantId, 
+                NotificationType.SYSTEM, 
+                priority
+            );
+            
             // 알림 요청 생성
             NotificationRequest request = NotificationRequest.builder()
                     .notificationId(generateNotificationId("status_change", serviceName))
                     .tenantId(tenantId)
+                    .userId(getTenantAdminUserId(tenantId))  // 테넌트별 관리자 ID 조회
+                    .channelId(channelId)  // 설정 기반으로 동적 조회
                     .title("시스템 상태 변화 알림")
                     .content(buildSystemStatusChangeContent(serviceName, previousStatus, currentStatus))
                     .type(NotificationType.SYSTEM)
@@ -319,5 +360,134 @@ public class MonitoringNotificationService {
         return String.format("%s_%s_%s_%d", 
             type, identifier, LocalDateTime.now().toString().replace(":", "-"), 
             System.currentTimeMillis() % 10000);
+    }
+
+    /**
+     * 알림용 채널 ID 조회 (설정 기반 - 확장 가능)
+     * 
+     * <p>알림 타입과 우선순위에 따라 적절한 채널을 자동 선택합니다.</p>
+     * <p>디스코드, 텔레그램 등 새로운 채널 추가 시 코드 수정 없이 설정만 변경하면 됩니다.</p>
+     * 
+     * <h3>선택 로직:</h3>
+     * <ol>
+     *   <li>우선순위 or 알림 타입 기반 채널 결정</li>
+     *   <li>해당 채널 조회</li>
+     *   <li>폴백 채널 시도 (선택사항)</li>
+     *   <li>최종 폴백 (ID 1)</li>
+     * </ol>
+     * 
+     * @param tenantId 테넌트 ID
+     * @param notificationType 알림 타입 (ALERT, SYSTEM 등)
+     * @param priority 우선순위 (URGENT, HIGH 등)
+     * @return 채널 ID (문자열)
+     */
+    private String getChannelIdForNotification(String tenantId, NotificationType notificationType, 
+                                              NotificationPriority priority) {
+        
+        // 1. 설정에서 채널 타입 결정 (우선순위 고려)
+        ChannelType targetChannel = determineChannelType(notificationType, priority);
+        
+        // 2. 해당 채널 조회
+        String channelId = findChannelId(tenantId, targetChannel);
+        if (channelId != null) {
+            log.debug("채널 사용: {} (타입: {}, 우선순위: {})", targetChannel, notificationType, priority);
+            return channelId;
+        }
+        
+        // 3. 폴백 채널 시도 (설정에 따라)
+        if (channelConfig.getFallbackOrder() != null && !channelConfig.getFallbackOrder().isEmpty()) {
+            for (ChannelType fallback : channelConfig.getFallbackOrder()) {
+                channelId = findChannelId(tenantId, fallback);
+                if (channelId != null) {
+                    log.warn("폴백 채널 사용: {} → {} (원래: {})", targetChannel, fallback, notificationType);
+                    return channelId;
+                }
+            }
+        }
+        
+        // 4. 최종 폴백: ID 1 (기본 채널)
+        log.error("사용 가능한 채널을 찾을 수 없습니다. 기본 채널 ID '1'을 사용합니다. tenantId: {}", tenantId);
+        return "1";
+    }
+
+    /**
+     * 채널 타입 결정 (우선순위 고려)
+     * 
+     * <p>우선순위 매핑이 있으면 우선 사용하고, 없으면 알림 타입 매핑 사용</p>
+     * 
+     * @param notificationType 알림 타입
+     * @param priority 우선순위
+     * @return 채널 타입
+     */
+    private ChannelType determineChannelType(NotificationType notificationType, NotificationPriority priority) {
+        // 1. 우선순위 매핑 확인 (있으면 우선 사용)
+        ChannelType priorityChannel = channelConfig.getChannelTypeForPriority(priority.name());
+        if (priorityChannel != null) {
+            log.debug("우선순위 기반 채널 선택: {} ({})", priorityChannel, priority);
+            return priorityChannel;
+        }
+        
+        // 2. 알림 타입 매핑 사용 (우선순위 매핑 없으면)
+        ChannelType typeChannel = channelConfig.getChannelTypeForNotification(notificationType);
+        log.debug("알림 타입 기반 채널 선택: {} ({})", typeChannel, notificationType);
+        return typeChannel;
+    }
+
+    /**
+     * 채널 타입으로 채널 ID 찾기
+     * 
+     * @param tenantId 테넌트 ID
+     * @param channelType 채널 타입
+     * @return 채널 ID (없으면 null)
+     */
+    private String findChannelId(String tenantId, ChannelType channelType) {
+        return channelRepository
+                .findByTenantIdAndChannelTypeAndIsActiveTrueAndIsDeletedFalse(tenantId, channelType)
+                .stream()
+                .findFirst()
+                .map(channel -> String.valueOf(channel.getId()))
+                .orElse(null);
+    }
+
+    /**
+     * 테넌트별 관리자 사용자 ID 조회
+     * 
+     * <p>해당 테넌트의 TENANT_ADMIN 역할을 가진 사용자를 조회합니다.</p>
+     * <p>관리자가 여러 명인 경우 첫 번째 관리자를 반환합니다.</p>
+     * 
+     * @param tenantId 테넌트 ID (tenantKey)
+     * @return 관리자 사용자 ID
+     * @throws RuntimeException 테넌트를 찾을 수 없거나 관리자가 없는 경우
+     */
+    private Long getTenantAdminUserId(String tenantId) {
+        // 1. 테넌트 조회
+        Optional<Tenant> tenantOpt = tenantRepository.findByTenantKey(tenantId);
+        if (tenantOpt.isEmpty()) {
+            log.error("테넌트를 찾을 수 없습니다: {}", tenantId);
+            // 폴백: 설정 파일의 기본 관리자 ID 사용
+            return channelConfig.getDefaultAdminUserId();
+        }
+        
+        Tenant tenant = tenantOpt.get();
+        
+        // 2. 테넌트의 관리자 조회 (TENANT_ADMIN 역할)
+        Optional<User> adminOpt = userRepository
+                .findActiveUsersByTenant(tenant, Status.ACTIVE)
+                .stream()
+                .filter(user -> user.getRole() == UserRole.TENANT_ADMIN)
+                .findFirst();
+        
+        if (adminOpt.isEmpty()) {
+            log.warn("테넌트 {}의 관리자를 찾을 수 없습니다. 기본 관리자 ID 사용: {}", 
+                tenantId, channelConfig.getDefaultAdminUserId());
+            // 폴백: 설정 파일의 기본 관리자 ID 사용
+            return channelConfig.getDefaultAdminUserId();
+        }
+        
+        Long adminUserId = adminOpt.get().getId();
+        log.debug("테넌트 {} 관리자: userId={}, name={}", 
+            tenantId, adminUserId, adminOpt.get().getName());
+        
+        return adminUserId;
     }
 }
