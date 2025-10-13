@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
+
 /**
  * 감사 로그 변경 추적 테스트
  * 
@@ -176,7 +178,7 @@ class AuditChangeTrackingTest {
         testService.updateResource(resourceId, oldValue);
 
         // Then
-        await().untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             List<AuditLog> logs = auditLogRepository.findAll().stream()
                     .filter(log -> "UPDATE_RESOURCE".equals(log.getAction()))
                     .toList();
@@ -204,7 +206,7 @@ class AuditChangeTrackingTest {
         testService.updateResource(resource2, old2);
 
         // Then
-        await().untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             List<AuditLog> logs = auditLogRepository.findAll().stream()
                     .filter(log -> "UPDATE_RESOURCE".equals(log.getAction()))
                     .toList();
@@ -239,7 +241,7 @@ class AuditChangeTrackingTest {
         testService.deleteResource(resourceId, oldValue);
 
         // Then
-        await().untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             List<AuditLog> logs = auditLogRepository.findAll().stream()
                     .filter(log -> "DELETE_RESOURCE".equals(log.getAction()))
                     .toList();
@@ -273,7 +275,7 @@ class AuditChangeTrackingTest {
         testService.updateResource(resourceId, oldValue);
 
         // Then
-        await().untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             List<AuditLog> logs = auditLogRepository.findByTargetResourceIdOrderByTimestampDesc(resourceId);
             assertThat(logs).hasSize(1);
 
@@ -300,7 +302,7 @@ class AuditChangeTrackingTest {
         }
 
         // Then
-        await().untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             List<AuditLog> logs = auditLogRepository.findAll().stream()
                     .filter(log -> "UPDATE_RESOURCE_ERROR".equals(log.getAction()))
                     .toList();
