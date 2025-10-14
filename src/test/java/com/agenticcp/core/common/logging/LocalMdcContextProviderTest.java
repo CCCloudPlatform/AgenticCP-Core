@@ -1,5 +1,6 @@
 package com.agenticcp.core.common.logging;
 
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,19 +17,22 @@ public class LocalMdcContextProviderTest {
 
     private LocalMdcContextProvider provider;
     private MdcProperties properties;
+    private MaskingService maskingService;
 
     @BeforeEach
     void setUp() {
         MDC.clear();
         properties = new MdcProperties(
                 List.of("clientIp"), "uuid", "req_", 8, true, false, 20);
-        provider = new LocalMdcContextProvider(properties);
+        maskingService = mock(MaskingService.class);
+        provider = new LocalMdcContextProvider(properties, maskingService);
     }
 
     @Test
     @DisplayName("클라이언트 IP를 설정한다")
     void setContext_setsClientIp_whenEnabled() {
         // Given
+        when(maskingService.maskIpAddress("192.168.1.100")).thenReturn("192.168.1.***");
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn(null);
@@ -45,6 +49,7 @@ public class LocalMdcContextProviderTest {
     @DisplayName("X-Forwarded-For 헤더를 우선 사용한다")
     void setContext_usesXForwardedFor_whenPresent() {
         // Given
+        when(maskingService.maskIpAddress("10.0.0.1")).thenReturn("10.0.0.***");
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getHeader("X-Forwarded-For")).thenReturn("10.0.0.1, 192.168.1.100");
         when(request.getHeader("X-Real-IP")).thenReturn(null);
@@ -61,6 +66,7 @@ public class LocalMdcContextProviderTest {
     @DisplayName("X-Real-IP 헤더를 사용한다")
     void setContext_usesXRealIp_whenXForwardedForNotPresent() {
         // Given
+        when(maskingService.maskIpAddress("172.16.0.1")).thenReturn("172.16.0.***");
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
         when(request.getHeader("X-Real-IP")).thenReturn("172.16.0.1");
