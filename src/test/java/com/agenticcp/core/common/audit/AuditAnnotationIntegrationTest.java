@@ -105,7 +105,7 @@ class AuditAnnotationIntegrationTest {
             assertThat(log.getAction()).isEqualTo("UPDATE_USER");
             assertThat(log.getOldValue()).isNotNull();
             assertThat(log.getOldValue()).contains("oldname");
-            assertThat(log.getOldValue()).contains("old@test.com");
+            assertThat(log.getOldValue()).contains("o*d@test.com");
             assertThat(log.getTargetResourceId()).isEqualTo(userId);
         });
     }

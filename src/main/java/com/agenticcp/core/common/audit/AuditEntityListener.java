@@ -1,6 +1,7 @@
 package com.agenticcp.core.common.audit;
 
 import com.agenticcp.core.common.context.AuditChangeContext;
+import com.agenticcp.core.common.entity.AuditLog;
 import com.agenticcp.core.common.util.ChangeTracker;
 import jakarta.persistence.PreRemove;
 import jakarta.persistence.PreUpdate;
@@ -32,6 +33,9 @@ public class AuditEntityListener {
 
     @PreUpdate
     public void preUpdate(Object entity) {
+        if (entity instanceof AuditLog) {
+            return; // 감지된 엔티티가 AuditLog 자신이면, 아무것도 하지 않고 즉시 종료
+        }
         try {
             if (changeTracker == null) {
                 log.warn("ChangeTracker가 주입되지 않았습니다. 변경 추적을 건너뜁니다.");

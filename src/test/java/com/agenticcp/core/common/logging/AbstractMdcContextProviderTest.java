@@ -1,5 +1,6 @@
 package com.agenticcp.core.common.logging;
 
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -13,7 +14,7 @@ import static org.mockito.Mockito.when;
 public class AbstractMdcContextProviderTest {
 
     static class TestProvider extends AbstractMdcContextProvider {
-        TestProvider(MdcProperties p) { super(p); }
+        TestProvider(MdcProperties p, MaskingService m) { super(p, m); }
         @Override public void setContext(HttpServletRequest req) {}
         String ip(HttpServletRequest r){ return getClientIpAddress(r); }
         String ua(HttpServletRequest r){ return getUserAgent(r); }
@@ -24,7 +25,9 @@ public class AbstractMdcContextProviderTest {
     void xForwardedFor_firstIpMasked_whenEnabled() {
         var props = new MdcProperties(
                 List.of("clientIp"), "uuid","req_",8,true,true, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        when(maskingService.maskIpAddress("1.2.3.4")).thenReturn("1.2.3.***");
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4, 5.6.7.8");
@@ -35,7 +38,8 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("X-Real-IP 헤더가 있으면 그것을 사용한다")
     void xRealIp_used_whenPresent() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,false,false, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("X-Forwarded-For")).thenReturn(null);
@@ -47,7 +51,10 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("User-Agent 마스킹이 활성화되고 길면 마스킹한다")
     void userAgent_mask_whenEnabledAndLong() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,false,true, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        when(maskingService.previewUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", 20))
+                .thenReturn("Mozilla/5.0 (Macin...");
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("User-Agent"))
@@ -59,7 +66,8 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("User-Agent 마스킹이 비활성화되면 원문을 반환한다")
     void userAgent_noMask_whenDisabled() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,false,false, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("User-Agent"))
@@ -71,7 +79,9 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("User-Agent가 짧으면 마스킹하지 않는다")
     void userAgent_noMask_whenShort() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,false,true, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        when(maskingService.previewUserAgent("Short UA", 20)).thenReturn("Short UA");
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("User-Agent")).thenReturn("Short UA");
@@ -82,7 +92,8 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("User-Agent 헤더가 없으면 null을 반환한다")
     void userAgent_null_whenHeaderMissing() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,false,true, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("User-Agent")).thenReturn(null);
@@ -93,7 +104,9 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("IPv4 주소를 마스킹한다")
     void clientIp_mask_ipv4_whenEnabled() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,true,false, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        when(maskingService.maskIpAddress("192.168.1.100")).thenReturn("192.168.1.***");
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("X-Forwarded-For")).thenReturn(null);
@@ -107,7 +120,9 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("IPv6 주소를 마스킹한다")
     void clientIp_mask_ipv6_whenEnabled() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,true,false, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        when(maskingService.maskIpAddress("2001:0db8:85a3:0000:0000:8a2e:0370:7334")).thenReturn("2001:0db8:85a3:0000:****");
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("X-Forwarded-For")).thenReturn(null);
@@ -121,7 +136,8 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("IP 마스킹 비활성화 시 원문을 사용한다")
     void clientIp_noMask_whenDisabled() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,false,false, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("X-Forwarded-For")).thenReturn(null);
@@ -135,7 +151,9 @@ public class AbstractMdcContextProviderTest {
     @DisplayName("잘못된 IP 형식은 변경하지 않는다")
     void clientIp_handles_malformed_ip() {
         var props = new MdcProperties(List.of(), "uuid","req_",8,true,false, 20);
-        var provider = new TestProvider(props);
+        var maskingService = mock(MaskingService.class);
+        when(maskingService.maskIpAddress("invalid-ip")).thenReturn("invalid-ip");
+        var provider = new TestProvider(props, maskingService);
 
         var req = mock(HttpServletRequest.class);
         when(req.getHeader("X-Forwarded-For")).thenReturn(null);
