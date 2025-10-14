@@ -2,6 +2,7 @@ package com.agenticcp.core.common.audit;
 
 import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.entity.AuditLog;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.common.repository.AuditLogRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +29,7 @@ public class AuditDatabaseListener {
 
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
+    private final MaskingService maskingService;
 
     @Async
     @EventListener
@@ -38,6 +40,12 @@ public class AuditDatabaseListener {
             
             log.debug("감사 로그 DB 저장 시작 [Action: {}, RequestId: {}]", 
                      auditEventDto.action(), auditEventDto.requestId());
+
+            // DB에 저장하기 직전, 민감 정보를 마스킹 처리
+            maskingService.mask(auditEventDto.requestData());
+            maskingService.mask(auditEventDto.oldValue());
+            maskingService.mask(auditEventDto.newValue());
+            maskingService.mask(auditEventDto.responseData());
 
             AuditLog auditLog = convertToEntity(auditEventDto);
             auditLogRepository.save(auditLog);
