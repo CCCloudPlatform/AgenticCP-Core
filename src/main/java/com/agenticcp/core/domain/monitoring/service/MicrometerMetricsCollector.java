@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit;
  * Micrometer 기반 메트릭 수집기
  * 
  * @author AgenticCP
- * @since 1.0.0
+ * @version 1.0.0
+ * @since 2025-10-02
  */
 @Slf4j
 @Component
