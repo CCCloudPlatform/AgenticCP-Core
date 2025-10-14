@@ -1,0 +1,513 @@
+# Crypto Service Pattern (암호화 서비스 패턴)
+
+## 개요
+
+민감한 정보(개인정보, 비밀번호, API 키 등)를 안전하게 암호화/복호화하기 위한 `CipherService` 사용 패턴입니다.
+
+### 주요 목적
+- **개인정보 보호**: GDPR, 개인정보보호법 준수
+- **보안 강화**: 민감 데이터의 안전한 저장 및 전송
+- **키 관리**: 암호화 키의 안전한 관리 및 회전
+- **컴플라이언스**: 보안 감사 및 규정 준수
+
+---
+
+## 필수 규칙
+
+### 1. CipherService 사용
+
+#### 의존성 주입
+```java
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class PlatformConfigService {
+    
+    private final CipherService cipherService;  // 생성자 주입
+    
+    // ...
+}
+```
+
+#### 암호화
+```java
+// 평문을 암호화하여 저장
+@Transactional
+public PlatformConfig createConfig(PlatformConfigRequest request) {
+    log.info("[PlatformConfigService] createConfig - key={}", request.getKey());
+    
+    // 민감 데이터 암호화
+    String encryptedValue = cipherService.encrypt(request.getValue());
+    
+    PlatformConfig config = PlatformConfig.builder()
+            .key(request.getKey())
+            .value(encryptedValue)
+            .type(ConfigType.ENCRYPTED)
+            .build();
+    
+    return configRepository.save(config);
+}
+```
+
+#### 복호화
+```java
+// 암호화된 데이터를 복호화하여 반환
+@Transactional(readOnly = true)
+public String getDecryptedValue(String key) {
+    log.info("[PlatformConfigService] getDecryptedValue - key={}", key);
+    
+    PlatformConfig config = configRepository.findByKey(key)
+            .orElseThrow(() -> new ResourceNotFoundException(PlatformErrorCode.CONFIG_NOT_FOUND));
+    
+    if (config.getType() == ConfigType.ENCRYPTED) {
+        try {
+            return cipherService.decrypt(config.getValue());
+        } catch (DecryptionException e) {
+            log.error("[PlatformConfigService] decryption failed - key={}", key, e);
+            throw new BusinessException(PlatformErrorCode.DECRYPTION_FAILED);
+        }
+    }
+    
+    return config.getValue();
+}
+```
+
+### 2. ConfigType 구분
+
+```java
+public enum ConfigType {
+    STRING,      // 일반 문자열 (암호화 불필요)
+    NUMBER,      // 숫자
+    BOOLEAN,     // 불린
+    JSON,        // JSON 객체
+    ENCRYPTED    // 암호화된 데이터 (민감 정보)
+}
+```
+
+**사용 원칙:**
+- `ENCRYPTED`: API 키, 비밀번호, 토큰, 개인정보 등 민감 데이터
+- 일반 타입: 공개 가능한 설정 값
+
+### 3. 암호화가 필요한 데이터
+
+#### ✅ 반드시 암호화해야 하는 데이터
+- 사용자 비밀번호 (BCrypt는 별도, 기타는 CipherService)
+- API 키, Secret Key, Access Token
+- 클라우드 프로바이더 자격증명 (AWS Access Key, GCP Service Account)
+- 데이터베이스 연결 정보 (비밀번호)
+- 개인식별정보 (PII): 주민등록번호, 여권번호, 신용카드 번호
+- SMTP 비밀번호, Webhook Secret
+- OAuth Client Secret
+
+#### ❌ 암호화가 불필요한 데이터
+- 공개 설정 값 (타임존, 언어)
+- 시스템 메타데이터
+- 로그 레벨, 기능 플래그
+- 공개 URL, 도메인 이름
+
+---
+
+## 실제 사용 예시
+
+### 예시 1: 플랫폼 설정 저장 (ENCRYPTED 타입)
+
+```java
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+@Slf4j
+public class PlatformConfigService {
+    
+    private final PlatformConfigRepository configRepository;
+    private final CipherService cipherService;
+    
+    /**
+     * 민감 정보를 포함한 설정 생성
+     */
+    @Transactional
+    public PlatformConfig createEncryptedConfig(String key, String plainValue) {
+        log.info("[PlatformConfigService] createEncryptedConfig - key={}", key);
+        
+        // 중복 검사
+        if (configRepository.existsByKey(key)) {
+            throw new BusinessException(PlatformErrorCode.DUPLICATE_CONFIG_KEY);
+        }
+        
+        // 암호화
+        String encryptedValue = cipherService.encrypt(plainValue);
+        
+        PlatformConfig config = PlatformConfig.builder()
+                .key(key)
+                .value(encryptedValue)
+                .type(ConfigType.ENCRYPTED)
+                .category(ConfigCategory.SECURITY)
+                .build();
+        
+        PlatformConfig saved = configRepository.save(config);
+        log.info("[PlatformConfigService] createEncryptedConfig - success key={}", key);
+        return saved;
+    }
+    
+    /**
+     * 민감 정보 조회 (기본: 마스킹)
+     */
+    public PlatformConfigResponse getConfig(String key) {
+        log.info("[PlatformConfigService] getConfig - key={}", key);
+        
+        PlatformConfig config = configRepository.findByKey(key)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformErrorCode.CONFIG_NOT_FOUND));
+        
+        // ENCRYPTED 타입은 기본적으로 마스킹하여 반환
+        if (config.getType() == ConfigType.ENCRYPTED) {
+            return PlatformConfigResponse.fromMasked(config);  // value: "***"
+        }
+        
+        return PlatformConfigResponse.from(config);
+    }
+    
+    /**
+     * 민감 정보 조회 (복호화) - 권한 필요
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'PLATFORM_ADMIN')")
+    @AuditRequired(
+        action = "getDecryptedConfig",
+        resourceType = AuditResourceType.PLATFORM,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        description = "암호화된 설정값 복호화 조회"
+    )
+    public PlatformConfigResponse getDecryptedConfig(String key, String reason) {
+        log.info("[PlatformConfigService] getDecryptedConfig - key={}, reason={}", key, reason);
+        
+        PlatformConfig config = configRepository.findByKey(key)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformErrorCode.CONFIG_NOT_FOUND));
+        
+        if (config.getType() == ConfigType.ENCRYPTED) {
+            try {
+                String decryptedValue = cipherService.decrypt(config.getValue());
+                log.info("[PlatformConfigService] getDecryptedConfig - success key={}", key);
+                return PlatformConfigResponse.fromDecrypted(config, decryptedValue);
+            } catch (Exception e) {
+                log.error("[PlatformConfigService] decryption failed - key={}", key, e);
+                throw new BusinessException(PlatformErrorCode.DECRYPTION_FAILED);
+            }
+        }
+        
+        return PlatformConfigResponse.from(config);
+    }
+    
+    /**
+     * 민감 정보 수정
+     */
+    @Transactional
+    public PlatformConfig updateEncryptedConfig(String key, String newPlainValue) {
+        log.info("[PlatformConfigService] updateEncryptedConfig - key={}", key);
+        
+        PlatformConfig config = configRepository.findByKey(key)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformErrorCode.CONFIG_NOT_FOUND));
+        
+        if (config.getType() != ConfigType.ENCRYPTED) {
+            throw new BusinessException(PlatformErrorCode.INVALID_CONFIG_TYPE);
+        }
+        
+        // 새 평문을 암호화
+        String encryptedValue = cipherService.encrypt(newPlainValue);
+        config.setValue(encryptedValue);
+        
+        PlatformConfig saved = configRepository.save(config);
+        log.info("[PlatformConfigService] updateEncryptedConfig - success key={}", key);
+        return saved;
+    }
+}
+```
+
+### 예시 2: 클라우드 프로바이더 자격증명 저장
+
+```java
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+@Slf4j
+public class CloudProviderService {
+    
+    private final CloudProviderRepository providerRepository;
+    private final CipherService cipherService;
+    
+    /**
+     * AWS 자격증명 저장 (암호화)
+     */
+    @Transactional
+    public CloudProvider createAwsProvider(AwsProviderRequest request) {
+        log.info("[CloudProviderService] createAwsProvider - name={}", request.getName());
+        
+        // Access Key ID는 일반 문자열 (식별자)
+        // Secret Access Key는 암호화 필수
+        String encryptedAccessKey = cipherService.encrypt(request.getAccessKeyId());
+        String encryptedSecretKey = cipherService.encrypt(request.getSecretAccessKey());
+        
+        CloudProvider provider = CloudProvider.builder()
+                .name(request.getName())
+                .type(CloudProviderType.AWS)
+                .accessKeyId(encryptedAccessKey)
+                .secretAccessKey(encryptedSecretKey)
+                .region(request.getRegion())
+                .status(Status.ACTIVE)
+                .build();
+        
+        CloudProvider saved = providerRepository.save(provider);
+        log.info("[CloudProviderService] createAwsProvider - success id={}", saved.getId());
+        return saved;
+    }
+    
+    /**
+     * AWS 자격증명 사용 (복호화)
+     */
+    public AwsCredentials getAwsCredentials(Long providerId) {
+        log.info("[CloudProviderService] getAwsCredentials - providerId={}", providerId);
+        
+        CloudProvider provider = providerRepository.findById(providerId)
+                .orElseThrow(() -> new ResourceNotFoundException(CloudErrorCode.PROVIDER_NOT_FOUND));
+        
+        if (provider.getType() != CloudProviderType.AWS) {
+            throw new BusinessException(CloudErrorCode.INVALID_PROVIDER_TYPE);
+        }
+        
+        try {
+            String accessKeyId = cipherService.decrypt(provider.getAccessKeyId());
+            String secretAccessKey = cipherService.decrypt(provider.getSecretAccessKey());
+            
+            return new AwsCredentials(accessKeyId, secretAccessKey);
+        } catch (Exception e) {
+            log.error("[CloudProviderService] decryption failed - providerId={}", providerId, e);
+            throw new BusinessException(CloudErrorCode.CREDENTIAL_DECRYPTION_FAILED);
+        }
+    }
+}
+```
+
+### 예시 3: 사용자 개인정보 암호화 (선택적)
+
+```java
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+@Slf4j
+public class UserProfileService {
+    
+    private final UserProfileRepository profileRepository;
+    private final CipherService cipherService;
+    
+    /**
+     * 민감한 개인정보 저장 (암호화)
+     */
+    @Transactional
+    public UserProfile createProfile(Long userId, UserProfileRequest request) {
+        log.info("[UserProfileService] createProfile - userId={}", userId);
+        
+        // 선택적 암호화: 주민등록번호, 여권번호 등
+        String encryptedSsn = null;
+        if (request.getSsn() != null) {
+            encryptedSsn = cipherService.encrypt(request.getSsn());
+        }
+        
+        UserProfile profile = UserProfile.builder()
+                .userId(userId)
+                .name(request.getName())  // 이름은 평문 (검색 필요)
+                .ssn(encryptedSsn)        // 주민등록번호는 암호화
+                .phoneNumber(request.getPhoneNumber())  // 전화번호 (정책에 따라 암호화 고려)
+                .address(request.getAddress())
+                .build();
+        
+        UserProfile saved = profileRepository.save(profile);
+        log.info("[UserProfileService] createProfile - success userId={}", userId);
+        return saved;
+    }
+}
+```
+
+---
+
+## 예외 처리
+
+### 암호화/복호화 예외 처리
+```java
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ConfigService {
+    
+    private final CipherService cipherService;
+    
+    public String getDecryptedValue(String encryptedValue) {
+        try {
+            return cipherService.decrypt(encryptedValue);
+        } catch (DecryptionException e) {
+            // 복호화 실패 (잘못된 키, 손상된 데이터)
+            log.error("[ConfigService] decryption failed", e);
+            throw new BusinessException(PlatformErrorCode.DECRYPTION_FAILED);
+        } catch (EncryptedPayloadInvalidException e) {
+            // 암호문 형식 오류
+            log.error("[ConfigService] invalid encrypted payload", e);
+            throw new BusinessException(PlatformErrorCode.ENCRYPTED_PAYLOAD_INVALID);
+        }
+    }
+    
+    public String encryptValue(String plainValue) {
+        try {
+            return cipherService.encrypt(plainValue);
+        } catch (EncryptionException e) {
+            // 암호화 실패 (키 누락, 잘못된 설정)
+            log.error("[ConfigService] encryption failed", e);
+            throw new BusinessException(PlatformErrorCode.ENCRYPTION_FAILED);
+        }
+    }
+}
+```
+
+### ErrorCode 예시
+```java
+public enum PlatformErrorCode implements BaseErrorCode {
+    
+    DECRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 6017, "복호화에 실패했습니다."),
+    ENCRYPTED_PAYLOAD_INVALID(HttpStatus.BAD_REQUEST, 6019, "암호문 형식이 올바르지 않습니다."),
+    ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 6020, "암호화에 실패했습니다."),
+    CIPHER_KEY_MISSING(HttpStatus.INTERNAL_SERVER_ERROR, 6021, "암호화 키가 설정되지 않았습니다.");
+    
+    // ...
+}
+```
+
+---
+
+## 키 관리
+
+### 1. 키 설정 (application.yml)
+
+```yaml
+config:
+  cipher:
+    key: ${CONFIG_CIPHER_KEY}                    # 환경변수로 주입 (필수)
+    secondaryKey: ${CONFIG_CIPHER_SECONDARY_KEY} # 키 회전용 보조 키 (선택)
+    missingKeyBehavior: FAIL                     # FAIL (기본) 또는 READ_ONLY
+```
+
+### 2. 환경별 키 관리
+
+```bash
+# 개발 환경 (로컬)
+export CONFIG_CIPHER_KEY="MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+
+# 운영 환경 (KMS/Secret Manager 사용)
+# AWS Secrets Manager, HashiCorp Vault 등에서 주입
+```
+
+### 3. 키 회전 절차
+
+1. **새 키 생성**: Base64 인코딩된 32바이트 키 생성
+2. **보조 키 설정**: 기존 키를 `secondaryKey`로 배포
+3. **주 키 교체**: 새 키를 `key`로 배포 (신규 암호화는 새 키 사용)
+4. **복호화 Fallback**: `secondaryKey`로 과거 데이터 복호화 지원
+5. **재암호화 (선택)**: 중요 데이터를 새 키로 재암호화
+6. **보조 키 제거**: 충분한 기간 후 `secondaryKey` 제거
+
+---
+
+## 보안 권장사항
+
+### ✅ 권장사항
+- 암호화 키는 **환경변수** 또는 **Secret Manager**에서 주입
+- 저장소(Git)에 키를 **절대 커밋하지 않음**
+- 운영 환경에서는 `missingKeyBehavior=FAIL` 사용
+- 복호화 접근은 **권한 검사** 및 **감사 로깅** 필수
+- ENCRYPTED 타입 기본 조회 시 **마스킹 처리** (`***`)
+- 복호화된 평문은 **로그에 출력하지 않음**
+
+### ❌ 금지사항
+- 평문을 로그에 출력 금지
+- 암호화 키를 코드에 하드코딩 금지
+- ENCRYPTED 타입을 권한 없이 복호화 금지
+- 복호화된 데이터를 캐싱 금지 (또는 짧은 TTL)
+
+---
+
+## API 응답 패턴
+
+### 기본 조회 (마스킹)
+```java
+@GetMapping("/configs/{key}")
+public ResponseEntity<ApiResponse<PlatformConfigResponse>> getConfig(@PathVariable String key) {
+    PlatformConfigResponse config = configService.getConfig(key);
+    return ResponseEntity.ok(ApiResponse.success(config));
+}
+
+// 응답 예시 (ENCRYPTED 타입)
+{
+  "key": "aws.secret.key",
+  "value": "***",           // 마스킹됨
+  "type": "ENCRYPTED"
+}
+```
+
+### 복호화 조회 (권한 필요)
+```java
+@GetMapping("/configs/{key}/decrypted")
+@PreAuthorize("hasRole('ADMIN')")
+@AuditRequired(
+    action = "getDecryptedConfig",
+    resourceType = AuditResourceType.PLATFORM,
+    severity = AuditSeverity.CRITICAL
+)
+public ResponseEntity<ApiResponse<PlatformConfigResponse>> getDecryptedConfig(
+        @PathVariable String key,
+        @RequestParam String reason) {
+    PlatformConfigResponse config = configService.getDecryptedConfig(key, reason);
+    
+    // Cache-Control 헤더 추가 (캐싱 금지)
+    return ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore()
+                    .noCache()
+                    .mustRevalidate()
+                    .maxAge(Duration.ZERO))
+            .header("Pragma", "no-cache")
+            .body(ApiResponse.success(config));
+}
+
+// 응답 예시 (복호화됨)
+{
+  "key": "aws.secret.key",
+  "value": "actual-secret-key-value",  // 복호화된 평문
+  "type": "ENCRYPTED"
+}
+```
+
+---
+
+## 체크리스트
+
+### 암호화 구현 시
+- [ ] `CipherService` 의존성 주입 완료
+- [ ] `ConfigType.ENCRYPTED` 타입으로 저장
+- [ ] 민감 데이터는 반드시 암호화
+- [ ] 암호화 실패 시 예외 처리
+- [ ] 로그에 평문 출력 안 됨
+
+### 복호화 구현 시
+- [ ] 권한 검사 (`@PreAuthorize`)
+- [ ] 감사 로깅 (`@AuditRequired`)
+- [ ] 복호화 실패 예외 처리
+- [ ] 캐싱 금지 헤더 추가 (`Cache-Control: no-store`)
+- [ ] 로그에 복호화된 평문 출력 안 됨
+
+### 키 관리
+- [ ] 환경변수로 키 주입 설정
+- [ ] 저장소에 키 커밋 안 됨
+- [ ] 운영 환경: `missingKeyBehavior=FAIL`
+- [ ] 키 회전 계획 수립
+- [ ] 보조 키(`secondaryKey`) 설정 고려
+
+### 보안 점검
+- [ ] ENCRYPTED 타입은 기본 마스킹 처리
+- [ ] 복호화 접근은 ADMIN 권한만
+- [ ] 복호화 조회는 감사 로그 기록
+- [ ] 복호화된 응답은 캐싱 금지
+- [ ] 민감 정보는 HTTPS로만 전송

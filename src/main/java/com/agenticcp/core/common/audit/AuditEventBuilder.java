@@ -1,7 +1,7 @@
 package com.agenticcp.core.common.audit;
 
-import com.agenticcp.core.common.dto.AuditContextDto;
-import com.agenticcp.core.common.dto.AuditEventDto;
+import com.agenticcp.core.common.dto.audit.AuditContextDto;
+import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 
@@ -37,6 +37,10 @@ public class AuditEventBuilder {
     private Map<String, Object> requestData;
     private Map<String, Object> responseData;
     private final Map<String, Object> metadata;
+    
+    private Map<String, Object> oldValue;
+    private Map<String, Object> newValue;
+    private String targetResourceId;
     
     private AuditEventBuilder(AuditContextDto context) {
         this.timestamp = Instant.now();
@@ -83,6 +87,20 @@ public class AuditEventBuilder {
         return this;
     }
     
+    public AuditEventBuilder oldValue(Map<String, Object> oldValue) {
+        this.oldValue = oldValue;
+        return this;
+    }
+    
+    public AuditEventBuilder newValue(Map<String, Object> newValue) {
+        this.newValue = newValue;
+        return this;
+    }
+    
+    public AuditEventBuilder targetResourceId(String targetResourceId) {
+        this.targetResourceId = targetResourceId;
+        return this;
+    }
     
     public AuditEventDto build() {
         return new AuditEventDto(
@@ -103,7 +121,10 @@ public class AuditEventBuilder {
                 error,
                 requestData,
                 responseData,
-                metadata
+                metadata,
+                oldValue,
+                newValue,
+                targetResourceId
         );
     }
 }

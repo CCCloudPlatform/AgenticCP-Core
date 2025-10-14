@@ -1,4 +1,4 @@
-package com.agenticcp.core.common.dto;
+package com.agenticcp.core.common.dto.exception;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;

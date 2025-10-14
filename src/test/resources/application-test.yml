@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password: 
@@ -13,9 +13,12 @@ spring:
       hibernate:
         format_sql: false
   
+  cache:
+    type: simple
+  
   redis:
-    host: localhost
-    port: 6379
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
     password: 
     timeout: 2000ms
     lettuce:
@@ -23,6 +26,15 @@ spring:
         max-active: 8
         max-idle: 8
         min-idle: 0
+
+app:
+  redis:
+    enabled: ${APP_REDIS_ENABLED:false}
+
+# 테스트용 암호화 키
+config:
+  cipher:
+    key: ${CONFIG_CIPHER_KEY:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}
 
 security:
   jwt:
