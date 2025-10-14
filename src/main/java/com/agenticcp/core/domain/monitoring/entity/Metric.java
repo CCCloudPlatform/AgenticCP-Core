@@ -31,8 +31,8 @@ import java.util.List;
     @Index(name = "idx_metrics_source", columnList = "source"),
     @Index(name = "idx_metrics_status", columnList = "status"),
     @Index(name = "idx_metrics_tenant_id", columnList = "tenant_id"),
-    @Index(name = "idx_metrics_tenant_name", columnList = "tenant_id, metric_name"),
-    @Index(name = "idx_metrics_tenant_time", columnList = "tenant_id, collected_at")
+    @Index(name = "idx_metrics_tenant_name", columnList = "tenant_id,metric_name"),
+    @Index(name = "idx_metrics_tenant_time", columnList = "tenant_id,collected_at")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

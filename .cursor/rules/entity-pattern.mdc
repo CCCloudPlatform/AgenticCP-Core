@@ -1,0 +1,640 @@
+---
+globs: **/entity/*.java
+alwaysApply: false
+---
+# Entity Pattern (엔티티 패턴)
+
+## 기본 구조
+
+```java
+/**
+ * 리소스 엔티티
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
+@Entity
+@Table(name = "resources", indexes = {
+    @Index(name = "idx_resources_name", columnList = "name"),
+    @Index(name = "idx_resources_tenant", columnList = "tenant_id"),
+    @Index(name = "idx_resources_status", columnList = "status")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Resource extends BaseEntity {
+    
+    @NotBlank(message = "리소스명은 필수입니다")
+    @Size(min = 2, max = 100, message = "리소스명은 2-100자 사이여야 합니다")
+    @Column(name = "name", nullable = false, length = 100)
+    private String name;
+    
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private Status status = Status.ACTIVE;
+    
+    @Column(name = "metadata", columnDefinition = "JSON")
+    private String metadata;
+    
+    // 비즈니스 메서드
+    public void activate() {
+        this.status = Status.ACTIVE;
+    }
+    
+    public void suspend() {
+        this.status = Status.SUSPENDED;
+    }
+    
+    public boolean isActive() {
+        return Status.ACTIVE.equals(this.status);
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. 클래스 레벨 어노테이션
+
+```java
+@Entity
+@Table(name = "table_name", indexes = { /* 인덱스 정의 */ })
+@Data                    // Getter, Setter, toString, equals, hashCode
+@Builder                 // Builder 패턴
+@NoArgsConstructor      // JPA 필수 (기본 생성자)
+@AllArgsConstructor     // Builder와 함께 사용
+public class Entity extends BaseEntity {
+    // ...
+}
+```
+
+**Lombok 어노테이션 조합 이유**:
+- `@NoArgsConstructor`: JPA가 리플렉션으로 엔티티 인스턴스 생성 시 필수
+- `@AllArgsConstructor`: Builder가 내부적으로 사용
+- `@Builder`: 가독성 좋은 객체 생성
+
+### 2. 테이블과 컬럼 매핑
+
+```java
+// 테이블명: snake_case
+@Table(name = "user_profiles")
+
+// 컬럼명: snake_case
+@Column(name = "user_name", nullable = false, length = 50)
+private String userName;
+
+// 인덱스 정의
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email"),
+    @Index(name = "idx_users_tenant_status", columnList = "tenant_id, status")
+})
+```
+
+### 3. 기본 키 전략
+
+```java
+@Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
+```
+
+### 4. Validation 어노테이션
+
+```java
+@NotBlank(message = "사용자명은 필수입니다")
+@Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+@Column(name = "username", unique = true, nullable = false, length = 50)
+private String username;
+
+@Email(message = "올바른 이메일 형식이 아닙니다")
+@Column(name = "email", nullable = false)
+private String email;
+
+@Pattern(regexp = "^[0-9]{3}-[0-9]{4}-[0-9]{4}$", message = "전화번호 형식이 올바르지 않습니다")
+private String phoneNumber;
+```
+
+### 5. Enum 타입
+
+```java
+// ✅ STRING 사용 (권장)
+@Enumerated(EnumType.STRING)
+@Column(name = "status", nullable = false, length = 20)
+private Status status = Status.ACTIVE;
+
+// ❌ ORDINAL 사용 금지 (순서 변경 시 데이터 오류)
+@Enumerated(EnumType.ORDINAL)  // 금지!
+private Status status;
+```
+
+### 6. 연관관계 매핑
+
+```java
+// ManyToOne: 항상 LAZY 로딩
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "tenant_id")
+private Tenant tenant;
+
+// OneToMany: 항상 LAZY 로딩, mappedBy 설정
+@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+private List<UserProfile> profiles = new ArrayList<>();
+
+// ManyToMany: 중간 테이블 명시
+@ManyToMany(fetch = FetchType.LAZY)
+@JoinTable(
+    name = "user_roles",
+    joinColumns = @JoinColumn(name = "user_id"),
+    inverseJoinColumns = @JoinColumn(name = "role_id")
+)
+private List<Role> roles = new ArrayList<>();
+```
+
+### 7. BaseEntity 상속
+
+```java
+// BaseEntity에 공통 필드 포함
+// - id, createdAt, createdBy, updatedAt, updatedBy, isDeleted
+public class Resource extends BaseEntity {
+    // BaseEntity의 필드를 상속받음
+    // 추가 필드만 정의
+}
+```
+
+### 8. 비즈니스 메서드
+
+```java
+// 엔티티에 비즈니스 로직 포함 (상태 변경, 검증 등)
+public class User extends BaseEntity {
+    
+    // 상태 변경
+    public void activate() {
+        this.status = Status.ACTIVE;
+    }
+    
+    public void suspend() {
+        this.status = Status.SUSPENDED;
+    }
+    
+    // 검증
+    public boolean isActive() {
+        return Status.ACTIVE.equals(this.status);
+    }
+    
+    public boolean isAccountLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now());
+    }
+    
+    // 비즈니스 로직
+    public void incrementFailedLoginAttempts() {
+        this.failedLoginAttempts++;
+    }
+    
+    public void resetFailedLoginAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
+    
+    public void lockAccount(int lockoutMinutes) {
+        this.lockedUntil = LocalDateTime.now().plusMinutes(lockoutMinutes);
+    }
+}
+```
+
+## 전체 예시
+
+```java
+/**
+ * 사용자 엔티티 - 멀티 테넌트 지원
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email"),
+    @Index(name = "idx_users_tenant", columnList = "tenant_id"),
+    @Index(name = "idx_users_active", columnList = "status")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class User extends BaseEntity {
+
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100, message = "이름은 100자를 초과할 수 없습니다")
+    @Column(nullable = false)
+    private String name;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role")
+    private UserRole role = UserRole.VIEWER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private Status status = Status.ACTIVE;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
+    @Column(name = "failed_login_attempts")
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "two_factor_enabled")
+    private Boolean twoFactorEnabled = false;
+
+    @Column(name = "timezone")
+    private String timezone = "UTC";
+
+    @Column(name = "language")
+    private String language = "ko";
+
+    @Column(name = "preferences", columnDefinition = "TEXT")
+    private String preferences; // JSON
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private List<Role> roles = new ArrayList<>();
+
+    // 비즈니스 메서드
+    public boolean isAccountLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now());
+    }
+
+    public boolean isPasswordExpired(int maxPasswordAgeDays) {
+        if (passwordChangedAt == null) {
+            return true;
+        }
+        return passwordChangedAt.isBefore(LocalDateTime.now().minusDays(maxPasswordAgeDays));
+    }
+
+    public void incrementFailedLoginAttempts() {
+        this.failedLoginAttempts++;
+    }
+
+    public void resetFailedLoginAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
+
+    public void lockAccount(int lockoutMinutes) {
+        this.lockedUntil = LocalDateTime.now().plusMinutes(lockoutMinutes);
+    }
+}
+```
+# Entity Pattern (엔티티 패턴)
+
+## 기본 구조
+
+```java
+/**
+ * 리소스 엔티티
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
+@Entity
+@Table(name = "resources", indexes = {
+    @Index(name = "idx_resources_name", columnList = "name"),
+    @Index(name = "idx_resources_tenant", columnList = "tenant_id"),
+    @Index(name = "idx_resources_status", columnList = "status")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Resource extends BaseEntity {
+    
+    @NotBlank(message = "리소스명은 필수입니다")
+    @Size(min = 2, max = 100, message = "리소스명은 2-100자 사이여야 합니다")
+    @Column(name = "name", nullable = false, length = 100)
+    private String name;
+    
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private Status status = Status.ACTIVE;
+    
+    @Column(name = "metadata", columnDefinition = "JSON")
+    private String metadata;
+    
+    // 비즈니스 메서드
+    public void activate() {
+        this.status = Status.ACTIVE;
+    }
+    
+    public void suspend() {
+        this.status = Status.SUSPENDED;
+    }
+    
+    public boolean isActive() {
+        return Status.ACTIVE.equals(this.status);
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. 클래스 레벨 어노테이션
+
+```java
+@Entity
+@Table(name = "table_name", indexes = { /* 인덱스 정의 */ })
+@Data                    // Getter, Setter, toString, equals, hashCode
+@Builder                 // Builder 패턴
+@NoArgsConstructor      // JPA 필수 (기본 생성자)
+@AllArgsConstructor     // Builder와 함께 사용
+public class Entity extends BaseEntity {
+    // ...
+}
+```
+
+**Lombok 어노테이션 조합 이유**:
+- `@NoArgsConstructor`: JPA가 리플렉션으로 엔티티 인스턴스 생성 시 필수
+- `@AllArgsConstructor`: Builder가 내부적으로 사용
+- `@Builder`: 가독성 좋은 객체 생성
+
+### 2. 테이블과 컬럼 매핑
+
+```java
+// 테이블명: snake_case
+@Table(name = "user_profiles")
+
+// 컬럼명: snake_case
+@Column(name = "user_name", nullable = false, length = 50)
+private String userName;
+
+// 인덱스 정의
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email"),
+    @Index(name = "idx_users_tenant_status", columnList = "tenant_id, status")
+})
+```
+
+### 3. 기본 키 전략
+
+```java
+@Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
+```
+
+### 4. Validation 어노테이션
+
+```java
+@NotBlank(message = "사용자명은 필수입니다")
+@Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+@Column(name = "username", unique = true, nullable = false, length = 50)
+private String username;
+
+@Email(message = "올바른 이메일 형식이 아닙니다")
+@Column(name = "email", nullable = false)
+private String email;
+
+@Pattern(regexp = "^[0-9]{3}-[0-9]{4}-[0-9]{4}$", message = "전화번호 형식이 올바르지 않습니다")
+private String phoneNumber;
+```
+
+### 5. Enum 타입
+
+```java
+// ✅ STRING 사용 (권장)
+@Enumerated(EnumType.STRING)
+@Column(name = "status", nullable = false, length = 20)
+private Status status = Status.ACTIVE;
+
+// ❌ ORDINAL 사용 금지 (순서 변경 시 데이터 오류)
+@Enumerated(EnumType.ORDINAL)  // 금지!
+private Status status;
+```
+
+### 6. 연관관계 매핑
+
+```java
+// ManyToOne: 항상 LAZY 로딩
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "tenant_id")
+private Tenant tenant;
+
+// OneToMany: 항상 LAZY 로딩, mappedBy 설정
+@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+private List<UserProfile> profiles = new ArrayList<>();
+
+// ManyToMany: 중간 테이블 명시
+@ManyToMany(fetch = FetchType.LAZY)
+@JoinTable(
+    name = "user_roles",
+    joinColumns = @JoinColumn(name = "user_id"),
+    inverseJoinColumns = @JoinColumn(name = "role_id")
+)
+private List<Role> roles = new ArrayList<>();
+```
+
+### 7. BaseEntity 상속
+
+```java
+// BaseEntity에 공통 필드 포함
+// - id, createdAt, createdBy, updatedAt, updatedBy, isDeleted
+public class Resource extends BaseEntity {
+    // BaseEntity의 필드를 상속받음
+    // 추가 필드만 정의
+}
+```
+
+### 8. 비즈니스 메서드
+
+```java
+// 엔티티에 비즈니스 로직 포함 (상태 변경, 검증 등)
+public class User extends BaseEntity {
+    
+    // 상태 변경
+    public void activate() {
+        this.status = Status.ACTIVE;
+    }
+    
+    public void suspend() {
+        this.status = Status.SUSPENDED;
+    }
+    
+    // 검증
+    public boolean isActive() {
+        return Status.ACTIVE.equals(this.status);
+    }
+    
+    public boolean isAccountLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now());
+    }
+    
+    // 비즈니스 로직
+    public void incrementFailedLoginAttempts() {
+        this.failedLoginAttempts++;
+    }
+    
+    public void resetFailedLoginAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
+    
+    public void lockAccount(int lockoutMinutes) {
+        this.lockedUntil = LocalDateTime.now().plusMinutes(lockoutMinutes);
+    }
+}
+```
+
+## 전체 예시
+
+```java
+/**
+ * 사용자 엔티티 - 멀티 테넌트 지원
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email"),
+    @Index(name = "idx_users_tenant", columnList = "tenant_id"),
+    @Index(name = "idx_users_active", columnList = "status")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class User extends BaseEntity {
+
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100, message = "이름은 100자를 초과할 수 없습니다")
+    @Column(nullable = false)
+    private String name;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role")
+    private UserRole role = UserRole.VIEWER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private Status status = Status.ACTIVE;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
+    @Column(name = "failed_login_attempts")
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "two_factor_enabled")
+    private Boolean twoFactorEnabled = false;
+
+    @Column(name = "timezone")
+    private String timezone = "UTC";
+
+    @Column(name = "language")
+    private String language = "ko";
+
+    @Column(name = "preferences", columnDefinition = "TEXT")
+    private String preferences; // JSON
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private List<Role> roles = new ArrayList<>();
+
+    // 비즈니스 메서드
+    public boolean isAccountLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now());
+    }
+
+    public boolean isPasswordExpired(int maxPasswordAgeDays) {
+        if (passwordChangedAt == null) {
+            return true;
+        }
+        return passwordChangedAt.isBefore(LocalDateTime.now().minusDays(maxPasswordAgeDays));
+    }
+
+    public void incrementFailedLoginAttempts() {
+        this.failedLoginAttempts++;
+    }
+
+    public void resetFailedLoginAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
+
+    public void lockAccount(int lockoutMinutes) {
+        this.lockedUntil = LocalDateTime.now().plusMinutes(lockoutMinutes);
+    }
+}
+```

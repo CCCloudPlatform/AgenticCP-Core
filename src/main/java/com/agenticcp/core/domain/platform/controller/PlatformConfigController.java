@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.platform.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.exception.AuthorizationException;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.service.PlatformConfigService;

@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.security.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.security.entity.SecurityPolicy;
 import com.agenticcp.core.domain.security.service.SecurityPolicyService;
 import io.swagger.v3.oas.annotations.Operation;
