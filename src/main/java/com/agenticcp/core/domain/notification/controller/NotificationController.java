@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.notification.controller;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
