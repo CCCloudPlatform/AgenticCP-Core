@@ -1,24 +1,21 @@
 package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.common.audit.AuditLogger;
-import com.agenticcp.core.common.dto.AuditEventDto;
+import com.agenticcp.core.common.audit.AuditPublishEvent;
+import com.agenticcp.core.common.audit.AuditEventBuilder;
+import com.agenticcp.core.common.dto.audit.AuditContextDto;
+import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.util.EncryptedValueMasker;
-import com.agenticcp.core.domain.security.entity.AuditLog;
-import com.agenticcp.core.domain.security.repository.AuditLogRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
+ 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
+ 
 
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * 플랫폼 설정 변경에 대한 감사(이력) 기록 서비스 - 스켈레톤
@@ -28,12 +25,19 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ConfigAuditService {
 
     private final AuditLogger auditLogger;
-    private final AuditLogRepository auditLogRepository;
-    private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ConfigAuditService(AuditLogger auditLogger,
+                              ApplicationEventPublisher eventPublisher) {
+        this.auditLogger = auditLogger;
+        this.eventPublisher = eventPublisher;
+    }
+
+    // 테스트에서 직접 new 호출 시에도 동일한 동작을 위해 2-인자 생성자만 유지
 
     /**
      * 설정 변경 감사 기록 (공통 엔트리 포인트)
@@ -77,36 +81,38 @@ public class ConfigAuditService {
         metadata.put("resourceType", "PlatformConfig");
         metadata.put("resourceId", configKey);
 
-        AuditEventDto event = new AuditEventDto(
-                normalizedAction,                    // action
-                AuditResourceType.PLATFORM_CONFIG,   // resourceType
-                null,                                // httpMethod
-                null,                                // requestPath
-                "Platform Config " + normalizedAction, // operationSummary
-                "PlatformConfigController",          // controllerName
-                "",                                  // methodName
-                AuditSeverity.INFO,                  // severity
-                Instant.now(),                       // timestamp
-                null,                                // requestId
-                null,                                // tenantId
-                userId,                              // userId
-                null,                                // clientIp
-                true,                                // success
-                null,                                // error
-                details,                            // requestData (상세 정보)
-                null,                               // responseData (응답 데이터 없음)
-                metadata                            // metadata (메타 정보)
-        );
+        Map<String, Object> oldValueMap = new HashMap<>();
+        oldValueMap.put("value", EncryptedValueMasker.maskForAudit(oldValue, encryptedType));
+        Map<String, Object> newValueMap = new HashMap<>();
+        newValueMap.put("value", EncryptedValueMasker.maskForAudit(newValue, encryptedType));
 
-        // 1. 파일 기반 감사 로그 기록
-        log.info("[ConfigAuditService] Calling auditLogger.log() for configKey={}", configKey);
+        AuditContextDto context = AuditContextDto.builder()
+                .userId(userId)
+                .action(normalizedAction)
+                .resourceType(AuditResourceType.PLATFORM_CONFIG)
+                .operationSummary("Platform Config " + normalizedAction)
+                .controllerName("PlatformConfigController")
+                .methodName("")
+                .severity(AuditSeverity.INFO)
+                .includeRequestData(true)
+                .includeResponseData(false)
+                .build();
+
+        // metadata는 현재 빌더에 별도 세터가 없으므로 requestData에 핵심 키만 유지하거나, 필요 시 로거 파이프라인에서 병합
+        AuditEventDto event = AuditEventBuilder.builder(context)
+                .requestData(details)
+                .responseData(null)
+                .oldValue(oldValueMap)
+                .newValue(newValueMap)
+                .targetResourceId(configKey)
+                .success(true)
+                .build();
+
+        // 파일 로깅 (AUDIT 로거)
         auditLogger.log(event);
-        log.info("[ConfigAuditService] auditLogger.log() completed for configKey={}", configKey);
-        
-        // 2. RDBMS 기반 설정 이력 기록 (조회용)
-        saveToDatabase(configKey, normalizedAction, userId, reason, valueType, 
-                      EncryptedValueMasker.maskForAudit(oldValue, encryptedType),
-                      EncryptedValueMasker.maskForAudit(newValue, encryptedType));
+
+        // 이벤트 퍼블리시 → 파일/DB 리스너가 처리
+        eventPublisher.publishEvent(new AuditPublishEvent(this, event));
     }
 
     public void logCreate(String configKey, String newValue, String userId, String reason, String valueType) {
@@ -138,50 +144,7 @@ public class ConfigAuditService {
         };
     }
 
-    /**
-     * 설정 변경 이력을 RDBMS에 저장 (조회용)
-     */
-    @Transactional
-    private void saveToDatabase(String configKey, String action, String userId, String reason, 
-                               String valueType, String oldValue, String newValue) {
-        try {
-            // 변경 상세 정보를 JSON으로 저장
-            Map<String, Object> changeDetails = new HashMap<>();
-            changeDetails.put("configKey", configKey);
-            changeDetails.put("oldValue", oldValue);
-            changeDetails.put("newValue", newValue);
-            changeDetails.put("action", action);
-            changeDetails.put("reason", safeString(reason));
-            changeDetails.put("valueType", safeString(valueType));
-            
-            String detailsJson = objectMapper.writeValueAsString(changeDetails);
-            
-            // AuditLog 엔티티 생성
-            AuditLog auditLog = AuditLog.builder()
-                    .eventId(UUID.randomUUID().toString())
-                    .eventType(AuditLog.EventType.CONFIGURATION_CHANGE)
-                    .eventCategory(AuditLog.EventCategory.CONFIGURE)
-                    .eventName("Platform Config " + action)
-                    .description(String.format("Config '%s' %s", configKey, action))
-                    .resourceType("PlatformConfig")
-                    .resourceId(configKey)
-                    .action(action)
-                    .result(AuditLog.Result.SUCCESS)
-                    .eventTimestamp(LocalDateTime.now())
-                    .details(detailsJson)
-                    .build();
-            
-            auditLogRepository.save(auditLog);
-            
-            log.info("[ConfigAuditService] Config history saved to database: configKey={}, action={}", 
-                    configKey, action);
-                    
-        } catch (JsonProcessingException e) {
-            log.error("[ConfigAuditService] Failed to save config history to database: {}", e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("[ConfigAuditService] Unexpected error saving config history: {}", e.getMessage(), e);
-        }
-    }
+    // DB 저장 로직은 리스너(AuditDatabaseListener)가 담당합니다.
 }
 
 

@@ -1,8 +1,9 @@
 package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.domain.platform.dto.ConfigHistoryResponse;
-import com.agenticcp.core.domain.security.entity.AuditLog;
-import com.agenticcp.core.domain.security.repository.AuditLogRepository;
+import com.agenticcp.core.common.entity.AuditLog;
+import com.agenticcp.core.common.enums.AuditResourceType;
+import com.agenticcp.core.common.repository.AuditLogRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,31 +45,25 @@ public class ConfigHistoryQueryServiceTest {
     void getHistory_ShouldReturnConfigHistoryFromDatabase() {
         // given: AuditLog 테이블에서 조회할 데이터
         AuditLog auditLog1 = AuditLog.builder()
-                .eventId("event-1")
-                .eventType(AuditLog.EventType.CONFIGURATION_CHANGE)
-                .eventCategory(AuditLog.EventCategory.CONFIGURE)
-                .eventName("Platform Config UPDATE")
-                .description("Config 'test.key' UPDATE")
-                .resourceType("PlatformConfig")
-                .resourceId("test.key")
                 .action("UPDATE")
-                .result(AuditLog.Result.SUCCESS)
-                .eventTimestamp(LocalDateTime.now())
-                .details("{\"configKey\":\"test.key\",\"oldValue\":\"old-value\",\"newValue\":\"new-value\",\"action\":\"UPDATE\",\"reason\":\"test reason\",\"valueType\":\"STRING\"}")
+                .resourceType(AuditResourceType.PLATFORM_CONFIG)
+                .timestamp(java.time.Instant.now())
+                .metadata("{\"reason\":\"test reason\",\"valueType\":\"STRING\"}")
+                .oldValue("old-value")
+                .newValue("new-value")
+                .targetResourceId("test.key")
+                .success(true)
                 .build();
 
         AuditLog auditLog2 = AuditLog.builder()
-                .eventId("event-2")
-                .eventType(AuditLog.EventType.CONFIGURATION_CHANGE)
-                .eventCategory(AuditLog.EventCategory.CONFIGURE)
-                .eventName("Platform Config CREATE")
-                .description("Config 'test.key' CREATE")
-                .resourceType("PlatformConfig")
-                .resourceId("test.key")
                 .action("CREATE")
-                .result(AuditLog.Result.SUCCESS)
-                .eventTimestamp(LocalDateTime.now().minusMinutes(1))
-                .details("{\"configKey\":\"test.key\",\"oldValue\":null,\"newValue\":\"initial-value\",\"action\":\"CREATE\",\"reason\":\"initial setup\",\"valueType\":\"STRING\"}")
+                .resourceType(AuditResourceType.PLATFORM_CONFIG)
+                .timestamp(java.time.Instant.now().minusSeconds(60))
+                .metadata("{\"reason\":\"initial setup\",\"valueType\":\"STRING\"}")
+                .oldValue(null)
+                .newValue("initial-value")
+                .targetResourceId("test.key")
+                .success(true)
                 .build();
 
         Page<AuditLog> auditLogPage = new PageImpl<>(
@@ -77,18 +72,9 @@ public class ConfigHistoryQueryServiceTest {
                 2
         );
 
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PLATFORM_CONFIG"),
+        when(auditLogRepository.findByResourceTypeAndTargetResourceId(
+                eq(AuditResourceType.PLATFORM_CONFIG),
                 eq("test.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
-                any(Pageable.class)
-        )).thenReturn(auditLogPage);
-
-        // alternative resourceType 조회도 mock 설정
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PlatformConfig"),
-                eq("test.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
                 any(Pageable.class)
         )).thenReturn(auditLogPage);
 
@@ -125,17 +111,14 @@ public class ConfigHistoryQueryServiceTest {
     void getHistory_ShouldMaskEncryptedValues() {
         // given: ENCRYPTED 타입 설정 변경 이력
         AuditLog auditLog = AuditLog.builder()
-                .eventId("event-1")
-                .eventType(AuditLog.EventType.CONFIGURATION_CHANGE)
-                .eventCategory(AuditLog.EventCategory.CONFIGURE)
-                .eventName("Platform Config UPDATE")
-                .description("Config 'secure.key' UPDATE")
-                .resourceType("PlatformConfig")
-                .resourceId("secure.key")
                 .action("UPDATE")
-                .result(AuditLog.Result.SUCCESS)
-                .eventTimestamp(LocalDateTime.now())
-                .details("{\"configKey\":\"secure.key\",\"oldValue\":\"old-secret\",\"newValue\":\"new-secret\",\"action\":\"UPDATE\",\"reason\":\"secret rotation\",\"valueType\":\"ENCRYPTED\"}")
+                .resourceType(AuditResourceType.PLATFORM_CONFIG)
+                .timestamp(java.time.Instant.now())
+                .metadata("{\"reason\":\"secret rotation\",\"valueType\":\"ENCRYPTED\"}")
+                .oldValue("old-secret")
+                .newValue("new-secret")
+                .targetResourceId("secure.key")
+                .success(true)
                 .build();
 
         Page<AuditLog> auditLogPage = new PageImpl<>(
@@ -144,18 +127,9 @@ public class ConfigHistoryQueryServiceTest {
                 1
         );
 
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PLATFORM_CONFIG"),
+        when(auditLogRepository.findByResourceTypeAndTargetResourceId(
+                eq(AuditResourceType.PLATFORM_CONFIG),
                 eq("secure.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
-                any(Pageable.class)
-        )).thenReturn(auditLogPage);
-
-        // alternative resourceType 조회도 mock 설정
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PlatformConfig"),
-                eq("secure.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
                 any(Pageable.class)
         )).thenReturn(auditLogPage);
 
@@ -169,25 +143,22 @@ public class ConfigHistoryQueryServiceTest {
         ConfigHistoryResponse response = result.getContent().get(0);
         assertEquals("UPDATE", response.action());
         assertEquals("ENCRYPTED", response.valueType());
-        assertEquals("[ENCRYPTED_VALUE]", response.prevValue()); // 마스킹됨
-        assertEquals("[ENCRYPTED_VALUE]", response.newValue()); // 마스킹됨
+        assertEquals("Encrypted", response.prevValue()); // 마스킹됨
+        assertEquals("Encrypted", response.newValue()); // 마스킹됨
     }
 
     @Test
     void getHistory_ShouldHandleInvalidJsonGracefully() {
         // given: 잘못된 JSON 형식의 details
         AuditLog auditLog = AuditLog.builder()
-                .eventId("event-1")
-                .eventType(AuditLog.EventType.CONFIGURATION_CHANGE)
-                .eventCategory(AuditLog.EventCategory.CONFIGURE)
-                .eventName("Platform Config UPDATE")
-                .description("Config 'test.key' UPDATE")
-                .resourceType("PlatformConfig")
-                .resourceId("test.key")
                 .action("UPDATE")
-                .result(AuditLog.Result.SUCCESS)
-                .eventTimestamp(LocalDateTime.now())
-                .details("invalid-json") // 잘못된 JSON
+                .resourceType(AuditResourceType.PLATFORM_CONFIG)
+                .timestamp(java.time.Instant.now())
+                .metadata("invalid-json") // 잘못된 JSON
+                .oldValue(null)
+                .newValue(null)
+                .targetResourceId("test.key")
+                .success(true)
                 .build();
 
         Page<AuditLog> auditLogPage = new PageImpl<>(
@@ -196,18 +167,9 @@ public class ConfigHistoryQueryServiceTest {
                 1
         );
 
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PLATFORM_CONFIG"),
+        when(auditLogRepository.findByResourceTypeAndTargetResourceId(
+                eq(AuditResourceType.PLATFORM_CONFIG),
                 eq("test.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
-                any(Pageable.class)
-        )).thenReturn(auditLogPage);
-
-        // alternative resourceType 조회도 mock 설정
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PlatformConfig"),
-                eq("test.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
                 any(Pageable.class)
         )).thenReturn(auditLogPage);
 
@@ -238,18 +200,9 @@ public class ConfigHistoryQueryServiceTest {
                 0
         );
 
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PLATFORM_CONFIG"),
+        when(auditLogRepository.findByResourceTypeAndTargetResourceId(
+                eq(AuditResourceType.PLATFORM_CONFIG),
                 eq("nonexistent.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
-                any(Pageable.class)
-        )).thenReturn(emptyPage);
-
-        // alternative resourceType 조회도 mock 설정
-        when(auditLogRepository.findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                eq("PlatformConfig"),
-                eq("nonexistent.key"),
-                eq(AuditLog.EventType.CONFIGURATION_CHANGE),
                 any(Pageable.class)
         )).thenReturn(emptyPage);
 

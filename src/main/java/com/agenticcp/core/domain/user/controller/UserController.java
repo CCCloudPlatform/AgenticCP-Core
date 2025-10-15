@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.user.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.service.UserService;
 import com.agenticcp.core.common.enums.UserRole;

@@ -48,4 +48,14 @@ echo ""
 echo "애플리케이션을 중지하려면 Ctrl+C를 누르세요."
 
 # Spring Boot 실행
+echo "🔧 환경변수를 설정합니다..."
+export DATABASE_URL="jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+export DATABASE_USERNAME="agenticcp"
+export DATABASE_PASSWORD="agenticcppassword"
+export JWT_SECRET="ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU="
+export CONFIG_CIPHER_KEY="MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
+export SPRING_DATA_REDIS_HOST="localhost"
+export SPRING_DATA_REDIS_PORT="6379"
+export APP_REDIS_ENABLED="false"
+
 mvn spring-boot:run -Dspring-boot.run.profiles=local

@@ -1,9 +1,9 @@
 package com.agenticcp.core.domain.platform.service;
 
+import com.agenticcp.core.common.entity.AuditLog;
 import com.agenticcp.core.common.enums.AuditResourceType;
+import com.agenticcp.core.common.repository.AuditLogRepository;
 import com.agenticcp.core.domain.platform.dto.ConfigHistoryResponse;
-import com.agenticcp.core.domain.security.entity.AuditLog;
-import com.agenticcp.core.domain.security.repository.AuditLogRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -30,90 +32,68 @@ public class ConfigHistoryQueryService {
         log.info("[ConfigHistoryQueryService] Searching for configKey={} with resourceType={}", 
                 configKey, AuditResourceType.PLATFORM_CONFIG.name());
         
-        // 먼저 정확한 조건으로 검색
+        // PlatformConfig 리소스 타입과 대상 리소스 ID 기준으로 검색
         Page<AuditLog> logs = auditLogRepository
-                .findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                        AuditResourceType.PLATFORM_CONFIG.name(),
+                .findByResourceTypeAndTargetResourceId(
+                        AuditResourceType.PLATFORM_CONFIG,
                         configKey,
-                        AuditLog.EventType.CONFIGURATION_CHANGE,
                         pageable
                 );
         
-        log.info("[ConfigHistoryQueryService] Found {} logs for exact match", logs.getTotalElements());
-        
-        // 결과가 없으면 다른 가능한 resourceType들도 시도해보기
-        if (logs.getTotalElements() == 0) {
-            log.warn("[ConfigHistoryQueryService] No exact match found. Trying alternative resourceTypes...");
-            
-            // "PlatformConfig" 문자열로도 시도해보기
-            Page<AuditLog> alternativeLogs = auditLogRepository
-                    .findByResourceTypeAndResourceIdAndEventTypeOrderByEventTimestampDesc(
-                            "PlatformConfig",  // ConfigAuditService에서 metadata에 저장하는 값
-                            configKey,
-                            AuditLog.EventType.CONFIGURATION_CHANGE,
-                            pageable
-                    );
-            
-            log.info("[ConfigHistoryQueryService] Found {} logs with 'PlatformConfig' resourceType", 
-                    alternativeLogs.getTotalElements());
-            
-            if (alternativeLogs.getTotalElements() > 0) {
-                logs = alternativeLogs;
-            }
-        }
+        log.info("[ConfigHistoryQueryService] Found {} logs for PLATFORM_CONFIG and targetResourceId={}",
+                logs.getTotalElements(), configKey);
 
         return logs.map(auditLog -> {
             try {
-                // 디버깅: 원본 details 로그 출력
-                log.info("[ConfigHistoryQueryService] Processing auditLog ID={}, details={}", 
-                        auditLog.getId(), auditLog.getDetails());
-                
-                // details JSON 파싱
-                JsonNode detailsNode = parseDetails(auditLog.getDetails());
-                
-                // 디버깅: 파싱된 JSON 구조 출력
-                log.info("[ConfigHistoryQueryService] Parsed detailsNode: {}", detailsNode.toString());
+                // 메타데이터(JSON) 파싱
+                JsonNode metadataNode = parseDetails(auditLog.getMetadata());
                 
                 // 각 필드 추출 (여러 가능한 필드명 시도)
-                String reason = extractStringWithFallback(detailsNode, "reason", "changeReason", "description");
-                String valueType = extractStringWithFallback(detailsNode, "valueType", "configType", "type");
-                String prevValue = extractAndMaskValueWithFallback(detailsNode, valueType, "oldValue", "prevValue", "previousValue");
-                String newValue = extractAndMaskValueWithFallback(detailsNode, valueType, "newValue", "currentValue", "updatedValue");
+                String reason = extractStringWithFallback(metadataNode, "reason", "changeReason", "description");
+                String valueType = extractStringWithFallback(metadataNode, "valueType", "configType", "type");
+                
+                // old/new 값은 엔티티 컬럼에서 직접 사용
+                String prevValue = auditLog.getOldValue();
+                String newValue = auditLog.getNewValue();
+                if (isSensitiveValueType(valueType)) {
+                    prevValue = prevValue == null ? null : maskSensitiveValue(prevValue);
+                    newValue = newValue == null ? null : maskSensitiveValue(newValue);
+                }
                 
                 // 디버깅: 추출된 값들 출력
                 log.info("[ConfigHistoryQueryService] Extracted values - reason={}, valueType={}, prevValue={}, newValue={}", 
                         reason, valueType, prevValue, newValue);
                 
-                // ENCRYPTED 타입의 경우 더 명확한 표시
+                // ENCRYPTED 타입의 경우 고정 표기
                 if ("ENCRYPTED".equalsIgnoreCase(valueType)) {
                     if (prevValue != null && !prevValue.isEmpty()) {
-                        prevValue = "[ENCRYPTED_VALUE]";
+                        prevValue = "Encrypted";
                     }
                     if (newValue != null && !newValue.isEmpty()) {
-                        newValue = "[ENCRYPTED_VALUE]";
+                        newValue = "Encrypted";
                     }
                 }
                 
                 return new ConfigHistoryResponse(
                         auditLog.getAction(),
-                        auditLog.getUser() != null ? String.valueOf(auditLog.getUser().getId()) : null,
+                        auditLog.getUserId(),
                         reason,
                         valueType,
                         prevValue,
                         newValue,
-                        auditLog.getEventTimestamp()
+                        LocalDateTime.ofInstant(auditLog.getTimestamp(), ZoneId.systemDefault())
                 );
             } catch (Exception e) {
                 log.warn("Failed to parse audit log details for logId={}: {}", auditLog.getId(), e.getMessage());
                 // 파싱 실패 시 기본값으로 응답 생성
                 return new ConfigHistoryResponse(
                         auditLog.getAction(),
-                        auditLog.getUser() != null ? String.valueOf(auditLog.getUser().getId()) : null,
+                        auditLog.getUserId(),
                         null,
                         null,
                         null,
                         null,
-                        auditLog.getEventTimestamp()
+                        LocalDateTime.ofInstant(auditLog.getTimestamp(), ZoneId.systemDefault())
                 );
             }
         });

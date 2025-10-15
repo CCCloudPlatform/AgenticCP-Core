@@ -1,0 +1,662 @@
+---
+globs: *Dto.java
+alwaysApply: false
+---
+# DTO Pattern (DTO 패턴)
+
+## 기본 구조
+
+### Request DTO
+```java
+/**
+ * 리소스 생성 요청 DTO
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResourceCreateRequest {
+    
+    @NotBlank(message = "리소스명은 필수입니다")
+    @Size(min = 2, max = 100, message = "리소스명은 2-100자 사이여야 합니다")
+    private String name;
+    
+    @Size(max = 500, message = "설명은 500자를 초과할 수 없습니다")
+    private String description;
+    
+    @NotNull(message = "타입은 필수입니다")
+    private ResourceType type;
+}
+```
+
+### Response DTO
+```java
+/**
+ * 리소스 응답 DTO
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResourceResponse {
+    
+    private Long id;
+    private String name;
+    private String description;
+    private ResourceType type;
+    private Status status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    /**
+     * Entity를 Response DTO로 변환
+     */
+    public static ResourceResponse from(Resource resource) {
+        return ResourceResponse.builder()
+                .id(resource.getId())
+                .name(resource.getName())
+                .description(resource.getDescription())
+                .type(resource.getType())
+                .status(resource.getStatus())
+                .createdAt(resource.getCreatedAt())
+                .updatedAt(resource.getUpdatedAt())
+                .build();
+    }
+    
+    /**
+     * Entity 목록을 Response DTO 목록으로 변환
+     */
+    public static List<ResourceResponse> fromList(List<Resource> resources) {
+        return resources.stream()
+                .map(ResourceResponse::from)
+                .collect(Collectors.toList());
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. DTO 구분
+- **Request DTO**: `XxxCreateRequest`, `XxxUpdateRequest`, `XxxSearchRequest`
+- **Response DTO**: `XxxResponse`, `XxxDetailResponse`, `XxxSummaryResponse`
+- **Common DTO**: `ApiResponse<T>`, `PageResponse<T>`, `ErrorResponse`
+
+### 2. Validation
+
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다")
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    private String email;
+    
+    @NotBlank(message = "비밀번호는 필수입니다")
+    @Size(min = 8, max = 100, message = "비밀번호는 8-100자 사이여야 합니다")
+    private String password;
+    
+    @NotNull(message = "역할은 필수입니다")
+    private UserRole role;
+}
+```
+
+### 3. JsonInclude 사용
+
+```java
+// null 값 제외
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ResourceResponse {
+    private String optionalField;  // null이면 JSON에서 제외
+}
+
+// 빈 컬렉션 제외
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
+public class ResourceResponse {
+    private List<String> tags;  // 빈 리스트면 JSON에서 제외
+}
+```
+
+### 4. from() 메서드 패턴
+
+```java
+// 단일 변환
+public static ResourceResponse from(Resource resource) {
+    if (resource == null) {
+        return null;
+    }
+    return ResourceResponse.builder()
+            .id(resource.getId())
+            .name(resource.getName())
+            .build();
+}
+
+// 목록 변환
+public static List<ResourceResponse> fromList(List<Resource> resources) {
+    return resources.stream()
+            .map(ResourceResponse::from)
+            .collect(Collectors.toList());
+}
+
+// 페이지 변환
+public static Page<ResourceResponse> fromPage(Page<Resource> resourcePage) {
+    return resourcePage.map(ResourceResponse::from);
+}
+```
+
+### 5. API 응답 래퍼
+
+```java
+/**
+ * 표준 API 응답 형식
+ */
+@Getter
+@Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class ApiResponse<T> {
+    
+    private final boolean success;
+    private final String message;
+    private final T data;
+    private final String errorCode;
+    private final List<FieldErrorResponse> fieldErrors;
+    
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
+    private final OffsetDateTime timestamp;
+    
+    public static <T> ApiResponse<T> success(T data) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .data(data)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> success(T data, String message) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .message(message)
+                .data(data)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> error(BaseErrorCode errorCode) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> error(BaseErrorCode errorCode, String message) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(errorCode.getCode())
+                .message(message)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> error(BaseErrorCode errorCode, List<FieldErrorResponse> fieldErrors) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .fieldErrors(fieldErrors)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public record FieldErrorResponse(
+            String field,
+            Object value,
+            String reason
+    ) {}
+}
+```
+
+## 전체 예시
+
+### UserCreateRequest
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50)
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$")
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email
+    private String email;
+    
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100)
+    private String name;
+    
+    @NotBlank(message = "비밀번호는 필수입니다")
+    @Size(min = 8, max = 100)
+    private String password;
+    
+    @NotNull(message = "역할은 필수입니다")
+    private UserRole role;
+}
+```
+
+### UserUpdateRequest
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserUpdateRequest {
+    
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100)
+    private String name;
+    
+    @Email
+    private String email;
+    
+    private String phoneNumber;
+    private String department;
+    private String jobTitle;
+}
+```
+
+### UserResponse
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class UserResponse {
+    
+    private Long id;
+    private String username;
+    private String email;
+    private String name;
+    private UserRole role;
+    private Status status;
+    private String phoneNumber;
+    private String department;
+    private String jobTitle;
+    private LocalDateTime lastLogin;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    public static UserResponse from(User user) {
+        if (user == null) {
+            return null;
+        }
+        
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(user.getName())
+                .role(user.getRole())
+                .status(user.getStatus())
+                .phoneNumber(user.getPhoneNumber())
+                .department(user.getDepartment())
+                .jobTitle(user.getJobTitle())
+                .lastLogin(user.getLastLogin())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
+    }
+    
+    public static List<UserResponse> fromList(List<User> users) {
+        return users.stream()
+                .map(UserResponse::from)
+                .collect(Collectors.toList());
+    }
+    
+    public static Page<UserResponse> fromPage(Page<User> userPage) {
+        return userPage.map(UserResponse::from);
+    }
+}
+```
+# DTO Pattern (DTO 패턴)
+
+## 기본 구조
+
+### Request DTO
+```java
+/**
+ * 리소스 생성 요청 DTO
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResourceCreateRequest {
+    
+    @NotBlank(message = "리소스명은 필수입니다")
+    @Size(min = 2, max = 100, message = "리소스명은 2-100자 사이여야 합니다")
+    private String name;
+    
+    @Size(max = 500, message = "설명은 500자를 초과할 수 없습니다")
+    private String description;
+    
+    @NotNull(message = "타입은 필수입니다")
+    private ResourceType type;
+}
+```
+
+### Response DTO
+```java
+/**
+ * 리소스 응답 DTO
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResourceResponse {
+    
+    private Long id;
+    private String name;
+    private String description;
+    private ResourceType type;
+    private Status status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    /**
+     * Entity를 Response DTO로 변환
+     */
+    public static ResourceResponse from(Resource resource) {
+        return ResourceResponse.builder()
+                .id(resource.getId())
+                .name(resource.getName())
+                .description(resource.getDescription())
+                .type(resource.getType())
+                .status(resource.getStatus())
+                .createdAt(resource.getCreatedAt())
+                .updatedAt(resource.getUpdatedAt())
+                .build();
+    }
+    
+    /**
+     * Entity 목록을 Response DTO 목록으로 변환
+     */
+    public static List<ResourceResponse> fromList(List<Resource> resources) {
+        return resources.stream()
+                .map(ResourceResponse::from)
+                .collect(Collectors.toList());
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. DTO 구분
+- **Request DTO**: `XxxCreateRequest`, `XxxUpdateRequest`, `XxxSearchRequest`
+- **Response DTO**: `XxxResponse`, `XxxDetailResponse`, `XxxSummaryResponse`
+- **Common DTO**: `ApiResponse<T>`, `PageResponse<T>`, `ErrorResponse`
+
+### 2. Validation
+
+```java
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50, message = "사용자명은 2-50자 사이여야 합니다")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다")
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    private String email;
+    
+    @NotBlank(message = "비밀번호는 필수입니다")
+    @Size(min = 8, max = 100, message = "비밀번호는 8-100자 사이여야 합니다")
+    private String password;
+    
+    @NotNull(message = "역할은 필수입니다")
+    private UserRole role;
+}
+```
+
+### 3. JsonInclude 사용
+
+```java
+// null 값 제외
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ResourceResponse {
+    private String optionalField;  // null이면 JSON에서 제외
+}
+
+// 빈 컬렉션 제외
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
+public class ResourceResponse {
+    private List<String> tags;  // 빈 리스트면 JSON에서 제외
+}
+```
+
+### 4. from() 메서드 패턴
+
+```java
+// 단일 변환
+public static ResourceResponse from(Resource resource) {
+    if (resource == null) {
+        return null;
+    }
+    return ResourceResponse.builder()
+            .id(resource.getId())
+            .name(resource.getName())
+            .build();
+}
+
+// 목록 변환
+public static List<ResourceResponse> fromList(List<Resource> resources) {
+    return resources.stream()
+            .map(ResourceResponse::from)
+            .collect(Collectors.toList());
+}
+
+// 페이지 변환
+public static Page<ResourceResponse> fromPage(Page<Resource> resourcePage) {
+    return resourcePage.map(ResourceResponse::from);
+}
+```
+
+### 5. API 응답 래퍼
+
+```java
+/**
+ * 표준 API 응답 형식
+ */
+@Getter
+@Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class ApiResponse<T> {
+    
+    private final boolean success;
+    private final String message;
+    private final T data;
+    private final String errorCode;
+    private final List<FieldErrorResponse> fieldErrors;
+    
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
+    private final OffsetDateTime timestamp;
+    
+    public static <T> ApiResponse<T> success(T data) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .data(data)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> success(T data, String message) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .message(message)
+                .data(data)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> error(BaseErrorCode errorCode) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> error(BaseErrorCode errorCode, String message) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(errorCode.getCode())
+                .message(message)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public static <T> ApiResponse<T> error(BaseErrorCode errorCode, List<FieldErrorResponse> fieldErrors) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .errorCode(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .fieldErrors(fieldErrors)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+    }
+    
+    public record FieldErrorResponse(
+            String field,
+            Object value,
+            String reason
+    ) {}
+}
+```
+
+## 전체 예시
+
+### UserCreateRequest
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserCreateRequest {
+    
+    @NotBlank(message = "사용자명은 필수입니다")
+    @Size(min = 2, max = 50)
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$")
+    private String username;
+    
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email
+    private String email;
+    
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100)
+    private String name;
+    
+    @NotBlank(message = "비밀번호는 필수입니다")
+    @Size(min = 8, max = 100)
+    private String password;
+    
+    @NotNull(message = "역할은 필수입니다")
+    private UserRole role;
+}
+```
+
+### UserUpdateRequest
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserUpdateRequest {
+    
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(max = 100)
+    private String name;
+    
+    @Email
+    private String email;
+    
+    private String phoneNumber;
+    private String department;
+    private String jobTitle;
+}
+```
+
+### UserResponse
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class UserResponse {
+    
+    private Long id;
+    private String username;
+    private String email;
+    private String name;
+    private UserRole role;
+    private Status status;
+    private String phoneNumber;
+    private String department;
+    private String jobTitle;
+    private LocalDateTime lastLogin;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    public static UserResponse from(User user) {
+        if (user == null) {
+            return null;
+        }
+        
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(user.getName())
+                .role(user.getRole())
+                .status(user.getStatus())
+                .phoneNumber(user.getPhoneNumber())
+                .department(user.getDepartment())
+                .jobTitle(user.getJobTitle())
+                .lastLogin(user.getLastLogin())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
+    }
+    
+    public static List<UserResponse> fromList(List<User> users) {
+        return users.stream()
+                .map(UserResponse::from)
+                .collect(Collectors.toList());
+    }
+    
+    public static Page<UserResponse> fromPage(Page<User> userPage) {
+        return userPage.map(UserResponse::from);
+    }
+}
+```

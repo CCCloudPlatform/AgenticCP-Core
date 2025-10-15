@@ -1,8 +1,9 @@
 package com.agenticcp.core.domain.platform.controller;
 
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.audit.AuditController;
 import com.agenticcp.core.common.audit.AuditRequired;
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.exception.AuthorizationException;

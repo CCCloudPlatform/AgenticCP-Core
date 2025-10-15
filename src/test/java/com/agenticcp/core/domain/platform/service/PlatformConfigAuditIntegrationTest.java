@@ -1,27 +1,16 @@
 package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.common.audit.AuditLogger;
-import com.agenticcp.core.common.crypto.EncryptionService;
-import com.agenticcp.core.common.dto.AuditEventDto;
-import com.agenticcp.core.domain.platform.entity.PlatformConfig;
-import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
-import com.agenticcp.core.domain.platform.validation.ConfigValidator;
-import com.agenticcp.core.domain.security.entity.AuditLog;
-import com.agenticcp.core.domain.security.repository.AuditLogRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.agenticcp.core.common.audit.AuditPublishEvent;
+import com.agenticcp.core.common.dto.audit.AuditEventDto;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * ConfigAuditService 단위 테스트
@@ -32,26 +21,17 @@ import static org.mockito.Mockito.when;
  */
 public class PlatformConfigAuditIntegrationTest {
 
-    private PlatformConfigRepository repository;
-    private EncryptionService encryptionService;
     private AuditLogger auditLogger;
-    private AuditLogRepository auditLogRepository;
-    private ObjectMapper objectMapper;
+    private ApplicationEventPublisher eventPublisher;
 
     private ConfigAuditService configAuditService;
-    private PlatformConfigService platformConfigService;
 
     @BeforeEach
     void setUp() {
-        repository = Mockito.mock(PlatformConfigRepository.class);
-        encryptionService = Mockito.mock(EncryptionService.class);
         auditLogger = Mockito.mock(AuditLogger.class);
-        auditLogRepository = Mockito.mock(AuditLogRepository.class);
-        objectMapper = new ObjectMapper();
+        eventPublisher = Mockito.mock(ApplicationEventPublisher.class);
 
-        List<ConfigValidator> validators = Collections.emptyList();
-        configAuditService = new ConfigAuditService(auditLogger, auditLogRepository, objectMapper);
-        platformConfigService = new PlatformConfigService(repository, validators, encryptionService);
+        configAuditService = new ConfigAuditService(auditLogger, eventPublisher);
     }
 
     @Test
@@ -119,25 +99,8 @@ public class PlatformConfigAuditIntegrationTest {
         AuditEventDto event = auditEventCaptor.getValue();
         assertEquals("UPDATE", event.action());
 
-        // then: RDBMS 기반 설정 이력 저장 검증
-        ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
-        verify(auditLogRepository).save(auditLogCaptor.capture());
-        AuditLog savedLog = auditLogCaptor.getValue();
-
-        assertEquals(AuditLog.EventType.CONFIGURATION_CHANGE, savedLog.getEventType());
-        assertEquals(AuditLog.EventCategory.CONFIGURE, savedLog.getEventCategory());
-        assertEquals("PlatformConfig", savedLog.getResourceType());
-        assertEquals("test.key", savedLog.getResourceId());
-        assertEquals("UPDATE", savedLog.getAction());
-        assertEquals(AuditLog.Result.SUCCESS, savedLog.getResult());
-        assertNotNull(savedLog.getEventTimestamp());
-        assertNotNull(savedLog.getDetails());
-
-        // details JSON에 변경 정보가 포함되어 있는지 확인
-        assertTrue(savedLog.getDetails().contains("test.key"));
-        assertTrue(savedLog.getDetails().contains("old-value"));
-        assertTrue(savedLog.getDetails().contains("new-value"));
-        assertTrue(savedLog.getDetails().contains("STRING"));
+        // then: 이벤트 퍼블리시 검증 (DB 저장은 리스너에서 처리)
+        Mockito.verify(eventPublisher).publishEvent(Mockito.any(AuditPublishEvent.class));
     }
 
     @Test
@@ -157,24 +120,8 @@ public class PlatformConfigAuditIntegrationTest {
         AuditEventDto event = auditEventCaptor.getValue();
         assertEquals("CREATE", event.action());
 
-        // then: RDBMS 기반 설정 이력 저장 검증
-        ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
-        verify(auditLogRepository).save(auditLogCaptor.capture());
-        AuditLog savedLog = auditLogCaptor.getValue();
-
-        assertEquals(AuditLog.EventType.CONFIGURATION_CHANGE, savedLog.getEventType());
-        assertEquals(AuditLog.EventCategory.CONFIGURE, savedLog.getEventCategory());
-        assertEquals("PlatformConfig", savedLog.getResourceType());
-        assertEquals("new.key", savedLog.getResourceId());
-        assertEquals("CREATE", savedLog.getAction());
-        assertEquals(AuditLog.Result.SUCCESS, savedLog.getResult());
-        assertNotNull(savedLog.getEventTimestamp());
-        assertNotNull(savedLog.getDetails());
-
-        // details JSON에 생성 정보가 포함되어 있는지 확인
-        assertTrue(savedLog.getDetails().contains("new.key"));
-        assertTrue(savedLog.getDetails().contains("new-value"));
-        assertTrue(savedLog.getDetails().contains("STRING"));
+        // then: 이벤트 퍼블리시 검증 (DB 저장은 리스너에서 처리)
+        Mockito.verify(eventPublisher).publishEvent(Mockito.any(AuditPublishEvent.class));
     }
 }
 

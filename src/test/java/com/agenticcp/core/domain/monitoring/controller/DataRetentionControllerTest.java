@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.monitoring.controller;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.monitoring.entity.TenantDataRetentionPolicy;
 import com.agenticcp.core.domain.monitoring.service.TenantDataRetentionService;
 import com.fasterxml.jackson.databind.ObjectMapper;

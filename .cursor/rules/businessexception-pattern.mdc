@@ -1,0 +1,670 @@
+---
+description: 비즈니스 예외처리 방법에 대한 룰
+alwaysApply: false
+---
+# BusinessException Pattern (비즈니스 예외 패턴)
+
+## 기본 구조
+
+### BaseErrorCode 인터페이스
+```java
+public interface BaseErrorCode {
+    HttpStatus getHttpStatus();
+    String getCode();
+    String getMessage();
+}
+```
+
+### ErrorCategory (에러 코드 카테고리)
+```java
+public enum ErrorCategory {
+    COMMON("COMMON_"),          // 0-999: 공통 에러
+    AUTH("AUTH_"),              // 1000-1999: 인증/인가
+    USER("USER_"),              // 2000-2999: 사용자
+    TENANT("TENANT_"),          // 3000-3999: 테넌트
+    CLOUD("CLOUD_"),            // 4000-4999: 클라우드
+    SECURITY("SECURITY_"),      // 5000-5999: 보안
+    PLATFORM("PLATFORM_"),      // 6000-6999: 플랫폼
+    COST("COST_"),              // 7000-7999: 비용
+    MONITORING("MONITORING_");  // 8000-8999: 모니터링
+    
+    private final String prefix;
+    
+    ErrorCategory(String prefix) {
+        this.prefix = prefix;
+    }
+    
+    public String generate(int codeNumber) {
+        return prefix + codeNumber;
+    }
+}
+```
+
+### 도메인별 ErrorCode 구현
+```java
+/**
+ * 사용자 도메인 에러 코드
+ */
+@Getter
+@RequiredArgsConstructor
+public enum UserErrorCode implements BaseErrorCode {
+    
+    // 2000-2999: 사용자 도메인
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, 2001, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_USERNAME(HttpStatus.CONFLICT, 2002, "이미 사용 중인 사용자명입니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 2003, "이미 사용 중인 이메일입니다."),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, 2004, "비밀번호가 올바르지 않습니다."),
+    USER_ALREADY_DELETED(HttpStatus.BAD_REQUEST, 2005, "이미 삭제된 사용자입니다."),
+    USER_ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, 2006, "계정이 잠겨있습니다."),
+    USER_SUSPENDED(HttpStatus.FORBIDDEN, 2007, "계정이 정지되었습니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.USER.generate(codeNumber);  // "USER_2001"
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. 예외 클래스
+
+#### BusinessException (기본 비즈니스 예외)
+```java
+public class BusinessException extends RuntimeException {
+    private final BaseErrorCode errorCode;
+    
+    public BusinessException(BaseErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+    }
+    
+    public BusinessException(BaseErrorCode errorCode, String customMessage) {
+        super(customMessage);
+        this.errorCode = errorCode;
+    }
+}
+```
+
+**사용 시점**:
+- 비즈니스 규칙 위반
+- 사용자 입력 오류
+- 예측 가능한 예외 상황
+
+```java
+// 사용 예시
+if (userRepository.existsByUsername(username)) {
+    throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+}
+```
+
+#### ResourceNotFoundException (리소스 없음 - 404)
+```java
+public class ResourceNotFoundException extends BusinessException {
+    public ResourceNotFoundException(BaseErrorCode errorCode) {
+        super(errorCode);
+    }
+}
+```
+
+**사용 시점**:
+- 데이터베이스 조회 결과 없음
+- 존재하지 않는 리소스 접근
+
+```java
+// 사용 예시
+User user = userRepository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+```
+
+#### AuthorizationException (권한 없음 - 403)
+```java
+public class AuthorizationException extends BusinessException {
+    
+    // 기본 생성자
+    public AuthorizationException() {
+        super(AuthErrorCode.PERMISSION_DENIED);
+    }
+    
+    // 리소스별 권한 확인
+    public AuthorizationException(Long userId, String resource, String action) {
+        super(AuthErrorCode.PERMISSION_DENIED, 
+              String.format("User %d does not have permission to %s %s", userId, action, resource));
+    }
+    
+    // 역할 기반 권한 확인
+    public AuthorizationException(Long userId, String requiredRole) {
+        super(AuthErrorCode.INSUFFICIENT_ROLE,
+              String.format("User %d requires %s role", userId, requiredRole));
+    }
+}
+```
+
+**사용 시점**:
+- 인증은 되었지만 권한 부족
+- 리소스 소유권 확인 실패
+- 역할 기반 접근 제어 실패
+
+```java
+// 사용 예시
+if (!post.getOwnerId().equals(userId)) {
+    throw new AuthorizationException(userId, "Post", "delete");
+}
+
+if (!hasAdminRole(userId)) {
+    throw new AuthorizationException(userId, "ADMIN");
+}
+```
+
+### 2. 에러 코드 번호 규칙
+
+**도메인별 번호 범위**:
+- `COMMON`: 0-999 (HTTP 상태 코드 사용)
+- `AUTH`: 1000-1999
+- `USER`: 2000-2999
+- `TENANT`: 3000-3999
+- `CLOUD`: 4000-4999
+- `SECURITY`: 5000-5999
+- `PLATFORM`: 6000-6999
+- `COST`: 7000-7999
+- `MONITORING`: 8000-8999
+
+**새 도메인 추가 시**:
+1. `ErrorCategory`에 새 카테고리 추가
+2. 번호 범위 할당 (1000 단위)
+3. 도메인별 `XxxErrorCode` enum 생성
+4. `BaseErrorCode` 인터페이스 구현
+
+```java
+// 새 도메인 예시: INTEGRATION (9000-9999)
+public enum IntegrationErrorCode implements BaseErrorCode {
+    INTEGRATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 9001, "외부 시스템 연동에 실패했습니다."),
+    API_TIMEOUT(HttpStatus.REQUEST_TIMEOUT, 9002, "API 호출 시간이 초과되었습니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.INTEGRATION.generate(codeNumber);  // "INTEGRATION_9001"
+    }
+}
+```
+
+### 3. GlobalExceptionHandler
+
+```java
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+    
+    // BusinessException 처리
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        log.error("[GlobalExceptionHandler] BusinessException: code={}, message={}", 
+                  e.getErrorCode().getCode(), e.getMessage());
+        return ResponseEntity
+                .status(e.getErrorCode().getHttpStatus())
+                .body(ApiResponse.error(e.getErrorCode(), e.getMessage()));
+    }
+    
+    // Validation 예외 처리
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
+        List<FieldErrorResponse> fieldErrors = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> new FieldErrorResponse(
+                        error.getField(),
+                        error.getRejectedValue(),
+                        error.getDefaultMessage()
+                ))
+                .collect(Collectors.toList());
+        
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(CommonErrorCode.FIELD_VALIDATION_ERROR, fieldErrors));
+    }
+    
+    // 예상치 못한 예외 처리
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception e) {
+        log.error("[GlobalExceptionHandler] Unexpected exception", e);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR));
+    }
+}
+```
+
+## 전체 예시
+
+### UserErrorCode
+```java
+@Getter
+@RequiredArgsConstructor
+public enum UserErrorCode implements BaseErrorCode {
+    
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, 2001, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_USERNAME(HttpStatus.CONFLICT, 2002, "이미 사용 중인 사용자명입니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 2003, "이미 사용 중인 이메일입니다."),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, 2004, "비밀번호가 올바르지 않습니다."),
+    USER_ALREADY_DELETED(HttpStatus.BAD_REQUEST, 2005, "이미 삭제된 사용자입니다."),
+    USER_ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, 2006, "계정이 잠겨있습니다."),
+    USER_SUSPENDED(HttpStatus.FORBIDDEN, 2007, "계정이 정지되었습니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.USER.generate(codeNumber);
+    }
+}
+```
+
+### TenantErrorCode
+```java
+@Getter
+@RequiredArgsConstructor
+public enum TenantErrorCode implements BaseErrorCode {
+    
+    TENANT_NOT_FOUND(HttpStatus.NOT_FOUND, 3001, "테넌트를 찾을 수 없습니다."),
+    TENANT_QUOTA_EXCEEDED(HttpStatus.BAD_REQUEST, 3002, "테넌트 할당량을 초과했습니다."),
+    TENANT_SUSPENDED(HttpStatus.FORBIDDEN, 3003, "일시정지된 테넌트입니다."),
+    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 3004, "유효하지 않은 테넌트 키입니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.TENANT.generate(codeNumber);
+    }
+}
+```
+
+### Service에서 예외 사용
+```java
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+    
+    private final UserRepository userRepository;
+    
+    public User getUserByIdOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+    }
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        // 중복 검증
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+        }
+        
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+        }
+        
+        // 사용자 생성 로직
+        User user = buildUser(request);
+        return userRepository.save(user);
+    }
+    
+    @Transactional
+    public void deletePost(Long userId, Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException(PostErrorCode.POST_NOT_FOUND));
+        
+        // 권한 검증
+        if (!post.getOwnerId().equals(userId)) {
+            throw new AuthorizationException(userId, "Post", "delete");
+        }
+        
+        postRepository.delete(post);
+    }
+}
+```
+# BusinessException Pattern (비즈니스 예외 패턴)
+
+## 기본 구조
+
+### BaseErrorCode 인터페이스
+```java
+public interface BaseErrorCode {
+    HttpStatus getHttpStatus();
+    String getCode();
+    String getMessage();
+}
+```
+
+### ErrorCategory (에러 코드 카테고리)
+```java
+public enum ErrorCategory {
+    COMMON("COMMON_"),          // 0-999: 공통 에러
+    AUTH("AUTH_"),              // 1000-1999: 인증/인가
+    USER("USER_"),              // 2000-2999: 사용자
+    TENANT("TENANT_"),          // 3000-3999: 테넌트
+    CLOUD("CLOUD_"),            // 4000-4999: 클라우드
+    SECURITY("SECURITY_"),      // 5000-5999: 보안
+    PLATFORM("PLATFORM_"),      // 6000-6999: 플랫폼
+    COST("COST_"),              // 7000-7999: 비용
+    MONITORING("MONITORING_");  // 8000-8999: 모니터링
+    
+    private final String prefix;
+    
+    ErrorCategory(String prefix) {
+        this.prefix = prefix;
+    }
+    
+    public String generate(int codeNumber) {
+        return prefix + codeNumber;
+    }
+}
+```
+
+### 도메인별 ErrorCode 구현
+```java
+/**
+ * 사용자 도메인 에러 코드
+ */
+@Getter
+@RequiredArgsConstructor
+public enum UserErrorCode implements BaseErrorCode {
+    
+    // 2000-2999: 사용자 도메인
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, 2001, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_USERNAME(HttpStatus.CONFLICT, 2002, "이미 사용 중인 사용자명입니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 2003, "이미 사용 중인 이메일입니다."),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, 2004, "비밀번호가 올바르지 않습니다."),
+    USER_ALREADY_DELETED(HttpStatus.BAD_REQUEST, 2005, "이미 삭제된 사용자입니다."),
+    USER_ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, 2006, "계정이 잠겨있습니다."),
+    USER_SUSPENDED(HttpStatus.FORBIDDEN, 2007, "계정이 정지되었습니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.USER.generate(codeNumber);  // "USER_2001"
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. 예외 클래스
+
+#### BusinessException (기본 비즈니스 예외)
+```java
+public class BusinessException extends RuntimeException {
+    private final BaseErrorCode errorCode;
+    
+    public BusinessException(BaseErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+    }
+    
+    public BusinessException(BaseErrorCode errorCode, String customMessage) {
+        super(customMessage);
+        this.errorCode = errorCode;
+    }
+}
+```
+
+**사용 시점**:
+- 비즈니스 규칙 위반
+- 사용자 입력 오류
+- 예측 가능한 예외 상황
+
+```java
+// 사용 예시
+if (userRepository.existsByUsername(username)) {
+    throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+}
+```
+
+#### ResourceNotFoundException (리소스 없음 - 404)
+```java
+public class ResourceNotFoundException extends BusinessException {
+    public ResourceNotFoundException(BaseErrorCode errorCode) {
+        super(errorCode);
+    }
+}
+```
+
+**사용 시점**:
+- 데이터베이스 조회 결과 없음
+- 존재하지 않는 리소스 접근
+
+```java
+// 사용 예시
+User user = userRepository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+```
+
+#### AuthorizationException (권한 없음 - 403)
+```java
+public class AuthorizationException extends BusinessException {
+    
+    // 기본 생성자
+    public AuthorizationException() {
+        super(AuthErrorCode.PERMISSION_DENIED);
+    }
+    
+    // 리소스별 권한 확인
+    public AuthorizationException(Long userId, String resource, String action) {
+        super(AuthErrorCode.PERMISSION_DENIED, 
+              String.format("User %d does not have permission to %s %s", userId, action, resource));
+    }
+    
+    // 역할 기반 권한 확인
+    public AuthorizationException(Long userId, String requiredRole) {
+        super(AuthErrorCode.INSUFFICIENT_ROLE,
+              String.format("User %d requires %s role", userId, requiredRole));
+    }
+}
+```
+
+**사용 시점**:
+- 인증은 되었지만 권한 부족
+- 리소스 소유권 확인 실패
+- 역할 기반 접근 제어 실패
+
+```java
+// 사용 예시
+if (!post.getOwnerId().equals(userId)) {
+    throw new AuthorizationException(userId, "Post", "delete");
+}
+
+if (!hasAdminRole(userId)) {
+    throw new AuthorizationException(userId, "ADMIN");
+}
+```
+
+### 2. 에러 코드 번호 규칙
+
+**도메인별 번호 범위**:
+- `COMMON`: 0-999 (HTTP 상태 코드 사용)
+- `AUTH`: 1000-1999
+- `USER`: 2000-2999
+- `TENANT`: 3000-3999
+- `CLOUD`: 4000-4999
+- `SECURITY`: 5000-5999
+- `PLATFORM`: 6000-6999
+- `COST`: 7000-7999
+- `MONITORING`: 8000-8999
+
+**새 도메인 추가 시**:
+1. `ErrorCategory`에 새 카테고리 추가
+2. 번호 범위 할당 (1000 단위)
+3. 도메인별 `XxxErrorCode` enum 생성
+4. `BaseErrorCode` 인터페이스 구현
+
+```java
+// 새 도메인 예시: INTEGRATION (9000-9999)
+public enum IntegrationErrorCode implements BaseErrorCode {
+    INTEGRATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 9001, "외부 시스템 연동에 실패했습니다."),
+    API_TIMEOUT(HttpStatus.REQUEST_TIMEOUT, 9002, "API 호출 시간이 초과되었습니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.INTEGRATION.generate(codeNumber);  // "INTEGRATION_9001"
+    }
+}
+```
+
+### 3. GlobalExceptionHandler
+
+```java
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+    
+    // BusinessException 처리
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        log.error("[GlobalExceptionHandler] BusinessException: code={}, message={}", 
+                  e.getErrorCode().getCode(), e.getMessage());
+        return ResponseEntity
+                .status(e.getErrorCode().getHttpStatus())
+                .body(ApiResponse.error(e.getErrorCode(), e.getMessage()));
+    }
+    
+    // Validation 예외 처리
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
+        List<FieldErrorResponse> fieldErrors = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> new FieldErrorResponse(
+                        error.getField(),
+                        error.getRejectedValue(),
+                        error.getDefaultMessage()
+                ))
+                .collect(Collectors.toList());
+        
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(CommonErrorCode.FIELD_VALIDATION_ERROR, fieldErrors));
+    }
+    
+    // 예상치 못한 예외 처리
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception e) {
+        log.error("[GlobalExceptionHandler] Unexpected exception", e);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR));
+    }
+}
+```
+
+## 전체 예시
+
+### UserErrorCode
+```java
+@Getter
+@RequiredArgsConstructor
+public enum UserErrorCode implements BaseErrorCode {
+    
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, 2001, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_USERNAME(HttpStatus.CONFLICT, 2002, "이미 사용 중인 사용자명입니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, 2003, "이미 사용 중인 이메일입니다."),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, 2004, "비밀번호가 올바르지 않습니다."),
+    USER_ALREADY_DELETED(HttpStatus.BAD_REQUEST, 2005, "이미 삭제된 사용자입니다."),
+    USER_ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, 2006, "계정이 잠겨있습니다."),
+    USER_SUSPENDED(HttpStatus.FORBIDDEN, 2007, "계정이 정지되었습니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.USER.generate(codeNumber);
+    }
+}
+```
+
+### TenantErrorCode
+```java
+@Getter
+@RequiredArgsConstructor
+public enum TenantErrorCode implements BaseErrorCode {
+    
+    TENANT_NOT_FOUND(HttpStatus.NOT_FOUND, 3001, "테넌트를 찾을 수 없습니다."),
+    TENANT_QUOTA_EXCEEDED(HttpStatus.BAD_REQUEST, 3002, "테넌트 할당량을 초과했습니다."),
+    TENANT_SUSPENDED(HttpStatus.FORBIDDEN, 3003, "일시정지된 테넌트입니다."),
+    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 3004, "유효하지 않은 테넌트 키입니다.");
+    
+    private final HttpStatus httpStatus;
+    private final int codeNumber;
+    private final String message;
+    
+    @Override
+    public String getCode() {
+        return ErrorCategory.TENANT.generate(codeNumber);
+    }
+}
+```
+
+### Service에서 예외 사용
+```java
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+    
+    private final UserRepository userRepository;
+    
+    public User getUserByIdOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
+    }
+    
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        // 중복 검증
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
+        }
+        
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+        }
+        
+        // 사용자 생성 로직
+        User user = buildUser(request);
+        return userRepository.save(user);
+    }
+    
+    @Transactional
+    public void deletePost(Long userId, Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException(PostErrorCode.POST_NOT_FOUND));
+        
+        // 권한 검증
+        if (!post.getOwnerId().equals(userId)) {
+            throw new AuthorizationException(userId, "Post", "delete");
+        }
+        
+        postRepository.delete(post);
+    }
+}
+```

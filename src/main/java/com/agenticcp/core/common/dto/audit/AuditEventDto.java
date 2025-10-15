@@ -1,4 +1,4 @@
-package com.agenticcp.core.common.dto;
+package com.agenticcp.core.common.dto.audit;
 
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
@@ -31,5 +31,9 @@ public record AuditEventDto(
     String error,
     Map<String, Object> requestData,
     Map<String, Object> responseData,
-    Map<String, Object> metadata
+    Map<String, Object> metadata,
+    
+    Map<String, Object> oldValue,
+    Map<String, Object> newValue,
+    String targetResourceId
 ) {}

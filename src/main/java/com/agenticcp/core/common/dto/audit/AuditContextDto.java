@@ -1,4 +1,4 @@
-package com.agenticcp.core.common.dto;
+package com.agenticcp.core.common.dto.audit;
 
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;

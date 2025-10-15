@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.audit;
 
-import com.agenticcp.core.common.dto.AuditEventDto;
+import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

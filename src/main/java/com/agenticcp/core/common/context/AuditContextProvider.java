@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.context;
 
-import com.agenticcp.core.common.dto.AuditContextDto;
+import com.agenticcp.core.common.dto.audit.AuditContextDto;
 import com.agenticcp.core.common.logging.MdcKeys;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 /**
  * 감사 컨텍스트 제공자
- * 
  * MDC에서 현재 요청의 컨텍스트 정보를 추출하여 제공하는 컴포넌트입니다.
  * 사용자 ID 추출 등의 로직을 캡슐화합니다.
  * 
