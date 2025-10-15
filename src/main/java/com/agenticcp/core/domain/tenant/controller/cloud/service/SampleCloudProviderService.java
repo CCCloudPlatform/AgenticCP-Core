@@ -58,7 +58,20 @@ public class SampleCloudProviderService implements CloudProviderService{
     public CloudResourceResult createSecurityGroups(String tenantKey, SecurityGroupRequest securityGroupRequest){
 
         return CloudResourceResult.builder()
-                .resourceId()
+                .resourceId(tenantKey)
+                .metadata(Map.of(
+                        "name", tenantKey,
+                        "vpcId", securityGroupRequest.vpcId(),
+                        "sg", securityGroupRequest.securityGroupRules().stream()
+                                .map(sg -> Map.of(
+                                        "protocol", sg.protocol(),
+                                        "portRange", sg.portRange(),
+                                        "cidrIp", sg.cidrIp()
+                                ))
+                                .toList()
+                        ))
+                .build();
+
     }
 
 }
