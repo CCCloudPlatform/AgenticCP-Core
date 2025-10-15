@@ -3,7 +3,7 @@ spring:
     name: agenticcp-core
 
   profiles:
-    active: local
+    active: local,notification
   
   datasource:
     url: ${DATABASE_URL:jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}

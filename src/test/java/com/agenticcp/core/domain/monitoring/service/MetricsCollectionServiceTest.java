@@ -48,6 +48,12 @@ class MetricsCollectionServiceTest {
     @Mock
     private MetricsCache metricsCache;
 
+    @Mock
+    private TenantCollectorConfigService tenantCollectorConfigService;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private MetricsCollectionService metricsCollectionService;
 
@@ -401,21 +407,21 @@ class MetricsCollectionServiceTest {
     class ThresholdViolationTest {
 
         /**
-         * 시나리오 13: 임계값 위반 시 경고 로그 출력
+         * 시나리오 13: 임계값 위반 시 경고 로그 출력 및 알림 발송
          * Given: CPU 사용률 85% > 임계값 80%
          * When: collectSystemMetrics() 호출
-         * Then: 경고 로그가 출력됨
+         * Then: 경고 로그가 출력되고 알림이 발송됨
          */
         @Test
-        @DisplayName("임계값 위반 시 경고 로그가 출력됨")
-        void collectSystemMetrics_WhenThresholdViolated_ShouldLogWarning() {
-            // Given
-            SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
+        @DisplayName("임계값 위반 시 경고 로그가 출력되고 알림이 발송됨")
+        void collectSystemMetrics_WhenThresholdViolated_ShouldLogWarningAndSendAlert() {
+            // Given - CPU 85.5% (임계값 80% 초과)
+            SystemMetrics testMetrics = TestDataBuilder.highCpuSystemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
             when(metricRepository.save(any(Metric.class))).thenReturn(mock(Metric.class));
             when(metricThresholdRepository.findByMetricName(anyString())).thenReturn(List.of());
             
-            // CPU 임계값 위반 설정 (85% > 80%)
+            // CPU 임계값 위반 설정 (85.5% > 80%)
             MetricThreshold cpuThreshold = MetricThreshold.builder()
                     .metricName("cpu.usage")
                     .thresholdValue(80.0)
@@ -432,6 +438,10 @@ class MetricsCollectionServiceTest {
             verify(metricRepository, times(7)).save(any(Metric.class));
             // Then: 임계값 확인 호출 확인
             verify(metricThresholdRepository, atLeastOnce()).findByMetricName("cpu.usage");
+            // Then: 이벤트 발행 확인
+            verify(eventPublisher).publishEvent(
+                argThat(event -> event instanceof com.agenticcp.core.domain.monitoring.event.ThresholdExceededEvent)
+            );
         }
 
         /**

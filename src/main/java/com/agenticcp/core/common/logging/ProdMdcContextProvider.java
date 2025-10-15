@@ -1,5 +1,6 @@
 package com.agenticcp.core.common.logging;
 
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -8,8 +9,8 @@ import org.springframework.stereotype.Component;
 @Profile("prod")
 public class ProdMdcContextProvider extends AbstractMdcContextProvider {
 
-    public ProdMdcContextProvider(MdcProperties mdcProperties) {
-        super(mdcProperties);
+    public ProdMdcContextProvider(MdcProperties mdcProperties, MaskingService maskingService) {
+        super(mdcProperties, maskingService);
     }
 
     @Override
