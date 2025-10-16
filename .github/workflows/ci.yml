@@ -38,13 +38,18 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
+    - name: Debug repository structure
+      run: |
+        echo "=== Checking repository structure ==="
+        find . -type f -name "AuditLogRepository.java" || echo "NOT FOUND"
+        echo ""
+        echo "=== Listing modules from pom.xml ==="
+        grep -A2 "<modules>" pom.xml || echo "No modules section"
+        echo ""
+        echo "=== Showing AuditLogRepository content (first 20 lines) ==="
+        head -n 20 $(find . -type f -name "AuditLogRepository.java" | head -n 1) || echo "AuditLogRepository not found"
 
     - name: Run tests
-      run: |
-          echo "=== Checking repository structure ==="
-          find . -type f -name "AuditLogRepository.java"
-          echo "=== Listing pom modules ==="
-          grep -A2 "<modules>" pom.xml || true
       run: mvn clean test
       env:
         SPRING_PROFILES_ACTIVE: test
