@@ -48,6 +48,7 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final TenantService tenantService;
+    private final TwoFactorService twoFactorService;
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -119,6 +120,12 @@ public class AuthenticationService {
                 throw new BusinessException(AuthErrorCode.ACCOUNT_LOCKED);
             }
             
+            // PENDING 상태 사용자 체크 (2FA 설정 필요)
+            if (user.getStatus() == com.agenticcp.core.common.enums.Status.PENDING) {
+                log.warn("[AuthenticationService] login - pending user (2FA setup required) username={}", loginRequest.getUsername());
+                throw new BusinessException(AuthErrorCode.ACCOUNT_PENDING_2FA_SETUP);
+            }
+            
             if (user.getStatus() != com.agenticcp.core.common.enums.Status.ACTIVE) {
                 log.warn("[AuthenticationService] login - inactive account username={}", loginRequest.getUsername());
                 throw new BusinessException(AuthErrorCode.ACCOUNT_INACTIVE);
@@ -129,6 +136,22 @@ public class AuthenticationService {
                 log.warn("[AuthenticationService] login - invalid password username={}", loginRequest.getUsername());
                 userService.handleFailedLogin(loginRequest.getUsername());
                 throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
+            }
+            
+            // 2FA 활성화된 경우 TOTP 코드 검증
+            if (user.isTwoFactorEnabled()) {
+                if (loginRequest.getTotpCode() == null || loginRequest.getTotpCode().trim().isEmpty()) {
+                    log.warn("[AuthenticationService] login - 2FA enabled but no TOTP code provided username={}", loginRequest.getUsername());
+                    throw new BusinessException(AuthErrorCode.TOTP_CODE_REQUIRED);
+                }
+                
+                if (!twoFactorService.verifyCode(user.getTwoFactorSecret(), loginRequest.getTotpCode())) {
+                    log.warn("[AuthenticationService] login - invalid TOTP code username={}", loginRequest.getUsername());
+                    userService.handleFailedLogin(loginRequest.getUsername());
+                    throw new BusinessException(AuthErrorCode.INVALID_TOTP_CODE);
+                }
+                
+                log.debug("[AuthenticationService] login - TOTP code verified username={}", loginRequest.getUsername());
             }
             
             // 로그인 성공 처리
