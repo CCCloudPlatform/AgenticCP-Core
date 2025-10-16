@@ -120,14 +120,13 @@ public class AuthenticationService {
                 throw new BusinessException(AuthErrorCode.ACCOUNT_LOCKED);
             }
             
-            // PENDING 상태 사용자 체크 (2FA 설정 필요)
+            // 계정 상태 확인 (PENDING과 ACTIVE만 로그인 허용)
             if (user.getStatus() == com.agenticcp.core.common.enums.Status.PENDING) {
-                log.warn("[AuthenticationService] login - pending user (2FA setup required) username={}", loginRequest.getUsername());
-                throw new BusinessException(AuthErrorCode.ACCOUNT_PENDING_2FA_SETUP);
-            }
-            
-            if (user.getStatus() != com.agenticcp.core.common.enums.Status.ACTIVE) {
-                log.warn("[AuthenticationService] login - inactive account username={}", loginRequest.getUsername());
+                log.info("[AuthenticationService] login - PENDING user (2FA setup required) username={}", loginRequest.getUsername());
+                // 2FA 설정을 위해 제한적 로그인 허용
+            } else if (user.getStatus() != com.agenticcp.core.common.enums.Status.ACTIVE) {
+                log.warn("[AuthenticationService] login - inactive account status={} username={}", 
+                    user.getStatus(), loginRequest.getUsername());
                 throw new BusinessException(AuthErrorCode.ACCOUNT_INACTIVE);
             }
             
