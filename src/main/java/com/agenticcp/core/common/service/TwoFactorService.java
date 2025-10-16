@@ -15,10 +15,14 @@ import dev.samstevens.totp.secret.DefaultSecretGenerator;
 import dev.samstevens.totp.secret.SecretGenerator;
 import dev.samstevens.totp.time.SystemTimeProvider;
 import dev.samstevens.totp.time.TimeProvider;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.time.Duration;
 import java.util.Base64;
 
 /**
@@ -38,6 +42,12 @@ public class TwoFactorService {
     private final CodeVerifier codeVerifier = new DefaultCodeVerifier(codeGenerator, timeProvider);
     private final SecretGenerator secretGenerator = new DefaultSecretGenerator();
     private final QRCodeWriter qrCodeWriter = new QRCodeWriter();
+    
+    @Autowired(required = false)
+    private RedisTemplate<String, String> redisTemplate;
+    
+    private static final String TEMP_SECRET_PREFIX = "2fa_temp_secret:";
+    private static final Duration TEMP_SECRET_TTL = Duration.ofMinutes(10);
     
     /**
      * TOTP 시크릿 키 생성
@@ -118,6 +128,71 @@ public class TwoFactorService {
             log.error("[TwoFactorService] verifyCode - TOTP 코드 검증 실패", e);
             return false;
         }
+    }
+    
+    /**
+     * 임시 시크릿 키 저장 (Redis)
+     * 2FA 설정 중간 단계에서 시크릿 키를 임시로 저장합니다.
+     * 
+     * @param username 사용자명
+     * @param secretKey 시크릿 키
+     */
+    public void storeTemporarySecretKey(String username, String secretKey) {
+        if (redisTemplate == null) {
+            log.warn("[TwoFactorService] storeTemporarySecretKey - Redis not available, skipping");
+            return;
+        }
+        
+        String key = TEMP_SECRET_PREFIX + username;
+        log.debug("[TwoFactorService] storeTemporarySecretKey - username={}", username);
+        
+        redisTemplate.opsForValue().set(key, secretKey, TEMP_SECRET_TTL);
+        log.debug("[TwoFactorService] storeTemporarySecretKey - 임시 시크릿 키 저장 완료 (TTL: {} minutes)", 
+            TEMP_SECRET_TTL.toMinutes());
+    }
+    
+    /**
+     * 임시 시크릿 키 조회 (Redis)
+     * 
+     * @param username 사용자명
+     * @return 저장된 시크릿 키 (없으면 null)
+     */
+    public String getTemporarySecretKey(String username) {
+        if (redisTemplate == null) {
+            log.warn("[TwoFactorService] getTemporarySecretKey - Redis not available");
+            return null;
+        }
+        
+        String key = TEMP_SECRET_PREFIX + username;
+        log.debug("[TwoFactorService] getTemporarySecretKey - username={}", username);
+        
+        String secretKey = redisTemplate.opsForValue().get(key);
+        if (secretKey != null) {
+            log.debug("[TwoFactorService] getTemporarySecretKey - 임시 시크릿 키 조회 완료");
+        } else {
+            log.debug("[TwoFactorService] getTemporarySecretKey - 임시 시크릿 키 없음 (만료 또는 미설정)");
+        }
+        
+        return secretKey;
+    }
+    
+    /**
+     * 임시 시크릿 키 삭제 (Redis)
+     * 2FA 활성화 완료 또는 실패 시 임시 키를 삭제합니다.
+     * 
+     * @param username 사용자명
+     */
+    public void deleteTemporarySecretKey(String username) {
+        if (redisTemplate == null) {
+            log.warn("[TwoFactorService] deleteTemporarySecretKey - Redis not available, skipping");
+            return;
+        }
+        
+        String key = TEMP_SECRET_PREFIX + username;
+        log.debug("[TwoFactorService] deleteTemporarySecretKey - username={}", username);
+        
+        redisTemplate.delete(key);
+        log.debug("[TwoFactorService] deleteTemporarySecretKey - 임시 시크릿 키 삭제 완료");
     }
     
 }
