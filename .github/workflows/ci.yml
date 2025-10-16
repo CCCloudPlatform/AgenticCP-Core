@@ -38,14 +38,12 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
-
     - name: Run tests
       run: mvn clean test
       env:
         SPRING_PROFILES_ACTIVE: test
         SPRING_REDIS_HOST: 127.0.0.1
         SPRING_REDIS_PORT: 6379
-
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
