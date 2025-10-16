@@ -40,16 +40,16 @@ jobs:
 
 
     - name: Run tests
+      run: |
+          echo "=== Checking repository structure ==="
+          find . -type f -name "AuditLogRepository.java"
+          echo "=== Listing pom modules ==="
+          grep -A2 "<modules>" pom.xml || true
       run: mvn clean test
       env:
         SPRING_PROFILES_ACTIVE: test
         SPRING_REDIS_HOST: 127.0.0.1
         SPRING_REDIS_PORT: 6379
-        run: |
-          echo "=== Checking repository structure ==="
-          find . -type f -name "AuditLogRepository.java"
-          echo "=== Listing pom modules ==="
-          grep -A2 "<modules>" pom.xml || true
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
