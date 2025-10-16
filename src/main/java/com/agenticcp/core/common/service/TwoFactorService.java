@@ -120,24 +120,4 @@ public class TwoFactorService {
         }
     }
     
-    /**
-     * TOTP 코드 검증 (엄격한 모드)
-     * 
-     * @param secretKey TOTP 시크릿 키
-     * @param code 검증할 TOTP 코드
-     * @return 검증 성공 여부
-     */
-    public boolean verifyCodeStrict(String secretKey, String code) {
-        log.debug("[TwoFactorService] verifyCodeStrict - TOTP 코드 엄격 검증 시작");
-        
-        try {
-            // 윈도우를 0으로 설정하여 엄격한 검증
-            boolean isValid = codeVerifier.isValidCode(secretKey, code, 0);
-            log.debug("[TwoFactorService] verifyCodeStrict - TOTP 코드 엄격 검증 결과: {}", isValid);
-            return isValid;
-        } catch (Exception e) {
-            log.error("[TwoFactorService] verifyCodeStrict - TOTP 코드 엄격 검증 실패", e);
-            return false;
-        }
-    }
 }
