@@ -1,5 +1,7 @@
 package com.agenticcp.core.common.dto.auth;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -26,5 +28,6 @@ public class LoginRequest {
 
     @NotBlank(message = "비밀번호는 필수입니다")
     @Size(min = 8, max = 100, message = "비밀번호는 8-100자 사이여야 합니다")
+    @Masked(type = MaskingType.PASSWORD)
     private String password;
 }

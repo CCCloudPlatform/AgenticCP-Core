@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.logging;
 
-import com.agenticcp.core.common.util.LogMaskingUtils;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
@@ -9,6 +9,7 @@ import org.slf4j.MDC;
 public abstract class AbstractMdcContextProvider implements MdcContextProvider {
     
     protected final MdcProperties mdcProperties;
+    protected final MaskingService maskingService;
 
     protected String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader(MdcKeys.HEADER_X_FORWARDED_FOR);
@@ -29,7 +30,7 @@ public abstract class AbstractMdcContextProvider implements MdcContextProvider {
     protected String getUserAgent(HttpServletRequest request) {
         String userAgent = request.getHeader(MdcKeys.HEADER_USER_AGENT);
         if (userAgent != null && mdcProperties.isMaskUserAgent()) {
-            return LogMaskingUtils.previewUserAgent(userAgent, mdcProperties.getUserAgentPreviewLength());
+            return maskingService.previewUserAgent(userAgent, mdcProperties.getUserAgentPreviewLength());
         }
         return userAgent;
     }
@@ -71,7 +72,7 @@ public abstract class AbstractMdcContextProvider implements MdcContextProvider {
         }
         
         if (mdcProperties.isMaskClientIp()) {
-            return LogMaskingUtils.maskIpAddress(clientIp);
+            return maskingService.maskIpAddress(clientIp);
         }
         return clientIp;
     }

@@ -6,6 +6,7 @@ import com.agenticcp.core.domain.monitoring.config.RetryConfig;
 import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.entity.MetricThreshold;
+import com.agenticcp.core.domain.monitoring.event.ThresholdExceededEvent;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
@@ -14,6 +15,7 @@ import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -40,7 +42,7 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.1.0
- * @since 2024-01-01
+ * @since 2025-10-09
  */
 @Slf4j
 @Service
@@ -68,6 +70,7 @@ public class MetricsCollectionService {
     private final MetricsStorageFactory metricsStorageFactory;
     private final MetricsCache metricsCache;
     private final TenantCollectorConfigService tenantCollectorConfigService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 1분마다 자동으로 메트릭 수집 실행
@@ -428,7 +431,10 @@ public class MetricsCollectionService {
     }
 
     /**
-     * 임계값 위반 확인
+     * 임계값 위반 확인 (Issue #15: 실시간 알림 - 이벤트 기반)
+     * 
+     * <p>메트릭 값이 임계값을 위반하면 ThresholdExceededEvent를 발행합니다.</p>
+     * <p>실제 알림 발송은 MonitoringAlertService에서 처리합니다.</p>
      */
     private void checkThresholdViolations(Metric metric) {
         try {
@@ -443,8 +449,15 @@ public class MetricsCollectionService {
                         threshold.getThresholdValue(),
                         threshold.getThresholdType());
                     
-                    // TODO: 알림 발송 로직 구현
-                    // sendAlert(threshold, metric);
+                    // 이벤트 발행 (Issue #15 가이드: 이벤트 기반 알림)
+                    try {
+                        eventPublisher.publishEvent(new ThresholdExceededEvent(this, threshold, metric));
+                        log.debug("✅ ThresholdExceededEvent published for metric: {}", metric.getMetricName());
+                    } catch (Exception eventException) {
+                        log.error("❌ Failed to publish ThresholdExceededEvent for metric: {}", 
+                            metric.getMetricName(), eventException);
+                        // 이벤트 발행 실패는 메트릭 저장을 중단시키지 않음
+                    }
                 }
             }
         } catch (Exception e) {
