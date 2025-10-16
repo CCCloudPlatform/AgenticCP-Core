@@ -44,6 +44,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
                 .requestMatchers("/api/health", "/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // 2FA 엔드포인트 - 인증 필요
+                .requestMatchers("/api/auth/2fa/**").authenticated()
                 // 테넌트별 권한/역할 조회는 공개, 초기화/캐시무효화는 인증 필요
                 .requestMatchers(org.springframework.http.HttpMethod.GET,
                         "/api/v1/tenants/*/roles",
