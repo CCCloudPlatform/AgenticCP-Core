@@ -1,5 +1,6 @@
 package com.agenticcp.core.common.logging;
 
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ public class ProdMdcContextProviderTest {
 
     private ProdMdcContextProvider provider;
     private MdcProperties properties;
+    private MaskingService maskingService;
 
     @BeforeEach
     void setUp() {
@@ -24,7 +26,17 @@ public class ProdMdcContextProviderTest {
         properties = new MdcProperties(
                 List.of("userId", "sessionId", "clientIp", "userAgent"),
                 "uuid", "req_", 8, true, true, 20);
-        provider = new ProdMdcContextProvider(properties);
+        maskingService = mock(MaskingService.class);
+        
+        // MaskingService mock 설정
+        when(maskingService.maskIpAddress("192.168.1.100")).thenReturn("192.168.1.***");
+        when(maskingService.maskIpAddress("10.0.0.1")).thenReturn("10.0.0.***");
+        when(maskingService.previewUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)", 20))
+                .thenReturn("Mozilla/5.0 (Window...");
+        when(maskingService.previewUserAgent("Short UA", 20))
+                .thenReturn("Short UA");
+        
+        provider = new ProdMdcContextProvider(properties, maskingService);
     }
 
     @Test

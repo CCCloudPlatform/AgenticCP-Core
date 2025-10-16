@@ -5,14 +5,6 @@ spring:
     password: agenticcppassword
     driver-class-name: com.mysql.cj.jdbc.Driver
   
-  jpa:
-    hibernate:
-      ddl-auto: update
-  
-  security:
-    user:
-      name: admin
-      password: admin123
   
   cache:
     type: simple
@@ -23,15 +15,32 @@ spring:
       timeout: 2000ms
       connect-timeout: 2000ms
 
-logging:
 app:
   redis:
     enabled: ${APP_REDIS_ENABLED:false}
+
+logging:
   level:
     root: INFO
     com.agenticcp.core: DEBUG
     org.springframework.web: INFO
     org.springframework.security: WARN
+
+# 로컬 개발용 암호화 키 (개발 전용, 운영/형상 반출 금지)
+config:
+  cipher:
+    key: ${CONFIG_CIPHER_KEY:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}
+    # 선택: 키 회전용 보조 키
+    # secondaryKey: ${CONFIG_CIPHER_SECONDARY_KEY:}
+    # 키 누락 시 동작 방침(FAIL/READ_ONLY). 기본 FAIL.
+    # missingKeyBehavior: FAIL
+
+# 로컬 개발용 JWT 설정 (개발 전용)
+security:
+  jwt:
+    secret: ${JWT_SECRET:ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWVfcGxlYXNlX3RoaXNfaXNfYV9sb25nX2tleV9mb3JfdGVzdA==}
+    access-token-expiration-ms: 3600000  # 1시간
+    refresh-token-expiration-ms: 604800000  # 7일
 
 springdoc:
   api-docs:

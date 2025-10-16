@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.exception;
 
-import com.agenticcp.core.common.dto.BaseErrorCode;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 import lombok.Getter;
 /**
  * 애플리케이션의 비즈니스 로직 처리 과정에서 발생하는 예외의 최상위 클래스입니다.

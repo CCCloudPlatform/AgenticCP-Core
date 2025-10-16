@@ -1,7 +1,6 @@
 package com.agenticcp.core.common.enums;
 
-import com.agenticcp.core.common.dto.BaseErrorCode;
-import com.agenticcp.core.common.enums.ErrorCategory;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

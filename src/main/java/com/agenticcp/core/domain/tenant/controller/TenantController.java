@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.tenant.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.tenant.service.TenantService;
 import io.swagger.v3.oas.annotations.Operation;
