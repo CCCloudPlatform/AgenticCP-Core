@@ -31,7 +31,7 @@ public class AuditDatabaseListener {
     private final ObjectMapper objectMapper;
     private final MaskingService maskingService;
 
-    @Async
+    @Async("auditTaskExecutor")
     @EventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleAuditEvent(AuditPublishEvent event) {

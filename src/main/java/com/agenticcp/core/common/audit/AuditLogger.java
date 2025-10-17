@@ -41,7 +41,7 @@ public class AuditLogger {
 
     private final ObjectMapper objectMapper;
 
-    public void log(AuditEventDto auditEvent) {
+    public void log(AuditEventDto auditEvent) {    
         try {
             String jsonLog = objectMapper.writeValueAsString(auditEvent);
 

@@ -9,6 +9,8 @@ import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidator;
 import com.agenticcp.core.common.util.LogMaskingUtils;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class PlatformConfigService {
     private final PlatformConfigRepository platformConfigRepository;
     private final List<ConfigValidator> configValidators;
     private final EncryptionService encryptionService;
+    private final ConfigAuditService configAuditService;
 
     public List<PlatformConfig> getAllConfigs() {
         log.info("[PlatformConfigService] getAllConfigs");
@@ -135,11 +138,11 @@ public class PlatformConfigService {
         }
 
         // ENCRYPTED 타입 저장 시 암호화 적용
+        String rawNewValue = platformConfig.getConfigValue();
         if (platformConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) {
-            String value = platformConfig.getConfigValue();
-            if (value != null && !value.isEmpty()) {
-                if (!isProbablyEncrypted(value)) {
-                    String encrypted = encryptionService.encrypt(value);
+            if (rawNewValue != null && !rawNewValue.isEmpty()) {
+                if (!isProbablyEncrypted(rawNewValue)) {
+                    String encrypted = encryptionService.encrypt(rawNewValue);
                     platformConfig.setConfigValue(encrypted);
                 }
             }
@@ -148,6 +151,17 @@ public class PlatformConfigService {
 
         PlatformConfig saved = platformConfigRepository.save(platformConfig);
         log.info("[PlatformConfigService] createConfig - success configKey={}", LogMaskingUtils.mask(saved.getConfigKey(), 2, 2));
+
+        // 감사 로그
+        try {
+            if (configAuditService == null) return saved;
+            String userId = getCurrentUserId();
+            String reason = saved.getDescription();
+            String valueType = saved.getConfigType() != null ? saved.getConfigType().name() : null;
+            configAuditService.logCreate(saved.getConfigKey(), rawNewValue, userId, reason, valueType);
+        } catch (Exception ex) {
+            log.warn("[PlatformConfigService] createConfig - audit logging failed: {}", ex.getMessage());
+        }
         return saved;
     }
 
@@ -161,6 +175,7 @@ public class PlatformConfigService {
             throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_MODIFY);
         }
         
+
         // 업데이트할 설정에 키 설정 (검증을 위해)
         updatedConfig.setConfigKey(configKey);
         
@@ -168,8 +183,10 @@ public class PlatformConfigService {
         validateConfig(updatedConfig);
 
         // ENCRYPTED 타입 업데이트 시 암호화 적용
+        String rawOldValue = existingConfig.getConfigValue();
+        String rawNewValue = updatedConfig.getConfigValue();
         if (updatedConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) {
-            String newValue = updatedConfig.getConfigValue();
+            String newValue = rawNewValue;
             if (newValue != null && !newValue.isEmpty()) {
                 if (!isProbablyEncrypted(newValue)) {
                     newValue = encryptionService.encrypt(newValue);
@@ -178,7 +195,7 @@ public class PlatformConfigService {
             existingConfig.setConfigValue(newValue);
             existingConfig.setIsEncrypted(true);
         } else {
-            existingConfig.setConfigValue(updatedConfig.getConfigValue());
+            existingConfig.setConfigValue(rawNewValue);
             existingConfig.setIsEncrypted(Boolean.FALSE.equals(updatedConfig.getIsEncrypted()) ? false : updatedConfig.getIsEncrypted());
         }
         existingConfig.setConfigType(updatedConfig.getConfigType());
@@ -186,6 +203,17 @@ public class PlatformConfigService {
         
         PlatformConfig saved = platformConfigRepository.save(existingConfig);
         log.info("[PlatformConfigService] updateConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+
+        // 감사 로그
+        try {
+            if (configAuditService == null) return saved;
+            String userId = getCurrentUserId();
+            String reason = saved.getDescription();
+            String valueType = saved.getConfigType() != null ? saved.getConfigType().name() : null;
+            configAuditService.logUpdate(configKey, rawOldValue, rawNewValue, userId, reason, valueType);
+        } catch (Exception ex) {
+            log.warn("[PlatformConfigService] updateConfig - audit logging failed: {}", ex.getMessage());
+        }
         return saved;
     }
 
@@ -199,9 +227,22 @@ public class PlatformConfigService {
             throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_DELETE);
         }
         
+
+        String rawOldValue = config.getConfigValue();
         config.setIsDeleted(true);
         platformConfigRepository.save(config);
         log.info("[PlatformConfigService] deleteConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+
+        // 감사 로그
+        try {
+            if (configAuditService == null) return;
+            String userId = getCurrentUserId();
+            String reason = config.getDescription();
+            String valueType = config.getConfigType() != null ? config.getConfigType().name() : null;
+            configAuditService.logDelete(configKey, rawOldValue, userId, reason, valueType);
+        } catch (Exception ex) {
+            log.warn("[PlatformConfigService] deleteConfig - audit logging failed: {}", ex.getMessage());
+        }
     }
 
     @Transactional
@@ -274,12 +315,23 @@ public class PlatformConfigService {
                     throw new BusinessException(PlatformConfigErrorCode.DECRYPTION_FAILED, e.getMessage());
                 }
             } else {
-                builder.configValue("***");
+                builder.configValue("Encrypted");
             }
         } else {
             builder.configValue(source.getConfigValue());
         }
 
         return builder.build();
+    }
+
+    private String getCurrentUserId() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                return authentication.getName();
+            }
+        } catch (Exception ignored) {
+        }
+        return "system";
     }
 }

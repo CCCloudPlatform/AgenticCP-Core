@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/auth/2fa")
+@RequestMapping("/auth/2fa")
 @RequiredArgsConstructor
 @Tag(name = "Two-Factor Authentication", description = "2FA 관련 API")
 public class TwoFactorController {
