@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -71,6 +72,19 @@ public class PlatformConfigService {
         Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
                 .map(pc -> toResponse(pc, showSecret));
         log.info("[PlatformConfigService] getConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
+        return result;
+    }
+
+    /**
+     * 캐시가 적용된 키 단건 조회 메서드.
+     * 민감값(showSecret=true) 노출 경로는 별도 메서드를 사용하여 캐시를 우회합니다.
+     */
+    @Cacheable(value = "platformConfigs", key = "#configKey")
+    public Optional<PlatformConfig> getCachedConfigByKey(String configKey) {
+        log.info("[PlatformConfigService] getCachedConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+        Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
+                .map(pc -> toResponse(pc, false));
+        log.info("[PlatformConfigService] getCachedConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
         return result;
     }
 
