@@ -51,4 +51,7 @@ public class FeatureFlag extends BaseEntity {
 
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata; // JSON for additional configuration
+
+    @Column(name = "cache_ttl_seconds")
+    private Integer cacheTtlSeconds; // Cache TTL in seconds, NULL means use default (300s)
 }
