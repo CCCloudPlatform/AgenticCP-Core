@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.security.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.security.annotation.RequirePermission;
 import com.agenticcp.core.domain.security.annotation.RequireRole;
 import com.agenticcp.core.domain.security.service.AuthorizationService;
