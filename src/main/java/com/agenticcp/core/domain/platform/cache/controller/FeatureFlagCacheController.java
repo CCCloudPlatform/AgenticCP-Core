@@ -5,6 +5,7 @@ import com.agenticcp.core.domain.platform.cache.dto.CacheHealthStatusDto;
 import com.agenticcp.core.domain.platform.cache.dto.CacheMetricsDto;
 import com.agenticcp.core.domain.platform.cache.service.FeatureFlagCacheHealthService;
 import com.agenticcp.core.domain.platform.cache.service.FeatureFlagCacheService;
+import com.agenticcp.core.domain.platform.exception.FeatureFlagCacheErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -114,7 +115,7 @@ public class FeatureFlagCacheController {
         if (flagKey == null || flagKey.trim().isEmpty()) {
             log.warn("[FeatureFlagCacheController] DELETE /cache/{flagKey} - Invalid flagKey: {}", flagKey);
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(null, "플래그 키는 필수입니다."));
+                    .body(ApiResponse.error(FeatureFlagCacheErrorCode.INVALID_CACHE_KEY, "플래그 키는 필수입니다."));
         }
 
         log.info("[FeatureFlagCacheController] DELETE /cache/{} - Invalidate cache requested", flagKey);
