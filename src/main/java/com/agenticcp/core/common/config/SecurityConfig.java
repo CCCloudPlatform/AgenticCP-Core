@@ -30,6 +30,7 @@ import java.util.Arrays;
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -40,9 +41,18 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
+                // 공개 엔드포인트
+                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
                 .requestMatchers("/api/health", "/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // 테넌트별 권한/역할 조회는 공개, 초기화/캐시무효화는 인증 필요
+                .requestMatchers(org.springframework.http.HttpMethod.GET,
+                        "/api/v1/tenants/*/roles",
+                        "/api/v1/tenants/*/permissions").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST,
+                        "/api/v1/tenants/*/init-permissions",
+                        "/api/v1/tenants/*/cache/evict").authenticated()
+                // 나머지는 인증 필요
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

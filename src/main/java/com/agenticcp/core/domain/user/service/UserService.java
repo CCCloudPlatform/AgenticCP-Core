@@ -7,7 +7,7 @@ import com.agenticcp.core.domain.user.repository.UserRepository;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.common.util.LogMaskingUtils;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +34,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MaskingService maskingService;
 
     public List<User> getAllUsers() {
         log.info("[UserService] getAllUsers");
@@ -50,38 +51,38 @@ public class UserService {
     }
 
     public Optional<User> getUserByUsername(String username) {
-        log.info("[UserService] getUserByUsername - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] getUserByUsername - username={}", maskingService.mask(username, 2, 2));
         Optional<User> result = userRepository.findByUsername(username);
-        log.info("[UserService] getUserByUsername - found={} username={}", result.isPresent(), LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] getUserByUsername - found={} username={}", result.isPresent(), maskingService.mask(username, 2, 2));
         return result;
     }
 
     public User getUserByUsernameOrThrow(String username) {
-        log.info("[UserService] getUserByUsernameOrThrow - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] getUserByUsernameOrThrow - username={}", maskingService.mask(username, 2, 2));
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException(UserErrorCode.USER_NOT_FOUND));
-        log.info("[UserService] getUserByUsernameOrThrow - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] getUserByUsernameOrThrow - success username={}", maskingService.mask(username, 2, 2));
         return user;
     }
 
     public Optional<User> getUserByEmail(String email) {
-        log.info("[UserService] getUserByEmail - email={}", LogMaskingUtils.mask(email, 2, 2));
+        log.info("[UserService] getUserByEmail - email={}", maskingService.mask(email, 2, 2));
         Optional<User> result = userRepository.findByEmail(email);
-        log.info("[UserService] getUserByEmail - found={} email={}", result.isPresent(), LogMaskingUtils.mask(email, 2, 2));
+        log.info("[UserService] getUserByEmail - found={} email={}", result.isPresent(), maskingService.mask(email, 2, 2));
         return result;
     }
 
     public List<User> getUsersByTenant(Tenant tenant) {
-        log.info("[UserService] getUsersByTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        log.info("[UserService] getUsersByTenant - tenantKey={}", maskingService.maskTenantKey(tenant.getTenantKey()));
         List<User> result = userRepository.findByTenant(tenant);
-        log.info("[UserService] getUsersByTenant - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        log.info("[UserService] getUsersByTenant - success count={} tenantKey={}", result.size(), maskingService.maskTenantKey(tenant.getTenantKey()));
         return result;
     }
 
     public List<User> getActiveUsersByTenant(Tenant tenant) {
-        log.info("[UserService] getActiveUsersByTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        log.info("[UserService] getActiveUsersByTenant - tenantKey={}", maskingService.maskTenantKey(tenant.getTenantKey()));
         List<User> result = userRepository.findActiveUsersByTenant(tenant, Status.ACTIVE);
-        log.info("[UserService] getActiveUsersByTenant - success count={} tenantKey={}", result.size(), LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        log.info("[UserService] getActiveUsersByTenant - success count={} tenantKey={}", result.size(), maskingService.maskTenantKey(tenant.getTenantKey()));
         return result;
     }
 
@@ -108,14 +109,14 @@ public class UserService {
     }
 
     public Long getActiveUserCountByTenant(Tenant tenant) {
-        log.info("[UserService] getActiveUserCountByTenant - tenantKey={}", LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        log.info("[UserService] getActiveUserCountByTenant - tenantKey={}", maskingService.maskTenantKey(tenant.getTenantKey()));
         Long count = userRepository.countActiveUsersByTenant(tenant, Status.ACTIVE);
-        log.info("[UserService] getActiveUserCountByTenant - success count={} tenantKey={}", count, LogMaskingUtils.maskTenantKey(tenant.getTenantKey()));
+        log.info("[UserService] getActiveUserCountByTenant - success count={} tenantKey={}", count, maskingService.maskTenantKey(tenant.getTenantKey()));
         return count;
     }
 
     public List<User> searchUsers(String keyword) {
-        log.info("[UserService] searchUsers - keyword={}", LogMaskingUtils.mask(keyword, 2, 1));
+        log.info("[UserService] searchUsers - keyword={}", maskingService.mask(keyword, 2, 1));
         List<User> result = userRepository.searchUsers(keyword);
         log.info("[UserService] searchUsers - success count={}", result.size());
         return result;
@@ -124,20 +125,20 @@ public class UserService {
     @Transactional
     public User createUser(User user) {
         log.info("[UserService] createUser - username={} email={}",
-                LogMaskingUtils.mask(user.getUsername(), 2, 2),
-                LogMaskingUtils.mask(user.getEmail(), 2, 2));
+                maskingService.mask(user.getUsername(), 2, 2),
+                maskingService.mask(user.getEmail(), 2, 2));
         if (user.getPasswordHash() != null) {
             user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
         }
         user.setPasswordChangedAt(LocalDateTime.now());
         User saved = userRepository.save(user);
-        log.info("[UserService] createUser - success username={}", LogMaskingUtils.mask(saved.getUsername(), 2, 2));
+        log.info("[UserService] createUser - success username={}", maskingService.mask(saved.getUsername(), 2, 2));
         return saved;
     }
 
     @Transactional
     public User updateUser(String username, User updatedUser) {
-        log.info("[UserService] updateUser - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] updateUser - username={}", maskingService.mask(username, 2, 2));
         User existingUser = getUserByUsernameOrThrow(username);
         
         existingUser.setName(updatedUser.getName());
@@ -155,36 +156,36 @@ public class UserService {
         existingUser.setProfileImageUrl(updatedUser.getProfileImageUrl());
         
         User saved = userRepository.save(existingUser);
-        log.info("[UserService] updateUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] updateUser - success username={}", maskingService.mask(username, 2, 2));
         return saved;
     }
 
     @Transactional
     public User changePassword(String username, String newPassword) {
-        log.info("[UserService] changePassword - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] changePassword - username={}", maskingService.mask(username, 2, 2));
         User user = getUserByUsernameOrThrow(username);
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setPasswordChangedAt(LocalDateTime.now());
         user.resetFailedLoginAttempts();
         User saved = userRepository.save(user);
-        log.info("[UserService] changePassword - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] changePassword - success username={}", maskingService.mask(username, 2, 2));
         return saved;
     }
 
     @Transactional
     public User updateLastLogin(String username) {
-        log.info("[UserService] updateLastLogin - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] updateLastLogin - username={}", maskingService.mask(username, 2, 2));
         User user = getUserByUsernameOrThrow(username);
         user.setLastLogin(LocalDateTime.now());
         user.resetFailedLoginAttempts();
         User saved = userRepository.save(user);
-        log.info("[UserService] updateLastLogin - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] updateLastLogin - success username={}", maskingService.mask(username, 2, 2));
         return saved;
     }
 
     @Transactional
     public User handleFailedLogin(String username) {
-        log.info("[UserService] handleFailedLogin - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] handleFailedLogin - username={}", maskingService.mask(username, 2, 2));
         User user = getUserByUsernameOrThrow(username);
         user.incrementFailedLoginAttempts();
         
@@ -193,46 +194,69 @@ public class UserService {
             user.lockAccount(30);
         }
         
-        log.warn("[UserService] handleFailedLogin - attempts={} username={}", user.getFailedLoginAttempts(), LogMaskingUtils.mask(username, 2, 2));
+        log.warn("[UserService] handleFailedLogin - attempts={} username={}", user.getFailedLoginAttempts(), maskingService.mask(username, 2, 2));
         return userRepository.save(user);
     }
 
     @Transactional
     public User unlockUser(String username) {
-        log.info("[UserService] unlockUser - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] unlockUser - username={}", maskingService.mask(username, 2, 2));
         User user = getUserByUsernameOrThrow(username);
         user.resetFailedLoginAttempts();
         User saved = userRepository.save(user);
-        log.info("[UserService] unlockUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] unlockUser - success username={}", maskingService.mask(username, 2, 2));
         return saved;
     }
 
     @Transactional
     public User suspendUser(String username) {
-        log.info("[UserService] suspendUser - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] suspendUser - username={}", maskingService.mask(username, 2, 2));
         User user = getUserByUsernameOrThrow(username);
         user.setStatus(Status.SUSPENDED);
         User saved = userRepository.save(user);
-        log.info("[UserService] suspendUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] suspendUser - success username={}", maskingService.mask(username, 2, 2));
         return saved;
     }
 
     @Transactional
     public User activateUser(String username) {
-        log.info("[UserService] activateUser - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] activateUser - username={}", maskingService.mask(username, 2, 2));
         User user = getUserByUsernameOrThrow(username);
         user.setStatus(Status.ACTIVE);
         User saved = userRepository.save(user);
-        log.info("[UserService] activateUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] activateUser - success username={}", maskingService.mask(username, 2, 2));
         return saved;
     }
 
     @Transactional
     public void deleteUser(String username) {
-        log.info("[UserService] deleteUser - username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] deleteUser - username={}", maskingService.mask(username, 2, 2));
         User user = getUserByUsernameOrThrow(username);
         user.setIsDeleted(true);
         userRepository.save(user);
-        log.info("[UserService] deleteUser - success username={}", LogMaskingUtils.mask(username, 2, 2));
+        log.info("[UserService] deleteUser - success username={}", maskingService.mask(username, 2, 2));
+    }
+
+    // 회원가입을 위한 추가 메서드들
+    public boolean existsByUsername(String username) {
+        log.info("[UserService] existsByUsername - username={}", maskingService.mask(username, 2, 2));
+        boolean exists = getUserByUsername(username).isPresent();
+        log.info("[UserService] existsByUsername - exists={} username={}", exists, maskingService.mask(username, 2, 2));
+        return exists;
+    }
+
+    public boolean existsByEmail(String email) {
+        log.info("[UserService] existsByEmail - email={}", maskingService.mask(email, 2, 2));
+        boolean exists = getUserByEmail(email).isPresent();
+        log.info("[UserService] existsByEmail - exists={} email={}", exists, maskingService.mask(email, 2, 2));
+        return exists;
+    }
+
+    @Transactional
+    public User saveUser(User user) {
+        log.info("[UserService] saveUser - username={}", maskingService.mask(user.getUsername(), 2, 2));
+        User saved = userRepository.save(user);
+        log.info("[UserService] saveUser - success username={}", maskingService.mask(saved.getUsername(), 2, 2));
+        return saved;
     }
 }

@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.enums;
 
-import com.agenticcp.core.common.dto.BaseErrorCode;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 
 /**
  * API 에러 코드의 카테고리를 정의하는 클래스입니다.
@@ -13,7 +13,7 @@ import com.agenticcp.core.common.dto.BaseErrorCode;
  *
  * @see BaseErrorCode
  * @see CommonErrorCode
- * @author hyobinyang
+ * @author AgenticCP Team
  * @since 2025-09-22
  */
 public enum ErrorCategory {

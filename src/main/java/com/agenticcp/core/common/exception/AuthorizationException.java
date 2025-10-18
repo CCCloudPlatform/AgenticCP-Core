@@ -32,7 +32,7 @@ import com.agenticcp.core.common.enums.CommonErrorCode;
  *
  * @see BusinessException
  * @see GlobalExceptionHandler
- * @author hyobinyang
+ * @author AgenticCP Team
  * @since 2025.09.22
  */
 public class AuthorizationException extends BusinessException{

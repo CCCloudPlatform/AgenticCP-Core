@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.user.enums;
 
-import com.agenticcp.core.common.dto.BaseErrorCode;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 import com.agenticcp.core.common.enums.ErrorCategory;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

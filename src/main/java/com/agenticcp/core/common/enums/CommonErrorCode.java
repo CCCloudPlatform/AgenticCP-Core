@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.enums;
 
-import com.agenticcp.core.common.dto.BaseErrorCode;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,8 +23,7 @@ import org.springframework.http.HttpStatus;
  *
  * @see BaseErrorCode
  * @see ErrorCategory
- * @author hyobinyang
- * @since 2025-09-22
+ * @author AgenticCP Team
  */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

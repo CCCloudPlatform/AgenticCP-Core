@@ -2,6 +2,7 @@ package com.agenticcp.core.common.service;
 
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
+import com.agenticcp.core.common.dto.auth.RegisterRequest;
 import com.agenticcp.core.common.dto.auth.TokenResponse;
 import com.agenticcp.core.common.dto.auth.UserInfoResponse;
 import com.agenticcp.core.common.enums.AuthErrorCode;
@@ -9,8 +10,12 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.common.security.JwtService;
 import com.agenticcp.core.domain.user.entity.User;
+import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.user.enums.UserErrorCode;
+import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.user.service.UserService;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.tenant.service.TenantService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,8 +47,61 @@ public class AuthenticationService {
     private final UserService userService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final TenantService tenantService;
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
+
+    /**
+     * 사용자 회원가입 처리
+     * @param request 회원가입 요청 DTO
+     * @return 생성된 사용자 정보와 JWT 토큰
+     */
+    @Transactional
+    public TokenResponse register(RegisterRequest request) {
+        log.info("[AuthenticationService] register - username={}", request.getUsername());
+
+        // 1. 사용자명 중복 체크
+        if (userService.existsByUsername(request.getUsername())) {
+            log.warn("[AuthenticationService] register - Username already exists: {}", request.getUsername());
+            throw new BusinessException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        // 2. 이메일 중복 체크
+        if (userService.existsByEmail(request.getEmail())) {
+            log.warn("[AuthenticationService] register - Email already exists: {}", request.getEmail());
+            throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        // 3. 테넌트 유효성 검사 (선택적)
+        Tenant tenant = null;
+        if (request.getTenantKey() != null && !request.getTenantKey().isEmpty()) {
+            tenant = tenantService.getTenantByKey(request.getTenantKey())
+                    .orElseThrow(() -> {
+                        log.warn("[AuthenticationService] register - Invalid tenant key: {}", request.getTenantKey());
+                        return new BusinessException(AuthErrorCode.INVALID_TENANT_KEY);
+                    });
+        }
+
+        // 4. 비밀번호 해싱
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        // 5. 사용자 생성
+        User newUser = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .passwordHash(encodedPassword)
+                .name(request.getName())
+                .role(UserRole.VIEWER) // 기본 역할 부여
+                .status(Status.ACTIVE) // 기본 상태 활성
+                .tenant(tenant)
+                .build();
+
+        User savedUser = userService.saveUser(newUser);
+        log.info("[AuthenticationService] register - User registered successfully: {}", savedUser.getUsername());
+
+        // 6. JWT 토큰 생성 및 반환 (회원가입 즉시 로그인 처리)
+        return generateTokens(savedUser.getUsername());
+    }
 
     /**
      * 사용자 로그인
@@ -77,26 +135,11 @@ public class AuthenticationService {
             userService.updateLastLogin(loginRequest.getUsername());
             
             // 토큰 생성
-            String accessToken = jwtService.generateAccessToken(user);
-            String refreshToken = jwtService.generateRefreshToken(user);
-            
-            // 리프레시 토큰을 Redis에 저장 (7일)
-            String refreshTokenKey = "refresh_token:" + user.getUsername();
-            if (redisTemplate != null) {
-                redisTemplate.opsForValue().set(refreshTokenKey, refreshToken, 7, TimeUnit.DAYS);
-            } else {
-                log.debug("[AuthenticationService] RedisTemplate not configured. Skipping refresh token store.");
-            }
+            TokenResponse tokenResponse = generateTokens(user.getUsername());
             
             log.info("[AuthenticationService] login - success username={}", loginRequest.getUsername());
             
-            return TokenResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .tokenType(TOKEN_TYPE_ACCESS)
-                    .expiresIn(3600L) // 1시간
-                    .refreshExpiresIn(604800L) // 7일
-                    .build();
+            return tokenResponse;
                     
         } catch (ResourceNotFoundException e) {
             log.warn("[AuthenticationService] login - user not found username={}", loginRequest.getUsername());
@@ -234,5 +277,31 @@ public class AuthenticationService {
         } catch (Exception e) {
             log.error("[AuthenticationService] blacklistToken - error", e);
         }
+    }
+
+    /**
+     * JWT 토큰 생성 (공통 메서드)
+     */
+    private TokenResponse generateTokens(String username) {
+        User user = userService.getUserByUsernameOrThrow(username);
+        
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+        
+        // 리프레시 토큰을 Redis에 저장 (7일)
+        String refreshTokenKey = "refresh_token:" + username;
+        if (redisTemplate != null) {
+            redisTemplate.opsForValue().set(refreshTokenKey, refreshToken, 7, TimeUnit.DAYS);
+        } else {
+            log.debug("[AuthenticationService] RedisTemplate not configured. Skipping refresh token store.");
+        }
+        
+        return TokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType(TOKEN_TYPE_ACCESS)
+                .expiresIn(3600L) // 1시간
+                .refreshExpiresIn(604800L) // 7일
+                .build();
     }
 }

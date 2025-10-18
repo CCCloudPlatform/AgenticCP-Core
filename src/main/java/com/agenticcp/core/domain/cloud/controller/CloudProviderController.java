@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.service.CloudProviderService;
 import io.swagger.v3.oas.annotations.Operation;

@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.exception;
 
-import com.agenticcp.core.common.dto.BaseErrorCode;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 
 /**
@@ -22,7 +22,7 @@ import com.agenticcp.core.common.enums.CommonErrorCode;
  *
  * @see BusinessException
  * @see GlobalExceptionHandler
- * @author hyobinyang
+ * @author AgenticCP Team
  * @since 2025-09-22
  */
 public class ResourceNotFoundException extends BusinessException {

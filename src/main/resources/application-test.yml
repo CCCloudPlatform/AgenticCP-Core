@@ -16,8 +16,8 @@ spring:
         
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:localhost}
-      port: ${SPRING_REDIS_PORT:6379}
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
       timeout: 2000ms
       
   cache:
@@ -43,11 +43,18 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
+# 테스트용 암호화 키 설정 (테스트 컨텍스트 로딩용)
+config:
+  cipher:
+    key: "${CONFIG_CIPHER_KEY:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}"
+    missingKeyBehavior: READ_ONLY
+
 # 테스트용 JWT 설정
-jwt:
-  secret: test-secret-key-for-testing-purposes-only-very-long-key
-  expiration: 3600000 # 1시간
-  refresh-expiration: 86400000 # 24시간
+security:
+  jwt:
+    secret: test-secret-key-for-testing-purposes-only-very-long-key
+    access-token-expiration-ms: 3600000 # 1시간
+    refresh-token-expiration-ms: 86400000 # 24시간
 
 # Actuator 설정
 management:
