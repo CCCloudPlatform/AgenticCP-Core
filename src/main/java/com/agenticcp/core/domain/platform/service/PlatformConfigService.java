@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -137,6 +138,7 @@ public class PlatformConfigService {
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#platformConfig.configKey", beforeInvocation = false)
     public PlatformConfig createConfig(PlatformConfig platformConfig) {
         log.info("[PlatformConfigService] createConfig - configKey={} isEncrypted={} type={}",
                 LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2),
@@ -180,6 +182,7 @@ public class PlatformConfigService {
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
     public PlatformConfig updateConfig(String configKey, PlatformConfig updatedConfig) {
         log.info("[PlatformConfigService] updateConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig existingConfig = getConfigByKeyOrThrow(configKey);
@@ -232,6 +235,7 @@ public class PlatformConfigService {
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
     public void deleteConfig(String configKey) {
         log.info("[PlatformConfigService] deleteConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig config = getConfigByKeyOrThrow(configKey);
@@ -260,6 +264,7 @@ public class PlatformConfigService {
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
     public void hardDeleteConfig(String configKey) {
         log.info("[PlatformConfigService] hardDeleteConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig config = getConfigByKeyOrThrow(configKey);
