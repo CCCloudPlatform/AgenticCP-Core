@@ -3,9 +3,9 @@ package com.agenticcp.core.domain.platform.cache.service;
 import com.agenticcp.core.domain.platform.cache.event.FeatureFlagChangeEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -29,7 +29,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.redis", name = "enabled", havingValue = "true")
 public class FeatureFlagSyncService implements MessageListener {
 
@@ -38,6 +37,24 @@ public class FeatureFlagSyncService implements MessageListener {
     private final RedisMessageListenerContainer redisMessageListenerContainer;
     private final FeatureFlagCacheService cacheService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    /**
+     * 생성자
+     * <p>
+     * `cacheService`에 `@Lazy`를 적용하여 순환 의존성을 방지합니다.
+     * </p>
+     */
+    public FeatureFlagSyncService(
+            RedisTemplate<String, FeatureFlagChangeEvent> redisTemplate,
+            ChannelTopic featureFlagChangeTopic,
+            RedisMessageListenerContainer redisMessageListenerContainer,
+            @Lazy FeatureFlagCacheService cacheService
+    ) {
+        this.redisTemplate = redisTemplate;
+        this.featureFlagChangeTopic = featureFlagChangeTopic;
+        this.redisMessageListenerContainer = redisMessageListenerContainer;
+        this.cacheService = cacheService;
+    }
 
     /**
      * 현재 노드의 고유 ID (UUID)
