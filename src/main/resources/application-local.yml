@@ -7,10 +7,7 @@ spring:
   
   
   cache:
-    type: caffeine
-    cache-names: [platformConfigs]
-    caffeine:
-      spec: maximumSize=10000,expireAfterWrite=300s
+    type: redis
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
@@ -20,7 +17,7 @@ spring:
 
 app:
   redis:
-    enabled: ${APP_REDIS_ENABLED:false}
+    enabled: ${APP_REDIS_ENABLED:true}
 
 logging:
   level:

@@ -38,6 +38,20 @@ public final class LogMaskingUtils {
 		return mask(userIdOrEmail, 2, 2);
 	}
 
+	/**
+	 * 사용자명 마스킹 (기본값: 앞뒤 2글자씩)
+	 */
+	public static String maskUsername(String username) {
+		return mask(username, 2, 2);
+	}
+
+	/**
+	 * 일반 문자열 마스킹 (기본값: 앞뒤 3글자씩)
+	 */
+	public static String mask(String value) {
+		return mask(value, 3, 3);
+	}
+
 	public static String maskNullable(Object value, int revealStart, int revealEnd) {
 		return value == null ? "" : mask(String.valueOf(value), revealStart, revealEnd);
 	}

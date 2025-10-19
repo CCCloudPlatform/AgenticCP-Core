@@ -27,7 +27,8 @@ public enum ErrorCategory {
     PLATFORM("PLATFORM_"),  // 6000-6999
     COST("COST_"),          // 7000-7999
     MONITORING("MONITORING_"), // 8000-8999
-    INTEGRATION("INTEGRATION_"); // 9000-9999
+    INTEGRATION("INTEGRATION_"), // 9000-9999
+    UI("UI_");              // 10000-10999
 
     private final String prefix;
     
