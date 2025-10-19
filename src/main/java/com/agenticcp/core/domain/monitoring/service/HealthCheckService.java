@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.monitoring.service;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.monitoring.event.HealthStatusChangedEvent;
+import com.agenticcp.core.domain.platform.service.MaintenanceModeService;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class HealthCheckService {
     private final DataSource dataSource;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
+    private final MaintenanceModeService maintenanceModeService;
     
     // 이전 상태 저장 (상태 변화 감지용)
     private final Map<String, String> previousStatuses = new HashMap<>();
@@ -50,6 +52,9 @@ public class HealthCheckService {
         // MVP: MySQL만 체크
         checkDatabaseHealth();
         
+        // 유지보수 모드 상태 체크
+        checkMaintenanceModeHealth();
+        
         // 확장: 나중에 추가 가능
         // checkRedisHealth();
         // checkExternalApiHealth();
@@ -62,6 +67,15 @@ public class HealthCheckService {
      */
     private void checkDatabaseHealth() {
         checkComponentHealth("database", this::performDatabaseHealthCheck);
+    }
+
+    /**
+     * 유지보수 모드 헬스체크
+     * 
+     * <p>유지보수 모드 상태를 체크합니다.</p>
+     */
+    private void checkMaintenanceModeHealth() {
+        checkComponentHealth("maintenance-mode", this::performMaintenanceModeHealthCheck);
     }
 
     /**
@@ -103,6 +117,28 @@ public class HealthCheckService {
             }
         } catch (Exception e) {
             log.error("❌ 데이터베이스 연결 실패: {}", e.getMessage(), e);
+            return "CRITICAL";
+        }
+    }
+
+    /**
+     * 실제 유지보수 모드 헬스체크 수행
+     * 
+     * @return 상태 (HEALTHY, WARNING)
+     */
+    private String performMaintenanceModeHealthCheck() {
+        try {
+            boolean isMaintenanceMode = maintenanceModeService.isMaintenanceModeEnabled();
+            
+            if (isMaintenanceMode) {
+                log.debug("🔧 유지보수 모드 활성화됨");
+                return "WARNING";
+            } else {
+                log.debug("✅ 유지보수 모드 비활성화됨");
+                return "HEALTHY";
+            }
+        } catch (Exception e) {
+            log.error("❌ 유지보수 모드 상태 확인 실패: {}", e.getMessage(), e);
             return "CRITICAL";
         }
     }

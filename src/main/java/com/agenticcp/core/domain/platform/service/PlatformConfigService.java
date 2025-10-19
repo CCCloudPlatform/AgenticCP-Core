@@ -8,13 +8,19 @@ import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidator;
+import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
 import com.agenticcp.core.common.util.LogMaskingUtils;
+import com.agenticcp.core.common.logging.masking.MaskingService;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +43,8 @@ public class PlatformConfigService {
     private final List<ConfigValidator> configValidators;
     private final EncryptionService encryptionService;
     private final ConfigAuditService configAuditService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final MaskingService maskingService;
 
     public List<PlatformConfig> getAllConfigs() {
         log.info("[PlatformConfigService] getAllConfigs");
@@ -58,6 +66,24 @@ public class PlatformConfigService {
         return result;
     }
 
+    public List<PlatformConfig> getAllConfigs(boolean showSecret, Boolean isSystem) {
+        log.info("[PlatformConfigService] getAllConfigs - showSecret={}, isSystem={}", showSecret, isSystem);
+        
+        List<PlatformConfig> sourceConfigs;
+        if (isSystem != null) {
+            sourceConfigs = platformConfigRepository.findByIsSystem(isSystem);
+        } else {
+            sourceConfigs = platformConfigRepository.findAllActive();
+        }
+        
+        List<PlatformConfig> result = sourceConfigs.stream()
+                .map(pc -> toResponse(pc, showSecret))
+                .toList();
+        
+        log.info("[PlatformConfigService] getAllConfigs - success count={}", result.size());
+        return result;
+    }
+
     public Optional<PlatformConfig> getConfigByKey(String configKey) {
         log.info("[PlatformConfigService] getConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
@@ -71,6 +97,19 @@ public class PlatformConfigService {
         Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
                 .map(pc -> toResponse(pc, showSecret));
         log.info("[PlatformConfigService] getConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
+        return result;
+    }
+
+    /**
+     * 캐시가 적용된 키 단건 조회 메서드.
+     * 민감값(showSecret=true) 노출 경로는 별도 메서드를 사용하여 캐시를 우회합니다.
+     */
+    @Cacheable(value = "platformConfigs", key = "#configKey")
+    public Optional<PlatformConfig> getCachedConfigByKey(String configKey) {
+        log.info("[PlatformConfigService] getCachedConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+        Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
+                .map(pc -> toResponse(pc, false));
+        log.info("[PlatformConfigService] getCachedConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
         return result;
     }
 
@@ -123,11 +162,20 @@ public class PlatformConfigService {
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#platformConfig.configKey", beforeInvocation = false)
     public PlatformConfig createConfig(PlatformConfig platformConfig) {
         log.info("[PlatformConfigService] createConfig - configKey={} isEncrypted={} type={}",
                 LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2),
                 platformConfig.getIsEncrypted(),
                 platformConfig.getConfigType());
+        
+        // 네임스페이스 기반 자동 isSystem 설정
+        if (platformConfig.getIsSystem() == null) {
+            boolean isSystemKey = platformConfig.getConfigKey().matches("^system\\..*");
+            platformConfig.setIsSystem(isSystemKey);
+            log.info("[PlatformConfigService] createConfig - auto-set isSystem={} for configKey={}", 
+                    isSystemKey, LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2));
+        }
         
         // 설정 검증 수행
         validateConfig(platformConfig);
@@ -142,8 +190,14 @@ public class PlatformConfigService {
         if (platformConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) {
             if (rawNewValue != null && !rawNewValue.isEmpty()) {
                 if (!isProbablyEncrypted(rawNewValue)) {
-                    String encrypted = encryptionService.encrypt(rawNewValue);
-                    platformConfig.setConfigValue(encrypted);
+                    try {
+                        String encrypted = encryptionService.encrypt(rawNewValue);
+                        platformConfig.setConfigValue(encrypted);
+                    } catch (Exception e) {
+                        log.error("[PlatformConfigService] createConfig - encryption failed for configKey={}", 
+                                LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2), e);
+                        throw new BusinessException(PlatformConfigErrorCode.ENCRYPTION_FAILED, e.getMessage());
+                    }
                 }
             }
             platformConfig.setIsEncrypted(true);
@@ -162,22 +216,37 @@ public class PlatformConfigService {
         } catch (Exception ex) {
             log.warn("[PlatformConfigService] createConfig - audit logging failed: {}", ex.getMessage());
         }
+        
+        // 설정 변경 이벤트 발행
+        publishConfigChangeEvent(ConfigChangeEvent.ChangeType.CREATE, saved.getConfigKey(), 
+                               null, rawNewValue, saved.getIsEncrypted(), saved.getDescription());
+        
         return saved;
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
     public PlatformConfig updateConfig(String configKey, PlatformConfig updatedConfig) {
         log.info("[PlatformConfigService] updateConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig existingConfig = getConfigByKeyOrThrow(configKey);
         
-        // 시스템 설정 수정 방지
-        if (Boolean.TRUE.equals(existingConfig.getIsSystem())) {
-            throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_MODIFY);
+        // 시스템 설정 타입 변경 방지
+        if (Boolean.TRUE.equals(existingConfig.getIsSystem()) && 
+            !existingConfig.getConfigType().equals(updatedConfig.getConfigType())) {
+            throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN);
         }
         
 
         // 업데이트할 설정에 키 설정 (검증을 위해)
         updatedConfig.setConfigKey(configKey);
+        
+        // 네임스페이스 기반 자동 isSystem 설정 (기존 값이 없는 경우에만)
+        if (updatedConfig.getIsSystem() == null) {
+            boolean isSystemKey = configKey.matches("^system\\..*");
+            updatedConfig.setIsSystem(isSystemKey);
+            log.info("[PlatformConfigService] updateConfig - auto-set isSystem={} for configKey={}", 
+                    isSystemKey, LogMaskingUtils.mask(configKey, 2, 2));
+        }
         
         // 설정 검증 수행
         validateConfig(updatedConfig);
@@ -189,14 +258,23 @@ public class PlatformConfigService {
             String newValue = rawNewValue;
             if (newValue != null && !newValue.isEmpty()) {
                 if (!isProbablyEncrypted(newValue)) {
-                    newValue = encryptionService.encrypt(newValue);
+                    try {
+                        newValue = encryptionService.encrypt(newValue);
+                    } catch (Exception e) {
+                        log.error("[PlatformConfigService] updateConfig - encryption failed for configKey={}", 
+                                LogMaskingUtils.mask(configKey, 2, 2), e);
+                        throw new BusinessException(PlatformConfigErrorCode.ENCRYPTION_FAILED, e.getMessage());
+                    }
                 }
             }
             existingConfig.setConfigValue(newValue);
             existingConfig.setIsEncrypted(true);
         } else {
             existingConfig.setConfigValue(rawNewValue);
-            existingConfig.setIsEncrypted(Boolean.FALSE.equals(updatedConfig.getIsEncrypted()) ? false : updatedConfig.getIsEncrypted());
+            // isEncrypted가 null이면 기존 값 유지, 아니면 새 값 사용
+            if (updatedConfig.getIsEncrypted() != null) {
+                existingConfig.setIsEncrypted(updatedConfig.getIsEncrypted());
+            }
         }
         existingConfig.setConfigType(updatedConfig.getConfigType());
         existingConfig.setDescription(updatedConfig.getDescription());
@@ -214,10 +292,16 @@ public class PlatformConfigService {
         } catch (Exception ex) {
             log.warn("[PlatformConfigService] updateConfig - audit logging failed: {}", ex.getMessage());
         }
+        
+        // 설정 변경 이벤트 발행
+        publishConfigChangeEvent(ConfigChangeEvent.ChangeType.UPDATE, configKey, 
+                               rawOldValue, rawNewValue, saved.getIsEncrypted(), saved.getDescription());
+        
         return saved;
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
     public void deleteConfig(String configKey) {
         log.info("[PlatformConfigService] deleteConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig config = getConfigByKeyOrThrow(configKey);
@@ -243,9 +327,14 @@ public class PlatformConfigService {
         } catch (Exception ex) {
             log.warn("[PlatformConfigService] deleteConfig - audit logging failed: {}", ex.getMessage());
         }
+        
+        // 설정 변경 이벤트 발행
+        publishConfigChangeEvent(ConfigChangeEvent.ChangeType.DELETE, configKey, 
+                               rawOldValue, null, config.getIsEncrypted(), config.getDescription());
     }
 
     @Transactional
+    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
     public void hardDeleteConfig(String configKey) {
         log.info("[PlatformConfigService] hardDeleteConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig config = getConfigByKeyOrThrow(configKey);
@@ -333,5 +422,67 @@ public class PlatformConfigService {
         } catch (Exception ignored) {
         }
         return "system";
+    }
+    
+    /**
+     * 설정 값을 마스킹하여 이벤트에 안전하게 전달
+     * 
+     * @param configValue 원본 설정 값
+     * @param isEncrypted 암호화 여부
+     * @return 마스킹된 값
+     */
+    private String maskValueForEvent(String configValue, Boolean isEncrypted) {
+        if (configValue == null) {
+            return null;
+        }
+        
+        // 암호화된 값이거나 이미 암호문인 경우 "Encrypted"로 마스킹
+        if (Boolean.TRUE.equals(isEncrypted) || isProbablyEncrypted(configValue)) {
+            return "Encrypted";
+        }
+        
+        // 일반 값은 MaskingService를 사용하여 SECRET_KEY 타입으로 마스킹
+        return maskingService.applyMaskingStrategy(configValue, MaskingType.SECRET_KEY);
+    }
+    
+    /**
+     * 설정 변경 이벤트 발행
+     * 
+     * @param changeType 변경 타입
+     * @param configKey 설정 키
+     * @param oldValue 이전 값
+     * @param newValue 새로운 값
+     * @param isEncrypted 암호화 여부
+     * @param reason 변경 사유
+     */
+    private void publishConfigChangeEvent(ConfigChangeEvent.ChangeType changeType, String configKey, 
+                                        String oldValue, String newValue, Boolean isEncrypted, String reason) {
+        try {
+            String userId = getCurrentUserId();
+            String oldValueMasked = maskValueForEvent(oldValue, isEncrypted);
+            String newValueMasked = maskValueForEvent(newValue, isEncrypted);
+            
+            ConfigChangeEvent event;
+            switch (changeType) {
+                case CREATE:
+                    event = ConfigChangeEvent.create(configKey, newValueMasked, newValue, userId, reason);
+                    break;
+                case UPDATE:
+                    event = ConfigChangeEvent.update(configKey, oldValueMasked, newValueMasked, newValue, userId, reason);
+                    break;
+                case DELETE:
+                    event = ConfigChangeEvent.delete(configKey, oldValueMasked, userId, reason);
+                    break;
+                default:
+                    log.warn("[PlatformConfigService] Unknown change type: {}", changeType);
+                    return;
+            }
+            
+            eventPublisher.publishEvent(event);
+            log.debug("[PlatformConfigService] Config change event published: configKey={}, changeType={}", 
+                     LogMaskingUtils.mask(configKey, 2, 2), changeType);
+        } catch (Exception ex) {
+            log.warn("[PlatformConfigService] Failed to publish config change event: {}", ex.getMessage());
+        }
     }
 }

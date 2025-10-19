@@ -4,6 +4,7 @@ import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.health.dto.*;
 import com.agenticcp.core.domain.monitoring.health.service.AdvancedHealthCheckService;
+import com.agenticcp.core.domain.platform.service.MaintenanceModeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +33,7 @@ import java.util.Map;
 public class AdvancedHealthController {
     
     private final AdvancedHealthCheckService advancedHealthCheckService;
+    private final MaintenanceModeService maintenanceModeService;
     
     /**
      * 전체 헬스체크 API
@@ -132,6 +134,96 @@ public class AdvancedHealthController {
             return ResponseEntity.ok(ApiResponse.success(components));
         } catch (Exception e) {
             log.error("Error getting available components", e);
+            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
+                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
+        }
+    }
+    
+    /**
+     * 유지보수 모드 상태 조회 API
+     * 
+     * 현재 유지보수 모드 상태를 반환합니다.
+     * 
+     * @return 유지보수 모드 상태
+     */
+    @Operation(summary = "유지보수 모드 상태 조회", description = "현재 유지보수 모드 활성화 여부를 반환합니다")
+    @GetMapping("/maintenance-mode")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMaintenanceModeStatus() {
+        log.info("Maintenance mode status requested");
+        
+        try {
+            boolean isEnabled = maintenanceModeService.isMaintenanceModeEnabled();
+            
+            Map<String, Object> status = Map.of(
+                "enabled", isEnabled,
+                "status", isEnabled ? "WARNING" : "HEALTHY",
+                "timestamp", System.currentTimeMillis()
+            );
+            
+            return ResponseEntity.ok(ApiResponse.success(status));
+        } catch (Exception e) {
+            log.error("Error getting maintenance mode status", e);
+            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
+                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
+        }
+    }
+    
+    /**
+     * 유지보수 모드 활성화 API
+     * 
+     * 유지보수 모드를 활성화합니다.
+     * 
+     * @param reason 유지보수 모드 활성화 사유
+     * @return 활성화 결과
+     */
+    @Operation(summary = "유지보수 모드 활성화", description = "유지보수 모드를 활성화합니다")
+    @PostMapping("/maintenance-mode/enable")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> enableMaintenanceMode(
+            @Parameter(description = "유지보수 모드 활성화 사유")
+            @RequestParam(defaultValue = "Manual activation") String reason) {
+        log.info("Maintenance mode enable requested - reason: {}", reason);
+        
+        try {
+            maintenanceModeService.enable(reason);
+            
+            Map<String, Object> result = Map.of(
+                "enabled", true,
+                "reason", reason,
+                "timestamp", System.currentTimeMillis()
+            );
+            
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            log.error("Error enabling maintenance mode", e);
+            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
+                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
+        }
+    }
+    
+    /**
+     * 유지보수 모드 비활성화 API
+     * 
+     * 유지보수 모드를 비활성화합니다.
+     * 
+     * @return 비활성화 결과
+     */
+    @Operation(summary = "유지보수 모드 비활성화", description = "유지보수 모드를 비활성화합니다")
+    @PostMapping("/maintenance-mode/disable")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> disableMaintenanceMode() {
+        log.info("Maintenance mode disable requested");
+        
+        try {
+            maintenanceModeService.disable();
+            
+            Map<String, Object> result = Map.of(
+                "enabled", false,
+                "reason", "Maintenance completed",
+                "timestamp", System.currentTimeMillis()
+            );
+            
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            log.error("Error disabling maintenance mode", e);
             return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
                     .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
         }

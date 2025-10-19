@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/security/policies")
+@RequestMapping("/security/policies")
 @RequiredArgsConstructor
 @Tag(name = "Security Policy Management", description = "보안 정책 관리 API")
 public class SecurityPolicyController {
