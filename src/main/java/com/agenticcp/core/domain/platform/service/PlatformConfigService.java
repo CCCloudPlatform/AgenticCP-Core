@@ -129,6 +129,14 @@ public class PlatformConfigService {
                 platformConfig.getIsEncrypted(),
                 platformConfig.getConfigType());
         
+        // 네임스페이스 기반 자동 isSystem 설정
+        if (platformConfig.getIsSystem() == null) {
+            boolean isSystemKey = platformConfig.getConfigKey().matches("^system\\..*");
+            platformConfig.setIsSystem(isSystemKey);
+            log.info("[PlatformConfigService] createConfig - auto-set isSystem={} for configKey={}", 
+                    isSystemKey, LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2));
+        }
+        
         // 설정 검증 수행
         validateConfig(platformConfig);
         
