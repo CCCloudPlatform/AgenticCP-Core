@@ -1,7 +1,10 @@
 package com.agenticcp.core.domain.ui.controller;
 
+import com.agenticcp.core.common.audit.AuditRequired;
+import com.agenticcp.core.common.enums.AuditResourceType;
+import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.dto.exception.ApiResponse;
-import com.agenticcp.core.common.logging.LogMaskingUtils;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.domain.ui.dto.MenuRequest;
 import com.agenticcp.core.domain.ui.dto.MenuResponse;
 import com.agenticcp.core.domain.ui.entity.Menu;
@@ -57,14 +60,14 @@ public class MenuController {
             Authentication authentication) {
         
         String username = authentication.getName();
-        log.info("[MenuController] getUserMenus - username={}", username);
+        log.info("[MenuController] getUserMenus - username={}", LogMaskingUtils.maskUsername(username));
 
         List<Menu> authorizedMenus = menuAuthorizationService.getAuthorizedMenuTree(username);
         List<MenuResponse.MenuTreeResponse> response = authorizedMenus.stream()
                 .map(MenuResponse.MenuTreeResponse::from)
                 .collect(Collectors.toList());
 
-        log.info("[MenuController] getUserMenus - success username={} count={}", username, response.size());
+        log.info("[MenuController] getUserMenus - success username={} count={}", LogMaskingUtils.maskUsername(username), response.size());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -125,7 +128,7 @@ public class MenuController {
         Menu menu = menuService.getMenuById(menuId);
         MenuResponse.MenuInfo response = MenuResponse.MenuInfo.from(menu);
 
-        log.info("[MenuController] getMenuById - success menuId={} menuKey={}", menuId, menu.getMenuKey());
+        log.info("[MenuController] getMenuById - success menuId={} menuKey={}", menuId, LogMaskingUtils.mask(menu.getMenuKey()));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -140,12 +143,12 @@ public class MenuController {
     public ResponseEntity<ApiResponse<MenuResponse.MenuInfo>> getMenuByKey(
             @Parameter(description = "메뉴 키") @PathVariable String menuKey) {
         
-        log.info("[MenuController] getMenuByKey - menuKey={}", menuKey);
+        log.info("[MenuController] getMenuByKey - menuKey={}", LogMaskingUtils.mask(menuKey));
 
         Menu menu = menuService.getMenuByKey(menuKey);
         MenuResponse.MenuInfo response = MenuResponse.MenuInfo.from(menu);
 
-        log.info("[MenuController] getMenuByKey - success menuKey={} menuId={}", menuKey, menu.getId());
+        log.info("[MenuController] getMenuByKey - success menuKey={} menuId={}", LogMaskingUtils.mask(menuKey), menu.getId());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -190,11 +193,18 @@ public class MenuController {
      */
     @PostMapping
     @Operation(summary = "메뉴 생성", description = "새로운 메뉴를 생성합니다. (관리자 권한 필요)")
+    @AuditRequired(
+        action = "createMenu",
+        resourceType = AuditResourceType.UI,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "메뉴 생성"
+    )
     public ResponseEntity<ApiResponse<MenuResponse.MenuInfo>> createMenu(
             @Valid @RequestBody MenuRequest.CreateMenuRequest request) {
         
         log.info("[MenuController] createMenu - menuKey={} menuName={} parentId={}", 
-                request.getMenuKey(), request.getMenuName(), request.getParentId());
+                LogMaskingUtils.mask(request.getMenuKey()), request.getMenuName(), request.getParentId());
 
         Menu menu = menuService.createMenu(
                 request.getMenuKey(),
@@ -209,7 +219,7 @@ public class MenuController {
 
         MenuResponse.MenuInfo response = MenuResponse.MenuInfo.from(menu);
 
-        log.info("[MenuController] createMenu - success menuId={} menuKey={}", menu.getId(), menu.getMenuKey());
+        log.info("[MenuController] createMenu - success menuId={} menuKey={}", menu.getId(), LogMaskingUtils.mask(menu.getMenuKey()));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "메뉴가 성공적으로 생성되었습니다."));
     }
 
@@ -222,12 +232,19 @@ public class MenuController {
      */
     @PutMapping("/{menuId}")
     @Operation(summary = "메뉴 수정", description = "기존 메뉴 정보를 수정합니다. (관리자 권한 필요)")
+    @AuditRequired(
+        action = "updateMenu",
+        resourceType = AuditResourceType.UI,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "메뉴 수정"
+    )
     public ResponseEntity<ApiResponse<MenuResponse.MenuInfo>> updateMenu(
             @Parameter(description = "메뉴 ID") @PathVariable Long menuId,
             @Valid @RequestBody MenuRequest.UpdateMenuRequest request) {
         
         log.info("[MenuController] updateMenu - menuId={} menuKey={} menuName={}", 
-                menuId, request.getMenuKey(), request.getMenuName());
+                menuId, LogMaskingUtils.mask(request.getMenuKey()), request.getMenuName());
 
         Menu menu = menuService.updateMenu(
                 menuId,
@@ -243,7 +260,7 @@ public class MenuController {
 
         MenuResponse.MenuInfo response = MenuResponse.MenuInfo.from(menu);
 
-        log.info("[MenuController] updateMenu - success menuId={} menuKey={}", menuId, menu.getMenuKey());
+        log.info("[MenuController] updateMenu - success menuId={} menuKey={}", menuId, LogMaskingUtils.mask(menu.getMenuKey()));
         return ResponseEntity.ok(ApiResponse.success(response, "메뉴가 성공적으로 수정되었습니다."));
     }
 
@@ -255,6 +272,13 @@ public class MenuController {
      */
     @DeleteMapping("/{menuId}")
     @Operation(summary = "메뉴 삭제", description = "메뉴를 삭제합니다. (관리자 권한 필요)")
+    @AuditRequired(
+        action = "deleteMenu",
+        resourceType = AuditResourceType.UI,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        description = "메뉴 삭제"
+    )
     public ResponseEntity<ApiResponse<Void>> deleteMenu(
             @Parameter(description = "메뉴 ID") @PathVariable Long menuId) {
         
@@ -275,6 +299,13 @@ public class MenuController {
      */
     @PostMapping("/{menuId}/permissions")
     @Operation(summary = "메뉴 권한 할당", description = "메뉴에 권한을 할당합니다. (관리자 권한 필요)")
+    @AuditRequired(
+        action = "assignMenuPermission",
+        resourceType = AuditResourceType.UI,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        description = "메뉴 권한 할당"
+    )
     public ResponseEntity<ApiResponse<MenuResponse.MenuPermissionResponse>> assignMenuPermission(
             @Parameter(description = "메뉴 ID") @PathVariable Long menuId,
             @Valid @RequestBody MenuRequest.AssignMenuPermissionRequest request) {
@@ -304,6 +335,13 @@ public class MenuController {
      */
     @DeleteMapping("/{menuId}/permissions/{permissionId}")
     @Operation(summary = "메뉴 권한 제거", description = "메뉴에서 권한을 제거합니다. (관리자 권한 필요)")
+    @AuditRequired(
+        action = "removeMenuPermission",
+        resourceType = AuditResourceType.UI,
+        severity = AuditSeverity.CRITICAL,
+        includeRequestData = true,
+        description = "메뉴 권한 제거"
+    )
     public ResponseEntity<ApiResponse<Void>> removeMenuPermission(
             @Parameter(description = "메뉴 ID") @PathVariable Long menuId,
             @Parameter(description = "권한 ID") @PathVariable Long permissionId) {
@@ -350,12 +388,12 @@ public class MenuController {
     public ResponseEntity<ApiResponse<Void>> evictUserMenuCache(
             @Parameter(description = "사용자명") @PathVariable String username) {
         
-        log.info("[MenuController] evictUserMenuCache - username={}", username);
+        log.info("[MenuController] evictUserMenuCache - username={}", LogMaskingUtils.maskUsername(username));
 
         menuAuthorizationService.evictUserMenuCache(username);
         menuCacheService.evictUserMenuCache(username);
 
-        log.info("[MenuController] evictUserMenuCache - success username={}", username);
+        log.info("[MenuController] evictUserMenuCache - success username={}", LogMaskingUtils.maskUsername(username));
         return ResponseEntity.ok(ApiResponse.success(null, "사용자 메뉴 캐시가 성공적으로 무효화되었습니다."));
     }
 
