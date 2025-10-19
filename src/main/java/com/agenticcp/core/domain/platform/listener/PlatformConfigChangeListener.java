@@ -71,7 +71,8 @@ public class PlatformConfigChangeListener {
                 event.getNewValueMasked());
 
         try {
-            String newValue = event.getNewValueMasked();
+            // 실제 값을 사용하여 유지보수 모드 상태 결정
+            String newValue = event.getNewValueRaw();
             if ("true".equals(newValue) || "1".equals(newValue)) {
                 platformConfigRuntimeService.enableMaintenanceMode();
                 log.info("[PlatformConfigChangeListener] Maintenance mode enabled");

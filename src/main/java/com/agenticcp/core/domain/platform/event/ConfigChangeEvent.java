@@ -40,6 +40,11 @@ public class ConfigChangeEvent extends ApplicationEvent {
     private final String newValueMasked;
     
     /**
+     * 새로운 값 (실제 값 - 런타임 적용용)
+     */
+    private final String newValueRaw;
+    
+    /**
      * 변경 시각
      */
     private final LocalDateTime changedAt;
@@ -71,12 +76,13 @@ public class ConfigChangeEvent extends ApplicationEvent {
     /**
      * 생성자
      */
-    public ConfigChangeEvent(Object source, String configKey, String oldValueMasked, String newValueMasked, 
+    public ConfigChangeEvent(Object source, String configKey, String oldValueMasked, String newValueMasked, String newValueRaw,
                            LocalDateTime changedAt, ChangeType changeType, String userId, String reason) {
         super(source);
         this.configKey = configKey;
         this.oldValueMasked = oldValueMasked;
         this.newValueMasked = newValueMasked;
+        this.newValueRaw = newValueRaw;
         this.changedAt = changedAt;
         this.changeType = changeType;
         this.userId = userId;
@@ -86,16 +92,16 @@ public class ConfigChangeEvent extends ApplicationEvent {
     /**
      * 설정 생성 이벤트 생성
      */
-    public static ConfigChangeEvent create(String configKey, String newValueMasked, String userId, String reason) {
-        return new ConfigChangeEvent("PlatformConfigService", configKey, null, newValueMasked, 
+    public static ConfigChangeEvent create(String configKey, String newValueMasked, String newValueRaw, String userId, String reason) {
+        return new ConfigChangeEvent("PlatformConfigService", configKey, null, newValueMasked, newValueRaw,
                                    LocalDateTime.now(), ChangeType.CREATE, userId, reason);
     }
     
     /**
      * 설정 수정 이벤트 생성
      */
-    public static ConfigChangeEvent update(String configKey, String oldValueMasked, String newValueMasked, String userId, String reason) {
-        return new ConfigChangeEvent("PlatformConfigService", configKey, oldValueMasked, newValueMasked, 
+    public static ConfigChangeEvent update(String configKey, String oldValueMasked, String newValueMasked, String newValueRaw, String userId, String reason) {
+        return new ConfigChangeEvent("PlatformConfigService", configKey, oldValueMasked, newValueMasked, newValueRaw,
                                    LocalDateTime.now(), ChangeType.UPDATE, userId, reason);
     }
     
@@ -103,7 +109,7 @@ public class ConfigChangeEvent extends ApplicationEvent {
      * 설정 삭제 이벤트 생성
      */
     public static ConfigChangeEvent delete(String configKey, String oldValueMasked, String userId, String reason) {
-        return new ConfigChangeEvent("PlatformConfigService", configKey, oldValueMasked, null, 
+        return new ConfigChangeEvent("PlatformConfigService", configKey, oldValueMasked, null, null,
                                    LocalDateTime.now(), ChangeType.DELETE, userId, reason);
     }
 }

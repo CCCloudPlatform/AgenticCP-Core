@@ -224,7 +224,10 @@ public class PlatformConfigService {
             existingConfig.setIsEncrypted(true);
         } else {
             existingConfig.setConfigValue(rawNewValue);
-            existingConfig.setIsEncrypted(Boolean.FALSE.equals(updatedConfig.getIsEncrypted()) ? false : updatedConfig.getIsEncrypted());
+            // isEncrypted가 null이면 기존 값 유지, 아니면 새 값 사용
+            if (updatedConfig.getIsEncrypted() != null) {
+                existingConfig.setIsEncrypted(updatedConfig.getIsEncrypted());
+            }
         }
         existingConfig.setConfigType(updatedConfig.getConfigType());
         existingConfig.setDescription(updatedConfig.getDescription());
@@ -415,10 +418,10 @@ public class PlatformConfigService {
             ConfigChangeEvent event;
             switch (changeType) {
                 case CREATE:
-                    event = ConfigChangeEvent.create(configKey, newValueMasked, userId, reason);
+                    event = ConfigChangeEvent.create(configKey, newValueMasked, newValue, userId, reason);
                     break;
                 case UPDATE:
-                    event = ConfigChangeEvent.update(configKey, oldValueMasked, newValueMasked, userId, reason);
+                    event = ConfigChangeEvent.update(configKey, oldValueMasked, newValueMasked, newValue, userId, reason);
                     break;
                 case DELETE:
                     event = ConfigChangeEvent.delete(configKey, oldValueMasked, userId, reason);
