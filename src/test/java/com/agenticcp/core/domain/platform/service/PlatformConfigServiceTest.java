@@ -238,4 +238,123 @@ class PlatformConfigServiceTest {
         verify(configValidator).validate(validConfig);
         verify(platformConfigRepository, never()).save(any(PlatformConfig.class));
     }
+
+    @Test
+    @DisplayName("시스템 설정 자동 isSystem 설정 성공")
+    void shouldAutoSetIsSystemForSystemConfig() {
+        // Given
+        PlatformConfig systemConfig = PlatformConfig.builder()
+                .configKey("system.database.url")
+                .isSystem(null)  // null로 설정
+                .configType(PlatformConfig.ConfigType.STRING)
+                .configValue("jdbc:mysql://localhost:3306/db")
+                .build();
+
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(systemConfig);
+
+        // When
+        PlatformConfig result = platformConfigService.createConfig(systemConfig);
+
+        // Then
+        assertNotNull(result);
+        assertTrue(result.getIsSystem());  // 자동으로 true로 설정되어야 함
+        verify(platformConfigRepository).save(any(PlatformConfig.class));
+    }
+
+    @Test
+    @DisplayName("사용자 설정 자동 isSystem 설정 성공")
+    void shouldAutoSetIsSystemForUserConfig() {
+        // Given
+        PlatformConfig userConfig = PlatformConfig.builder()
+                .configKey("user.theme.color")
+                .isSystem(null)  // null로 설정
+                .configType(PlatformConfig.ConfigType.STRING)
+                .configValue("blue")
+                .build();
+
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(userConfig);
+
+        // When
+        PlatformConfig result = platformConfigService.createConfig(userConfig);
+
+        // Then
+        assertNotNull(result);
+        assertFalse(result.getIsSystem());  // 자동으로 false로 설정되어야 함
+        verify(platformConfigRepository).save(any(PlatformConfig.class));
+    }
+
+    @Test
+    @DisplayName("기존 isSystem 값 유지")
+    void shouldPreserveExistingIsSystemValue() {
+        // Given
+        PlatformConfig config = PlatformConfig.builder()
+                .configKey("system.database.url")
+                .isSystem(false)  // 명시적으로 false 설정
+                .configType(PlatformConfig.ConfigType.STRING)
+                .configValue("jdbc:mysql://localhost:3306/db")
+                .build();
+
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(config);
+
+        // When
+        PlatformConfig result = platformConfigService.createConfig(config);
+
+        // Then
+        assertNotNull(result);
+        assertFalse(result.getIsSystem());  // 기존 값 유지
+        verify(platformConfigRepository).save(any(PlatformConfig.class));
+    }
+
+    @Test
+    @DisplayName("isSystem 필터로 시스템 설정만 조회")
+    void shouldGetOnlySystemConfigsWithFilter() {
+        // Given
+        List<PlatformConfig> systemConfigs = Arrays.asList(systemConfig);
+        when(platformConfigRepository.findByIsSystem(true)).thenReturn(systemConfigs);
+
+        // When
+        List<PlatformConfig> result = platformConfigService.getAllConfigs(false, true);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertTrue(result.get(0).getIsSystem());
+        verify(platformConfigRepository).findByIsSystem(true);
+    }
+
+    @Test
+    @DisplayName("isSystem 필터로 사용자 설정만 조회")
+    void shouldGetOnlyUserConfigsWithFilter() {
+        // Given
+        List<PlatformConfig> userConfigs = Arrays.asList(validConfig);
+        when(platformConfigRepository.findByIsSystem(false)).thenReturn(userConfigs);
+
+        // When
+        List<PlatformConfig> result = platformConfigService.getAllConfigs(false, false);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertFalse(result.get(0).getIsSystem());
+        verify(platformConfigRepository).findByIsSystem(false);
+    }
+
+    @Test
+    @DisplayName("isSystem 필터 없이 모든 설정 조회")
+    void shouldGetAllConfigsWithoutFilter() {
+        // Given
+        List<PlatformConfig> allConfigs = Arrays.asList(systemConfig, validConfig);
+        when(platformConfigRepository.findAllActive()).thenReturn(allConfigs);
+
+        // When
+        List<PlatformConfig> result = platformConfigService.getAllConfigs(false, null);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        verify(platformConfigRepository).findAllActive();
+    }
 }

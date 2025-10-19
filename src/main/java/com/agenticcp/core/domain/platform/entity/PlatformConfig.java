@@ -32,7 +32,7 @@ public class PlatformConfig extends BaseEntity {
     private Boolean isEncrypted = false;
 
     @Column(name = "is_system")
-    private Boolean isSystem = false;
+    private Boolean isSystem;
 
     public enum ConfigType {
         STRING,

@@ -206,6 +206,14 @@ public class PlatformConfigService {
         // 업데이트할 설정에 키 설정 (검증을 위해)
         updatedConfig.setConfigKey(configKey);
         
+        // 네임스페이스 기반 자동 isSystem 설정 (기존 값이 없는 경우에만)
+        if (updatedConfig.getIsSystem() == null) {
+            boolean isSystemKey = configKey.matches("^system\\..*");
+            updatedConfig.setIsSystem(isSystemKey);
+            log.info("[PlatformConfigService] updateConfig - auto-set isSystem={} for configKey={}", 
+                    isSystemKey, LogMaskingUtils.mask(configKey, 2, 2));
+        }
+        
         // 설정 검증 수행
         validateConfig(updatedConfig);
 

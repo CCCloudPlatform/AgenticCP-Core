@@ -387,4 +387,93 @@ class PlatformConfigControllerIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
     }
+
+    @Test
+    @DisplayName("isSystem 필터로 시스템 설정만 조회")
+    void shouldGetOnlySystemConfigsWithFilter() throws Exception {
+        // Given
+        PlatformConfig systemConfig = PlatformConfig.builder()
+                .configKey("system.test.key")
+                .configValue("system value")
+                .configType(PlatformConfig.ConfigType.STRING)
+                .isSystem(true)
+                .build();
+        platformConfigRepository.save(systemConfig);
+
+        PlatformConfig userConfig = PlatformConfig.builder()
+                .configKey("user.test.key")
+                .configValue("user value")
+                .configType(PlatformConfig.ConfigType.STRING)
+                .isSystem(false)
+                .build();
+        platformConfigRepository.save(userConfig);
+
+        // When & Then
+        mockMvc.perform(get("/api/platform/configs")
+                .param("isSystem", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[?(@.configKey == 'system.test.key')]").exists())
+                .andExpect(jsonPath("$.data[?(@.configKey == 'user.test.key')]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("isSystem 필터로 사용자 설정만 조회")
+    void shouldGetOnlyUserConfigsWithFilter() throws Exception {
+        // Given
+        PlatformConfig systemConfig = PlatformConfig.builder()
+                .configKey("system.test.key")
+                .configValue("system value")
+                .configType(PlatformConfig.ConfigType.STRING)
+                .isSystem(true)
+                .build();
+        platformConfigRepository.save(systemConfig);
+
+        PlatformConfig userConfig = PlatformConfig.builder()
+                .configKey("user.test.key")
+                .configValue("user value")
+                .configType(PlatformConfig.ConfigType.STRING)
+                .isSystem(false)
+                .build();
+        platformConfigRepository.save(userConfig);
+
+        // When & Then
+        mockMvc.perform(get("/api/platform/configs")
+                .param("isSystem", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[?(@.configKey == 'user.test.key')]").exists())
+                .andExpect(jsonPath("$.data[?(@.configKey == 'system.test.key')]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("isSystem 필터 없이 모든 설정 조회")
+    void shouldGetAllConfigsWithoutFilter() throws Exception {
+        // Given
+        PlatformConfig systemConfig = PlatformConfig.builder()
+                .configKey("system.test.key")
+                .configValue("system value")
+                .configType(PlatformConfig.ConfigType.STRING)
+                .isSystem(true)
+                .build();
+        platformConfigRepository.save(systemConfig);
+
+        PlatformConfig userConfig = PlatformConfig.builder()
+                .configKey("user.test.key")
+                .configValue("user value")
+                .configType(PlatformConfig.ConfigType.STRING)
+                .isSystem(false)
+                .build();
+        platformConfigRepository.save(userConfig);
+
+        // When & Then
+        mockMvc.perform(get("/api/platform/configs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[?(@.configKey == 'system.test.key')]").exists())
+                .andExpect(jsonPath("$.data[?(@.configKey == 'user.test.key')]").exists());
+    }
 }
