@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.ui.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.logging.LogMaskingUtils;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.ui.entity.Menu;
 import com.agenticcp.core.domain.ui.repository.MenuRepository;
@@ -88,7 +88,7 @@ public class MenuCacheService {
         redisTemplate.opsForValue().set(cacheKey, menus, USER_MENU_TTL);
         
         log.info("[MenuCacheService] cacheUserMenus - username={} count={} tenantKey={}", 
-                username, menus.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), menus.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
     }
 
     /**
@@ -105,9 +105,9 @@ public class MenuCacheService {
         List<Menu> cachedMenus = (List<Menu>) redisTemplate.opsForValue().get(cacheKey);
         
         if (cachedMenus != null) {
-            log.info("[MenuCacheService] getCachedUserMenus - cache hit username={} count={}", username, cachedMenus.size());
+            log.info("[MenuCacheService] getCachedUserMenus - cache hit username={} count={}", LogMaskingUtils.maskUsername(username), cachedMenus.size());
         } else {
-            log.info("[MenuCacheService] getCachedUserMenus - cache miss username={}", username);
+            log.info("[MenuCacheService] getCachedUserMenus - cache miss username={}", LogMaskingUtils.maskUsername(username));
         }
         
         return cachedMenus;
@@ -165,7 +165,7 @@ public class MenuCacheService {
         
         redisTemplate.delete(cacheKey);
         log.info("[MenuCacheService] evictUserMenuCache - username={} tenantKey={}", 
-                username, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
     }
 
     /**

@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.ui.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.logging.LogMaskingUtils;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.ui.entity.Menu;
 import com.agenticcp.core.domain.ui.entity.MenuPermission;
@@ -56,13 +56,13 @@ public class MenuAuthorizationService {
         String cacheKey = MENU_CACHE_KEY_PREFIX + currentTenant.getTenantKey() + ":" + username;
         
         log.info("[MenuAuthorizationService] getAuthorizedMenus - username={} tenantKey={}", 
-                username, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
 
         // 캐시에서 조회
         @SuppressWarnings("unchecked")
         List<Menu> cachedMenus = (List<Menu>) redisTemplate.opsForValue().get(cacheKey);
         if (cachedMenus != null) {
-            log.info("[MenuAuthorizationService] getAuthorizedMenus - cache hit username={} count={}", username, cachedMenus.size());
+            log.info("[MenuAuthorizationService] getAuthorizedMenus - cache hit username={} count={}", LogMaskingUtils.maskUsername(username), cachedMenus.size());
             return cachedMenus;
         }
 
@@ -73,7 +73,7 @@ public class MenuAuthorizationService {
         redisTemplate.opsForValue().set(cacheKey, authorizedMenus, CACHE_TTL);
         
         log.info("[MenuAuthorizationService] getAuthorizedMenus - success username={} count={} tenantKey={}", 
-                username, authorizedMenus.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), authorizedMenus.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         
         return authorizedMenus;
     }
@@ -87,13 +87,13 @@ public class MenuAuthorizationService {
     public List<Menu> getAuthorizedMenuTree(String username) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
         log.info("[MenuAuthorizationService] getAuthorizedMenuTree - username={} tenantKey={}", 
-                username, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
 
         List<Menu> allMenus = menuRepository.findMenuTreeWithPermissions(currentTenant);
         List<Menu> authorizedMenus = filterMenusByUserPermissions(allMenus, username);
         
         log.info("[MenuAuthorizationService] getAuthorizedMenuTree - success username={} count={} tenantKey={}", 
-                username, authorizedMenus.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), authorizedMenus.size(), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         
         return authorizedMenus;
     }
@@ -109,7 +109,7 @@ public class MenuAuthorizationService {
     public boolean hasMenuAccess(String username, Long menuId, MenuPermission.AccessType accessType) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
         log.info("[MenuAuthorizationService] hasMenuAccess - username={} menuId={} accessType={} tenantKey={}", 
-                username, menuId, accessType, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), menuId, accessType, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
 
         User user = getUserByUsername(username);
         Set<String> userPermissions = getUserPermissions(user);
@@ -133,7 +133,7 @@ public class MenuAuthorizationService {
                 .anyMatch(mp -> userPermissions.contains(mp.getPermission().getPermissionKey()));
 
         log.info("[MenuAuthorizationService] hasMenuAccess - result={} username={} menuId={} accessType={}", 
-                hasAccess, username, menuId, accessType);
+                hasAccess, LogMaskingUtils.maskUsername(username), menuId, accessType);
         
         return hasAccess;
     }
@@ -149,7 +149,7 @@ public class MenuAuthorizationService {
         
         redisTemplate.delete(cacheKey);
         log.info("[MenuAuthorizationService] evictUserMenuCache - username={} tenantKey={}", 
-                username, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.maskUsername(username), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
     }
 
     /**

@@ -3,7 +3,7 @@ package com.agenticcp.core.domain.ui.service;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
-import com.agenticcp.core.common.logging.LogMaskingUtils;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.ui.entity.Menu;
 import com.agenticcp.core.domain.ui.entity.MenuPermission;
@@ -91,12 +91,12 @@ public class MenuService {
      */
     public Menu getMenuByKey(String menuKey) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
-        log.info("[MenuService] getMenuByKey - menuKey={} tenantKey={}", menuKey, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        log.info("[MenuService] getMenuByKey - menuKey={} tenantKey={}", LogMaskingUtils.mask(menuKey), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         
         Menu result = menuRepository.findByMenuKeyAndTenant(menuKey, currentTenant)
                 .orElseThrow(() -> new ResourceNotFoundException(MenuErrorCode.MENU_NOT_FOUND));
         
-        log.info("[MenuService] getMenuByKey - success menuId={} menuKey={} tenantKey={}", result.getId(), menuKey, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        log.info("[MenuService] getMenuByKey - success menuId={} menuKey={} tenantKey={}", result.getId(), LogMaskingUtils.mask(menuKey), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
         return result;
     }
 
@@ -113,7 +113,7 @@ public class MenuService {
                 .filter(menu -> !menu.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException(MenuErrorCode.MENU_NOT_FOUND));
         
-        log.info("[MenuService] getMenuById - success menuId={} menuKey={}", result.getId(), result.getMenuKey());
+        log.info("[MenuService] getMenuById - success menuId={} menuKey={}", result.getId(), LogMaskingUtils.mask(result.getMenuKey()));
         return result;
     }
 
@@ -150,7 +150,7 @@ public class MenuService {
                           String icon, Long parentId, Integer sortOrder, Boolean isSystem) {
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
         log.info("[MenuService] createMenu - menuKey={} menuName={} parentId={} tenantKey={}", 
-                menuKey, menuName, parentId, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                LogMaskingUtils.mask(menuKey), menuName, parentId, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
 
         // 메뉴 키 중복 확인
         if (menuRepository.existsByMenuKeyAndTenant(menuKey, currentTenant, 0L)) {
@@ -179,7 +179,7 @@ public class MenuService {
 
         Menu result = menuRepository.save(menu);
         log.info("[MenuService] createMenu - success menuId={} menuKey={} tenantKey={}", 
-                result.getId(), menuKey, LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+                result.getId(), LogMaskingUtils.mask(menuKey), LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
 
         return result;
     }
@@ -202,7 +202,7 @@ public class MenuService {
     public Menu updateMenu(Long menuId, String menuKey, String menuName, String description, 
                           String url, String icon, Long parentId, Integer sortOrder, Boolean isActive) {
         log.info("[MenuService] updateMenu - menuId={} menuKey={} menuName={} parentId={}", 
-                menuId, menuKey, menuName, parentId);
+                menuId, LogMaskingUtils.mask(menuKey), menuName, parentId);
 
         Menu menu = getMenuById(menuId);
         Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
@@ -239,7 +239,7 @@ public class MenuService {
         }
 
         Menu result = menuRepository.save(menu);
-        log.info("[MenuService] updateMenu - success menuId={} menuKey={}", result.getId(), menuKey);
+        log.info("[MenuService] updateMenu - success menuId={} menuKey={}", result.getId(), LogMaskingUtils.mask(menuKey));
 
         return result;
     }
@@ -273,7 +273,7 @@ public class MenuService {
         // 관련 메뉴 권한 매핑도 삭제
         menuPermissionRepository.deleteByMenuId(menuId);
 
-        log.info("[MenuService] deleteMenu - success menuId={} menuKey={}", menuId, menu.getMenuKey());
+        log.info("[MenuService] deleteMenu - success menuId={} menuKey={}", menuId, LogMaskingUtils.mask(menu.getMenuKey()));
     }
 
     /**
