@@ -47,7 +47,13 @@ public enum PlatformConfigErrorCode implements BaseErrorCode {
     ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 6016, "설정 암호화에 실패했습니다."),
     DECRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 6017, "설정 복호화에 실패했습니다."),
     ENCRYPTION_KEY_MISSING(HttpStatus.INTERNAL_SERVER_ERROR, 6018, "암호화 키가 구성되지 않았습니다."),
-    ENCRYPTED_PAYLOAD_INVALID(HttpStatus.BAD_REQUEST, 6019, "암호문 형식이 올바르지 않습니다.");
+    ENCRYPTED_PAYLOAD_INVALID(HttpStatus.BAD_REQUEST, 6019, "암호문 형식이 올바르지 않습니다."),
+    
+    // 시스템 설정 보호 관련 에러
+    SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN(HttpStatus.FORBIDDEN, 6020, "시스템 설정의 타입은 변경할 수 없습니다."),
+    SYSTEM_CONFIG_NAMESPACE_MISMATCH(HttpStatus.BAD_REQUEST, 6021, "시스템 설정은 'system.' 네임스페이스를 사용해야 합니다."),
+    USER_CONFIG_NAMESPACE_MISMATCH(HttpStatus.BAD_REQUEST, 6022, "사용자 설정은 'system.' 네임스페이스를 사용할 수 없습니다."),
+    INVALID_CONFIG_NAMESPACE(HttpStatus.BAD_REQUEST, 6023, "설정 키는 'system.' 또는 'user.' 네임스페이스를 사용해야 합니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;

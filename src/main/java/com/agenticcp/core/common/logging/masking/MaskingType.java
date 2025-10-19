@@ -18,5 +18,7 @@ public enum MaskingType {
     SSN,
     SECRET_KEY,
     TOKEN,
+    TENANT_KEY,
+    USERNAME,
     DEFAULT
 }
