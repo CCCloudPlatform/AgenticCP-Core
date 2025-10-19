@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.repository;
 
-import com.agenticcp.core.common.repository.TenantAwareRepository;
+import com.agenticcp.core.common.repository.BaseRepository;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.common.enums.Status;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface CloudProviderRepository extends TenantAwareRepository<CloudProvider, Long> {
+public interface CloudProviderRepository extends BaseRepository<CloudProvider, Long> {
 
     Optional<CloudProvider> findByProviderKey(String providerKey);
 

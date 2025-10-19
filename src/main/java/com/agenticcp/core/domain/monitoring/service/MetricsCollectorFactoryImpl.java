@@ -174,11 +174,22 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
             return false;
         }
         
-        boolean exists = switch (type) {
-            case SYSTEM -> systemMetricsCollector != null;
-            case APPLICATION -> micrometerMetricsCollector != null;
-            case CUSTOM, EXTERNAL -> false; // 아직 구현되지 않음
-        };
+        boolean exists;
+        switch (type) {
+            case SYSTEM:
+                exists = systemMetricsCollector != null;
+                break;
+            case APPLICATION:
+                exists = micrometerMetricsCollector != null;
+                break;
+            case CUSTOM:
+            case EXTERNAL:
+                exists = false; // 아직 구현되지 않음
+                break;
+            default:
+                exists = false;
+                break;
+        }
         
         log.debug("수집기 존재 여부 확인: type={}, exists={}", type, exists);
         return exists;
@@ -255,12 +266,19 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
      * 수집기 타입별 생성
      */
     private MetricsCollector createCollectorByType(CollectorType type) {
-        return switch (type) {
-            case SYSTEM -> (MetricsCollector) systemMetricsCollector;
-            case APPLICATION -> (MetricsCollector) micrometerMetricsCollector;
-            case CUSTOM, EXTERNAL -> throw new BusinessException(MonitoringErrorCode.COLLECTOR_NOT_FOUND, 
-                "해당 타입의 수집기는 MetricsCollectorRegistry를 사용하세요: " + type);
-        };
+        switch (type) {
+            case SYSTEM:
+                return (MetricsCollector) systemMetricsCollector;
+            case APPLICATION:
+                return (MetricsCollector) micrometerMetricsCollector;
+            case CUSTOM:
+            case EXTERNAL:
+                throw new BusinessException(MonitoringErrorCode.COLLECTOR_NOT_FOUND, 
+                    "해당 타입의 수집기는 MetricsCollectorRegistry를 사용하세요: " + type);
+            default:
+                throw new BusinessException(MonitoringErrorCode.COLLECTOR_NOT_FOUND, 
+                    "지원되지 않는 수집기 타입입니다: " + type);
+        }
     }
     
     /**

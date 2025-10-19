@@ -281,10 +281,16 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
     private MetricsStorage createStorageByType(StorageType type) {
         StorageConfig config = getStorageConfig(type);
         
-        return switch (type) {
-            case INFLUXDB -> new InfluxDBStorage(config);
-            case TIMESCALEDB -> new TimescaleDBStorage(config);
-            case PROMETHEUS -> new PrometheusStorage(config);
-        };
+        switch (type) {
+            case INFLUXDB:
+                return new InfluxDBStorage(config);
+            case TIMESCALEDB:
+                return new TimescaleDBStorage(config);
+            case PROMETHEUS:
+                return new PrometheusStorage(config);
+            default:
+                throw new BusinessException(MonitoringErrorCode.COLLECTOR_NOT_FOUND, 
+                    "지원되지 않는 저장소 타입입니다: " + type);
+        }
     }
 }

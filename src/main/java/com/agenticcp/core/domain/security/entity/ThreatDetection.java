@@ -1,8 +1,7 @@
 package com.agenticcp.core.domain.security.entity;
 
-import com.agenticcp.core.common.entity.BaseEntity;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.common.enums.Status;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ThreatDetection extends BaseEntity {
+public class ThreatDetection extends TenantAwareEntity {
 
     @Column(name = "threat_id", nullable = false, unique = true)
     private String threatId;
@@ -27,10 +26,6 @@ public class ThreatDetection extends BaseEntity {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

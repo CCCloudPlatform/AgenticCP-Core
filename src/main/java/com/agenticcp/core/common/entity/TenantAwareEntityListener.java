@@ -22,37 +22,37 @@ public class TenantAwareEntityListener {
     /**
      * 엔티티 저장 전에 테넌트 정보를 자동으로 설정
      * 
-     * @param entity 저장할 엔티티 (BaseEntity를 상속받은 객체)
+     * @param entity 저장할 엔티티 (TenantAwareEntity를 상속받은 객체)
      */
     @PrePersist
     public void prePersist(Object entity) {
-        if (entity instanceof BaseEntity baseEntity) {
-            setTenantIfNotSet(baseEntity, "prePersist");
+        if (entity instanceof TenantAwareEntity tenantAwareEntity) {
+            setTenantIfNotSet(tenantAwareEntity, "prePersist");
         }
     }
 
     /**
      * 엔티티 수정 전에 테넌트 정보를 자동으로 설정
      * 
-     * @param entity 수정할 엔티티 (BaseEntity를 상속받은 객체)
+     * @param entity 수정할 엔티티 (TenantAwareEntity를 상속받은 객체)
      */
     @PreUpdate
     public void preUpdate(Object entity) {
-        if (entity instanceof BaseEntity baseEntity) {
-            setTenantIfNotSet(baseEntity, "preUpdate");
+        if (entity instanceof TenantAwareEntity tenantAwareEntity) {
+            setTenantIfNotSet(tenantAwareEntity, "preUpdate");
         }
     }
 
     /**
      * 엔티티에 테넌트 정보가 설정되지 않은 경우 현재 컨텍스트의 테넌트 정보를 설정
      * 
-     * @param baseEntity 테넌트 정보를 설정할 엔티티
+     * @param tenantAwareEntity 테넌트 정보를 설정할 엔티티
      * @param operation 수행 중인 작업 (로깅용)
      */
-    private void setTenantIfNotSet(BaseEntity baseEntity, String operation) {
+    private void setTenantIfNotSet(TenantAwareEntity tenantAwareEntity, String operation) {
         // 이미 테넌트가 설정되어 있으면 건너뛰기
-        if (baseEntity.getTenant() != null) {
-            log.debug("Tenant already set for entity {} in {}", baseEntity.getClass().getSimpleName(), operation);
+        if (tenantAwareEntity.getTenant() != null) {
+            log.debug("Tenant already set for entity {} in {}", tenantAwareEntity.getClass().getSimpleName(), operation);
             return;
         }
 
@@ -61,17 +61,17 @@ public class TenantAwareEntityListener {
             Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
             
             // 테넌트 정보 설정
-            baseEntity.setTenant(currentTenant);
+            tenantAwareEntity.setTenant(currentTenant);
             
             log.debug("Tenant {} set for entity {} in {}", 
                 currentTenant.getTenantKey(), 
-                baseEntity.getClass().getSimpleName(), 
+                tenantAwareEntity.getClass().getSimpleName(), 
                 operation);
                 
         } catch (BusinessException e) {
             // 테넌트 컨텍스트가 설정되지 않은 경우
             log.error("Failed to set tenant for entity {} in {}: {}", 
-                baseEntity.getClass().getSimpleName(), 
+                tenantAwareEntity.getClass().getSimpleName(), 
                 operation, 
                 e.getMessage());
             

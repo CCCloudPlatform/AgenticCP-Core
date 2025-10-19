@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.tenant.entity;
 
-import com.agenticcp.core.common.entity.BaseEntity;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,11 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TenantBilling extends BaseEntity {
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+public class TenantBilling extends TenantAwareEntity {
 
     @Column(name = "billing_cycle")
     @Enumerated(EnumType.STRING)

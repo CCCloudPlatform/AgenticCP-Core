@@ -1,6 +1,5 @@
 package com.agenticcp.core.common.entity;
 
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -8,8 +7,16 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+/**
+ * 기본 엔티티 - 테넌트 정보 없음
+ * 전역 기능(플랫폼 설정, 클라우드 제공자 등)에서 사용
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
 @MappedSuperclass
-@EntityListeners({AuditingEntityListener.class, TenantAwareEntityListener.class})
+@EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
     @Id
@@ -32,10 +39,6 @@ public abstract class BaseEntity {
 
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false, insertable = false, updatable = false)
-    private Tenant tenant;
 
     // Getters and Setters
     public Long getId() {
@@ -84,13 +87,5 @@ public abstract class BaseEntity {
 
     public void setIsDeleted(Boolean isDeleted) {
         this.isDeleted = isDeleted;
-    }
-
-    public Tenant getTenant() {
-        return tenant;
-    }
-
-    public void setTenant(Tenant tenant) {
-        this.tenant = tenant;
     }
 }

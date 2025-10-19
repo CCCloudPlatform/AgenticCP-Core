@@ -1,7 +1,7 @@
 package com.agenticcp.core.common.repository;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.entity.BaseEntity;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
@@ -36,7 +36,7 @@ import java.util.Optional;
  * @since 2025-01-01
  */
 @Slf4j
-public class TenantAwareRepositoryImpl<T extends BaseEntity, ID extends Serializable> 
+public class TenantAwareRepositoryImpl<T extends TenantAwareEntity, ID extends Serializable> 
         extends SimpleJpaRepository<T, ID> implements TenantAwareRepository<T, ID> {
 
     private final EntityManager entityManager;

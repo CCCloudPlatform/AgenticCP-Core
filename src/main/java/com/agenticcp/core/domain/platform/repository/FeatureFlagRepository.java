@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.platform.repository;
 
-import com.agenticcp.core.common.repository.TenantAwareRepository;
+import com.agenticcp.core.common.repository.BaseRepository;
 import com.agenticcp.core.domain.platform.entity.FeatureFlag;
 import com.agenticcp.core.common.enums.Status;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface FeatureFlagRepository extends TenantAwareRepository<FeatureFlag, Long> {
+public interface FeatureFlagRepository extends BaseRepository<FeatureFlag, Long> {
 
     Optional<FeatureFlag> findByFlagKey(String flagKey);
 

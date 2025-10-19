@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.security.entity;
 
-import com.agenticcp.core.common.entity.BaseEntity;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,14 +16,10 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuditLog extends BaseEntity {
+public class AuditLog extends TenantAwareEntity {
 
     @Column(name = "event_id", nullable = false, unique = true)
     private String eventId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
