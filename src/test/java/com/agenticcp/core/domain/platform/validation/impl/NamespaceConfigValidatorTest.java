@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * NamespaceConfigValidator 단위 테스트
  *
  * @author AgenticCP Team
- * @since 2025-01-16
+ * @since 2025-10-19
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("NamespaceConfigValidator 테스트")
