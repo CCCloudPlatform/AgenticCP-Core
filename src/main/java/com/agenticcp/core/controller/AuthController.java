@@ -1,6 +1,6 @@
 package com.agenticcp.core.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
 import com.agenticcp.core.common.dto.auth.RegisterRequest;

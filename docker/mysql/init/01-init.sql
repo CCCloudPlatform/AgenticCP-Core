@@ -29,3 +29,11 @@ ON DUPLICATE KEY UPDATE
 -- CREATE INDEX idx_users_email ON users(email);
 -- CREATE INDEX idx_users_active ON users(is_active);
 -- CREATE INDEX idx_users_created_at ON users(created_at);
+
+-- 감사 로그 조회 최적화 인덱스 (이력 조회 API p95 ≤ 200ms 목표)
+-- 조건: resource_type = 'PlatformConfig' AND resource_id = :id AND event_type = 'CONFIGURATION_CHANGE'
+-- 정렬: event_timestamp DESC
+-- 참고: MySQL은 역순 정렬 최적화 시 DESC 인덱스가 도움될 수 있음
+-- CREATE INDEX idx_audit_logs_rt_rid_et_ts_desc ON audit_logs(resource_type, resource_id, event_type, event_timestamp DESC);
+-- 대안(버전 호환):
+-- CREATE INDEX idx_audit_logs_rt_rid_et_ts ON audit_logs(resource_type, resource_id, event_type, event_timestamp);

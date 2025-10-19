@@ -39,6 +39,9 @@ class PlatformConfigServiceTest {
     @Mock
     private ConfigValidator configValidator;
 
+    @Mock
+    private ConfigAuditService configAuditService;
+
     @InjectMocks
     private PlatformConfigService platformConfigService;
 
@@ -55,6 +58,11 @@ class PlatformConfigServiceTest {
         lenient().doNothing().when(configValidator).validate(any(PlatformConfig.class));
         lenient().doNothing().when(configValidator).validateKey(anyString());
         lenient().doNothing().when(configValidator).validateValue(anyString(), any(PlatformConfig.ConfigType.class));
+        
+        // Mock ConfigAuditService가 아무것도 하지 않도록 설정 (lenient 모드 사용)
+        lenient().doNothing().when(configAuditService).logCreate(anyString(), anyString(), anyString(), anyString(), anyString());
+        lenient().doNothing().when(configAuditService).logUpdate(anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        lenient().doNothing().when(configAuditService).logDelete(anyString(), anyString(), anyString(), anyString(), anyString());
 
         validConfig = PlatformConfig.builder()
                 .configKey("test.config.key")

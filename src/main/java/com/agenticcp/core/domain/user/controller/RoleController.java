@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.user.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.user.dto.CreateRoleRequest;
 import com.agenticcp.core.domain.user.dto.RoleResponse;
 import com.agenticcp.core.domain.user.dto.UpdateRoleRequest;

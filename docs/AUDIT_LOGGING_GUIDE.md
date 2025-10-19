@@ -8,8 +8,9 @@
 4. [클래스와 메서드 레벨 조합 사용](#클래스와-메서드-레벨-조합-사용)
 5. [감사 로깅 저장 형식](#감사-로깅-저장-형식)
 6. [애플리케이션 로깅 vs 감사 로깅](#애플리케이션-로깅-vs-감사-로깅)
-7. [실제 사용 예시](#실제-사용-예시)
-8. [요약](#요약)
+7. [데이터 마스킹 가이드 (@Masked)](#-데이터-마스킹-masked)
+8. [실제 사용 예시](#실제-사용-예시)
+9. [요약](#요약)
 
 ---
 
@@ -408,7 +409,7 @@ public record AuditEventDto(
 ### 2. JSON 로그 출력 예시
 
 ```json
-// 성공한 사용자 생성 요청
+
 {
   "action": "createUser",
   "resourceType": "USER",
@@ -721,6 +722,41 @@ logs/
 | **개발 중** | ✅ 권장 | ✅ 필수 | 학습 + 디버깅 |
 
 **결론**: 감사 로깅은 보안과 컴플라이언스를 위해 필수이고, 애플리케이션 로깅은 개발과 운영을 위해 권장됩니다.
+
+---
+
+## 🔒 데이터 마스킹 가이드 (@Masked)
+
+### 1) 사용법 (핵심)
+
+민감 필드에 `@Masked`를 붙이면 감사/로그 경로에서 자동 마스킹됩니다. 필요 시 `type`으로 룰 지정.
+
+```java
+public class UserCreateRequest {
+    @Masked // 기본 마스킹
+    private String name;
+
+    @Masked(type = MaskingType.EMAIL) // 이메일 전용 마스킹
+    private String email;
+}
+```
+
+### 2) 새로운 마스킹 룰 추가하고 싶을 시
+
+- 위치: `src/main/java/com/agenticcp/core/common/logging/masking/strategy/`
+- 절차: (1) 새 전략 클래스 추가(`mask(String)` 구현) → (2) `MaskingType`에 enum 추가 → (3) `MaskingService` 전략 매핑 등록
+- 사용: 필드에 `@Masked(type = MaskingType.MY_NEW_TYPE)` 지정
+
+### 3) 현재 제공 마스킹 룰
+
+- DEFAULT: 앞/뒤 일부 노출, 중앙 `*` 치환
+- EMAIL: 로컬/도메인 일부만 노출
+- PASSWORD/SECRET_KEY/TOKEN: 전면 마스킹 또는 극소 노출
+- PHONE_NUMBER: 끝자리만 일부 노출
+- CREDIT_CARD: BIN+끝 4자리 노출
+- IP_ADDRESS: IPv4 마지막/IPv6 후미 세그먼트 마스킹
+
+참고 파일: `common/logging/masking/Masked.java`, `.../strategy/*.java`, `MaskingService`, `LogMaskingAspect`, `LogMaskingUtils`.
 
 ---
 

@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.user.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.dto.ApiResponse;
 import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.exception.BusinessException;

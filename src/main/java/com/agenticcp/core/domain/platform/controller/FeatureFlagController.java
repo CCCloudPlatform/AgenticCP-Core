@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.platform.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.platform.entity.FeatureFlag;
 import com.agenticcp.core.domain.platform.service.FeatureFlagService;
 import io.swagger.v3.oas.annotations.Operation;

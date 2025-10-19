@@ -1,6 +1,6 @@
 package com.agenticcp.core.common.audit;
 
-import com.agenticcp.core.common.dto.AuditContextDto;
+import com.agenticcp.core.common.dto.audit.AuditContextDto;
 import com.agenticcp.core.common.util.AuditInfoExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

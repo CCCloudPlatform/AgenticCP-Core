@@ -9,7 +9,7 @@ package com.agenticcp.core.domain.monitoring.enums;
  * 
  * @author AgenticCP Team
  * @version 1.1.0
- * @since 2024-01-01
+ * @since 2025-10-02
  */
 public enum CollectorType {
     

@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.monitoring.controller;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.monitoring.dto.QuotaRequestDto;
 import com.agenticcp.core.domain.monitoring.dto.TenantCollectorConfigDto;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
@@ -26,7 +26,7 @@ import java.util.List;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-10-02
  */
 @Slf4j
 @RestController

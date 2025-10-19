@@ -35,6 +35,13 @@ config:
     # 키 누락 시 동작 방침(FAIL/READ_ONLY). 기본 FAIL.
     # missingKeyBehavior: FAIL
 
+# 로컬 개발용 JWT 설정 (개발 전용)
+security:
+  jwt:
+    secret: ${JWT_SECRET:ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWVfcGxlYXNlX3RoaXNfaXNfYV9sb25nX2tleV9mb3JfdGVzdA==}
+    access-token-expiration-ms: 3600000  # 1시간
+    refresh-token-expiration-ms: 604800000  # 7일
+
 springdoc:
   api-docs:
     path: /v3/api-docs
