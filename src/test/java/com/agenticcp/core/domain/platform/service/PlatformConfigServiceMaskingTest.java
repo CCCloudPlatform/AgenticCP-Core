@@ -30,7 +30,7 @@ public class PlatformConfigServiceMaskingTest {
         repository = Mockito.mock(PlatformConfigRepository.class);
         encryptionService = Mockito.mock(EncryptionService.class);
         List<ConfigValidator> validators = Collections.emptyList();
-        service = new PlatformConfigService(repository, validators, encryptionService, Mockito.mock(ConfigAuditService.class));
+        service = new PlatformConfigService(repository, validators, encryptionService, Mockito.mock(ConfigAuditService.class), Mockito.mock(org.springframework.context.ApplicationEventPublisher.class), Mockito.mock(com.agenticcp.core.common.logging.masking.MaskingService.class));
     }
 
     @Test
