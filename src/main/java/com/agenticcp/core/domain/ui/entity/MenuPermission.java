@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.ui.entity;
 
+import com.agenticcp.core.common.logging.masking.Masked;
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.domain.user.entity.Permission;
 import jakarta.persistence.*;

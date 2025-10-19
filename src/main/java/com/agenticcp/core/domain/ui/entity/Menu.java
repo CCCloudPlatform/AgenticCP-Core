@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.ui.entity;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
@@ -33,6 +35,7 @@ public class Menu extends BaseEntity {
      * 메뉴 키 (테넌트 내에서 유일)
      */
     @Column(name = "menu_key", nullable = false, length = 100)
+    @Masked(type = MaskingType.DEFAULT)
     private String menuKey;
 
     /**
