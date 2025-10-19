@@ -2,7 +2,6 @@ package com.agenticcp.core.domain.platform.listener;
 
 import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
 import com.agenticcp.core.domain.platform.service.PlatformConfigRuntimeService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,7 +10,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -35,7 +33,7 @@ class PlatformConfigChangeListenerTest {
     void shouldEnableMaintenanceModeWhenConfigChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "true", "admin", "Emergency maintenance"
+                "maintenance_mode", "true", "true", "admin", "Emergency maintenance"
         );
 
         // When
@@ -51,7 +49,7 @@ class PlatformConfigChangeListenerTest {
     void shouldDisableMaintenanceModeWhenConfigChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "false", "admin", "Maintenance completed"
+                "maintenance_mode", "false", "false", "admin", "Maintenance completed"
         );
 
         // When
@@ -67,7 +65,7 @@ class PlatformConfigChangeListenerTest {
     void shouldEnableMaintenanceModeWithNumericValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "1", "admin", "Maintenance mode on"
+                "maintenance_mode", "1", "1", "admin", "Maintenance mode on"
         );
 
         // When
@@ -82,7 +80,7 @@ class PlatformConfigChangeListenerTest {
     void shouldDisableMaintenanceModeWithNumericValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "0", "admin", "Maintenance mode off"
+                "maintenance_mode", "0", "0", "admin", "Maintenance mode off"
         );
 
         // When
@@ -97,7 +95,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateCacheSettingsWhenCacheTtlChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "cache_ttl", "3600", "admin", "Update cache TTL"
+                "cache_ttl", "3600", "3600", "admin", "Update cache TTL"
         );
 
         // When
@@ -112,7 +110,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateCacheSettingsWhenCacheMaxSizeChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "cache_max_size", "10000", "admin", "Update cache max size"
+                "cache_max_size", "10000", "10000", "admin", "Update cache max size"
         );
 
         // When
@@ -127,7 +125,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateSecuritySettingsWhenSessionTimeoutChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "security_session_timeout", "1800", "admin", "Update session timeout"
+                "security_session_timeout", "1800", "1800", "admin", "Update session timeout"
         );
 
         // When
@@ -142,7 +140,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateSecuritySettingsWhenMaxLoginAttemptsChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "security_max_login_attempts", "5", "admin", "Update max login attempts"
+                "security_max_login_attempts", "5", "5", "admin", "Update max login attempts"
         );
 
         // When
@@ -157,7 +155,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateLoggingSettingsWhenLoggingLevelChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "logging_level", "DEBUG", "admin", "Update logging level"
+                "logging_level", "DEBUG", "DEBUG", "admin", "Update logging level"
         );
 
         // When
@@ -172,7 +170,7 @@ class PlatformConfigChangeListenerTest {
     void shouldNotHandleUnknownConfigKey() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "unknown_config", "some_value", "admin", "Unknown config"
+                "unknown_config", "some_value", "some_value", "admin", "Unknown config"
         );
 
         // When
@@ -191,7 +189,7 @@ class PlatformConfigChangeListenerTest {
     void shouldNotHandleInvalidMaintenanceModeValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "invalid", "admin", "Invalid value"
+                "maintenance_mode", "invalid", "invalid", "admin", "Invalid value"
         );
 
         // When
@@ -207,7 +205,7 @@ class PlatformConfigChangeListenerTest {
     void shouldCallRuntimeServiceWhenConfigChangeEventReceived() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "true", "admin", "Test maintenance mode"
+                "maintenance_mode", "true", "true", "admin", "Test maintenance mode"
         );
 
         // When
