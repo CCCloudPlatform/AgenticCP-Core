@@ -170,9 +170,10 @@ public class PlatformConfigService {
         log.info("[PlatformConfigService] updateConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig existingConfig = getConfigByKeyOrThrow(configKey);
         
-        // 시스템 설정 수정 방지
-        if (Boolean.TRUE.equals(existingConfig.getIsSystem())) {
-            throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_MODIFY);
+        // 시스템 설정 타입 변경 방지
+        if (Boolean.TRUE.equals(existingConfig.getIsSystem()) && 
+            !existingConfig.getConfigType().equals(updatedConfig.getConfigType())) {
+            throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN);
         }
         
 
