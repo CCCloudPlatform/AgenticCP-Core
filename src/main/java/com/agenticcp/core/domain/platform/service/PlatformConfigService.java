@@ -66,6 +66,24 @@ public class PlatformConfigService {
         return result;
     }
 
+    public List<PlatformConfig> getAllConfigs(boolean showSecret, Boolean isSystem) {
+        log.info("[PlatformConfigService] getAllConfigs - showSecret={}, isSystem={}", showSecret, isSystem);
+        
+        List<PlatformConfig> sourceConfigs;
+        if (isSystem != null) {
+            sourceConfigs = platformConfigRepository.findByIsSystem(isSystem);
+        } else {
+            sourceConfigs = platformConfigRepository.findAllActive();
+        }
+        
+        List<PlatformConfig> result = sourceConfigs.stream()
+                .map(pc -> toResponse(pc, showSecret))
+                .toList();
+        
+        log.info("[PlatformConfigService] getAllConfigs - success count={}", result.size());
+        return result;
+    }
+
     public Optional<PlatformConfig> getConfigByKey(String configKey) {
         log.info("[PlatformConfigService] getConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
@@ -151,6 +169,14 @@ public class PlatformConfigService {
                 platformConfig.getIsEncrypted(),
                 platformConfig.getConfigType());
         
+        // 네임스페이스 기반 자동 isSystem 설정
+        if (platformConfig.getIsSystem() == null) {
+            boolean isSystemKey = platformConfig.getConfigKey().matches("^system\\..*");
+            platformConfig.setIsSystem(isSystemKey);
+            log.info("[PlatformConfigService] createConfig - auto-set isSystem={} for configKey={}", 
+                    isSystemKey, LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2));
+        }
+        
         // 설정 검증 수행
         validateConfig(platformConfig);
         
@@ -164,8 +190,14 @@ public class PlatformConfigService {
         if (platformConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) {
             if (rawNewValue != null && !rawNewValue.isEmpty()) {
                 if (!isProbablyEncrypted(rawNewValue)) {
-                    String encrypted = encryptionService.encrypt(rawNewValue);
-                    platformConfig.setConfigValue(encrypted);
+                    try {
+                        String encrypted = encryptionService.encrypt(rawNewValue);
+                        platformConfig.setConfigValue(encrypted);
+                    } catch (Exception e) {
+                        log.error("[PlatformConfigService] createConfig - encryption failed for configKey={}", 
+                                LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2), e);
+                        throw new BusinessException(PlatformConfigErrorCode.ENCRYPTION_FAILED, e.getMessage());
+                    }
                 }
             }
             platformConfig.setIsEncrypted(true);
@@ -198,14 +230,23 @@ public class PlatformConfigService {
         log.info("[PlatformConfigService] updateConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig existingConfig = getConfigByKeyOrThrow(configKey);
         
-        // 시스템 설정 수정 방지
-        if (Boolean.TRUE.equals(existingConfig.getIsSystem())) {
-            throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_MODIFY);
+        // 시스템 설정 타입 변경 방지
+        if (Boolean.TRUE.equals(existingConfig.getIsSystem()) && 
+            !existingConfig.getConfigType().equals(updatedConfig.getConfigType())) {
+            throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN);
         }
         
 
         // 업데이트할 설정에 키 설정 (검증을 위해)
         updatedConfig.setConfigKey(configKey);
+        
+        // 네임스페이스 기반 자동 isSystem 설정 (기존 값이 없는 경우에만)
+        if (updatedConfig.getIsSystem() == null) {
+            boolean isSystemKey = configKey.matches("^system\\..*");
+            updatedConfig.setIsSystem(isSystemKey);
+            log.info("[PlatformConfigService] updateConfig - auto-set isSystem={} for configKey={}", 
+                    isSystemKey, LogMaskingUtils.mask(configKey, 2, 2));
+        }
         
         // 설정 검증 수행
         validateConfig(updatedConfig);
@@ -217,7 +258,13 @@ public class PlatformConfigService {
             String newValue = rawNewValue;
             if (newValue != null && !newValue.isEmpty()) {
                 if (!isProbablyEncrypted(newValue)) {
-                    newValue = encryptionService.encrypt(newValue);
+                    try {
+                        newValue = encryptionService.encrypt(newValue);
+                    } catch (Exception e) {
+                        log.error("[PlatformConfigService] updateConfig - encryption failed for configKey={}", 
+                                LogMaskingUtils.mask(configKey, 2, 2), e);
+                        throw new BusinessException(PlatformConfigErrorCode.ENCRYPTION_FAILED, e.getMessage());
+                    }
                 }
             }
             existingConfig.setConfigValue(newValue);

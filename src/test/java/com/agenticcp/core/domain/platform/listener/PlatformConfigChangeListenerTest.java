@@ -33,7 +33,7 @@ class PlatformConfigChangeListenerTest {
     void shouldEnableMaintenanceModeWhenConfigChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "true", "true", "admin", "Emergency maintenance"
+                "system.maintenance_mode", "true", "true", "admin", "Emergency maintenance"
         );
 
         // When
@@ -49,7 +49,7 @@ class PlatformConfigChangeListenerTest {
     void shouldDisableMaintenanceModeWhenConfigChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "false", "false", "admin", "Maintenance completed"
+                "system.maintenance_mode", "false", "false", "admin", "Maintenance completed"
         );
 
         // When
@@ -65,7 +65,7 @@ class PlatformConfigChangeListenerTest {
     void shouldEnableMaintenanceModeWithNumericValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "1", "1", "admin", "Maintenance mode on"
+                "system.maintenance_mode", "1", "1", "admin", "Maintenance mode on"
         );
 
         // When
@@ -80,7 +80,7 @@ class PlatformConfigChangeListenerTest {
     void shouldDisableMaintenanceModeWithNumericValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "0", "0", "admin", "Maintenance mode off"
+                "system.maintenance_mode", "0", "0", "admin", "Maintenance mode off"
         );
 
         // When
@@ -95,14 +95,14 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateCacheSettingsWhenCacheTtlChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "cache_ttl", "3600", "3600", "admin", "Update cache TTL"
+                "system.cache_ttl", "3600", "3600", "admin", "Update cache TTL"
         );
 
         // When
         listener.handleConfigChange(event);
 
         // Then
-        verify(platformConfigRuntimeService).updateCacheSettings("cache_ttl", "3600");
+        verify(platformConfigRuntimeService).updateCacheSettings("system.cache_ttl", "3600");
     }
 
     @Test
@@ -110,14 +110,14 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateCacheSettingsWhenCacheMaxSizeChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "cache_max_size", "10000", "10000", "admin", "Update cache max size"
+                "system.cache_max_size", "10000", "10000", "admin", "Update cache max size"
         );
 
         // When
         listener.handleConfigChange(event);
 
         // Then
-        verify(platformConfigRuntimeService).updateCacheSettings("cache_max_size", "10000");
+        verify(platformConfigRuntimeService).updateCacheSettings("system.cache_max_size", "10000");
     }
 
     @Test
@@ -125,14 +125,14 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateSecuritySettingsWhenSessionTimeoutChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "security_session_timeout", "1800", "1800", "admin", "Update session timeout"
+                "system.security_session_timeout", "1800", "1800", "admin", "Update session timeout"
         );
 
         // When
         listener.handleConfigChange(event);
 
         // Then
-        verify(platformConfigRuntimeService).updateSecuritySettings("security_session_timeout", "1800");
+        verify(platformConfigRuntimeService).updateSecuritySettings("system.security_session_timeout", "1800");
     }
 
     @Test
@@ -140,14 +140,14 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateSecuritySettingsWhenMaxLoginAttemptsChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "security_max_login_attempts", "5", "5", "admin", "Update max login attempts"
+                "system.security_max_login_attempts", "5", "5", "admin", "Update max login attempts"
         );
 
         // When
         listener.handleConfigChange(event);
 
         // Then
-        verify(platformConfigRuntimeService).updateSecuritySettings("security_max_login_attempts", "5");
+        verify(platformConfigRuntimeService).updateSecuritySettings("system.security_max_login_attempts", "5");
     }
 
     @Test
@@ -155,14 +155,14 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateLoggingSettingsWhenLoggingLevelChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "logging_level", "DEBUG", "DEBUG", "admin", "Update logging level"
+                "system.logging_level", "DEBUG", "DEBUG", "admin", "Update logging level"
         );
 
         // When
         listener.handleConfigChange(event);
 
         // Then
-        verify(platformConfigRuntimeService).updateLoggingSettings("logging_level", "DEBUG");
+        verify(platformConfigRuntimeService).updateLoggingSettings("system.logging_level", "DEBUG");
     }
 
     @Test
@@ -205,7 +205,7 @@ class PlatformConfigChangeListenerTest {
     void shouldCallRuntimeServiceWhenConfigChangeEventReceived() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "true", "true", "admin", "Test maintenance mode"
+                "system.maintenance_mode", "true", "true", "admin", "Test maintenance mode"
         );
 
         // When

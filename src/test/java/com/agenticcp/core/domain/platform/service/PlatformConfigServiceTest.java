@@ -183,7 +183,7 @@ class PlatformConfigServiceTest {
         // Given
         PlatformConfig updatedConfig = PlatformConfig.builder()
                 .configValue("updated value")
-                .configType(PlatformConfig.ConfigType.STRING)
+                .configType(PlatformConfig.ConfigType.NUMBER)  // 타입 변경
                 .build();
 
         when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(systemConfig));
@@ -191,9 +191,31 @@ class PlatformConfigServiceTest {
         // When & Then
         ConfigValidationException exception = assertThrows(ConfigValidationException.class,
                 () -> platformConfigService.updateConfig(systemConfig.getConfigKey(), updatedConfig));
-        assertEquals(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_MODIFY, exception.getErrorCode());
+        assertEquals(PlatformConfigErrorCode.SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN, exception.getErrorCode());
         verify(platformConfigRepository).findByConfigKey(systemConfig.getConfigKey());
         verify(platformConfigRepository, never()).save(any(PlatformConfig.class));
+    }
+
+    @Test
+    @DisplayName("시스템 설정 값 변경 성공")
+    void shouldAllowSystemConfigValueChange() {
+        // Given
+        PlatformConfig updatedConfig = PlatformConfig.builder()
+                .configValue("updated value")
+                .configType(PlatformConfig.ConfigType.STRING)  // 같은 타입
+                .description("updated description")
+                .build();
+
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(systemConfig));
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(systemConfig);
+
+        // When
+        PlatformConfig result = platformConfigService.updateConfig(systemConfig.getConfigKey(), updatedConfig);
+
+        // Then
+        assertNotNull(result);
+        verify(platformConfigRepository).findByConfigKey(systemConfig.getConfigKey());
+        verify(platformConfigRepository).save(any(PlatformConfig.class));
     }
 
     @Test
