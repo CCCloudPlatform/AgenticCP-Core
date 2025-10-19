@@ -40,7 +40,7 @@ class PlatformConfigChangeListenerIntegrationTest {
     void shouldPublishEventAndHandleByListenerWhenConfigCreated() {
         // Given
         PlatformConfig config = PlatformConfig.builder()
-                .configKey("cache_ttl")
+                .configKey("system.cache_ttl")
                 .configValue("3600")
                 .configType(PlatformConfig.ConfigType.STRING)
                 .isEncrypted(false)
@@ -51,7 +51,7 @@ class PlatformConfigChangeListenerIntegrationTest {
         platformConfigService.createConfig(config);
 
         // Then
-        verify(platformConfigRuntimeService, timeout(1000)).updateCacheSettings(eq("cache_ttl"), anyString());
+        verify(platformConfigRuntimeService, timeout(1000)).updateCacheSettings(eq("system.cache_ttl"), anyString());
     }
 
     @Test
@@ -59,7 +59,7 @@ class PlatformConfigChangeListenerIntegrationTest {
     void shouldPublishEventAndHandleByListenerWhenConfigUpdated() {
         // Given
         PlatformConfig existingConfig = PlatformConfig.builder()
-                .configKey("cache_ttl")
+                .configKey("system.cache_ttl")
                 .configValue("1800")
                 .configType(PlatformConfig.ConfigType.STRING)
                 .isEncrypted(false)
@@ -77,10 +77,10 @@ class PlatformConfigChangeListenerIntegrationTest {
         reset(platformConfigRuntimeService); // Mock 초기화
 
         // When
-        platformConfigService.updateConfig("cache_ttl", updatedConfig);
+        platformConfigService.updateConfig("system.cache_ttl", updatedConfig);
 
         // Then
-        verify(platformConfigRuntimeService, timeout(1000)).updateCacheSettings(eq("cache_ttl"), anyString());
+        verify(platformConfigRuntimeService, timeout(1000)).updateCacheSettings(eq("system.cache_ttl"), anyString());
     }
 
     @Test
@@ -88,7 +88,7 @@ class PlatformConfigChangeListenerIntegrationTest {
     void shouldPublishEventAndHandleByListenerWhenSecurityConfigChanged() {
         // Given
         PlatformConfig config = PlatformConfig.builder()
-                .configKey("security_session_timeout")
+                .configKey("system.security_session_timeout")
                 .configValue("1800")
                 .configType(PlatformConfig.ConfigType.STRING)
                 .isEncrypted(false)
@@ -99,7 +99,7 @@ class PlatformConfigChangeListenerIntegrationTest {
         platformConfigService.createConfig(config);
 
         // Then
-        verify(platformConfigRuntimeService, timeout(1000)).updateSecuritySettings(eq("security_session_timeout"), anyString());
+        verify(platformConfigRuntimeService, timeout(1000)).updateSecuritySettings(eq("system.security_session_timeout"), anyString());
     }
 
     @Test
@@ -107,7 +107,7 @@ class PlatformConfigChangeListenerIntegrationTest {
     void shouldPublishEventAndHandleByListenerWhenLoggingConfigChanged() {
         // Given
         PlatformConfig config = PlatformConfig.builder()
-                .configKey("logging_level")
+                .configKey("system.logging_level")
                 .configValue("DEBUG")
                 .configType(PlatformConfig.ConfigType.STRING)
                 .isEncrypted(false)
@@ -118,7 +118,7 @@ class PlatformConfigChangeListenerIntegrationTest {
         platformConfigService.createConfig(config);
 
         // Then
-        verify(platformConfigRuntimeService, timeout(1000)).updateLoggingSettings(eq("logging_level"), anyString());
+        verify(platformConfigRuntimeService, timeout(1000)).updateLoggingSettings(eq("system.logging_level"), anyString());
     }
 
     @Test
@@ -126,7 +126,7 @@ class PlatformConfigChangeListenerIntegrationTest {
     void shouldNotHandleUnknownConfigByListener() {
         // Given
         PlatformConfig config = PlatformConfig.builder()
-                .configKey("unknown_setting")
+                .configKey("system.unknown_setting")
                 .configValue("some_value")
                 .configType(PlatformConfig.ConfigType.STRING)
                 .isEncrypted(false)

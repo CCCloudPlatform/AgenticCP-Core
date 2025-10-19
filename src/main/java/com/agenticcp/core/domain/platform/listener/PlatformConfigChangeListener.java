@@ -36,18 +36,18 @@ public class PlatformConfigChangeListener {
         try {
             // 핵심 설정 키별 처리
             switch (event.getConfigKey()) {
-                case "maintenance_mode":
+                case "system.maintenance_mode":
                     handleMaintenanceModeChange(event);
                     break;
-                case "cache_ttl":
-                case "cache_max_size":
+                case "system.cache_ttl":
+                case "system.cache_max_size":
                     handleCacheConfigChange(event);
                     break;
-                case "security_session_timeout":
-                case "security_max_login_attempts":
+                case "system.security_session_timeout":
+                case "system.security_max_login_attempts":
                     handleSecurityConfigChange(event);
                     break;
-                case "logging_level":
+                case "system.logging_level":
                     handleLoggingConfigChange(event);
                     break;
                 default:
