@@ -48,10 +48,17 @@ public class PlatformHealth extends BaseEntity {
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata; // JSON for additional health metrics
 
+    @Column(name = "maintenance_mode")
+    private Boolean maintenanceMode;
+
+    @Column(name = "maintenance_reason")
+    private String maintenanceReason;
+
     public enum HealthStatus {
         HEALTHY,
         WARNING,
         CRITICAL,
-        UNKNOWN
+        UNKNOWN,
+        MAINTENANCE
     }
 }
