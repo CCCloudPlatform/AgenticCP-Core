@@ -93,7 +93,6 @@ public class AuthenticationService {
                 .name(request.getName())
                 .role(UserRole.VIEWER) // 기본 역할 부여
                 .status(Status.ACTIVE) // 기본 상태 활성
-                .tenant(tenant)
                 .build();
 
         User savedUser = userService.saveUser(newUser);

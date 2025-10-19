@@ -177,7 +177,6 @@ public class RoleService {
                 .roleKey(request.getRoleKey())
                 .roleName(request.getRoleName())
                 .description(request.getDescription())
-                .tenant(currentTenant)
                 .isSystem(Boolean.TRUE.equals(request.getIsSystem()))
                 .isDefault(false)
                 .priority(request.getPriority())
