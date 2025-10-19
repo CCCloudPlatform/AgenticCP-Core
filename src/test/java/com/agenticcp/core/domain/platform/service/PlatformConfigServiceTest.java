@@ -5,6 +5,9 @@ import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidator;
+import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
+import com.agenticcp.core.common.logging.masking.MaskingService;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +45,15 @@ class PlatformConfigServiceTest {
 
     @Mock
     private ConfigAuditService configAuditService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private com.agenticcp.core.common.crypto.EncryptionService encryptionService;
+
+    @Mock
+    private MaskingService maskingService;
 
     @InjectMocks
     private PlatformConfigService platformConfigService;
@@ -240,5 +253,112 @@ class PlatformConfigServiceTest {
         assertEquals(PlatformConfigErrorCode.CONFIG_KEY_REQUIRED, exception.getErrorCode());
         verify(configValidator).validate(validConfig);
         verify(platformConfigRepository, never()).save(any(PlatformConfig.class));
+    }
+
+    @Test
+    @DisplayName("설정 생성 시 ConfigChangeEvent 발행")
+    void shouldPublishConfigChangeEventOnCreate() {
+        // Given
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
+        when(maskingService.applyMaskingStrategy(anyString(), eq(MaskingType.SECRET_KEY))).thenReturn("ma***ed");
+
+        // When
+        PlatformConfig result = platformConfigService.createConfig(validConfig);
+
+        // Then
+        assertNotNull(result);
+        verify(eventPublisher).publishEvent(argThat(event -> {
+            if (event instanceof ConfigChangeEvent configEvent) {
+                return configEvent.getConfigKey().equals(validConfig.getConfigKey()) &&
+                       configEvent.getChangeType() == ConfigChangeEvent.ChangeType.CREATE &&
+                       configEvent.getNewValueMasked() != null &&
+                       configEvent.getOldValueMasked() == null;
+            }
+            return false;
+        }));
+    }
+
+    @Test
+    @DisplayName("설정 수정 시 ConfigChangeEvent 발행")
+    void shouldPublishConfigChangeEventOnUpdate() {
+        // Given
+        PlatformConfig updatedConfig = PlatformConfig.builder()
+                .configValue("updated value")
+                .configType(PlatformConfig.ConfigType.STRING)
+                .isEncrypted(false)
+                .build();
+
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
+        when(maskingService.applyMaskingStrategy(anyString(), eq(MaskingType.SECRET_KEY))).thenReturn("ma***ed");
+
+        // When
+        PlatformConfig result = platformConfigService.updateConfig(validConfig.getConfigKey(), updatedConfig);
+
+        // Then
+        assertNotNull(result);
+        verify(eventPublisher).publishEvent(argThat(event -> {
+            if (event instanceof ConfigChangeEvent configEvent) {
+                return configEvent.getConfigKey().equals(validConfig.getConfigKey()) &&
+                       configEvent.getChangeType() == ConfigChangeEvent.ChangeType.UPDATE &&
+                       configEvent.getNewValueMasked() != null &&
+                       configEvent.getOldValueMasked() != null;
+            }
+            return false;
+        }));
+    }
+
+    @Test
+    @DisplayName("설정 삭제 시 ConfigChangeEvent 발행")
+    void shouldPublishConfigChangeEventOnDelete() {
+        // Given
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
+        when(maskingService.applyMaskingStrategy(anyString(), eq(MaskingType.SECRET_KEY))).thenReturn("ma***ed");
+
+        // When
+        platformConfigService.deleteConfig(validConfig.getConfigKey());
+
+        // Then
+        verify(eventPublisher).publishEvent(argThat(event -> {
+            if (event instanceof ConfigChangeEvent configEvent) {
+                return configEvent.getConfigKey().equals(validConfig.getConfigKey()) &&
+                       configEvent.getChangeType() == ConfigChangeEvent.ChangeType.DELETE &&
+                       configEvent.getNewValueMasked() == null &&
+                       configEvent.getOldValueMasked() != null;
+            }
+            return false;
+        }));
+    }
+
+    @Test
+    @DisplayName("암호화된 설정 값은 마스킹되어 이벤트에 포함")
+    void shouldMaskEncryptedValuesInEvent() {
+        // Given
+        PlatformConfig encryptedConfig = PlatformConfig.builder()
+                .configKey("encrypted.config")
+                .configValue("sensitive-data")
+                .configType(PlatformConfig.ConfigType.ENCRYPTED)
+                .isEncrypted(true)
+                .description("Encrypted config")
+                .build();
+
+        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(encryptedConfig);
+        when(encryptionService.encrypt(anyString())).thenReturn("encrypted-value");
+        // 암호화된 값은 "Encrypted"로 마스킹되므로 MaskingService 호출 안 됨
+
+        // When
+        platformConfigService.createConfig(encryptedConfig);
+
+        // Then
+        verify(eventPublisher).publishEvent(argThat(event -> {
+            if (event instanceof ConfigChangeEvent configEvent) {
+                return configEvent.getConfigKey().equals(encryptedConfig.getConfigKey()) &&
+                       "Encrypted".equals(configEvent.getNewValueMasked());
+            }
+            return false;
+        }));
     }
 }

@@ -8,7 +8,10 @@ import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidator;
+import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
 import com.agenticcp.core.common.util.LogMaskingUtils;
+import com.agenticcp.core.common.logging.masking.MaskingService;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +43,8 @@ public class PlatformConfigService {
     private final List<ConfigValidator> configValidators;
     private final EncryptionService encryptionService;
     private final ConfigAuditService configAuditService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final MaskingService maskingService;
 
     public List<PlatformConfig> getAllConfigs() {
         log.info("[PlatformConfigService] getAllConfigs");
@@ -178,6 +184,11 @@ public class PlatformConfigService {
         } catch (Exception ex) {
             log.warn("[PlatformConfigService] createConfig - audit logging failed: {}", ex.getMessage());
         }
+        
+        // 설정 변경 이벤트 발행
+        publishConfigChangeEvent(ConfigChangeEvent.ChangeType.CREATE, saved.getConfigKey(), 
+                               null, rawNewValue, saved.getIsEncrypted(), saved.getDescription());
+        
         return saved;
     }
 
@@ -231,6 +242,11 @@ public class PlatformConfigService {
         } catch (Exception ex) {
             log.warn("[PlatformConfigService] updateConfig - audit logging failed: {}", ex.getMessage());
         }
+        
+        // 설정 변경 이벤트 발행
+        publishConfigChangeEvent(ConfigChangeEvent.ChangeType.UPDATE, configKey, 
+                               rawOldValue, rawNewValue, saved.getIsEncrypted(), saved.getDescription());
+        
         return saved;
     }
 
@@ -261,6 +277,10 @@ public class PlatformConfigService {
         } catch (Exception ex) {
             log.warn("[PlatformConfigService] deleteConfig - audit logging failed: {}", ex.getMessage());
         }
+        
+        // 설정 변경 이벤트 발행
+        publishConfigChangeEvent(ConfigChangeEvent.ChangeType.DELETE, configKey, 
+                               rawOldValue, null, config.getIsEncrypted(), config.getDescription());
     }
 
     @Transactional
@@ -352,5 +372,67 @@ public class PlatformConfigService {
         } catch (Exception ignored) {
         }
         return "system";
+    }
+    
+    /**
+     * 설정 값을 마스킹하여 이벤트에 안전하게 전달
+     * 
+     * @param configValue 원본 설정 값
+     * @param isEncrypted 암호화 여부
+     * @return 마스킹된 값
+     */
+    private String maskValueForEvent(String configValue, Boolean isEncrypted) {
+        if (configValue == null) {
+            return null;
+        }
+        
+        // 암호화된 값이거나 이미 암호문인 경우 "Encrypted"로 마스킹
+        if (Boolean.TRUE.equals(isEncrypted) || isProbablyEncrypted(configValue)) {
+            return "Encrypted";
+        }
+        
+        // 일반 값은 MaskingService를 사용하여 SECRET_KEY 타입으로 마스킹
+        return maskingService.applyMaskingStrategy(configValue, MaskingType.SECRET_KEY);
+    }
+    
+    /**
+     * 설정 변경 이벤트 발행
+     * 
+     * @param changeType 변경 타입
+     * @param configKey 설정 키
+     * @param oldValue 이전 값
+     * @param newValue 새로운 값
+     * @param isEncrypted 암호화 여부
+     * @param reason 변경 사유
+     */
+    private void publishConfigChangeEvent(ConfigChangeEvent.ChangeType changeType, String configKey, 
+                                        String oldValue, String newValue, Boolean isEncrypted, String reason) {
+        try {
+            String userId = getCurrentUserId();
+            String oldValueMasked = maskValueForEvent(oldValue, isEncrypted);
+            String newValueMasked = maskValueForEvent(newValue, isEncrypted);
+            
+            ConfigChangeEvent event;
+            switch (changeType) {
+                case CREATE:
+                    event = ConfigChangeEvent.create(configKey, newValueMasked, userId, reason);
+                    break;
+                case UPDATE:
+                    event = ConfigChangeEvent.update(configKey, oldValueMasked, newValueMasked, userId, reason);
+                    break;
+                case DELETE:
+                    event = ConfigChangeEvent.delete(configKey, oldValueMasked, userId, reason);
+                    break;
+                default:
+                    log.warn("[PlatformConfigService] Unknown change type: {}", changeType);
+                    return;
+            }
+            
+            eventPublisher.publishEvent(event);
+            log.debug("[PlatformConfigService] Config change event published: configKey={}, changeType={}", 
+                     LogMaskingUtils.mask(configKey, 2, 2), changeType);
+        } catch (Exception ex) {
+            log.warn("[PlatformConfigService] Failed to publish config change event: {}", ex.getMessage());
+        }
     }
 }
