@@ -58,6 +58,24 @@ public class PlatformConfigService {
         return result;
     }
 
+    public List<PlatformConfig> getAllConfigs(boolean showSecret, Boolean isSystem) {
+        log.info("[PlatformConfigService] getAllConfigs - showSecret={}, isSystem={}", showSecret, isSystem);
+        
+        List<PlatformConfig> sourceConfigs;
+        if (isSystem != null) {
+            sourceConfigs = platformConfigRepository.findByIsSystem(isSystem);
+        } else {
+            sourceConfigs = platformConfigRepository.findAllActive();
+        }
+        
+        List<PlatformConfig> result = sourceConfigs.stream()
+                .map(pc -> toResponse(pc, showSecret))
+                .toList();
+        
+        log.info("[PlatformConfigService] getAllConfigs - success count={}", result.size());
+        return result;
+    }
+
     public Optional<PlatformConfig> getConfigByKey(String configKey) {
         log.info("[PlatformConfigService] getConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
         Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
@@ -205,7 +223,7 @@ public class PlatformConfigService {
             existingConfig.setIsEncrypted(true);
         } else {
             existingConfig.setConfigValue(rawNewValue);
-            existingConfig.setIsEncrypted(Boolean.FALSE.equals(updatedConfig.getIsEncrypted()) ? false : updatedConfig.getIsEncrypted());
+            existingConfig.setIsEncrypted(updatedConfig.getIsEncrypted() != null ? updatedConfig.getIsEncrypted() : false);
         }
         existingConfig.setConfigType(updatedConfig.getConfigType());
         existingConfig.setDescription(updatedConfig.getDescription());
