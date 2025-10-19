@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.ui.dto;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.domain.ui.entity.MenuPermission;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -29,6 +31,7 @@ public class MenuRequest {
         
         @NotBlank(message = "메뉴 키는 필수입니다.")
         @Size(max = 100, message = "메뉴 키는 100자 이하여야 합니다.")
+        @Masked(type = MaskingType.DEFAULT)
         private String menuKey;
 
         @NotBlank(message = "메뉴명은 필수입니다.")
@@ -62,6 +65,7 @@ public class MenuRequest {
         
         @NotBlank(message = "메뉴 키는 필수입니다.")
         @Size(max = 100, message = "메뉴 키는 100자 이하여야 합니다.")
+        @Masked(type = MaskingType.DEFAULT)
         private String menuKey;
 
         @NotBlank(message = "메뉴명은 필수입니다.")

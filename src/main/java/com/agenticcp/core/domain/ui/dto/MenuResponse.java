@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.ui.dto;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.domain.ui.entity.Menu;
 import com.agenticcp.core.domain.ui.entity.MenuPermission;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -30,6 +32,7 @@ public class MenuResponse {
     @AllArgsConstructor
     public static class MenuInfo {
         private Long id;
+        @Masked(type = MaskingType.DEFAULT)
         private String menuKey;
         private String menuName;
         private String description;
@@ -86,6 +89,7 @@ public class MenuResponse {
     @AllArgsConstructor
     public static class MenuTreeResponse {
         private Long id;
+        @Masked(type = MaskingType.DEFAULT)
         private String menuKey;
         private String menuName;
         private String description;
@@ -140,6 +144,7 @@ public class MenuResponse {
     public static class MenuPermissionInfo {
         private Long id;
         private Long permissionId;
+        @Masked(type = MaskingType.DEFAULT)
         private String permissionKey;
         private String permissionName;
         private MenuPermission.AccessType accessType;
@@ -171,9 +176,11 @@ public class MenuResponse {
     public static class MenuPermissionResponse {
         private Long id;
         private Long menuId;
+        @Masked(type = MaskingType.DEFAULT)
         private String menuKey;
         private String menuName;
         private Long permissionId;
+        @Masked(type = MaskingType.DEFAULT)
         private String permissionKey;
         private String permissionName;
         private MenuPermission.AccessType accessType;
@@ -206,6 +213,7 @@ public class MenuResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class MenuCacheStatusResponse {
+        @Masked(type = MaskingType.TENANT_KEY)
         private String tenantKey;
         private boolean menuTreeCached;
         private boolean systemMenusCached;
