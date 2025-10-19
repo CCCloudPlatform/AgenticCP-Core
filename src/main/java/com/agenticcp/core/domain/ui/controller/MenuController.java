@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.ui.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.logging.LogMaskingUtils;
 import com.agenticcp.core.domain.ui.dto.MenuRequest;
 import com.agenticcp.core.domain.ui.dto.MenuResponse;

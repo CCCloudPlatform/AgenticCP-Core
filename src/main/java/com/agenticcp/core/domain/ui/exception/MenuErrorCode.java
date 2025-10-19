@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.ui.exception;
 
-import com.agenticcp.core.common.dto.BaseErrorCode;
+import com.agenticcp.core.common.dto.exception.BaseErrorCode;
 import com.agenticcp.core.common.enums.ErrorCategory;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
