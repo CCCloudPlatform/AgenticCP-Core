@@ -168,8 +168,14 @@ public class PlatformConfigService {
         if (platformConfig.getConfigType() == PlatformConfig.ConfigType.ENCRYPTED) {
             if (rawNewValue != null && !rawNewValue.isEmpty()) {
                 if (!isProbablyEncrypted(rawNewValue)) {
-                    String encrypted = encryptionService.encrypt(rawNewValue);
-                    platformConfig.setConfigValue(encrypted);
+                    try {
+                        String encrypted = encryptionService.encrypt(rawNewValue);
+                        platformConfig.setConfigValue(encrypted);
+                    } catch (Exception e) {
+                        log.error("[PlatformConfigService] createConfig - encryption failed for configKey={}", 
+                                LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2), e);
+                        throw new BusinessException(PlatformConfigErrorCode.ENCRYPTION_FAILED, e.getMessage());
+                    }
                 }
             }
             platformConfig.setIsEncrypted(true);
@@ -224,7 +230,13 @@ public class PlatformConfigService {
             String newValue = rawNewValue;
             if (newValue != null && !newValue.isEmpty()) {
                 if (!isProbablyEncrypted(newValue)) {
-                    newValue = encryptionService.encrypt(newValue);
+                    try {
+                        newValue = encryptionService.encrypt(newValue);
+                    } catch (Exception e) {
+                        log.error("[PlatformConfigService] updateConfig - encryption failed for configKey={}", 
+                                LogMaskingUtils.mask(configKey, 2, 2), e);
+                        throw new BusinessException(PlatformConfigErrorCode.ENCRYPTION_FAILED, e.getMessage());
+                    }
                 }
             }
             existingConfig.setConfigValue(newValue);
