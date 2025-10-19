@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.platform.cache.controller;
 
-import com.agenticcp.core.common.dto.ApiResponse;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.platform.cache.dto.CacheHealthStatusDto;
 import com.agenticcp.core.domain.platform.cache.dto.CacheMetricsDto;
 import com.agenticcp.core.domain.platform.cache.service.FeatureFlagCacheHealthService;
