@@ -22,6 +22,7 @@ spring:
       
   cache:
     type: redis
+    cache-names: [platformConfigs]
     redis:
       time-to-live: 300000
       
