@@ -43,9 +43,10 @@ public class AuthController {
     @PostMapping("/register")
     @Operation(summary = "사용자 회원가입", description = "새로운 사용자를 등록하고 JWT 토큰을 발급합니다.")
     public ResponseEntity<ApiResponse<TokenResponse>> register(
-            @Valid @RequestBody RegisterRequest request) {
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest) {
         log.info("[AuthController] register - username={}", request.getUsername());
-        TokenResponse tokenResponse = authenticationService.register(request);
+        TokenResponse tokenResponse = authenticationService.register(request, httpRequest);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(tokenResponse, "회원가입에 성공했습니다."));
     }
@@ -55,11 +56,13 @@ public class AuthController {
      */
     @PostMapping("/login")
     @Operation(summary = "사용자 로그인", description = "사용자명과 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.")
-    public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<ApiResponse<TokenResponse>> login(
+            @Valid @RequestBody LoginRequest loginRequest,
+            HttpServletRequest httpRequest) {
         log.info("[AuthController] login - username={}", loginRequest.getUsername());
         
         try {
-            TokenResponse tokenResponse = authenticationService.login(loginRequest);
+            TokenResponse tokenResponse = authenticationService.login(loginRequest, httpRequest);
             
             return ResponseEntity.ok(ApiResponse.success(tokenResponse, "로그인에 성공했습니다."));
             

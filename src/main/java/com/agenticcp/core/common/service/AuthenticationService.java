@@ -16,6 +16,9 @@ import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.user.service.UserService;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.tenant.service.TenantService;
+import com.agenticcp.core.domain.user.enums.AuthType;
+import com.agenticcp.core.domain.user.service.UserAuthHistoryService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,73 +52,95 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final TenantService tenantService;
     private final TwoFactorService twoFactorService;
+    private final UserAuthHistoryService authHistoryService;
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 사용자 회원가입 처리
      * @param request 회원가입 요청 DTO
+     * @param httpRequest HTTP 요청 (IP 주소, User-Agent 추출용)
      * @return 생성된 사용자 정보와 JWT 토큰
      */
     @Transactional
-    public TokenResponse register(RegisterRequest request) {
+    public TokenResponse register(RegisterRequest request, HttpServletRequest httpRequest) {
         log.info("[AuthenticationService] register - username={}", request.getUsername());
 
-        // 1. 사용자명 중복 체크
-        if (userService.existsByUsername(request.getUsername())) {
-            log.warn("[AuthenticationService] register - Username already exists: {}", request.getUsername());
-            throw new BusinessException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
+        User savedUser = null;
+        try {
+            // 1. 사용자명 중복 체크
+            if (userService.existsByUsername(request.getUsername())) {
+                log.warn("[AuthenticationService] register - Username already exists: {}", request.getUsername());
+                throw new BusinessException(AuthErrorCode.USERNAME_ALREADY_EXISTS);
+            }
+
+            // 2. 이메일 중복 체크
+            if (userService.existsByEmail(request.getEmail())) {
+                log.warn("[AuthenticationService] register - Email already exists: {}", request.getEmail());
+                throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
+            }
+
+            // 3. 테넌트 유효성 검사 (선택적)
+            Tenant tenant = null;
+            if (request.getTenantKey() != null && !request.getTenantKey().isEmpty()) {
+                tenant = tenantService.getTenantByKey(request.getTenantKey())
+                        .orElseThrow(() -> {
+                            log.warn("[AuthenticationService] register - Invalid tenant key: {}", request.getTenantKey());
+                            return new BusinessException(AuthErrorCode.INVALID_TENANT_KEY);
+                        });
+            }
+
+            // 4. 비밀번호 해싱
+            String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+            // 5. 사용자 생성
+            User newUser = User.builder()
+                    .username(request.getUsername())
+                    .email(request.getEmail())
+                    .passwordHash(encodedPassword)
+                    .name(request.getName())
+                    .role(UserRole.VIEWER) // 기본 역할 부여
+                    .status(Status.ACTIVE) // 기본 상태 활성
+                    .tenant(tenant)
+                    .build();
+
+            savedUser = userService.saveUser(newUser);
+            log.info("[AuthenticationService] register - User registered successfully: {}", savedUser.getUsername());
+
+            // 6. 회원가입 이력 저장
+            if (httpRequest != null) {
+                authHistoryService.recordAuthHistoryFromRequest(
+                        savedUser, AuthType.REGISTER, true, httpRequest, null);
+            }
+
+            // 7. JWT 토큰 생성 및 반환 (회원가입 즉시 로그인 처리)
+            return generateTokens(savedUser.getUsername());
+            
+        } catch (BusinessException e) {
+            // 회원가입 실패 이력 저장 (사용자 생성 전이므로 username으로만 기록)
+            log.error("[AuthenticationService] register failed - username={}, reason={}", 
+                    request.getUsername(), e.getMessage());
+            throw e;
         }
-
-        // 2. 이메일 중복 체크
-        if (userService.existsByEmail(request.getEmail())) {
-            log.warn("[AuthenticationService] register - Email already exists: {}", request.getEmail());
-            throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
-        }
-
-        // 3. 테넌트 유효성 검사 (선택적)
-        Tenant tenant = null;
-        if (request.getTenantKey() != null && !request.getTenantKey().isEmpty()) {
-            tenant = tenantService.getTenantByKey(request.getTenantKey())
-                    .orElseThrow(() -> {
-                        log.warn("[AuthenticationService] register - Invalid tenant key: {}", request.getTenantKey());
-                        return new BusinessException(AuthErrorCode.INVALID_TENANT_KEY);
-                    });
-        }
-
-        // 4. 비밀번호 해싱
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-
-        // 5. 사용자 생성
-        User newUser = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .passwordHash(encodedPassword)
-                .name(request.getName())
-                .role(UserRole.VIEWER) // 기본 역할 부여
-                .status(Status.ACTIVE) // 기본 상태 활성
-                .tenant(tenant)
-                .build();
-
-        User savedUser = userService.saveUser(newUser);
-        log.info("[AuthenticationService] register - User registered successfully: {}", savedUser.getUsername());
-
-        // 6. JWT 토큰 생성 및 반환 (회원가입 즉시 로그인 처리)
-        return generateTokens(savedUser.getUsername());
     }
 
     /**
      * 사용자 로그인
      */
-    public TokenResponse login(LoginRequest loginRequest) {
+    public TokenResponse login(LoginRequest loginRequest, HttpServletRequest httpRequest) {
         log.info("[AuthenticationService] login - username={}", loginRequest.getUsername());
+        
+        User user = null;
+        String failureReason = null;
+        boolean loginSuccess = false;
         
         try {
             // 사용자 조회
-            User user = userService.getUserByUsernameOrThrow(loginRequest.getUsername());
+            user = userService.getUserByUsernameOrThrow(loginRequest.getUsername());
             
             // 계정 상태 확인
             if (user.isAccountLocked()) {
+                failureReason = "계정이 잠겨있습니다";
                 log.warn("[AuthenticationService] login - account locked username={}", loginRequest.getUsername());
                 throw new BusinessException(AuthErrorCode.ACCOUNT_LOCKED);
             }
@@ -125,6 +150,7 @@ public class AuthenticationService {
                 log.info("[AuthenticationService] login - PENDING user (2FA setup required) username={}", loginRequest.getUsername());
                 // 2FA 설정을 위해 제한적 로그인 허용
             } else if (user.getStatus() != com.agenticcp.core.common.enums.Status.ACTIVE) {
+                failureReason = "비활성 계정입니다";
                 log.warn("[AuthenticationService] login - inactive account status={} username={}", 
                     user.getStatus(), loginRequest.getUsername());
                 throw new BusinessException(AuthErrorCode.ACCOUNT_INACTIVE);
@@ -132,29 +158,60 @@ public class AuthenticationService {
             
             // 비밀번호 확인
             if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
+                failureReason = "비밀번호가 일치하지 않습니다";
                 log.warn("[AuthenticationService] login - invalid password username={}", loginRequest.getUsername());
                 userService.handleFailedLogin(loginRequest.getUsername());
+                // 로그인 실패 이력 저장
+                if (httpRequest != null) {
+                    authHistoryService.recordAuthHistoryFromRequest(
+                            user, AuthType.LOGIN, false, httpRequest, failureReason);
+                }
                 throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
             }
             
             // 2FA 활성화된 경우 TOTP 코드 검증
             if (user.isTwoFactorEnabled()) {
                 if (loginRequest.getTotpCode() == null || loginRequest.getTotpCode().trim().isEmpty()) {
+                    failureReason = "2FA 코드가 필요합니다";
                     log.warn("[AuthenticationService] login - 2FA enabled but no TOTP code provided username={}", loginRequest.getUsername());
+                    // 2FA 검증 실패 이력 저장
+                    if (httpRequest != null) {
+                        authHistoryService.recordAuthHistoryFromRequest(
+                                user, AuthType.TWO_FACTOR_VERIFY, false, httpRequest, failureReason);
+                    }
                     throw new BusinessException(AuthErrorCode.TOTP_CODE_REQUIRED);
                 }
                 
                 if (!twoFactorService.verifyCode(user.getTwoFactorSecret(), loginRequest.getTotpCode())) {
+                    failureReason = "2FA 코드가 유효하지 않습니다";
                     log.warn("[AuthenticationService] login - invalid TOTP code username={}", loginRequest.getUsername());
                     userService.handleFailedLogin(loginRequest.getUsername());
+                    // 2FA 검증 실패 이력 저장
+                    if (httpRequest != null) {
+                        String maskedCode = "******";
+                        authHistoryService.recordAuthHistoryFromRequest(
+                                user, AuthType.TWO_FACTOR_VERIFY, false, httpRequest, failureReason);
+                    }
                     throw new BusinessException(AuthErrorCode.INVALID_TOTP_CODE);
                 }
                 
                 log.debug("[AuthenticationService] login - TOTP code verified username={}", loginRequest.getUsername());
+                // 2FA 검증 성공 이력 저장
+                if (httpRequest != null) {
+                    authHistoryService.recordAuthHistoryFromRequest(
+                            user, AuthType.TWO_FACTOR_VERIFY, true, httpRequest, null);
+                }
             }
             
             // 로그인 성공 처리
             userService.updateLastLogin(loginRequest.getUsername());
+            loginSuccess = true;
+            
+            // 로그인 성공 이력 저장
+            if (httpRequest != null) {
+                authHistoryService.recordAuthHistoryFromRequest(
+                        user, AuthType.LOGIN, true, httpRequest, null);
+            }
             
             // 토큰 생성
             TokenResponse tokenResponse = generateTokens(user.getUsername());
@@ -164,8 +221,12 @@ public class AuthenticationService {
             return tokenResponse;
                     
         } catch (ResourceNotFoundException e) {
+            failureReason = "사용자를 찾을 수 없습니다";
             log.warn("[AuthenticationService] login - user not found username={}", loginRequest.getUsername());
             throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
+        } catch (BusinessException e) {
+            // 이미 이력이 저장된 경우는 스킵
+            throw e;
         }
     }
 
