@@ -37,7 +37,8 @@ public class PlatformConfigController {
     private final ConfigHistoryQueryService configHistoryQueryService;
 
     @GetMapping
-    @Operation(summary = "모든 플랫폼 설정 조회")
+    @Operation(summary = "플랫폼 설정 조회", 
+               description = "isSystem 파라미터로 시스템/사용자 설정 필터링 가능")
     @AuditRequired(
         action = "getAllConfigsWithSecrets",
         resourceType = AuditResourceType.PLATFORM_CONFIG,
@@ -46,12 +47,13 @@ public class PlatformConfigController {
         description = "관리자가 모든 플랫폼 설정을 비밀 정보 포함하여 조회"
     )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getAllConfigs(
-            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret,
+            @RequestParam(value = "isSystem", required = false) Boolean isSystem) {
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
         }
-        List<PlatformConfig> configs = platformConfigService.getAllConfigs(reveal);
+        List<PlatformConfig> configs = platformConfigService.getAllConfigs(reveal, isSystem);
         ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
         if (reveal) {
             builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");

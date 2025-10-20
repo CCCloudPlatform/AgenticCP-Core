@@ -1,3 +1,238 @@
+---
+globs: *Controller.java
+alwaysApply: false
+---
+# Controller Pattern (컨트롤러 패턴)
+
+## 기본 구조
+
+```java
+@Slf4j
+@RestController
+@RequestMapping("/api/v1/resource-name")
+@RequiredArgsConstructor
+@Tag(name = "Resource", description = "리소스 관련 API")
+public class ResourceController {
+    
+    private final ResourceService resourceService;
+    
+    @GetMapping("/{id}")
+    @Operation(summary = "리소스 조회", description = "ID로 리소스를 조회합니다.")
+    public ResponseEntity<ApiResponse<ResourceResponse>> getResource(@PathVariable Long id) {
+        log.info("[ResourceController] getResource - id={}", id);
+        ResourceResponse response = resourceService.getResourceById(id);
+        return ResponseEntity.ok(ApiResponse.success(response, "리소스 조회에 성공했습니다."));
+    }
+}
+```
+
+## 필수 규칙
+
+### 1. 클래스 레벨 어노테이션
+- `@Slf4j`: 로깅을 위해 필수
+- `@RestController`: REST API 컨트롤러 선언
+- `@RequestMapping("/api/v1/...")`: API 버전과 리소스 경로 명시
+- `@RequiredArgsConstructor`: 생성자 주입 (필드 주입 금지)
+- `@Tag`: Swagger/OpenAPI 문서화
+
+### 2. URL 설계 원칙
+- **리소스 중심 설계**: 명사 사용, 복수형 권장
+  - ✅ `/api/v1/users`, `/api/v1/tenants`
+  - ❌ `/api/v1/getUser`, `/api/v1/createUser`
+- **계층 구조**: 하위 리소스는 상위 리소스 경로 포함
+  - ✅ `/api/v1/users/{userId}/profiles`
+  - ❌ `/api/v1/userProfiles?userId={userId}`
+- **버전 관리**: URL에 버전 명시 (`/api/v1`, `/api/v2`)
+
+### 3. HTTP 메서드 사용
+- `@GetMapping`: 조회 (목록/단건) - 200 OK
+- `@PostMapping`: 생성 - 201 CREATED
+- `@PutMapping`: 전체 수정 - 200 OK
+- `@PatchMapping`: 부분 수정 - 200 OK
+- `@DeleteMapping`: 삭제 - 204 NO CONTENT
+
+### 4. 응답 형식
+- **성공**: `ApiResponse.success(data, message)`
+- **실패**: `ApiResponse.error(errorCode, message)` (GlobalExceptionHandler에서 처리)
+- 모든 응답은 `ResponseEntity<ApiResponse<T>>` 형태 반환
+
+### 5. 요청 검증
+```java
+@PostMapping
+public ResponseEntity<ApiResponse<ResourceResponse>> createResource(
+        @Valid @RequestBody ResourceCreateRequest request) {
+    // @Valid로 자동 검증, MethodArgumentNotValidException 발생 시 GlobalExceptionHandler가 처리
+}
+```
+
+### 6. Swagger/OpenAPI 문서화
+```java
+// 클래스 레벨: @Tag
+@Tag(name = "User Management", description = "사용자 관리 API")
+public class UserController {
+    
+    // 메서드 레벨: @Operation, @Parameter, @ApiResponse
+    @GetMapping("/{id}")
+    @Operation(
+        summary = "사용자 조회",
+        description = "사용자 ID로 사용자 정보를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
+    })
+    public ResponseEntity<ApiResponse<UserResponse>> getUser(
+            @Parameter(description = "사용자 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        // ...
+    }
+    
+    @PostMapping
+    @Operation(
+        summary = "사용자 생성",
+        description = "새로운 사용자를 등록합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+        @ApiResponse(responseCode = "409", description = "중복된 사용자명 또는 이메일")
+    })
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "사용자 생성 요청",
+                required = true
+            )
+            @Valid @RequestBody UserCreateRequest request) {
+        // ...
+    }
+}
+```
+
+### 7. 로깅 규칙
+- **진입**: `log.info("[ControllerName] methodName - param={}", param);`
+- **민감정보**: `LogMaskingUtils` 사용하여 마스킹
+  - 이메일, 사용자명, 비밀번호, 토큰 등
+- **에러**: `log.error("[ControllerName] methodName - error", e);`
+
+### 8. 예외 처리
+- Controller에서 직접 try-catch 하지 않음 (특수한 경우 제외)
+- Service Layer에서 발생한 예외는 GlobalExceptionHandler가 처리
+- 비즈니스 예외는 `BusinessException` 계층 사용
+
+## 전체 예시
+
+```java
+@Slf4j
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+@Tag(name = "User Management", description = "사용자 관리 API")
+public class UserController {
+    
+    private final UserService userService;
+    
+    @GetMapping
+    @Operation(
+        summary = "사용자 목록 조회",
+        description = "페이징을 지원하는 사용자 목록을 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공")
+    })
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getUsers(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("[UserController] getUsers - page={}, size={}", page, size);
+        List<UserResponse> users = userService.getUsers(page, size);
+        return ResponseEntity.ok(ApiResponse.success(users));
+    }
+    
+    @GetMapping("/{id}")
+    @Operation(
+        summary = "사용자 조회",
+        description = "사용자 ID로 특정 사용자 정보를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음",
+                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ResponseEntity<ApiResponse<UserResponse>> getUser(
+            @Parameter(description = "사용자 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[UserController] getUser - id={}", id);
+        UserResponse user = userService.getUserById(id);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+    
+    @PostMapping
+    @Operation(
+        summary = "사용자 생성",
+        description = "새로운 사용자를 등록하고 JWT 토큰을 발급합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "생성 성공",
+                     content = @Content(schema = @Schema(implementation = UserResponse.class))),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+        @ApiResponse(responseCode = "409", description = "중복된 사용자명 또는 이메일")
+    })
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "사용자 생성 요청 정보",
+                required = true,
+                content = @Content(schema = @Schema(implementation = UserCreateRequest.class))
+            )
+            @Valid @RequestBody UserCreateRequest request) {
+        log.info("[UserController] createUser - username={}", 
+                LogMaskingUtils.mask(request.getUsername(), 2, 2));
+        UserResponse user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(user, "사용자 생성에 성공했습니다."));
+    }
+    
+    @PutMapping("/{id}")
+    @Operation(
+        summary = "사용자 수정",
+        description = "기존 사용자의 정보를 수정합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "수정 성공"),
+        @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
+    })
+    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+            @Parameter(description = "사용자 ID", required = true, example = "1")
+            @PathVariable @Positive Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "사용자 수정 요청 정보",
+                required = true
+            )
+            @Valid @RequestBody UserUpdateRequest request) {
+        log.info("[UserController] updateUser - id={}", id);
+        UserResponse user = userService.updateUser(id, request);
+        return ResponseEntity.ok(ApiResponse.success(user, "사용자 수정에 성공했습니다."));
+    }
+    
+    @DeleteMapping("/{id}")
+    @Operation(
+        summary = "사용자 삭제",
+        description = "사용자를 소프트 삭제합니다 (isDeleted=true)."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
+    })
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @Parameter(description = "사용자 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[UserController] deleteUser - id={}", id);
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
 # Controller Pattern (컨트롤러 패턴)
 
 ## 기본 구조

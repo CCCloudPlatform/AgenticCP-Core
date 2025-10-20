@@ -46,6 +46,7 @@ public interface SecurityPolicyRepository extends JpaRepository<SecurityPolicy, 
     
     /**
      * 테넌트별 활성화된 정책 조회 (Feature 2 & 3)
+     * 우선순위 관리를 위한 메서드들
      * @param tenantId 테넌트 ID
      * @return 활성화된 정책 목록
      */

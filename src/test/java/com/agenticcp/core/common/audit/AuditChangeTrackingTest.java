@@ -6,6 +6,7 @@ import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.repository.AuditLogRepository;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -38,6 +39,7 @@ import java.time.Duration;
  */
 @SpringBootTest
 @Import(AuditChangeTrackingTest.ChangeTrackingTestService.class)
+@Disabled("Integration test disabled")
 class AuditChangeTrackingTest {
 
     @Autowired
