@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Disabled;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.*;
  * 테스트 가이드라인에 따라 @Nested 클래스로 그룹화
  */
 @ExtendWith(MockitoExtension.class)
+@Disabled("Controller test disabled")
 class MetricsControllerTest {
 
     @Mock

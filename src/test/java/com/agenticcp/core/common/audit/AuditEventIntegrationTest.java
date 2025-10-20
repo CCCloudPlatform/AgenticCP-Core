@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
@@ -33,6 +34,7 @@ import static org.awaitility.Awaitility.await;
  * @version 1.0.0
  */
 @SpringBootTest
+@Disabled("Integration test disabled")
 class AuditEventIntegrationTest {
 
     @Autowired

@@ -1,7 +1,7 @@
 ---
+globs: *Service.java
 alwaysApply: false
 ---
-
 # Service Pattern (서비스 패턴)
 
 ## 기본 구조
