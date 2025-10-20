@@ -8,6 +8,8 @@ import com.agenticcp.core.common.enums.AuthErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.service.TwoFactorService;
 import com.agenticcp.core.domain.user.entity.User;
+import com.agenticcp.core.domain.user.enums.AuthType;
+import com.agenticcp.core.domain.user.service.UserAuthHistoryService;
 import com.agenticcp.core.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +38,7 @@ public class TwoFactorController {
     
     private final TwoFactorService twoFactorService;
     private final UserService userService;
+    private final UserAuthHistoryService authHistoryService;
     
     /**
      * 2FA 설정 (QR 코드 생성)
@@ -74,6 +77,10 @@ public class TwoFactorController {
             
             // 임시로 시크릿 키 저장 (10분 후 만료)
             twoFactorService.storeTemporarySecretKey(username, secretKey);
+            
+            // 2FA 설정 이력 저장
+            authHistoryService.recordAuthHistoryFromRequest(
+                    user, AuthType.TWO_FACTOR_SETUP, true, request, null);
             
             TwoFactorSetupResponse response = TwoFactorSetupResponse.builder()
                     .secretKey(secretKey)
@@ -129,12 +136,19 @@ public class TwoFactorController {
             // TOTP 코드 검증
             if (!twoFactorService.verifyCode(secretKey, request.getTotpCode())) {
                 log.warn("[TwoFactorController] enableTwoFactor - invalid TOTP code");
+                // 2FA 활성화 실패 이력 저장
+                authHistoryService.recordAuthHistoryFromRequest(
+                        user, AuthType.TWO_FACTOR_ENABLE, false, httpRequest, "유효하지 않은 TOTP 코드");
                 return ResponseEntity.status(401)
                         .body(ApiResponse.error(AuthErrorCode.INVALID_TOTP_CODE));
             }
             
             // 2FA 활성화 및 사용자 상태를 ACTIVE로 전환
             userService.enableTwoFactor(username, secretKey);
+            
+            // 2FA 활성화 성공 이력 저장
+            authHistoryService.recordAuthHistoryFromRequest(
+                    user, AuthType.TWO_FACTOR_ENABLE, true, httpRequest, null);
             
             // 임시 시크릿 키 삭제
             twoFactorService.deleteTemporarySecretKey(username);
