@@ -30,7 +30,7 @@ import java.util.Map;
  * <p>Issue #81: 실시간 알림 시스템 구현</p>
  */
 @RestController
-@RequestMapping("/api/v1/notifications")
+@RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Notification", description = "알림 시스템 API")
