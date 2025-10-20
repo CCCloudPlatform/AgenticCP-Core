@@ -3,8 +3,6 @@ package com.agenticcp.core.domain.security.entity;
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +17,6 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class SecurityPolicy extends BaseEntity {
 
     @Column(name = "policy_key", nullable = false, unique = true)
@@ -33,7 +30,6 @@ public class SecurityPolicy extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id")
-    @JsonIgnore
     private Tenant tenant;
 
     @Enumerated(EnumType.STRING)

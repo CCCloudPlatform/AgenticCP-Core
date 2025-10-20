@@ -2,7 +2,9 @@ package com.agenticcp.core.domain.security.controller;
 
 import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.security.dto.EffectivePolicySetDTO;
+import com.agenticcp.core.domain.security.dto.SecurityPolicyDTO;
 import com.agenticcp.core.domain.security.entity.SecurityPolicy;
+import com.agenticcp.core.domain.security.mapper.SecurityPolicyMapper;
 import com.agenticcp.core.domain.security.service.TenantPolicyService;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.tenant.repository.TenantRepository;
@@ -76,16 +78,17 @@ public class TenantPolicyController {
      */
     @GetMapping("/{tenantId}/by-type/{policyType}")
     @Operation(summary = "정책 타입별 조회", description = "특정 정책 타입에 해당하는 정책만 조회")
-    public ResponseEntity<ApiResponse<List<SecurityPolicy>>> getPoliciesByType(
+    public ResponseEntity<ApiResponse<List<SecurityPolicyDTO>>> getPoliciesByType(
             @PathVariable Long tenantId,
             @PathVariable SecurityPolicy.PolicyType policyType) {
         
         log.info("[TenantPolicyController] getPoliciesByType - tenantId={}, policyType={}", tenantId, policyType);
         
         List<SecurityPolicy> policies = tenantPolicyService.getPoliciesByType(tenantId, policyType);
+        List<SecurityPolicyDTO> policyDTOs = SecurityPolicyMapper.toDTOList(policies);
         
-        return ResponseEntity.ok(ApiResponse.success(policies, 
-                String.format("%s 타입 정책 조회 성공 (총 %d개)", policyType, policies.size())));
+        return ResponseEntity.ok(ApiResponse.success(policyDTOs, 
+                String.format("%s 타입 정책 조회 성공 (총 %d개)", policyType, policyDTOs.size())));
     }
     
     /**
@@ -93,17 +96,18 @@ public class TenantPolicyController {
      */
     @GetMapping("/{tenantId}/sorted")
     @Operation(summary = "정렬된 정책 조회", description = "우선순위별로 정렬된 정책 조회")
-    public ResponseEntity<ApiResponse<List<SecurityPolicy>>> getSortedEffectivePolicies(
+    public ResponseEntity<ApiResponse<List<SecurityPolicyDTO>>> getSortedEffectivePolicies(
             @PathVariable Long tenantId,
             @RequestParam(defaultValue = "false") boolean ascending) {
         
         log.info("[TenantPolicyController] getSortedEffectivePolicies - tenantId={}, ascending={}", tenantId, ascending);
         
         List<SecurityPolicy> policies = tenantPolicyService.getSortedEffectivePolicies(tenantId, ascending);
+        List<SecurityPolicyDTO> policyDTOs = SecurityPolicyMapper.toDTOList(policies);
         
-        return ResponseEntity.ok(ApiResponse.success(policies, 
+        return ResponseEntity.ok(ApiResponse.success(policyDTOs, 
                 String.format("정렬된 정책 조회 성공 (총 %d개, %s)", 
-                        policies.size(), 
+                        policyDTOs.size(), 
                         ascending ? "우선순위 오름차순" : "우선순위 내림차순")));
     }
     
@@ -112,7 +116,7 @@ public class TenantPolicyController {
      */
     @PostMapping("/{tenantId}/initialize")
     @Operation(summary = "기본 정책 초기화", description = "테넌트 생성 시 기본 보안 정책 자동 생성")
-    public ResponseEntity<ApiResponse<List<SecurityPolicy>>> initializeDefaultPolicies(
+    public ResponseEntity<ApiResponse<List<SecurityPolicyDTO>>> initializeDefaultPolicies(
             @PathVariable Long tenantId) {
         
         log.info("[TenantPolicyController] initializeDefaultPolicies - tenantId={}", tenantId);
@@ -121,10 +125,11 @@ public class TenantPolicyController {
                 .orElseThrow(() -> new RuntimeException("테넌트를 찾을 수 없습니다: " + tenantId));
         
         List<SecurityPolicy> policies = tenantPolicyService.initializeDefaultPolicies(tenant);
+        List<SecurityPolicyDTO> policyDTOs = SecurityPolicyMapper.toDTOList(policies);
         
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(policies, 
-                        String.format("기본 정책 초기화 성공 (총 %d개 정책 생성)", policies.size())));
+                .body(ApiResponse.success(policyDTOs, 
+                        String.format("기본 정책 초기화 성공 (총 %d개 정책 생성)", policyDTOs.size())));
     }
     
     /**
