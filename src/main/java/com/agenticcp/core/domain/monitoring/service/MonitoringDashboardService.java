@@ -35,8 +35,6 @@ import java.util.stream.Collectors;
 public class MonitoringDashboardService {
     
     private final HealthCheckService healthCheckService;
-    private final MaintenanceModeService maintenanceModeService;
-    private final MetricsCollectionService metricsCollectionService;
     private final AlertRepository alertRepository;
     private final MetricRepository metricRepository;
     private final PlatformHealthRepository platformHealthRepository;
@@ -152,6 +150,9 @@ public class MonitoringDashboardService {
     // === Private Helper Methods ===
     
     private DashboardData.HealthSummary buildHealthSummary(String tenantId) {
+        // 실시간 헬스 체크 수행
+        healthCheckService.checkAllSystemComponents();
+        
         // PlatformHealth에서 전체 상태 조회
         List<PlatformHealth> healthData = platformHealthRepository.findAll();
         
@@ -337,7 +338,7 @@ public class MonitoringDashboardService {
                         metric.getMetricName()))
                 .service("monitoring")
                 .component("metric")
-                .timestamp(metric.getCreatedAt())
+                .timestamp(metric.getCollectedAt())
                 .metadata(Map.of(
                         "metricName", metric.getMetricName(),
                         "value", metric.getMetricValue() != null ? metric.getMetricValue() : 0,
