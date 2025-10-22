@@ -1,4 +1,5 @@
 ---
+globs: *ServiceTest.java
 alwaysApply: false
 ---
 # UnitTest Pattern (단위 테스트 패턴)
