@@ -8,7 +8,6 @@ import com.agenticcp.core.domain.monitoring.repository.AlertRepository;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import com.agenticcp.core.domain.platform.entity.PlatformHealth;
 import com.agenticcp.core.domain.platform.repository.PlatformHealthRepository;
-import com.agenticcp.core.domain.platform.service.MaintenanceModeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -211,6 +210,7 @@ public class MonitoringDashboardService {
     private DashboardData.MetricSummary buildMetricSummary(String tenantId) {
         // 최근 1시간 메트릭 데이터로 요약 생성
         LocalDateTime endTime = LocalDateTime.now();
+        log.debug("buildMetricSummary - endTime: {}", endTime);
         
         List<Metric> metrics = metricRepository.findByTenantId(tenantId, PageRequest.of(0, 1000)).getContent();
         
@@ -266,6 +266,7 @@ public class MonitoringDashboardService {
     private DashboardData.LogSummary buildLogSummary(String tenantId) {
         // 최근 24시간 로그 통계
         LocalDateTime endTime = LocalDateTime.now();
+        log.debug("buildLogSummary - endTime: {}", endTime);
         
         List<Alert> alerts = alertRepository.findByTenantId(tenantId);
         
