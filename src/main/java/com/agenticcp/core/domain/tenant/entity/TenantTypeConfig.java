@@ -5,24 +5,26 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * 테넌트별 설정 엔티티
- * 개별 테넌트의 설정값을 저장합니다.
+ * 테넌트 타입별 기본 설정 엔티티
+ * 테넌트 타입에 따른 기본 설정값을 저장합니다.
  */
 @Entity
-@Table(name = "tenant_configs", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id", "config_key"}))
+@Table(name = "tenant_type_configs",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_type", "config_key"}))
 @Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TenantConfig extends BaseEntity {
+public class TenantTypeConfig extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+    @Column(name = "tenant_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Tenant.TenantType tenantType;
 
     @Column(name = "config_key", nullable = false)
     private String configKey;
@@ -38,6 +40,7 @@ public class TenantConfig extends BaseEntity {
     private String description;
 
     @Column(name = "is_encrypted")
+    @Builder.Default
     private Boolean isEncrypted = false;
 
     public enum ConfigType {
