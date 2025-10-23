@@ -38,7 +38,7 @@ public class RedisCacheConfig {
      * @param connectionFactory Redis 연결 팩토리
      * @return CacheManager
      */
-    @Bean
+    @Bean("redisCacheManager")
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration cacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(5)) // 기본 TTL 5분

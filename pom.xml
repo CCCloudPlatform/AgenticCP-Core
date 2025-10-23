@@ -127,6 +127,12 @@
             <scope>runtime</scope>
         </dependency>
         
+        <!-- Jackson Datatype Hibernate5 (Jakarta) - Lazy Loading Proxy 처리 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-hibernate5-jakarta</artifactId>
+        </dependency>
+        
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
