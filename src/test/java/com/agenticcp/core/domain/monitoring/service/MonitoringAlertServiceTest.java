@@ -273,9 +273,23 @@ class MonitoringAlertServiceTest {
      */
     private void setId(Object entity, Long id) {
         try {
-            var field = entity.getClass().getSuperclass().getDeclaredField("id");
-            field.setAccessible(true);
-            field.set(entity, id);
+            Class<?> currentClass = entity.getClass();
+            java.lang.reflect.Field idField = null;
+            
+            // BaseEntity 또는 TenantAwareEntity에서 id 필드 찾기
+            while (currentClass != null && !currentClass.equals(Object.class)) {
+                try {
+                    idField = currentClass.getDeclaredField("id");
+                    break;
+                } catch (NoSuchFieldException e) {
+                    currentClass = currentClass.getSuperclass();
+                }
+            }
+            
+            if (idField != null) {
+                idField.setAccessible(true);
+                idField.set(entity, id);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to set id", e);
         }

@@ -1,8 +1,7 @@
 package com.agenticcp.core.domain.user.entity;
 
-import com.agenticcp.core.common.entity.BaseEntity;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.common.enums.Status;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +16,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Role extends BaseEntity {
+public class Role extends TenantAwareEntity {
 
     @Column(name = "role_key", nullable = false)
     private String roleKey;
@@ -28,9 +27,6 @@ public class Role extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

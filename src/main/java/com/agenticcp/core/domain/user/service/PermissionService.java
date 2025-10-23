@@ -229,7 +229,6 @@ public class PermissionService {
                 .permissionKey(request.getPermissionKey())
                 .permissionName(request.getPermissionName())
                 .description(request.getDescription())
-                .tenant(currentTenant)
                 .resource(request.getResource())
                 .action(request.getAction())
                 .isSystem(false)

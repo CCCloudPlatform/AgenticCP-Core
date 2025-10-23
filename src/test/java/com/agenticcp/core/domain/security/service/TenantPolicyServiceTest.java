@@ -89,11 +89,11 @@ class TenantPolicyServiceTest {
                 .policyName("테넌트 정책 1")
                 .policyType(SecurityPolicy.PolicyType.DATA_PROTECTION)
                 .priority(150)
-                .tenant(testTenant)
                 .isGlobal(false)
                 .isEnabled(true)
                 .build();
         tenantPolicy1.setId(3L);
+        tenantPolicy1.setTenant(testTenant);
         tenantPolicies.add(tenantPolicy1);
     }
     

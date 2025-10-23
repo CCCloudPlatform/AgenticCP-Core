@@ -85,24 +85,28 @@ class RoleServiceTest {
                 return arg;
             }).given(roleRepository).save(any(Role.class));
 
-            Permission p1 = Permission.builder().permissionKey("perm.read").tenant(tenant).build();
-            Permission p2 = Permission.builder().permissionKey("perm.write").tenant(tenant).build();
+            Permission p1 = Permission.builder().permissionKey("perm.read").build();
+            p1.setTenant(tenant);
+            Permission p2 = Permission.builder().permissionKey("perm.write").build();
+            p2.setTenant(tenant);
             given(permissionRepository.findByPermissionKeyInAndTenant(permissionKeys, tenant))
                     .willReturn(Arrays.asList(p1, p2));
 
             // assignPermissionsToRole 에서 호출되는 findById(1L)
-            given(roleRepository.findById(1L)).willReturn(Optional.of(Role.builder()
-                    .roleKey("ROLE_DEV").tenant(tenant).build()));
+            Role role = Role.builder().roleKey("ROLE_DEV").build();
+            role.setTenant(tenant);
+            given(roleRepository.findById(1L)).willReturn(Optional.of(role));
 
             // createRole 마지막 반환에서 호출되는 findByIdAndTenantWithPermissions(1L, tenant)
+            Role roleWithPermissions = Role.builder()
+                    .roleKey("ROLE_DEV")
+                    .roleName("개발자")
+                    .description("개발자 권한")
+                    .status(Status.ACTIVE)
+                    .build();
+            roleWithPermissions.setTenant(tenant);
             given(roleRepository.findByIdAndTenantWithPermissions(1L, tenant))
-                    .willReturn(Optional.of(Role.builder()
-                            .roleKey("ROLE_DEV")
-                            .roleName("개발자")
-                            .description("개발자 권한")
-                            .tenant(tenant)
-                            .status(Status.ACTIVE)
-                            .build()));
+                    .willReturn(Optional.of(roleWithPermissions));
 
             // When
             Role result = roleService.createRole(request);
@@ -127,14 +131,16 @@ class RoleServiceTest {
             // Given
             Role role = Role.builder()
                     .roleKey("ROLE_USER")
-                    .tenant(tenant)
                     .permissions(new ArrayList<>())
                     .build();
+            role.setTenant(tenant);
             role.setId(1L);
 
             List<String> newKeys = Arrays.asList("perm.export", "perm.audit");
-            Permission px = Permission.builder().permissionKey("perm.export").tenant(tenant).build();
-            Permission py = Permission.builder().permissionKey("perm.audit").tenant(tenant).build();
+            Permission px = Permission.builder().permissionKey("perm.export").build();
+            px.setTenant(tenant);
+            Permission py = Permission.builder().permissionKey("perm.audit").build();
+            py.setTenant(tenant);
 
             given(roleRepository.findById(1L)).willReturn(Optional.of(role));
             given(permissionRepository.findByPermissionKeyInAndTenant(newKeys, tenant))
@@ -162,10 +168,10 @@ class RoleServiceTest {
             // Given
             Role systemRole = Role.builder()
                     .roleKey("SUPER_ADMIN")
-                    .tenant(tenant)
                     .isSystem(true)
                     .isDefault(false)
                     .build();
+            systemRole.setTenant(tenant);
 
             given(roleRepository.findByRoleKeyAndTenantWithPermissions("SUPER_ADMIN", tenant))
                     .willReturn(Optional.of(systemRole));

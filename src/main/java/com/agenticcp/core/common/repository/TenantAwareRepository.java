@@ -1,8 +1,8 @@
 package com.agenticcp.core.common.repository;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.NoRepositoryBean;
 
 import java.util.List;
@@ -11,13 +11,14 @@ import java.util.Optional;
 /**
  * 테넌트 인식 Repository 인터페이스
  * 자동으로 현재 테넌트 컨텍스트를 적용하여 데이터를 필터링합니다.
+ * TenantAwareEntity만 사용 가능합니다.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2024-01-01
  */
 @NoRepositoryBean
-public interface TenantAwareRepository<T, ID> extends JpaRepository<T, ID> {
+public interface TenantAwareRepository<T extends TenantAwareEntity, ID> extends BaseRepository<T, ID> {
     
     /**
      * 현재 테넌트의 모든 엔티티 조회

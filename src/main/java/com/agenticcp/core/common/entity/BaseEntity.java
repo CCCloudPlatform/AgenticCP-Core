@@ -7,11 +7,16 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+/**
+ * 기본 엔티티 - 테넌트 정보 없음
+ * 전역 기능(플랫폼 설정, 클라우드 제공자 등)에서 사용
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
 @MappedSuperclass
-@EntityListeners({
-    AuditingEntityListener.class,
-    com.agenticcp.core.common.audit.AuditEntityListener.class
-})
+@EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
     @Id

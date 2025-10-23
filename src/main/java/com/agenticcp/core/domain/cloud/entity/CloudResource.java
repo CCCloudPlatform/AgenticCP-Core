@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.entity;
 
-import com.agenticcp.core.common.entity.BaseEntity;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CloudResource extends BaseEntity {
+public class CloudResource extends TenantAwareEntity {
 
     @Column(name = "resource_id", nullable = false, unique = true)
     private String resourceId;
@@ -41,9 +41,6 @@ public class CloudResource extends BaseEntity {
     @JoinColumn(name = "service_id", nullable = false)
     private CloudService service;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

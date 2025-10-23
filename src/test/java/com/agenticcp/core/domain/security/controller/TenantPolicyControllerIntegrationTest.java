@@ -94,12 +94,12 @@ class TenantPolicyControllerIntegrationTest {
                 .policyName("테넌트 정책 1")
                 .policyType(SecurityPolicy.PolicyType.DATA_PROTECTION)
                 .priority(150)
-                .tenant(testTenant)
                 .status(Status.ACTIVE)
                 .isGlobal(false)
                 .isEnabled(true)
                 .rules("{\"encryptAtRest\": true}")
                 .build();
+        tenantPolicy.setTenant(testTenant);
         policyRepository.save(tenantPolicy);
     }
     
