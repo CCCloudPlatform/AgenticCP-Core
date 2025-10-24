@@ -1,8 +1,11 @@
 package com.agenticcp.core.domain.organization.controller;
 
+import com.agenticcp.core.domain.organization.dto.AddUserToOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.UserResponse;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.organization.dto.OrganizationHierarchyResponse;
 import com.agenticcp.core.domain.organization.dto.OrganizationPathResponse;
 import com.agenticcp.core.domain.organization.dto.OrganizationStatsResponse;
@@ -23,7 +26,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -337,5 +342,154 @@ public class OrganizationController {
         OrganizationStatsResponse response = organizationService.getOrganizationStats();
         
         return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 조직별 사용자 목록 조회
+     */
+    @GetMapping("/{id}/users")
+    @Operation(
+        summary = "조직별 사용자 목록 조회",
+        description = "특정 조직에 속한 사용자 목록을 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<List<UserResponse>> getOrganizationUsers(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getOrganizationUsers - id={}", id);
+        
+        List<UserResponse> responses = organizationService.getOrganizationUsers(id);
+        
+        return ResponseEntity.ok(responses);
+    }
+    
+    /**
+     * 사용자를 조직에 추가
+     */
+    @PostMapping("/{id}/users")
+    @Operation(
+        summary = "사용자를 조직에 추가",
+        description = "특정 조직에 사용자를 추가합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "추가 성공"),
+        @ApiResponse(responseCode = "404", description = "조직 또는 사용자를 찾을 수 없음"),
+        @ApiResponse(responseCode = "409", description = "이미 조직에 속한 사용자")
+    })
+    public ResponseEntity<UserResponse> addUserToOrganization(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "사용자 추가 요청 정보",
+                required = true,
+                content = @Content(schema = @Schema(implementation = AddUserToOrganizationRequest.class))
+            )
+            @Valid @RequestBody AddUserToOrganizationRequest request) {
+        log.info("[OrganizationController] addUserToOrganization - orgId={}, userId={}", id, request.getUserId());
+        
+        UserResponse response = organizationService.addUserToOrganization(id, request);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 사용자를 조직에서 제거
+     */
+    @DeleteMapping("/{id}/users/{userId}")
+    @Operation(
+        summary = "사용자를 조직에서 제거",
+        description = "특정 조직에서 사용자를 제거합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "제거 성공"),
+        @ApiResponse(responseCode = "404", description = "조직 또는 사용자를 찾을 수 없음")
+    })
+    public ResponseEntity<Void> removeUserFromOrganization(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id,
+            @Parameter(description = "사용자 ID", required = true, example = "1")
+            @PathVariable @Positive Long userId) {
+        log.info("[OrganizationController] removeUserFromOrganization - orgId={}, userId={}", id, userId);
+        
+        organizationService.removeUserFromOrganization(id, userId);
+        
+        return ResponseEntity.ok().build();
+    }
+
+    // ========== 조직-테넌트 관계 관리 API ==========
+
+    /**
+     * 조직별 테넌트 목록 조회
+     */
+    @GetMapping("/{id}/tenants")
+    @Operation(
+        summary = "조직별 테넌트 목록 조회",
+        description = "특정 조직에 속한 테넌트 목록을 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<List<Tenant>> getOrganizationTenants(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getOrganizationTenants - id={}", id);
+
+        List<Tenant> tenants = organizationService.getOrganizationTenants(id);
+
+        return ResponseEntity.ok(tenants);
+    }
+
+    /**
+     * 조직별 테넌트 수 조회
+     */
+    @GetMapping("/{id}/tenants/count")
+    @Operation(
+        summary = "조직별 테넌트 수 조회",
+        description = "특정 조직에 속한 테넌트 수를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<Map<String, Object>> getOrganizationTenantCount(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getOrganizationTenantCount - id={}", id);
+
+        long totalCount = organizationService.getOrganizationTenantCount(id);
+        long activeCount = organizationService.getActiveTenantCount(id);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("totalTenants", totalCount);
+        response.put("activeTenants", activeCount);
+        response.put("inactiveTenants", totalCount - activeCount);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 조직별 테넌트 통계 조회
+     */
+    @GetMapping("/{id}/tenants/stats")
+    @Operation(
+        summary = "조직별 테넌트 통계 조회",
+        description = "특정 조직의 테넌트 관련 상세 통계를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<Map<String, Object>> getOrganizationTenantStats(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getOrganizationTenantStats - id={}", id);
+
+        Map<String, Object> stats = organizationService.getOrganizationTenantStats(id);
+
+        return ResponseEntity.ok(stats);
     }
 }

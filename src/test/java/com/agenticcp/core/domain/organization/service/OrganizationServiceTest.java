@@ -1,11 +1,18 @@
 package com.agenticcp.core.domain.organization.service;
 
 import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.common.enums.UserRole;
+import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.domain.organization.dto.AddUserToOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.UserResponse;
 import com.agenticcp.core.domain.organization.entity.Organization;
 import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
+import com.agenticcp.core.domain.user.entity.User;
+import com.agenticcp.core.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +35,9 @@ class OrganizationServiceTest {
     
     @Mock
     private OrganizationRepository organizationRepository;
+    
+    @Mock
+    private UserRepository userRepository;
     
     @InjectMocks
     private OrganizationService organizationService;
@@ -204,5 +214,167 @@ class OrganizationServiceTest {
         assertThat(count).isEqualTo(5L);
         
         verify(organizationRepository).count();
+    }
+    
+    // ========== 조직-사용자 관계 관리 테스트 ==========
+    
+    @Test
+    @DisplayName("조직별 사용자 목록 조회 성공")
+    void 조직별_사용자_목록_조회_성공() {
+        // Given
+        Long organizationId = 1L;
+        User user1 = createTestUser(1L, "user1", "user1@test.com");
+        User user2 = createTestUser(2L, "user2", "user2@test.com");
+        List<User> users = Arrays.asList(user1, user2);
+        
+        when(organizationRepository.findById(organizationId))
+            .thenReturn(Optional.of(testOrganization));
+        when(userRepository.findByOrganizationId(organizationId))
+            .thenReturn(users);
+        
+        // When
+        List<UserResponse> result = organizationService.getOrganizationUsers(organizationId);
+        
+        // Then
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getUsername()).isEqualTo("user1");
+        assertThat(result.get(1).getUsername()).isEqualTo("user2");
+        
+        verify(organizationRepository).findById(organizationId);
+        verify(userRepository).findByOrganizationId(organizationId);
+    }
+    
+    @Test
+    @DisplayName("조직별 사용자 목록 조회 - 조직이 존재하지 않음")
+    void 조직별_사용자_목록_조회_조직_존재하지_않음() {
+        // Given
+        Long organizationId = 999L;
+        when(organizationRepository.findById(organizationId))
+            .thenReturn(Optional.empty());
+        
+        // When & Then
+        assertThatThrownBy(() -> organizationService.getOrganizationUsers(organizationId))
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("Organization");
+        
+        verify(organizationRepository).findById(organizationId);
+        verify(userRepository, never()).findByOrganizationId(any());
+    }
+    
+    @Test
+    @DisplayName("사용자를 조직에 추가 성공")
+    void 사용자를_조직에_추가_성공() {
+        // Given
+        Long organizationId = 1L;
+        Long userId = 1L;
+        User testUser = createTestUser(userId, "testuser", "test@test.com");
+        AddUserToOrganizationRequest request = new AddUserToOrganizationRequest();
+        request.setUserId(userId);
+        
+        when(organizationRepository.findById(organizationId))
+            .thenReturn(Optional.of(testOrganization));
+        when(userRepository.findById(userId))
+            .thenReturn(Optional.of(testUser));
+        when(userRepository.save(any(User.class)))
+            .thenReturn(testUser);
+        
+        // When
+        UserResponse result = organizationService.addUserToOrganization(organizationId, request);
+        
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getUsername()).isEqualTo("testuser");
+        
+        verify(organizationRepository).findById(organizationId);
+        verify(userRepository).findById(userId);
+        verify(userRepository).save(testUser);
+    }
+    
+    @Test
+    @DisplayName("사용자를 조직에 추가 - 이미 조직에 속한 사용자")
+    void 사용자를_조직에_추가_이미_속한_사용자() {
+        // Given
+        Long organizationId = 1L;
+        Long userId = 1L;
+        User testUser = createTestUser(userId, "testuser", "test@test.com");
+        testUser.setOrganization(testOrganization); // 이미 조직에 속함
+        AddUserToOrganizationRequest request = new AddUserToOrganizationRequest();
+        request.setUserId(userId);
+        
+        when(organizationRepository.findById(organizationId))
+            .thenReturn(Optional.of(testOrganization));
+        when(userRepository.findById(userId))
+            .thenReturn(Optional.of(testUser));
+        
+        // When & Then
+        assertThatThrownBy(() -> organizationService.addUserToOrganization(organizationId, request))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("이미 해당 조직에 속한 사용자입니다");
+        
+        verify(organizationRepository).findById(organizationId);
+        verify(userRepository).findById(userId);
+        verify(userRepository, never()).save(any());
+    }
+    
+    @Test
+    @DisplayName("사용자를 조직에서 제거 성공")
+    void 사용자를_조직에서_제거_성공() {
+        // Given
+        Long organizationId = 1L;
+        Long userId = 1L;
+        User testUser = createTestUser(userId, "testuser", "test@test.com");
+        testUser.setOrganization(testOrganization);
+        
+        when(organizationRepository.findById(organizationId))
+            .thenReturn(Optional.of(testOrganization));
+        when(userRepository.findById(userId))
+            .thenReturn(Optional.of(testUser));
+        when(userRepository.save(any(User.class)))
+            .thenReturn(testUser);
+        
+        // When
+        organizationService.removeUserFromOrganization(organizationId, userId);
+        
+        // Then
+        verify(organizationRepository).findById(organizationId);
+        verify(userRepository).findById(userId);
+        verify(userRepository).save(testUser);
+    }
+    
+    @Test
+    @DisplayName("사용자를 조직에서 제거 - 해당 조직에 속하지 않은 사용자")
+    void 사용자를_조직에서_제거_속하지_않은_사용자() {
+        // Given
+        Long organizationId = 1L;
+        Long userId = 1L;
+        User testUser = createTestUser(userId, "testuser", "test@test.com");
+        // testUser.setOrganization(null); // 조직에 속하지 않음
+        
+        when(organizationRepository.findById(organizationId))
+            .thenReturn(Optional.of(testOrganization));
+        when(userRepository.findById(userId))
+            .thenReturn(Optional.of(testUser));
+        
+        // When & Then
+        assertThatThrownBy(() -> organizationService.removeUserFromOrganization(organizationId, userId))
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("User");
+        
+        verify(organizationRepository).findById(organizationId);
+        verify(userRepository).findById(userId);
+        verify(userRepository, never()).save(any());
+    }
+    
+    // Helper method
+    private User createTestUser(Long id, String username, String email) {
+        User user = User.builder()
+            .username(username)
+            .email(email)
+            .name("Test User")
+            .role(UserRole.VIEWER)
+            .status(Status.ACTIVE)
+            .build();
+        user.setId(id);
+        return user;
     }
 }

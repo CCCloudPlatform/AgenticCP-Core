@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.organization.repository;
 
 import com.agenticcp.core.domain.organization.entity.Organization;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -59,4 +60,12 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
      * @return 조직 수
      */
     long count();
+    
+    /**
+     * 특정 조직에 속한 테넌트들 조회
+     * @param organizationId 조직 ID
+     * @return 테넌트 목록
+     */
+    @Query("SELECT t FROM Tenant t WHERE t.organization.id = :organizationId")
+    List<Tenant> findTenantsByOrganizationId(@Param("organizationId") Long organizationId);
 }
