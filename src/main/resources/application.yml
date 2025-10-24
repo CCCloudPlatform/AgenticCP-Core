@@ -8,7 +8,7 @@ spring:
   datasource:
     url: ${DATABASE_URL:jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DATABASE_USERNAME:agenticcp}
-    password: ${DATABASE_PASSWORD}
+    password: ${DATABASE_PASSWORD:agenticcppassword}
     driver-class-name: com.mysql.cj.jdbc.Driver
     
   jpa:
@@ -35,7 +35,7 @@ app:
 security:
   jwt:
     # base64 인코딩된 256비트 이상 키를 사용하세요. 예시는 개발용입니다.
-    secret: ${JWT_SECRET:}
+    secret: ${JWT_SECRET:ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=}
     access-token-expiration-ms: ${JWT_ACCESS_EXP_MS:3600000}
     refresh-token-expiration-ms: ${JWT_REFRESH_EXP_MS:604800000}
 

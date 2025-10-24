@@ -21,7 +21,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @Configuration
 @EnableJpaAuditing
 @EnableJpaRepositories(
-    basePackages = "com.agenticcp.core.domain",
+    basePackages = {"com.agenticcp.core.domain", "com.agenticcp.core.common.repository"},
     repositoryBaseClass = TenantAwareRepositoryImpl.class
 )
 public class JpaConfig {

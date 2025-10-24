@@ -17,7 +17,9 @@ import org.springframework.test.context.DynamicPropertySource;
         "logging.level.org.hibernate=WARN",
         "logging.level.org.springframework.boot.autoconfigure=WARN",
         "logging.level.org.springframework.context=WARN",
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.redis.RedisAutoConfiguration"
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.redis.RedisAutoConfiguration",
+        "security.jwt.secret=ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=",
+        "config.cipher.key=MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
 })
 @ActiveProfiles("test")
 class AgenticCpCoreApplicationTests {

@@ -1,8 +1,8 @@
 package com.agenticcp.core.domain.cloud.repository;
-
 import com.agenticcp.core.common.repository.BaseRepository;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.common.enums.Status;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
