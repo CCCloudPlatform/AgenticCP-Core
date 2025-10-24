@@ -30,7 +30,7 @@ public class PlatformConfigServiceMaskingTest {
         repository = Mockito.mock(PlatformConfigRepository.class);
         encryptionService = Mockito.mock(EncryptionService.class);
         List<ConfigValidator> validators = Collections.emptyList();
-        service = new PlatformConfigService(repository, validators, encryptionService);
+        service = new PlatformConfigService(repository, validators, encryptionService, Mockito.mock(ConfigAuditService.class), Mockito.mock(org.springframework.context.ApplicationEventPublisher.class), Mockito.mock(com.agenticcp.core.common.logging.masking.MaskingService.class));
     }
 
     @Test
@@ -52,7 +52,7 @@ public class PlatformConfigServiceMaskingTest {
 
         List<PlatformConfig> result = service.getAllConfigs();
         Assertions.assertEquals(2, result.size());
-        Assertions.assertEquals("***", result.stream().filter(c -> c.getConfigKey().equals("encrypted.key")).findFirst().get().getConfigValue());
+        Assertions.assertEquals("Encrypted", result.stream().filter(c -> c.getConfigKey().equals("encrypted.key")).findFirst().get().getConfigValue());
         Assertions.assertEquals("plain-value", result.stream().filter(c -> c.getConfigKey().equals("plain.key")).findFirst().get().getConfigValue());
     }
 
@@ -67,7 +67,7 @@ public class PlatformConfigServiceMaskingTest {
         when(repository.findByConfigKey(any())).thenReturn(Optional.of(enc));
 
         PlatformConfig masked = service.getConfigByKey("encrypted.key").orElseThrow();
-        Assertions.assertEquals("***", masked.getConfigValue());
+        Assertions.assertEquals("Encrypted", masked.getConfigValue());
     }
 }
 

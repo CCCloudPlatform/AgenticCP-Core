@@ -7,7 +7,7 @@ spring:
   
   
   cache:
-    type: simple
+    type: redis
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
@@ -17,7 +17,7 @@ spring:
 
 app:
   redis:
-    enabled: ${APP_REDIS_ENABLED:false}
+    enabled: ${APP_REDIS_ENABLED:true}
 
 logging:
   level:

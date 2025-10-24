@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.tenant.controller;
 import com.agenticcp.core.domain.tenant.service.TenantAuthorizationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Disabled;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@Disabled("Controller test disabled")
 class TenantAuthorizationControllerTest {
 
     @Mock

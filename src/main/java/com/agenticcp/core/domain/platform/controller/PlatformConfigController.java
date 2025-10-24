@@ -1,9 +1,17 @@
 package com.agenticcp.core.domain.platform.controller;
 
 import com.agenticcp.core.common.dto.exception.ApiResponse;
+import com.agenticcp.core.common.audit.AuditController;
+import com.agenticcp.core.common.audit.AuditRequired;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
+import com.agenticcp.core.common.enums.AuditResourceType;
+import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.exception.AuthorizationException;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.service.PlatformConfigService;
+import com.agenticcp.core.domain.platform.service.ConfigHistoryQueryService;
+import com.agenticcp.core.domain.platform.dto.ConfigHistoryResponse;
+import org.springframework.data.domain.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -17,23 +25,35 @@ import java.util.List;
 @RequestMapping("/api/platform/configs")
 @RequiredArgsConstructor
 @Tag(name = "Platform Configuration", description = "플랫폼 설정 관리 API")
+@AuditController(
+    resourceType = AuditResourceType.PLATFORM_CONFIG,
+    defaultSeverity = AuditSeverity.HIGH,
+    defaultIncludeRequestData = true,
+    targetHttpMethods = {"POST", "PUT", "DELETE"}
+)
 public class PlatformConfigController {
 
     private final PlatformConfigService platformConfigService;
+    private final ConfigHistoryQueryService configHistoryQueryService;
 
     @GetMapping
-    @Operation(summary = "모든 플랫폼 설정 조회")
+    @Operation(summary = "플랫폼 설정 조회", 
+               description = "isSystem 파라미터로 시스템/사용자 설정 필터링 가능")
+    @AuditRequired(
+        action = "getAllConfigsWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 모든 플랫폼 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getAllConfigs(
             @RequestParam(value = "showSecret", required = false) Boolean showSecret,
-            @RequestHeader(value = "X-Actor", required = false) String actor,
-            @RequestHeader(value = "X-Reason", required = false) String reason,
-            @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
+            @RequestParam(value = "isSystem", required = false) Boolean isSystem) {
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
-            audit(actor, reason, forwardedFor, "getAllConfigs");
         }
-        List<PlatformConfig> configs = platformConfigService.getAllConfigs(reveal);
+        List<PlatformConfig> configs = platformConfigService.getAllConfigs(reveal, isSystem);
         ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
         if (reveal) {
             builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
@@ -44,16 +64,19 @@ public class PlatformConfigController {
 
     @GetMapping("/{configKey}")
     @Operation(summary = "특정 플랫폼 설정 조회")
+    @AuditRequired(
+        action = "getConfigByKeyWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 특정 플랫폼 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<PlatformConfig>> getConfigByKey(
             @PathVariable String configKey,
-            @RequestParam(value = "showSecret", required = false) Boolean showSecret,
-            @RequestHeader(value = "X-Actor", required = false) String actor,
-            @RequestHeader(value = "X-Reason", required = false) String reason,
-            @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
-            audit(actor, reason, forwardedFor, "getConfigByKey:" + configKey);
         }
         return platformConfigService.getConfigByKey(configKey, reveal)
                 .map(config -> {
@@ -69,16 +92,19 @@ public class PlatformConfigController {
 
     @GetMapping("/type/{configType}")
     @Operation(summary = "설정 타입별 조회")
+    @AuditRequired(
+        action = "getConfigsByTypeWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 설정 타입별 플랫폼 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getConfigsByType(
             @PathVariable PlatformConfig.ConfigType configType,
-            @RequestParam(value = "showSecret", required = false) Boolean showSecret,
-            @RequestHeader(value = "X-Actor", required = false) String actor,
-            @RequestHeader(value = "X-Reason", required = false) String reason,
-            @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
-            audit(actor, reason, forwardedFor, "getConfigsByType:" + configType);
         }
         List<PlatformConfig> configs = platformConfigService.getConfigsByType(configType, reveal);
         ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
@@ -91,15 +117,18 @@ public class PlatformConfigController {
 
     @GetMapping("/system")
     @Operation(summary = "시스템 설정 조회")
+    @AuditRequired(
+        action = "getSystemConfigsWithSecrets",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.HIGH,
+        includeRequestData = true,
+        description = "관리자가 시스템 설정을 비밀 정보 포함하여 조회"
+    )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getSystemConfigs(
-            @RequestParam(value = "showSecret", required = false) Boolean showSecret,
-            @RequestHeader(value = "X-Actor", required = false) String actor,
-            @RequestHeader(value = "X-Reason", required = false) String reason,
-            @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor) {
+            @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
-            audit(actor, reason, forwardedFor, "getSystemConfigs");
         }
         List<PlatformConfig> configs = platformConfigService.getSystemConfigs(reveal);
         ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
@@ -121,13 +150,6 @@ public class PlatformConfigController {
         if (!isAdmin) {
             throw new AuthorizationException();
         }
-    }
-
-    private void audit(String actor, String reason, String forwardedFor, String action) {
-        String ip = forwardedFor != null ? forwardedFor : "unknown";
-        String who = actor != null ? actor : "unknown";
-        org.slf4j.LoggerFactory.getLogger(PlatformConfigController.class)
-                .info("[Audit] action={} actor={} ip={} reason={}", action, who, ip, reason);
     }
 
     @PostMapping
@@ -152,5 +174,24 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<Void>> deleteConfig(@PathVariable String configKey) {
         platformConfigService.deleteConfig(configKey);
         return ResponseEntity.ok(ApiResponse.success(null, "플랫폼 설정이 삭제되었습니다."));
+    }
+
+    @GetMapping("/{configKey}/history")
+    @Operation(summary = "플랫폼 설정 변경 이력 조회")
+    @AuditRequired(
+        action = "getConfigHistory",
+        resourceType = AuditResourceType.PLATFORM_CONFIG,
+        severity = AuditSeverity.MEDIUM,
+        includeRequestData = true,
+        description = "관리자가 플랫폼 설정 변경 이력을 조회"
+    )
+    public ResponseEntity<ApiResponse<Page<ConfigHistoryResponse>>> getConfigHistory(
+            @PathVariable String configKey,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        // 관리자 전용 조회
+        enforceAdmin();
+        Page<ConfigHistoryResponse> history = configHistoryQueryService.getHistory(configKey, page, size);
+        return ResponseEntity.ok(ApiResponse.success(history));
     }
 }
