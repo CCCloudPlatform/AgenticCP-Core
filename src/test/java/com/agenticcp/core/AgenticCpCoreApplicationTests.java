@@ -1,7 +1,9 @@
 package com.agenticcp.core;
 
+import com.agenticcp.core.domain.cloud.adapter.outbound.mock.MockAdaptersConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -11,6 +13,7 @@ import org.springframework.test.context.DynamicPropertySource;
         "spring.cache.type=simple"
 })
 @ActiveProfiles("test")
+@Import(MockAdaptersConfig.class)
 class AgenticCpCoreApplicationTests {
 
     @DynamicPropertySource
