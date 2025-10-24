@@ -5,6 +5,10 @@ import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.OrganizationHierarchyResponse;
+import com.agenticcp.core.domain.organization.dto.OrganizationPathResponse;
+import com.agenticcp.core.domain.organization.dto.OrganizationStatsResponse;
+import com.agenticcp.core.domain.organization.dto.MoveOrganizationRequest;
 import com.agenticcp.core.domain.organization.entity.Organization;
 import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
 import com.agenticcp.core.domain.tenant.repository.TenantRepository;
@@ -13,7 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -157,5 +161,208 @@ public class OrganizationService {
         return childOrganizations.stream()
                 .map(OrganizationResponse::from)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * 전체 조직 트리 조회
+     */
+    public List<OrganizationHierarchyResponse> getOrganizationTree(Long tenantId) {
+        log.info("[OrganizationService] 전체 조직 트리 조회 요청: tenantId={}", tenantId);
+        
+        List<Organization> organizations = organizationRepository.findByTenantId(tenantId);
+        Map<Long, List<Organization>> childrenMap = organizations.stream()
+                .filter(org -> org.getParentOrganization() != null)
+                .collect(Collectors.groupingBy(org -> org.getParentOrganization().getId()));
+        
+        List<Organization> rootOrganizations = organizations.stream()
+                .filter(org -> org.getParentOrganization() == null)
+                .collect(Collectors.toList());
+        
+        List<OrganizationHierarchyResponse> result = rootOrganizations.stream()
+                .map(org -> buildHierarchyResponse(org, childrenMap, 0, org.getOrgName()))
+                .collect(Collectors.toList());
+        
+        log.info("[OrganizationService] 전체 조직 트리 조회 완료: count={}", result.size());
+        return result;
+    }
+    
+    /**
+     * 조직 경로 조회
+     */
+    public OrganizationPathResponse getOrganizationPath(Long orgId, Long tenantId) {
+        log.info("[OrganizationService] 조직 경로 조회 요청: orgId={}, tenantId={}", orgId, tenantId);
+        
+        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        List<OrganizationResponse> path = new ArrayList<>();
+        Organization current = organization;
+        
+        while (current != null) {
+            path.add(0, OrganizationResponse.from(current));
+            current = current.getParentOrganization();
+        }
+        
+        OrganizationPathResponse result = OrganizationPathResponse.from(path);
+        log.info("[OrganizationService] 조직 경로 조회 완료: path={}", result.getFullPath());
+        return result;
+    }
+    
+    /**
+     * 상위 조직 목록 조회
+     */
+    public List<OrganizationResponse> getAncestors(Long orgId, Long tenantId) {
+        log.info("[OrganizationService] 상위 조직 목록 조회 요청: orgId={}, tenantId={}", orgId, tenantId);
+        
+        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        List<OrganizationResponse> ancestors = new ArrayList<>();
+        Organization current = organization.getParentOrganization();
+        
+        while (current != null) {
+            ancestors.add(0, OrganizationResponse.from(current));
+            current = current.getParentOrganization();
+        }
+        
+        log.info("[OrganizationService] 상위 조직 목록 조회 완료: count={}", ancestors.size());
+        return ancestors;
+    }
+    
+    /**
+     * 하위 조직 목록 조회 (모든 레벨)
+     */
+    public List<OrganizationResponse> getDescendants(Long orgId, Long tenantId) {
+        log.info("[OrganizationService] 하위 조직 목록 조회 요청: orgId={}, tenantId={}", orgId, tenantId);
+        
+        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        List<OrganizationResponse> descendants = new ArrayList<>();
+        collectDescendants(organization, descendants);
+        
+        log.info("[OrganizationService] 하위 조직 목록 조회 완료: count={}", descendants.size());
+        return descendants;
+    }
+    
+    /**
+     * 조직 이동
+     */
+    @Transactional
+    public OrganizationResponse moveOrganization(Long orgId, MoveOrganizationRequest request, Long tenantId) {
+        log.info("[OrganizationService] 조직 이동 요청: orgId={}, newParentId={}, tenantId={}", 
+                orgId, request.getNewParentId(), tenantId);
+        
+        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        // 새로운 상위 조직 검증
+        Organization newParent = null;
+        if (request.getNewParentId() != null) {
+            newParent = organizationRepository.findByIdAndTenantId(request.getNewParentId(), tenantId)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getNewParentId()));
+            
+            // 순환 참조 방지
+            validateNoCircularReference(organization, newParent);
+        }
+        
+        organization.setParentOrganization(newParent);
+        Organization savedOrganization = organizationRepository.save(organization);
+        
+        log.info("[OrganizationService] 조직 이동 완료: orgId={}, newParentId={}", 
+                savedOrganization.getId(), newParent != null ? newParent.getId() : null);
+        return OrganizationResponse.from(savedOrganization);
+    }
+    
+    /**
+     * 조직 통계 조회
+     */
+    public OrganizationStatsResponse getOrganizationStats(Long tenantId) {
+        log.info("[OrganizationService] 조직 통계 조회 요청: tenantId={}", tenantId);
+        
+        List<Organization> organizations = organizationRepository.findByTenantId(tenantId);
+        
+        long totalOrganizations = organizations.size();
+        long activeOrganizations = organizations.stream()
+                .filter(org -> Status.ACTIVE.equals(org.getStatus()))
+                .count();
+        long inactiveOrganizations = totalOrganizations - activeOrganizations;
+        
+        // 계층별 통계
+        Map<Integer, Long> levelStats = new HashMap<>();
+        int maxDepth = 0;
+        
+        for (Organization org : organizations) {
+            int level = calculateLevel(org);
+            levelStats.merge(level, 1L, Long::sum);
+            maxDepth = Math.max(maxDepth, level);
+        }
+        
+        List<OrganizationStatsResponse.LevelStats> levelStatsList = levelStats.entrySet().stream()
+                .map(entry -> OrganizationStatsResponse.LevelStats.builder()
+                        .level(entry.getKey())
+                        .count(entry.getValue())
+                        .description("Level " + entry.getKey())
+                        .build())
+                .sorted(Comparator.comparing(OrganizationStatsResponse.LevelStats::getLevel))
+                .collect(Collectors.toList());
+        
+        OrganizationStatsResponse result = OrganizationStatsResponse.builder()
+                .totalOrganizations(totalOrganizations)
+                .activeOrganizations(activeOrganizations)
+                .inactiveOrganizations(inactiveOrganizations)
+                .maxDepth(maxDepth)
+                .levelStats(levelStatsList)
+                .build();
+        
+        log.info("[OrganizationService] 조직 통계 조회 완료: total={}, active={}, maxDepth={}", 
+                totalOrganizations, activeOrganizations, maxDepth);
+        return result;
+    }
+    
+    // Helper methods
+    private OrganizationHierarchyResponse buildHierarchyResponse(Organization org, 
+                                                               Map<Long, List<Organization>> childrenMap, 
+                                                               int level, 
+                                                               String path) {
+        List<Organization> children = childrenMap.getOrDefault(org.getId(), List.of());
+        List<OrganizationHierarchyResponse> childResponses = children.stream()
+                .map(child -> buildHierarchyResponse(child, childrenMap, level + 1, path + " > " + child.getOrgName()))
+                .collect(Collectors.toList());
+        
+        OrganizationHierarchyResponse response = OrganizationHierarchyResponse.from(
+                OrganizationResponse.from(org), level, path);
+        response.setChildren(childResponses);
+        response.setChildrenCount(childResponses.size());
+        
+        return response;
+    }
+    
+    private void collectDescendants(Organization parent, List<OrganizationResponse> descendants) {
+        List<Organization> children = organizationRepository.findByParentOrganizationId(parent.getId());
+        for (Organization child : children) {
+            descendants.add(OrganizationResponse.from(child));
+            collectDescendants(child, descendants);
+        }
+    }
+    
+    private void validateNoCircularReference(Organization org, Organization newParent) {
+        Organization current = newParent;
+        while (current != null) {
+            if (current.getId().equals(org.getId())) {
+                throw new IllegalArgumentException("순환 참조가 발생합니다: " + org.getOrgName());
+            }
+            current = current.getParentOrganization();
+        }
+    }
+    
+    private int calculateLevel(Organization org) {
+        int level = 0;
+        Organization current = org.getParentOrganization();
+        while (current != null) {
+            level++;
+            current = current.getParentOrganization();
+        }
+        return level;
     }
 }
