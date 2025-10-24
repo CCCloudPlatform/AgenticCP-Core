@@ -1,7 +1,7 @@
 ---
+globs: *Repository.java
 alwaysApply: false
 ---
-
 # Repository Pattern (리포지토리 패턴)
 
 ## 기본 구조

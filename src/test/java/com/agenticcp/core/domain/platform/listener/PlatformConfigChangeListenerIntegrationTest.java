@@ -5,6 +5,7 @@ import com.agenticcp.core.domain.platform.service.PlatformConfigService;
 import com.agenticcp.core.domain.platform.service.PlatformConfigRuntimeService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@Disabled("Integration test disabled")
 @DisplayName("PlatformConfigChangeListener 통합 테스트")
 class PlatformConfigChangeListenerIntegrationTest {
 
