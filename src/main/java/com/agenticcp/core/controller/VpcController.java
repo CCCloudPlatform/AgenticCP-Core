@@ -32,6 +32,14 @@ public class VpcController {
      * @return 생성된 VPC 리소스
      */
     @PostMapping
+    @AuditRequired(
+        action = "CREATE_VPC",
+        resourceType = AuditResourceType.CLOUD_PROVIDER,
+        description = "VPC 생성",
+        includeRequestData = true,
+        includeResponseData = true,
+        severity = AuditSeverity.MEDIUM
+    )
     public ResponseEntity<CloudResource> createVpc(@RequestBody VpcCreateRequest request) {
         log.info("[VpcController] createVpc - provider={}, vpcName={}", 
                 request.getProviderType(), request.getVpcName());
