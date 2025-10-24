@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class OrganizationResponse {
     
     private Long id;
+    private String orgKey;
     private String orgName;
     private String description;
     private Long tenantId;
@@ -26,6 +27,7 @@ public class OrganizationResponse {
     private String address;
     private String website;
     private Integer maxUsers;
+    private String settings;
     private LocalDateTime establishedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -36,6 +38,7 @@ public class OrganizationResponse {
     public static OrganizationResponse from(Organization organization) {
         return OrganizationResponse.builder()
                 .id(organization.getId())
+                .orgKey(organization.getOrgKey())
                 .orgName(organization.getOrgName())
                 .description(organization.getDescription())
                 .tenantId(organization.getTenant().getId())
@@ -48,6 +51,7 @@ public class OrganizationResponse {
                 .address(organization.getAddress())
                 .website(organization.getWebsite())
                 .maxUsers(organization.getMaxUsers())
+                .settings(organization.getSettings())
                 .establishedDate(organization.getEstablishedDate())
                 .createdAt(organization.getCreatedAt())
                 .updatedAt(organization.getUpdatedAt())
