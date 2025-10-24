@@ -13,27 +13,18 @@ import java.util.Optional;
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
     
     /**
-     * 테넌트별 조직 목록 조회
-     * @param tenantId 테넌트 ID
-     * @return 조직 목록
-     */
-    List<Organization> findByTenantId(Long tenantId);
-    
-    /**
-     * 테넌트별 특정 조직 조회
-     * @param id 조직 ID
-     * @param tenantId 테넌트 ID
-     * @return 조직 정보
-     */
-    Optional<Organization> findByIdAndTenantId(Long id, Long tenantId);
-    
-    /**
-     * 조직명 중복 검사 (같은 테넌트 내에서)
+     * 조직명 중복 검사
      * @param orgName 조직명
-     * @param tenantId 테넌트 ID
      * @return 중복 여부
      */
-    boolean existsByOrgNameAndTenantId(String orgName, Long tenantId);
+    boolean existsByOrgName(String orgName);
+    
+    /**
+     * 조직 키 중복 검사
+     * @param orgKey 조직 키
+     * @return 중복 여부
+     */
+    boolean existsByOrgKey(String orgKey);
     
     /**
      * 하위 조직 존재 여부 확인
@@ -43,12 +34,11 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     boolean existsByParentOrganizationId(Long parentOrgId);
     
     /**
-     * 테넌트별 활성 조직 목록 조회
-     * @param tenantId 테넌트 ID
+     * 활성 조직 목록 조회
      * @return 활성 조직 목록
      */
-    @Query("SELECT o FROM Organization o WHERE o.tenant.id = :tenantId AND o.status = 'ACTIVE'")
-    List<Organization> findActiveOrganizationsByTenantId(@Param("tenantId") Long tenantId);
+    @Query("SELECT o FROM Organization o WHERE o.status = 'ACTIVE'")
+    List<Organization> findActiveOrganizations();
     
     /**
      * 특정 조직의 하위 조직 목록 조회
@@ -58,9 +48,15 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     List<Organization> findByParentOrganizationId(Long parentOrgId);
     
     /**
-     * 테넌트별 조직 수 조회
-     * @param tenantId 테넌트 ID
+     * 루트 조직 목록 조회 (상위 조직이 없는 조직들)
+     * @return 루트 조직 목록
+     */
+    @Query("SELECT o FROM Organization o WHERE o.parentOrganization IS NULL")
+    List<Organization> findRootOrganizations();
+    
+    /**
+     * 조직 수 조회
      * @return 조직 수
      */
-    long countByTenantId(Long tenantId);
+    long count();
 }
