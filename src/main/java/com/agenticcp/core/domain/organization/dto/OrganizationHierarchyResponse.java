@@ -17,7 +17,6 @@ public class OrganizationHierarchyResponse {
     private String orgKey;
     private String orgName;
     private String description;
-    private Long tenantId;
     private Long parentOrgId;
     private String status;
     private String orgType;
@@ -44,7 +43,6 @@ public class OrganizationHierarchyResponse {
                 .orgKey(org.getOrgKey())
                 .orgName(org.getOrgName())
                 .description(org.getDescription())
-                .tenantId(org.getTenantId())
                 .parentOrgId(org.getParentOrgId())
                 .status(org.getStatus())
                 .orgType(org.getOrgType())
