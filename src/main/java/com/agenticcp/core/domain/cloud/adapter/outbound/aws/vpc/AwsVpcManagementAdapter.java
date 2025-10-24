@@ -23,7 +23,7 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
     public CloudResource createVpc(VpcCreateRequest request) {
         try {
             CreateVpcRequest createVpcRequest = CreateVpcRequest.builder()
-                .cidrBlock((String) request.metadata().get("cidrBlock"))
+                .cidrBlock(request.getCidrBlock())
                 .build();
             CreateVpcResponse createVpcResponse = ec2Client.createVpc(createVpcRequest);
 
@@ -31,5 +31,10 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
         } catch (Throwable e) {
             throw CloudErrorTranslator.translate(e);
         }
+    }
+
+    @Override
+    public ProviderType getProviderType() {
+        return ProviderType.AWS;
     }
 }
