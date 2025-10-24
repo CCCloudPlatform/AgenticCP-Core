@@ -59,6 +59,14 @@ public class CloudProviderService {
         return provider;
     }
 
+    public CloudProvider getProviderByIdOrThrow(Long providerId) {
+        log.info("[CloudProviderService] getProviderByIdOrThrow - providerId={}", providerId);
+        CloudProvider provider = cloudProviderRepository.findById(providerId)
+                .orElseThrow(() -> new ResourceNotFoundException("CloudProvider", "id", providerId));
+        log.info("[CloudProviderService] getProviderByIdOrThrow - success providerId={}", providerId);
+        return provider;
+    }
+
     public List<CloudProvider> getProvidersByType(CloudProvider.ProviderType providerType) {
         log.info("[CloudProviderService] getProvidersByType - type={}", providerType);
         List<CloudProvider> result = cloudProviderRepository.findByProviderType(providerType);
