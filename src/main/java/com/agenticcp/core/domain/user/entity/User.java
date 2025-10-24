@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.user.entity;
 import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -57,6 +58,10 @@ public class User extends TenantAwareEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id")
     private Organization organization;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
