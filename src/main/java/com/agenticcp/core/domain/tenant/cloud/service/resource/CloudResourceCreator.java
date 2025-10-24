@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.tenant.cloud.service;
+package com.agenticcp.core.domain.tenant.cloud.service.resource;
 
 
 import com.agenticcp.core.domain.tenant.cloud.CloudProviderType;

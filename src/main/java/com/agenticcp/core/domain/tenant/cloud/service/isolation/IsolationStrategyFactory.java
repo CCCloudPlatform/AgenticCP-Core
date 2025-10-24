@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.tenant.cloud.service;
+package com.agenticcp.core.domain.tenant.cloud.service.isolation;
 
 import com.agenticcp.core.domain.tenant.entity.TenantIsolation;
 import org.springframework.stereotype.Component;
