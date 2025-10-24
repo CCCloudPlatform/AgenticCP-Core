@@ -4,6 +4,10 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.OrganizationHierarchyResponse;
+import com.agenticcp.core.domain.organization.dto.OrganizationPathResponse;
+import com.agenticcp.core.domain.organization.dto.OrganizationStatsResponse;
+import com.agenticcp.core.domain.organization.dto.MoveOrganizationRequest;
 import com.agenticcp.core.domain.organization.service.OrganizationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -217,5 +221,151 @@ public class OrganizationController {
         List<OrganizationResponse> responses = organizationService.getChildOrganizations(id, tenantId);
         
         return ResponseEntity.ok(responses);
+    }
+    
+    /**
+     * 전체 조직 트리 조회
+     */
+    @GetMapping("/tree")
+    @Operation(
+        summary = "전체 조직 트리 조회",
+        description = "현재 테넌트의 모든 조직을 계층 구조로 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationHierarchyResponse.class)))
+    })
+    public ResponseEntity<List<OrganizationHierarchyResponse>> getOrganizationTree() {
+        log.info("[OrganizationController] getOrganizationTree");
+        
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        List<OrganizationHierarchyResponse> responses = organizationService.getOrganizationTree(tenantId);
+        
+        return ResponseEntity.ok(responses);
+    }
+    
+    /**
+     * 조직 경로 조회
+     */
+    @GetMapping("/{id}/path")
+    @Operation(
+        summary = "조직 경로 조회",
+        description = "루트부터 현재 조직까지의 경로를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationPathResponse.class))),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<OrganizationPathResponse> getOrganizationPath(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getOrganizationPath - id={}", id);
+        
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        OrganizationPathResponse response = organizationService.getOrganizationPath(id, tenantId);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 상위 조직 목록 조회
+     */
+    @GetMapping("/{id}/ancestors")
+    @Operation(
+        summary = "상위 조직 목록 조회",
+        description = "특정 조직의 모든 상위 조직을 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class))),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<List<OrganizationResponse>> getAncestors(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getAncestors - id={}", id);
+        
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        List<OrganizationResponse> responses = organizationService.getAncestors(id, tenantId);
+        
+        return ResponseEntity.ok(responses);
+    }
+    
+    /**
+     * 하위 조직 목록 조회 (모든 레벨)
+     */
+    @GetMapping("/{id}/descendants")
+    @Operation(
+        summary = "하위 조직 목록 조회",
+        description = "특정 조직의 모든 하위 조직을 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class))),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<List<OrganizationResponse>> getDescendants(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getDescendants - id={}", id);
+        
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        List<OrganizationResponse> responses = organizationService.getDescendants(id, tenantId);
+        
+        return ResponseEntity.ok(responses);
+    }
+    
+    /**
+     * 조직 이동
+     */
+    @PutMapping("/{id}/move")
+    @Operation(
+        summary = "조직 이동",
+        description = "조직을 다른 상위 조직으로 이동합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "이동 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class))),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+        @ApiResponse(responseCode = "409", description = "순환 참조 발생")
+    })
+    public ResponseEntity<OrganizationResponse> moveOrganization(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "조직 이동 요청 정보",
+                required = true,
+                content = @Content(schema = @Schema(implementation = MoveOrganizationRequest.class))
+            )
+            @Valid @RequestBody MoveOrganizationRequest request) {
+        log.info("[OrganizationController] moveOrganization - id={}, newParentId={}", id, request.getNewParentId());
+        
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        OrganizationResponse response = organizationService.moveOrganization(id, request, tenantId);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 조직 통계 조회
+     */
+    @GetMapping("/stats")
+    @Operation(
+        summary = "조직 통계 조회",
+        description = "현재 테넌트의 조직 통계를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationStatsResponse.class)))
+    })
+    public ResponseEntity<OrganizationStatsResponse> getOrganizationStats() {
+        log.info("[OrganizationController] getOrganizationStats");
+        
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        OrganizationStatsResponse response = organizationService.getOrganizationStats(tenantId);
+        
+        return ResponseEntity.ok(response);
     }
 }
