@@ -1,11 +1,11 @@
 package com.agenticcp.core.domain.cloud.service.aws;
 
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
 
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
+import com.agenticcp.core.domain.cloud.port.outbound.aws.VpcManagementPort;
 
 import lombok.RequiredArgsConstructor;
 

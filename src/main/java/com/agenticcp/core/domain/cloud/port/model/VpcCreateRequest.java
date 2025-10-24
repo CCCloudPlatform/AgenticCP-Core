@@ -18,59 +18,13 @@ import java.util.Map;
 @Value
 @Builder
 public class VpcCreateRequest {
-    
-    /**
-     * 클라우드 프로바이더 타입
-     */
     ProviderType providerType;
-    
-    /**
-     * 계정 범위
-     * - AWS: Account ID
-     * - Azure: Subscription ID  
-     * - GCP: Project ID
-     */
     String accountScope;
-    
-    /**
-     * 리전
-     * - AWS: us-east-1, ap-northeast-2
-     * - Azure: koreacentral, eastus
-     * - GCP: asia-northeast1, us-central1
-     */
     String region;
-    
-    /**
-     * VPC 이름
-     */
     String vpcName;
-    
-    /**
-     * CIDR 블록
-     * 예: 10.0.0.0/16
-     */
     String cidrBlock;
-    
-    /**
-     * VPC 설명 (선택사항)
-     */
     String description;
-    
-    /**
-     * 태그 정보 (선택사항)
-     */
     Map<String, String> tags;
-    
-    /**
-     * 테넌트 키
-     */
     String tenantKey;
-    
-    /**
-     * 프로바이더별 특화 설정
-     * - AWS: instanceTenancy, ipv6CidrBlock 등
-     * - GCP: autoCreateSubnetworks, routingMode 등
-     * - Azure: enableDdosProtection, enableVmProtection 등
-     */
     Map<String, Object> providerSpecificConfig;
 }
