@@ -4,13 +4,13 @@ spring:
 
   profiles:
     active: local,notification
-  
+
   datasource:
     url: ${DATABASE_URL:jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DATABASE_USERNAME:agenticcp}
     password: ${DATABASE_PASSWORD:agenticcppassword}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,7 +20,7 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
     open-in-view: false
-    
+
   devtools:
     restart:
       enabled: true
@@ -30,7 +30,6 @@ spring:
 app:
   redis:
     enabled: false
-
 
 security:
   jwt:
@@ -71,7 +70,6 @@ spring:
     url: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: agenticcp
     password: agenticcppassword
-
 ---
 spring:
   config:
