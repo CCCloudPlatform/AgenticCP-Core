@@ -13,8 +13,8 @@ import java.util.concurrent.TimeUnit;
 @EnableCaching
 public class HealthCheckCacheConfig {
     
-    @Bean
-    public CacheManager cacheManager() {
+    @Bean("healthCheckCacheManager")
+    public CacheManager healthCheckCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(1000)

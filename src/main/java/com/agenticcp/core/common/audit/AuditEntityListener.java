@@ -1,116 +1,80 @@
 package com.agenticcp.core.common.audit;
 
-import com.agenticcp.core.common.context.AuditChangeContext;
-import com.agenticcp.core.common.entity.AuditLog;
-import com.agenticcp.core.common.util.ChangeTracker;
-import jakarta.persistence.PreRemove;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Field;
-import java.util.Map;
+import java.time.LocalDateTime;
 
 /**
- * JPA 엔티티 생명주기 리스너
+ * 엔티티 감사 리스너
  * 
- * 엔티티가 UPDATE/DELETE 되기 직전에 자동으로 변경 전 값을 캡처합니다.
- *
+ * <p>엔티티의 생성/수정 시 자동으로 감사 정보를 설정합니다.</p>
+ * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2024-01-01
  */
-@Slf4j
 @Component
 public class AuditEntityListener {
 
-    private static ChangeTracker changeTracker;
-
-    @Autowired
-    public void setChangeTracker(ChangeTracker tracker) {
-        AuditEntityListener.changeTracker = tracker;
+    /**
+     * 엔티티 생성 전 감사 정보 설정
+     */
+    @PrePersist
+    public void prePersist(Object entity) {
+        if (entity instanceof com.agenticcp.core.common.entity.BaseEntity) {
+            com.agenticcp.core.common.entity.BaseEntity baseEntity = (com.agenticcp.core.common.entity.BaseEntity) entity;
+            
+            LocalDateTime now = LocalDateTime.now();
+            String currentUser = getCurrentUser();
+            
+            if (baseEntity.getCreatedAt() == null) {
+                baseEntity.setCreatedAt(now);
+            }
+            if (baseEntity.getUpdatedAt() == null) {
+                baseEntity.setUpdatedAt(now);
+            }
+            if (baseEntity.getCreatedBy() == null) {
+                baseEntity.setCreatedBy(currentUser);
+            }
+            if (baseEntity.getUpdatedBy() == null) {
+                baseEntity.setUpdatedBy(currentUser);
+            }
+            if (baseEntity.getIsDeleted() == null) {
+                baseEntity.setIsDeleted(false);
+            }
+        }
     }
 
+    /**
+     * 엔티티 수정 전 감사 정보 설정
+     */
     @PreUpdate
     public void preUpdate(Object entity) {
-        if (entity instanceof AuditLog) {
-            return; // 감지된 엔티티가 AuditLog 자신이면, 아무것도 하지 않고 즉시 종료
-        }
-        try {
-            if (changeTracker == null) {
-                log.warn("ChangeTracker가 주입되지 않았습니다. 변경 추적을 건너뜁니다.");
-                return;
-            }
-
-            Map<String, Object> oldValue = changeTracker.extractOldValue(entity);
-            String entityId = extractEntityId(entity);
+        if (entity instanceof com.agenticcp.core.common.entity.BaseEntity) {
+            com.agenticcp.core.common.entity.BaseEntity baseEntity = (com.agenticcp.core.common.entity.BaseEntity) entity;
             
-            if (oldValue != null && entityId != null) {
-                AuditChangeContext.setChangeData(oldValue, entityId);
-                log.debug("엔티티 변경 전 값 자동 캡처 [Entity: {}, ID: {}]", 
-                         entity.getClass().getSimpleName(), entityId);
-            }
-            
-        } catch (Exception e) {
-            log.warn("엔티티 변경 추적 중 오류 발생 [Entity: {}]: {}",
-                    entity.getClass().getSimpleName(), e.getMessage());
+            baseEntity.setUpdatedAt(LocalDateTime.now());
+            baseEntity.setUpdatedBy(getCurrentUser());
         }
     }
 
-    @PreRemove
-    public void preRemove(Object entity) {
+    /**
+     * 현재 사용자 정보 조회
+     */
+    private String getCurrentUser() {
         try {
-            if (changeTracker == null) {
-                return;
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated() && 
+                !"anonymousUser".equals(authentication.getPrincipal())) {
+                return authentication.getName();
             }
-
-            Map<String, Object> oldValue = changeTracker.extractOldValue(entity);
-            String entityId = extractEntityId(entity);
-            
-            if (oldValue != null && entityId != null) {
-                AuditChangeContext.setChangeData(oldValue, entityId);
-                log.debug("엔티티 삭제 전 값 자동 캡처 [Entity: {}, ID: {}]", 
-                         entity.getClass().getSimpleName(), entityId);
-            }
-            
         } catch (Exception e) {
-            log.warn("엔티티 삭제 추적 중 오류 발생 [Entity: {}]: {}", 
-                    entity.getClass().getSimpleName(), e.getMessage());
+            // SecurityContext가 없는 경우 무시
         }
-    }
-
-    private String extractEntityId(Object entity) {
-        try {
-            try {
-                Object id = entity.getClass().getMethod("getId").invoke(entity);
-                return id != null ? id.toString() : null;
-            } catch (NoSuchMethodException e) {
-            }
-
-            for (Field field : entity.getClass().getDeclaredFields()) {
-                if (field.isAnnotationPresent(jakarta.persistence.Id.class)) {
-                    field.setAccessible(true);
-                    Object id = field.get(entity);
-                    return id != null ? id.toString() : null;
-                }
-            }
-
-            Class<?> superClass = entity.getClass().getSuperclass();
-            if (superClass != null) {
-                for (Field field : superClass.getDeclaredFields()) {
-                    if (field.isAnnotationPresent(jakarta.persistence.Id.class)) {
-                        field.setAccessible(true);
-                        Object id = field.get(entity);
-                        return id != null ? id.toString() : null;
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            log.debug("엔티티 ID 추출 실패: {}", e.getMessage());
-        }
-        
-        return null;
+        return "system";
     }
 }
-
