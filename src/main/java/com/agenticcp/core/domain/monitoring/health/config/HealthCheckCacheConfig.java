@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 public class HealthCheckCacheConfig {
     
     @Bean
+    @org.springframework.context.annotation.Primary
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCaffeine(Caffeine.newBuilder()

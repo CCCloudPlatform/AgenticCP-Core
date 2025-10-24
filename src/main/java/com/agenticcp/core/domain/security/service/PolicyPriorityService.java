@@ -98,7 +98,7 @@ public class PolicyPriorityService {
      * @return 할당된 우선순위
      */
     @Transactional(readOnly = true)
-    public Integer assignAutoPriority(String tenantId) {
+    public Integer assignAutoPriority(Long tenantId) {
         List<SecurityPolicy> existingPolicies;
         
         if (tenantId != null) {
@@ -408,7 +408,7 @@ public class PolicyPriorityService {
      * @return 다음 사용 가능한 우선순위
      */
     @Transactional(readOnly = true)
-    public Integer findNextAvailablePriority(String tenantId, Integer currentPriority) {
+    public Integer findNextAvailablePriority(Long tenantId, Integer currentPriority) {
         if (currentPriority == null) {
             currentPriority = DEFAULT_PRIORITY;
         }
