@@ -1,0 +1,221 @@
+package com.agenticcp.core.domain.organization.controller;
+
+import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
+import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
+import com.agenticcp.core.domain.organization.service.OrganizationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/organizations")
+@RequiredArgsConstructor
+@Tag(name = "Organization Management", description = "조직 관리 API")
+public class OrganizationController {
+    
+    private final OrganizationService organizationService;
+    
+    /**
+     * 조직 생성
+     */
+    @PostMapping
+    @Operation(
+        summary = "조직 생성",
+        description = "새로운 조직을 생성합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "조직 생성 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+        @ApiResponse(responseCode = "409", description = "중복된 조직명")
+    })
+    public ResponseEntity<OrganizationResponse> createOrganization(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "조직 생성 요청 정보",
+                required = true,
+                content = @Content(schema = @Schema(implementation = CreateOrganizationRequest.class))
+            )
+            @Valid @RequestBody CreateOrganizationRequest request) {
+        log.info("[OrganizationController] createOrganization - orgName={}", request.getOrgName());
+        
+        // 현재 사용자의 테넌트 ID 가져오기
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        
+        OrganizationResponse response = organizationService.createOrganization(request, tenantId);
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    
+    /**
+     * 조직 조회 (단일)
+     */
+    @GetMapping("/{id}")
+    @Operation(
+        summary = "조직 조회",
+        description = "조직 ID로 특정 조직 정보를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class))),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+    })
+    public ResponseEntity<OrganizationResponse> getOrganization(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getOrganization - id={}", id);
+        
+        // 현재 사용자의 테넌트 ID 가져오기
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        
+        OrganizationResponse response = organizationService.getOrganization(id, tenantId);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 조직 목록 조회
+     */
+    @GetMapping
+    @Operation(
+        summary = "조직 목록 조회",
+        description = "현재 테넌트의 모든 조직 목록을 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class)))
+    })
+    public ResponseEntity<List<OrganizationResponse>> getOrganizations() {
+        log.info("[OrganizationController] getOrganizations");
+        
+        // 현재 사용자의 테넌트 ID 가져오기
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        
+        List<OrganizationResponse> responses = organizationService.getOrganizations(tenantId);
+        
+        return ResponseEntity.ok(responses);
+    }
+    
+    /**
+     * 조직 수정
+     */
+    @PutMapping("/{id}")
+    @Operation(
+        summary = "조직 수정",
+        description = "기존 조직의 정보를 수정합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "수정 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class))),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+        @ApiResponse(responseCode = "409", description = "중복된 조직명")
+    })
+    public ResponseEntity<OrganizationResponse> updateOrganization(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "조직 수정 요청 정보",
+                required = true,
+                content = @Content(schema = @Schema(implementation = UpdateOrganizationRequest.class))
+            )
+            @Valid @RequestBody UpdateOrganizationRequest request) {
+        log.info("[OrganizationController] updateOrganization - id={}, orgName={}", id, request.getOrgName());
+        
+        // 현재 사용자의 테넌트 ID 가져오기
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        
+        OrganizationResponse response = organizationService.updateOrganization(id, request, tenantId);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 조직 삭제
+     */
+    @DeleteMapping("/{id}")
+    @Operation(
+        summary = "조직 삭제",
+        description = "조직을 삭제합니다. 하위 조직이 있는 경우 삭제할 수 없습니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음"),
+        @ApiResponse(responseCode = "409", description = "하위 조직이 존재하여 삭제할 수 없음")
+    })
+    public ResponseEntity<Void> deleteOrganization(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] deleteOrganization - id={}", id);
+        
+        // 현재 사용자의 테넌트 ID 가져오기
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        
+        organizationService.deleteOrganization(id, tenantId);
+        
+        return ResponseEntity.noContent().build();
+    }
+    
+    /**
+     * 테넌트별 조직 수 조회
+     */
+    @GetMapping("/count")
+    @Operation(
+        summary = "조직 수 조회",
+        description = "현재 테넌트의 조직 수를 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공")
+    })
+    public ResponseEntity<Long> getOrganizationCount() {
+        log.info("[OrganizationController] getOrganizationCount");
+        
+        // 현재 사용자의 테넌트 ID 가져오기
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        
+        Long count = organizationService.getOrganizationCount(tenantId);
+        
+        return ResponseEntity.ok(count);
+    }
+    
+    /**
+     * 특정 조직의 하위 조직 목록 조회
+     */
+    @GetMapping("/{id}/children")
+    @Operation(
+        summary = "하위 조직 목록 조회",
+        description = "특정 조직의 하위 조직 목록을 조회합니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+                     content = @Content(schema = @Schema(implementation = OrganizationResponse.class))),
+        @ApiResponse(responseCode = "404", description = "상위 조직을 찾을 수 없음")
+    })
+    public ResponseEntity<List<OrganizationResponse>> getChildOrganizations(
+            @Parameter(description = "상위 조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] getChildOrganizations - parentOrgId={}", id);
+        
+        // 현재 사용자의 테넌트 ID 가져오기
+        Long tenantId = TenantContextHolder.getCurrentTenantOrThrow().getId();
+        
+        List<OrganizationResponse> responses = organizationService.getChildOrganizations(id, tenantId);
+        
+        return ResponseEntity.ok(responses);
+    }
+}
