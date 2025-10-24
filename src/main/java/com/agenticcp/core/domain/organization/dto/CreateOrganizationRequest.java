@@ -19,4 +19,13 @@ public class CreateOrganizationRequest {
     
     @Size(max = 1000, message = "설명은 1000자를 초과할 수 없습니다")
     private String description;
+    
+    private Long parentOrganizationId; // 상위 조직 ID (선택 사항)
+    private String orgType; // 조직 타입 (선택 사항)
+    private String contactEmail;
+    private String contactPhone;
+    private String address;
+    private String website;
+    private Integer maxUsers;
+    private String settings; // JSON for organization-specific settings
 }

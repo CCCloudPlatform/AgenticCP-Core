@@ -19,4 +19,13 @@ public class UpdateOrganizationRequest {
     
     @Size(max = 1000, message = "설명은 1000자를 초과할 수 없습니다")
     private String description;
+    
+    private Long parentOrganizationId;
+    private String orgType;
+    private String contactEmail;
+    private String contactPhone;
+    private String address;
+    private String website;
+    private Integer maxUsers;
+    private String settings;
 }
