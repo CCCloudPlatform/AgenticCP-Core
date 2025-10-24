@@ -18,7 +18,6 @@ public class OrganizationResponse {
     private String orgKey;
     private String orgName;
     private String description;
-    private Long tenantId;
     private Long parentOrgId;
     private String status;
     private String orgType;
@@ -41,7 +40,6 @@ public class OrganizationResponse {
                 .orgKey(organization.getOrgKey())
                 .orgName(organization.getOrgName())
                 .description(organization.getDescription())
-                .tenantId(organization.getTenant().getId())
                 .parentOrgId(organization.getParentOrganization() != null ? 
                     organization.getParentOrganization().getId() : null)
                 .status(organization.getStatus() != null ? organization.getStatus().name() : null)
