@@ -2,7 +2,6 @@ package com.agenticcp.core.domain.organization.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,9 +27,6 @@ public class Organization extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_org_id")
