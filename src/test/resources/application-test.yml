@@ -31,6 +31,10 @@ app:
   redis:
     enabled: ${APP_REDIS_ENABLED:false}
 
+# AWS 설정 (테스트용)
+aws:
+  region: us-east-1
+
 # 테스트용 암호화 키
 config:
   cipher:
