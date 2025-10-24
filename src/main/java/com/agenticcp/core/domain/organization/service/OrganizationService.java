@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.organization.service;
 
 import com.agenticcp.core.common.enums.Status;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
@@ -11,7 +10,6 @@ import com.agenticcp.core.domain.organization.dto.OrganizationStatsResponse;
 import com.agenticcp.core.domain.organization.dto.MoveOrganizationRequest;
 import com.agenticcp.core.domain.organization.entity.Organization;
 import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,28 +25,41 @@ import java.util.stream.Collectors;
 public class OrganizationService {
     
     private final OrganizationRepository organizationRepository;
-    private final TenantRepository tenantRepository;
     
     /**
      * 조직 생성
      */
-    public OrganizationResponse createOrganization(CreateOrganizationRequest request, Long tenantId) {
-        log.info("조직 생성 요청: orgName={}, tenantId={}", request.getOrgName(), tenantId);
-        
-        // 테넌트 존재 여부 확인
-        Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 테넌트입니다: " + tenantId));
+    public OrganizationResponse createOrganization(CreateOrganizationRequest request) {
+        log.info("조직 생성 요청: orgName={}", request.getOrgName());
         
         // 조직명 중복 검사
-        validateOrgNameUnique(request.getOrgName(), tenantId);
+        validateOrgNameUnique(request.getOrgName());
+        
+        // 조직 키 생성 (orgName 기반)
+        String orgKey = generateOrgKey(request.getOrgName());
         
         // 조직 생성
         Organization organization = Organization.builder()
+                .orgKey(orgKey)
                 .orgName(request.getOrgName())
                 .description(request.getDescription())
-                .tenant(tenant)
                 .status(Status.ACTIVE)
+                .orgType(request.getOrgType() != null ? 
+                    Organization.OrganizationType.valueOf(request.getOrgType()) : null)
+                .contactEmail(request.getContactEmail())
+                .contactPhone(request.getContactPhone())
+                .address(request.getAddress())
+                .website(request.getWebsite())
+                .maxUsers(request.getMaxUsers())
+                .settings(request.getSettings())
                 .build();
+        
+        // 상위 조직 설정
+        if (request.getParentOrganizationId() != null) {
+            Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
+            organization.setParentOrganization(parentOrg);
+        }
         
         Organization savedOrganization = organizationRepository.save(organization);
         log.info("조직 생성 완료: id={}, orgName={}", savedOrganization.getId(), savedOrganization.getOrgName());
@@ -60,10 +71,10 @@ public class OrganizationService {
      * 조직 조회 (단일)
      */
     @Transactional(readOnly = true)
-    public OrganizationResponse getOrganization(Long id, Long tenantId) {
-        log.info("조직 조회 요청: id={}, tenantId={}", id, tenantId);
+    public OrganizationResponse getOrganization(Long id) {
+        log.info("조직 조회 요청: id={}", id);
         
-        Organization organization = organizationRepository.findByIdAndTenantId(id, tenantId)
+        Organization organization = organizationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
         
         return OrganizationResponse.from(organization);
@@ -73,10 +84,10 @@ public class OrganizationService {
      * 조직 목록 조회
      */
     @Transactional(readOnly = true)
-    public List<OrganizationResponse> getOrganizations(Long tenantId) {
-        log.info("조직 목록 조회 요청: tenantId={}", tenantId);
+    public List<OrganizationResponse> getOrganizations() {
+        log.info("조직 목록 조회 요청");
         
-        List<Organization> organizations = organizationRepository.findByTenantId(tenantId);
+        List<Organization> organizations = organizationRepository.findAll();
         
         return organizations.stream()
                 .map(OrganizationResponse::from)
@@ -86,21 +97,38 @@ public class OrganizationService {
     /**
      * 조직 수정
      */
-    public OrganizationResponse updateOrganization(Long id, UpdateOrganizationRequest request, Long tenantId) {
-        log.info("조직 수정 요청: id={}, orgName={}, tenantId={}", id, request.getOrgName(), tenantId);
+    public OrganizationResponse updateOrganization(Long id, UpdateOrganizationRequest request) {
+        log.info("조직 수정 요청: id={}, orgName={}", id, request.getOrgName());
         
-        // 조직 존재 여부 및 테넌트 검증
-        Organization organization = organizationRepository.findByIdAndTenantId(id, tenantId)
+        // 조직 존재 여부 확인
+        Organization organization = organizationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
         
         // 조직명 중복 검사 (자신 제외)
         if (!organization.getOrgName().equals(request.getOrgName())) {
-            validateOrgNameUnique(request.getOrgName(), tenantId);
+            validateOrgNameUnique(request.getOrgName());
         }
         
         // 조직 정보 수정
         organization.setOrgName(request.getOrgName());
         organization.setDescription(request.getDescription());
+        organization.setOrgType(request.getOrgType() != null ? 
+            Organization.OrganizationType.valueOf(request.getOrgType()) : null);
+        organization.setContactEmail(request.getContactEmail());
+        organization.setContactPhone(request.getContactPhone());
+        organization.setAddress(request.getAddress());
+        organization.setWebsite(request.getWebsite());
+        organization.setMaxUsers(request.getMaxUsers());
+        organization.setSettings(request.getSettings());
+        
+        // 상위 조직 변경
+        if (request.getParentOrganizationId() != null) {
+            Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
+            organization.setParentOrganization(parentOrg);
+        } else {
+            organization.setParentOrganization(null);
+        }
         
         Organization updatedOrganization = organizationRepository.save(organization);
         log.info("조직 수정 완료: id={}, orgName={}", updatedOrganization.getId(), updatedOrganization.getOrgName());
@@ -111,11 +139,11 @@ public class OrganizationService {
     /**
      * 조직 삭제
      */
-    public void deleteOrganization(Long id, Long tenantId) {
-        log.info("조직 삭제 요청: id={}, tenantId={}", id, tenantId);
+    public void deleteOrganization(Long id) {
+        log.info("조직 삭제 요청: id={}", id);
         
-        // 조직 존재 여부 및 테넌트 검증
-        Organization organization = organizationRepository.findByIdAndTenantId(id, tenantId)
+        // 조직 존재 여부 확인
+        Organization organization = organizationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
         
         // 하위 조직 존재 여부 확인
@@ -131,29 +159,49 @@ public class OrganizationService {
     /**
      * 조직명 중복 검증
      */
-    private void validateOrgNameUnique(String orgName, Long tenantId) {
-        if (organizationRepository.existsByOrgNameAndTenantId(orgName, tenantId)) {
+    private void validateOrgNameUnique(String orgName) {
+        if (organizationRepository.existsByOrgName(orgName)) {
             throw new IllegalArgumentException("이미 존재하는 조직명입니다: " + orgName);
         }
     }
     
     /**
-     * 테넌트별 조직 수 조회
+     * 조직 키 생성
+     */
+    private String generateOrgKey(String orgName) {
+        String baseKey = orgName.toUpperCase()
+                .replaceAll("[^A-Z0-9]", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
+        
+        String orgKey = baseKey;
+        int counter = 1;
+        
+        while (organizationRepository.existsByOrgKey(orgKey)) {
+            orgKey = baseKey + "_" + counter;
+            counter++;
+        }
+        
+        return orgKey;
+    }
+    
+    /**
+     * 조직 수 조회
      */
     @Transactional(readOnly = true)
-    public long getOrganizationCount(Long tenantId) {
-        return organizationRepository.countByTenantId(tenantId);
+    public long getOrganizationCount() {
+        return organizationRepository.count();
     }
     
     /**
      * 특정 조직의 하위 조직 목록 조회
      */
     @Transactional(readOnly = true)
-    public List<OrganizationResponse> getChildOrganizations(Long parentOrgId, Long tenantId) {
-        log.info("하위 조직 목록 조회 요청: parentOrgId={}, tenantId={}", parentOrgId, tenantId);
+    public List<OrganizationResponse> getChildOrganizations(Long parentOrgId) {
+        log.info("하위 조직 목록 조회 요청: parentOrgId={}", parentOrgId);
         
-        // 상위 조직 존재 여부 및 테넌트 검증
-        organizationRepository.findByIdAndTenantId(parentOrgId, tenantId)
+        // 상위 조직 존재 여부 확인
+        organizationRepository.findById(parentOrgId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + parentOrgId));
         
         List<Organization> childOrganizations = organizationRepository.findByParentOrganizationId(parentOrgId);
@@ -166,17 +214,15 @@ public class OrganizationService {
     /**
      * 전체 조직 트리 조회
      */
-    public List<OrganizationHierarchyResponse> getOrganizationTree(Long tenantId) {
-        log.info("[OrganizationService] 전체 조직 트리 조회 요청: tenantId={}", tenantId);
+    public List<OrganizationHierarchyResponse> getOrganizationTree() {
+        log.info("[OrganizationService] 전체 조직 트리 조회 요청");
         
-        List<Organization> organizations = organizationRepository.findByTenantId(tenantId);
+        List<Organization> organizations = organizationRepository.findAll();
         Map<Long, List<Organization>> childrenMap = organizations.stream()
                 .filter(org -> org.getParentOrganization() != null)
                 .collect(Collectors.groupingBy(org -> org.getParentOrganization().getId()));
         
-        List<Organization> rootOrganizations = organizations.stream()
-                .filter(org -> org.getParentOrganization() == null)
-                .collect(Collectors.toList());
+        List<Organization> rootOrganizations = organizationRepository.findRootOrganizations();
         
         List<OrganizationHierarchyResponse> result = rootOrganizations.stream()
                 .map(org -> buildHierarchyResponse(org, childrenMap, 0, org.getOrgName()))
@@ -189,10 +235,10 @@ public class OrganizationService {
     /**
      * 조직 경로 조회
      */
-    public OrganizationPathResponse getOrganizationPath(Long orgId, Long tenantId) {
-        log.info("[OrganizationService] 조직 경로 조회 요청: orgId={}, tenantId={}", orgId, tenantId);
+    public OrganizationPathResponse getOrganizationPath(Long orgId) {
+        log.info("[OrganizationService] 조직 경로 조회 요청: orgId={}", orgId);
         
-        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+        Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
         
         List<OrganizationResponse> path = new ArrayList<>();
@@ -211,10 +257,10 @@ public class OrganizationService {
     /**
      * 상위 조직 목록 조회
      */
-    public List<OrganizationResponse> getAncestors(Long orgId, Long tenantId) {
-        log.info("[OrganizationService] 상위 조직 목록 조회 요청: orgId={}, tenantId={}", orgId, tenantId);
+    public List<OrganizationResponse> getAncestors(Long orgId) {
+        log.info("[OrganizationService] 상위 조직 목록 조회 요청: orgId={}", orgId);
         
-        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+        Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
         
         List<OrganizationResponse> ancestors = new ArrayList<>();
@@ -232,10 +278,10 @@ public class OrganizationService {
     /**
      * 하위 조직 목록 조회 (모든 레벨)
      */
-    public List<OrganizationResponse> getDescendants(Long orgId, Long tenantId) {
-        log.info("[OrganizationService] 하위 조직 목록 조회 요청: orgId={}, tenantId={}", orgId, tenantId);
+    public List<OrganizationResponse> getDescendants(Long orgId) {
+        log.info("[OrganizationService] 하위 조직 목록 조회 요청: orgId={}", orgId);
         
-        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+        Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
         
         List<OrganizationResponse> descendants = new ArrayList<>();
@@ -249,17 +295,17 @@ public class OrganizationService {
      * 조직 이동
      */
     @Transactional
-    public OrganizationResponse moveOrganization(Long orgId, MoveOrganizationRequest request, Long tenantId) {
-        log.info("[OrganizationService] 조직 이동 요청: orgId={}, newParentId={}, tenantId={}", 
-                orgId, request.getNewParentId(), tenantId);
+    public OrganizationResponse moveOrganization(Long orgId, MoveOrganizationRequest request) {
+        log.info("[OrganizationService] 조직 이동 요청: orgId={}, newParentId={}", 
+                orgId, request.getNewParentId());
         
-        Organization organization = organizationRepository.findByIdAndTenantId(orgId, tenantId)
+        Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
         
         // 새로운 상위 조직 검증
         Organization newParent = null;
         if (request.getNewParentId() != null) {
-            newParent = organizationRepository.findByIdAndTenantId(request.getNewParentId(), tenantId)
+            newParent = organizationRepository.findById(request.getNewParentId())
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getNewParentId()));
             
             // 순환 참조 방지
@@ -277,10 +323,10 @@ public class OrganizationService {
     /**
      * 조직 통계 조회
      */
-    public OrganizationStatsResponse getOrganizationStats(Long tenantId) {
-        log.info("[OrganizationService] 조직 통계 조회 요청: tenantId={}", tenantId);
+    public OrganizationStatsResponse getOrganizationStats() {
+        log.info("[OrganizationService] 조직 통계 조회 요청");
         
-        List<Organization> organizations = organizationRepository.findByTenantId(tenantId);
+        List<Organization> organizations = organizationRepository.findAll();
         
         long totalOrganizations = organizations.size();
         long activeOrganizations = organizations.stream()
