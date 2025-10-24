@@ -1,4 +1,5 @@
 spring:
+  
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
     driver-class-name: org.h2.Driver
@@ -12,6 +13,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
   
   cache:
     type: simple
@@ -29,7 +31,7 @@ spring:
 
 app:
   redis:
-    enabled: ${APP_REDIS_ENABLED:false}
+    enabled: false
 
 # 테스트용 암호화 키
 config:

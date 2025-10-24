@@ -62,7 +62,7 @@ public class PolicyPriorityController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> assignAutoPriority(
             @RequestParam(required = false) String tenantId) {
         
-        Integer assignedPriority = policyPriorityService.assignAutoPriority(tenantId);
+        Integer assignedPriority = policyPriorityService.assignAutoPriority(tenantId != null ? Long.valueOf(tenantId) : null);
         
         Map<String, Object> result = new HashMap<>();
         result.put("tenantId", tenantId != null ? tenantId : "GLOBAL");
@@ -81,7 +81,7 @@ public class PolicyPriorityController {
             @RequestParam(required = false) String tenantId,
             @RequestParam(required = false) Integer currentPriority) {
         
-        Integer nextPriority = policyPriorityService.findNextAvailablePriority(tenantId, currentPriority);
+        Integer nextPriority = policyPriorityService.findNextAvailablePriority(tenantId != null ? Long.valueOf(tenantId) : null, currentPriority);
         
         Map<String, Object> result = new HashMap<>();
         result.put("tenantId", tenantId != null ? tenantId : "GLOBAL");
@@ -103,7 +103,7 @@ public class PolicyPriorityController {
         
         List<SecurityPolicy> policies;
         if (tenantId != null) {
-            policies = policyRepository.findByTenantIdAndIsEnabledTrue(tenantId);
+            policies = policyRepository.findByTenantIdAndIsEnabledTrue(Long.valueOf(tenantId));
         } else {
             policies = policyRepository.findByIsGlobalTrueAndIsEnabledTrue();
         }

@@ -8,7 +8,16 @@ import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest(properties = {
         "app.redis.enabled=false",
-        "spring.cache.type=simple"
+        "spring.cache.type=simple",
+        "spring.datasource.url=jdbc:h2:mem:testdb",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.show-sql=false",
+        "logging.level.org.springframework.web=WARN",
+        "logging.level.org.hibernate=WARN",
+        "logging.level.org.springframework.boot.autoconfigure=WARN",
+        "logging.level.org.springframework.context=WARN",
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.redis.RedisAutoConfiguration"
 })
 @ActiveProfiles("test")
 class AgenticCpCoreApplicationTests {
