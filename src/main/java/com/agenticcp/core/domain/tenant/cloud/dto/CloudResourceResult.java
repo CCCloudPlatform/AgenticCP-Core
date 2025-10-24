@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.tenant.controller.cloud.dto;
+package com.agenticcp.core.domain.tenant.cloud.dto;
 
 import lombok.Builder;
 

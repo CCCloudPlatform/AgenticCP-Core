@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.tenant.adapter;
 
-import com.agenticcp.core.domain.tenant.controller.cloud.CloudProviderType;
+import com.agenticcp.core.domain.tenant.cloud.CloudProviderType;
 import com.agenticcp.core.domain.tenant.entity.TenantIsolation;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +21,7 @@ public class TenantIsolationAdapterFactory {
     public TenantIsolationAdapterFactory(List<TenantIsolationAdapter> adapterList) {
         this.adapters = adapterList.stream()
                 .collect(Collectors.toMap(
-                        adapter -> CloudProviderType.valueOf(adapter.getSupportedCloudProvider()),
+                        adapter -> adapter.getSupportedCloudProvider(),
                         Function.identity()
                 ));
     }

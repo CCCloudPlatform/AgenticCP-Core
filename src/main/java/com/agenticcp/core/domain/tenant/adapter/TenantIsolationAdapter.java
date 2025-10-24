@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.tenant.adapter;
 
+import com.agenticcp.core.domain.tenant.cloud.CloudProviderType;
 import com.agenticcp.core.domain.tenant.entity.TenantIsolation;
 import com.agenticcp.core.domain.tenant.adapter.dto.IsolationResult;
 import com.agenticcp.core.domain.tenant.adapter.dto.IsolationStatus;
@@ -47,5 +48,5 @@ public interface TenantIsolationAdapter {
      * 
      * @return 클라우드 프로바이더 타입
      */
-    String getSupportedCloudProvider();
+    CloudProviderType getSupportedCloudProvider();
 }

@@ -6,8 +6,7 @@ import com.agenticcp.core.domain.tenant.adapter.dto.IsolationResult;
 import com.agenticcp.core.domain.tenant.adapter.dto.IsolationStatus;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.enums.CommonErrorCode;
-import com.agenticcp.core.domain.tenant.controller.cloud.CloudProviderType;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.tenant.cloud.CloudProviderType;
 import com.agenticcp.core.domain.tenant.entity.TenantIsolation;
 import com.agenticcp.core.domain.tenant.event.TenantIsolationAppliedEvent;
 import lombok.RequiredArgsConstructor;
@@ -40,42 +39,26 @@ public class TenantIsolationService {
     public IsolationResult applyIsolationPolicy(String tenantKey, TenantIsolation isolation, 
                                                CloudProviderType cloudProviderType) {
         try {
-            // 1. 테넌트 존재 여부 확인
-            Tenant tenant = tenantService.getTenantByKey(tenantKey)
-                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, 
-                        "테넌트를 찾을 수 없습니다: " + tenantKey));
-            
-            // 2. 적절한 Adapter 선택
+
+            // Adapter 가져오기
             TenantIsolationAdapter adapter = adapterFactory.getAdapter(cloudProviderType);
-            
-            // 3. 격리 레벨 지원 여부 확인
-            if (!adapter.supportsIsolationLevel(isolation.getIsolationLevel())) {
-                throw new BusinessException(CommonErrorCode.BAD_REQUEST, 
-                    "격리 레벨 " + isolation.getIsolationLevel() + "은(는) " + cloudProviderType + "에서 지원되지 않습니다.");
-            }
-            
-            // 4. 격리 정책 적용
-            log.info("격리 정책 적용 시작 - 테넌트: {}, 레벨: {}, 프로바이더: {}", 
-                    tenantKey, isolation.getIsolationLevel(), cloudProviderType);
-            
+
+            // Adapter 에게 위임
             IsolationResult result = adapter.applyIsolationPolicy(tenantKey, isolation);
             
-            // 5. 성공 시 이벤트 발행 (TenantIsolationEventListener가 비동기로 처리)
+            // 성공 시 이벤트 발행 (TenantIsolationEventListener가 비동기로 처리)
             if (result.success()) {
                 eventPublisher.publishEvent(new TenantIsolationAppliedEvent(this, tenantKey, isolation));
                 log.info("격리 정책이 성공적으로 적용되었습니다 - 테넌트: {}", tenantKey);
             } else {
-                log.error("격리 정책 적용 실패 - 테넌트: {}, 사유: {}", 
+                log.error("격리 정책 적용 실패 - 테넌트: {}, 사유: {}",
                          tenantKey, result.message());
                 throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                     "격리 정책 적용에 실패했습니다: " + result.message());
             }
             
             return result;
-            
-        } catch (BusinessException e) {
-            // BusinessException은 그대로 재던지기
-            throw e;
+
         } catch (Exception e) {
             log.error("격리 정책 적용 중 오류 발생 - 테넌트: {}", tenantKey, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
@@ -94,16 +77,11 @@ public class TenantIsolationService {
     public void removeIsolationPolicy(String tenantKey, CloudProviderType cloudProviderType) {
         try {
             TenantIsolationAdapter adapter = adapterFactory.getAdapter(cloudProviderType);
-            
-            log.info("격리 정책 제거 시작 - 테넌트: {}, 프로바이더: {}", 
-                    tenantKey, cloudProviderType);
-            
+
             adapter.removeIsolationPolicy(tenantKey);
             
             log.info("격리 정책이 성공적으로 제거되었습니다 - 테넌트: {}", tenantKey);
-            
-        } catch (BusinessException e) {
-            throw e;
+
         } catch (Exception e) {
             log.error("격리 정책 제거 중 오류 발생 - 테넌트: {}", tenantKey, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
@@ -123,8 +101,7 @@ public class TenantIsolationService {
         try {
             TenantIsolationAdapter adapter = adapterFactory.getAdapter(cloudProviderType);
             return adapter.getIsolationStatus(tenantKey);
-        } catch (BusinessException e) {
-            throw e;
+
         } catch (Exception e) {
             log.error("격리 상태 조회 중 오류 발생 - 테넌트: {}", tenantKey, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
@@ -142,8 +119,8 @@ public class TenantIsolationService {
     public List<CloudProviderType> getSupportedProviders(TenantIsolation.IsolationLevel isolationLevel) {
         try {
             return adapterFactory.getAdaptersSupporting(isolationLevel).stream()
-                    .map(adapter -> CloudProviderType.valueOf(adapter.getSupportedCloudProvider()))
-                    .collect(java.util.stream.Collectors.toList());
+                    .map(adapter -> adapter.getSupportedCloudProvider())
+                    .toList();
         } catch (Exception e) {
             log.error("지원하는 클라우드 프로바이더 조회 중 오류 발생 - 격리 레벨: {}", isolationLevel, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 

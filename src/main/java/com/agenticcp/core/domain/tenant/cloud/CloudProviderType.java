@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.tenant.controller.cloud;
+package com.agenticcp.core.domain.tenant.cloud;
 
 import lombok.Getter;
 
