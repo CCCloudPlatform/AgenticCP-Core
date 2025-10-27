@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model;
+package com.agenticcp.core.domain.cloud.port.model.aws;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,10 +1,9 @@
-package com.agenticcp.core.domain.cloud.port.model;
+package com.agenticcp.core.domain.cloud.port.model.aws;
 
 import lombok.Builder;
 import lombok.Data;
 
 import java.util.Map;
-import java.util.Set;
 
 /**
  * S3 버킷 조회 조건 DTO
@@ -26,15 +25,13 @@ public class S3BucketQuery {
      * 필터링 조건
      */
     private String nameContains;
-    private Set<String> regions;
     private Map<String, String> tagsEquals;
-    private Boolean versioningEnabled;
 
     /**
      * 정렬 조건
      */
-    private String sortBy; // name, creationDate, size
-    private String sortDirection; // asc, desc
+    private String sortBy;
+    private String sortDirection;
 
     /**
      * 기본값으로 페이징 설정

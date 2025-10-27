@@ -17,14 +17,13 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
+// TODO: AwsCapabilityConfig 로 통합?
 public class S3BucketCapabilityConfig {
 
     private final CapabilityRegistry capabilityRegistry;
 
     @PostConstruct
     public void initializeS3BucketCapabilities() {
-        log.info("S3 버킷 Capability 등록 시작");
-
         // AWS S3 버킷 Capability 등록
         CspCapability awsS3Capability = CspCapability.builder()
                 .supportsStart(false)
@@ -35,7 +34,5 @@ public class S3BucketCapabilityConfig {
                 .build();
 
         capabilityRegistry.register(ProviderType.AWS, "S3", "BUCKET", awsS3Capability);
-
-        log.info("AWS S3 버킷 Capability 등록 완료: {}", awsS3Capability);
     }
 }

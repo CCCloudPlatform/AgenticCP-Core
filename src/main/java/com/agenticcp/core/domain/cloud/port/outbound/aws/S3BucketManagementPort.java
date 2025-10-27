@@ -1,8 +1,8 @@
 package com.agenticcp.core.domain.cloud.port.outbound.aws;
 
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-
-import java.util.Map;
+import com.agenticcp.core.domain.cloud.port.model.aws.CreateS3BucketCommand;
+import com.agenticcp.core.domain.cloud.port.model.aws.UpdateS3BucketCommand;
 
 /**
  * S3 버킷 관리 포트 - S3 버킷 생성, 수정, 삭제 기능을 정의하는 계약
@@ -17,14 +17,19 @@ public interface S3BucketManagementPort {
 
     /**
      * S3 버킷을 생성합니다.
-     * 
-     * @param bucketName 버킷 이름
-     * @param region 리전 (선택적)
-     * @param tags 태그 (선택적)
+     *
      * @return 생성된 CloudResource
      * @throws com.agenticcp.core.common.exception.BusinessException 버킷 이름 중복, 권한 없음, 잘못된 이름 형식
      */
-    CloudResource createBucket(String bucketName, String region, Map<String, String> tags);
+    CloudResource createBucket(CreateS3BucketCommand command);
+
+    /**
+     * S3 버킷 설정을 업데이트합니다.
+     *
+     * @return 업데이트된 CloudResource
+     * @throws com.agenticcp.core.common.exception.BusinessException 버킷 없음, 권한 없음
+     */
+    CloudResource updateBucket(UpdateS3BucketCommand command);
 
     /**
      * S3 버킷을 삭제합니다.
@@ -41,15 +46,4 @@ public interface S3BucketManagementPort {
      * @throws com.agenticcp.core.common.exception.BusinessException 버킷 없음, 권한 없음
      */
     void forceDeleteBucket(String bucketName);
-
-    /**
-     * S3 버킷 설정을 업데이트합니다.
-     * 
-     * @param bucketName 버킷 이름
-     * @param versioningEnabled 버전 관리 활성화 여부
-     * @param tags 태그 (선택적)
-     * @return 업데이트된 CloudResource
-     * @throws com.agenticcp.core.common.exception.BusinessException 버킷 없음, 권한 없음
-     */
-    CloudResource updateBucket(String bucketName, Boolean versioningEnabled, Map<String, String> tags);
 }

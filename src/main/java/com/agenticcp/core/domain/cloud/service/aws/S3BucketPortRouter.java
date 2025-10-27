@@ -103,29 +103,9 @@ public class S3BucketPortRouter {
             throw new IllegalArgumentException("지원하지 않는 프로바이더 타입입니다: " + providerType);
         }
         
-        log.debug("S3 버킷 Management 포트 선택: provider={}, port={}", 
-                providerType, port.getClass().getSimpleName());
-        
+        log.debug("S3 버킷 Management 포트 선택: provider={}, port={}", providerType, port.getClass().getSimpleName());
+
         return port;
-    }
-
-    /**
-     * 지원되는 프로바이더 타입 목록을 반환합니다.
-     * 
-     * @return 지원되는 프로바이더 타입 목록
-     */
-    public java.util.Set<CloudProvider.ProviderType> getSupportedProviders() {
-        return discoveryPorts.keySet();
-    }
-
-    /**
-     * 지정된 프로바이더 타입이 지원되는지 확인합니다.
-     * 
-     * @param providerType 클라우드 프로바이더 타입
-     * @return 지원 여부
-     */
-    public boolean isProviderSupported(CloudProvider.ProviderType providerType) {
-        return discoveryPorts.containsKey(providerType) && managementPorts.containsKey(providerType);
     }
 
     /**

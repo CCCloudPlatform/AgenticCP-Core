@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.outbound.aws;
 
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.S3BucketQuery;
+import com.agenticcp.core.domain.cloud.port.model.aws.S3BucketQuery;
 import org.springframework.data.domain.Page;
 
 import java.util.Optional;
