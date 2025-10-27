@@ -1,16 +1,28 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.s3;
 
+import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.exception.S3ErrorCode;
+import com.agenticcp.core.domain.cloud.exception.AwsErrorCode;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.port.model.aws.CreateS3BucketCommand;
+import com.agenticcp.core.domain.cloud.port.model.aws.UpdateS3BucketCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.aws.S3BucketManagementPort;
+import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -32,58 +44,92 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
     private final S3Client s3Client;
     private final AwsS3BucketMapper mapper;
     private final CloudProviderRepository cloudProviderRepository;
+    private final CredentialProviderPort credentialProviderPort;
 
     @Override
-    public CloudResource createBucket(String bucketName, String region, Map<String, String> tags) {
-        log.info("Creating S3 bucket: {} in region: {}", bucketName, region);
-        
+    public CloudProvider.ProviderType getProviderType() {
+        return CloudProvider.ProviderType.AWS;
+    }
+
+    /**
+     * S3 버킷 생성, 태그 적용, 객체 소유권 및 잠금 설정을 수행합니다.
+     */
+    @Override
+    public CloudResource createBucket(CreateS3BucketCommand command) {
+        log.info("Attempting to create S3 bucket: {} in region: {}",
+                command.getBucketName(), command.getRegion());
+
+        // 자격증명 해결
+        resolveCredentials();
+
+        Instant creationTime = Instant.now();
+
         try {
-            // 버킷 생성 요청 구성
             CreateBucketRequest.Builder requestBuilder = CreateBucketRequest.builder()
-                    .bucket(bucketName);
-            
-            // 리전이 지정된 경우 설정
-            if (region != null && !region.isEmpty()) {
+                    .bucket(command.getBucketName());
+
+            // 리전 설정 (us-east-1은 기본 리전이므로 LocationConstraint 불필요)
+            String region = command.getRegion();
+            if (region != null && !region.isEmpty() && !region.equals("us-east-1")) {
                 requestBuilder.createBucketConfiguration(
-                    CreateBucketConfiguration.builder()
-                            .locationConstraint(BucketLocationConstraint.fromValue(region))
-                            .build()
+                        CreateBucketConfiguration.builder()
+                                .locationConstraint(BucketLocationConstraint.fromValue(region))
+                                .build()
                 );
             }
-            
-            // 버킷 생성
-            s3Client.createBucket(requestBuilder.build());
-            
-            // 태그 설정 (선택적)
-            if (tags != null && !tags.isEmpty()) {
-                setBucketTags(bucketName, tags);
+
+            // 객체 소유권 설정 (ACL 비활성화 및 보안 강화)
+            if (command.getObjectOwnership() != null) {
+                requestBuilder.objectOwnership(ObjectOwnership.fromValue(command.getObjectOwnership()));
             }
-            
-            // 생성된 버킷 정보 조회
-            ListBucketsResponse listResponse = s3Client.listBuckets();
-            Bucket createdBucket = listResponse.buckets().stream()
-                    .filter(bucket -> bucket.name().equals(bucketName))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Created bucket not found: " + bucketName));
-            
-            // AWS Provider 조회
-            CloudProvider awsProvider = getAwsProvider();
-            
-            // 매퍼를 사용하여 CloudResource로 변환
-            CloudResource resource = mapper.toCloudResource(createdBucket, awsProvider);
-            
-            log.info("Successfully created S3 bucket: {}", bucketName);
-            return resource;
-            
-        } catch (BucketAlreadyExistsException e) {
-            log.error("S3 bucket already exists: {}", bucketName);
-            throw new RuntimeException("Bucket already exists: " + bucketName, e);
+
+            // 객체 잠금 설정
+            if (command.getObjectLockEnabled() != null) {
+                requestBuilder.objectLockEnabledForBucket(command.getObjectLockEnabled());
+            }
+
+            // 버킷 생성 실행
+            s3Client.createBucket(requestBuilder.build());
+            log.info("Successfully initiated bucket creation: {}", command.getBucketName());
+
         } catch (BucketAlreadyOwnedByYouException e) {
-            log.error("S3 bucket already owned by you: {}", bucketName);
-            throw new RuntimeException("Bucket already owned by you: " + bucketName, e);
+            // 멱등성(Idempotency) 처리: 이미 내가 소유한 버킷이면 성공으로 간주
+            log.warn("S3 bucket {} already owned by you. Proceeding...", command.getBucketName());
+
+        } catch (BucketAlreadyExistsException e) {
+            // 이름 충돌: 다른 계정이 소유한 버킷
+            log.error("S3 bucket name {} already exists (owned by another account).", command.getBucketName(), e);
+            throw new BusinessException(S3ErrorCode.S3_BUCKET_ALREADY_EXISTS);
+
         } catch (Exception e) {
-            log.error("Failed to create S3 bucket: {}", bucketName, e);
+            // 그 외 AWS SDK 오류
+            log.error("Failed to create S3 bucket: {}", command.getBucketName(), e);
             throw translateException(e);
+        }
+
+        // --- 버킷 생성 성공 또는 'AlreadyOwnedByYou'인 경우 ---
+
+        try {
+            // 태그 설정 (별도 API 호출)
+            if (command.getTags() != null && !command.getTags().isEmpty()) {
+                setBucketTags(command.getBucketName(), command.getTags());
+            }
+
+            Bucket createdBucketInfo = Bucket.builder()
+                    .name(command.getBucketName())
+                    .creationDate(creationTime)
+                    .build();
+
+            CloudProvider awsProvider = getAwsProvider();
+            CloudResource resource = mapper.toCloudResource(createdBucketInfo, awsProvider);
+
+            log.info("Successfully created/verified S3 bucket resource: {}", command.getBucketName());
+            return resource;
+
+        } catch (Exception e) {
+            log.error("Failed during post-creation processing (tagging/mapping) for bucket: {}",
+                    command.getBucketName(), e);
+            throw new BusinessException(CloudErrorCode.CLOUD_TAG_OPERATION_FAILED);
         }
     }
 
@@ -91,10 +137,13 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
     public void deleteBucket(String bucketName) {
         log.info("Deleting S3 bucket: {}", bucketName);
         
+        // 자격증명 해결
+        resolveCredentials();
+        
         try {
             // 버킷이 비어있는지 확인
             if (!isBucketEmpty(bucketName)) {
-                throw new RuntimeException("Bucket is not empty. Use forceDeleteBucket to delete non-empty bucket: " + bucketName);
+                throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED, "Bucket is not empty. Use forceDeleteBucket to delete non-empty bucket: " + bucketName);
             }
             
             // 버킷 삭제
@@ -103,12 +152,11 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
                     .build();
             
             s3Client.deleteBucket(request);
-            
             log.info("Successfully deleted S3 bucket: {}", bucketName);
             
         } catch (NoSuchBucketException e) {
             log.error("S3 bucket not found: {}", bucketName);
-            throw new RuntimeException("Bucket not found: " + bucketName, e);
+            throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
         } catch (Exception e) {
             log.error("Failed to delete S3 bucket: {}", bucketName, e);
             throw translateException(e);
@@ -118,6 +166,9 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
     @Override
     public void forceDeleteBucket(String bucketName) {
         log.info("Force deleting S3 bucket: {}", bucketName);
+        
+        // 자격증명 해결
+        resolveCredentials();
         
         try {
             // 버킷 내 모든 객체 삭제
@@ -134,7 +185,7 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
             
         } catch (NoSuchBucketException e) {
             log.error("S3 bucket not found: {}", bucketName);
-            throw new RuntimeException("Bucket not found: " + bucketName, e);
+            throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
         } catch (Exception e) {
             log.error("Failed to force delete S3 bucket: {}", bucketName, e);
             throw translateException(e);
@@ -142,50 +193,38 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
     }
 
     @Override
-    public CloudResource updateBucket(String bucketName, Boolean versioningEnabled, Map<String, String> tags) {
-        log.info("Updating S3 bucket: {} with versioning: {}, tags: {}", bucketName, versioningEnabled, tags);
-        
+    public CloudResource updateBucket(UpdateS3BucketCommand command) {
+        String bucketName = command.getBucketName();
+        log.info("Updating S3 bucket: {} with command: {}", bucketName, command);
+
+        // 자격증명 해결
+        resolveCredentials();
+
         try {
-            // 버킷 존재 여부 확인
             if (!bucketExists(bucketName)) {
-                throw new RuntimeException("Bucket not found: " + bucketName);
+                throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
             }
-            
-            // 버전 관리 설정 (선택적)
-            if (versioningEnabled != null) {
-                setBucketVersioning(bucketName, versioningEnabled);
+
+            if (command.getVersioningEnabled() != null) {
+                setBucketVersioning(bucketName, command.getVersioningEnabled());
             }
-            
-            // 태그 설정 (선택적)
-            if (tags != null && !tags.isEmpty()) {
-                setBucketTags(bucketName, tags);
+
+            if (command.getTags() != null) {
+                setBucketTags(bucketName, command.getTags());
             }
-            
-            // 업데이트된 버킷 정보 조회
-            ListBucketsResponse listResponse = s3Client.listBuckets();
-            Bucket updatedBucket = listResponse.buckets().stream()
-                    .filter(bucket -> bucket.name().equals(bucketName))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Updated bucket not found: " + bucketName));
-            
-            // AWS Provider 조회
+
             CloudProvider awsProvider = getAwsProvider();
-            
-            // 매퍼를 사용하여 CloudResource로 변환
-            CloudResource resource = mapper.toCloudResource(updatedBucket, awsProvider);
-            
+            Bucket updatedBucketInfo = Bucket.builder()
+                    .name(bucketName)
+                    .build();
+
+            CloudResource resource = mapper.toCloudResource(updatedBucketInfo, awsProvider);
             log.info("Successfully updated S3 bucket: {}", bucketName);
             return resource;
-            
         } catch (Exception e) {
             log.error("Failed to update S3 bucket: {}", bucketName, e);
             throw translateException(e);
         }
-    }
-
-    @Override
-    public CloudProvider.ProviderType getProviderType() {
-        return CloudProvider.ProviderType.AWS;
     }
 
     /**
@@ -201,9 +240,12 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
             ListObjectsV2Response response = s3Client.listObjectsV2(request);
             return response.contents().isEmpty();
             
+        } catch (NoSuchBucketException e) {
+            log.warn("isBucketEmpty check failed, bucket {} not found.", bucketName);
+            return true;
         } catch (Exception e) {
-            log.warn("Failed to check if bucket is empty: {}", bucketName, e);
-            return false;
+            log.error("Failed to check if bucket is empty: {}", bucketName, e);
+            throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED);
         }
     }
 
@@ -211,35 +253,59 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
      * 버킷 내 모든 객체를 삭제합니다.
      */
     private void deleteAllObjects(String bucketName) {
+        log.debug("Starting to empty all versions and delete markers from bucket: {}", bucketName);
+
+        String keyMarker = null;
+        String versionIdMarker = null;
+
         try {
-            ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
-                    .bucket(bucketName)
-                    .build();
-            
-            ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
-            
-            if (!listResponse.contents().isEmpty()) {
-                // 모든 객체 삭제
-                List<ObjectIdentifier> objectsToDelete = listResponse.contents().stream()
-                        .map(s3Object -> ObjectIdentifier.builder()
-                                .key(s3Object.key())
-                                .build())
-                        .toList();
-                
-                DeleteObjectsRequest deleteRequest = DeleteObjectsRequest.builder()
+            while (true) {
+                ListObjectVersionsRequest request = ListObjectVersionsRequest.builder()
                         .bucket(bucketName)
-                        .delete(Delete.builder()
-                                .objects(objectsToDelete)
-                                .build())
+                        .keyMarker(keyMarker)
+                        .versionIdMarker(versionIdMarker)
                         .build();
-                
-                s3Client.deleteObjects(deleteRequest);
-                log.info("Deleted {} objects from bucket: {}", objectsToDelete.size(), bucketName);
+
+                ListObjectVersionsResponse response = s3Client.listObjectVersions(request);
+
+                List<ObjectIdentifier> objectsToDelete = new ArrayList<>();
+
+                // 모든 버전 추가
+                response.versions().stream()
+                        .map(v -> ObjectIdentifier.builder().key(v.key()).versionId(v.versionId()).build())
+                        .forEach(objectsToDelete::add);
+
+                // 모든 삭제 마커 추가
+                response.deleteMarkers().stream()
+                        .map(m -> ObjectIdentifier.builder().key(m.key()).versionId(m.versionId()).build())
+                        .forEach(objectsToDelete::add);
+
+                // 수집된 객체가 있으면 DeleteObjects API 호출
+                if (!objectsToDelete.isEmpty()) {
+                    log.debug("Deleting {} versions/markers from bucket {}", objectsToDelete.size(), bucketName);
+                    DeleteObjectsRequest deleteRequest = DeleteObjectsRequest.builder()
+                            .bucket(bucketName)
+                            .delete(Delete.builder().objects(objectsToDelete).build())
+                            .build();
+                    s3Client.deleteObjects(deleteRequest);
+                }
+
+                // 루프 종료 조건 확인
+                if (response.isTruncated()) {
+                    keyMarker = response.nextKeyMarker();
+                    versionIdMarker = response.nextVersionIdMarker();
+                } else {
+                    break;
+                }
             }
-            
+            log.debug("Successfully emptied bucket: {}", bucketName);
+
+        } catch (NoSuchBucketException e) {
+            // 이미 버킷이 없다면, 작업 완료로 간주
+            log.warn("deleteAllObjects: Bucket {} not found. Assuming empty.", bucketName);
         } catch (Exception e) {
-            log.error("Failed to delete objects from bucket: {}", bucketName, e);
-            throw new RuntimeException("Failed to delete objects from bucket: " + bucketName, e);
+            log.error("Failed to delete all objects from bucket: {}", bucketName, e);
+            throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED);
         }
     }
 
@@ -260,7 +326,7 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
             
         } catch (Exception e) {
             log.error("Failed to set versioning for bucket: {}", bucketName, e);
-            throw new RuntimeException("Failed to set versioning for bucket: " + bucketName, e);
+            throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED);
         }
     }
 
@@ -288,7 +354,7 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
             
         } catch (Exception e) {
             log.error("Failed to set tags for bucket: {}", bucketName, e);
-            throw new RuntimeException("Failed to set tags for bucket: " + bucketName, e);
+            throw new BusinessException(CloudErrorCode.CLOUD_TAG_OPERATION_FAILED);
         }
     }
 
@@ -313,18 +379,103 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
     }
 
     /**
+     * 자격증명을 해결합니다.
+     * CredentialProviderPort를 통해 테넌트별 자격증명을 조회하고 ThreadLocal 캐시에 저장합니다.
+     */
+    private void resolveCredentials() {
+        try {
+            String tenantKey = TenantContextHolder.getCurrentTenantKey();
+            if (tenantKey == null) {
+                log.warn("테넌트 컨텍스트가 설정되지 않음 - 기본 자격증명 사용");
+                return;
+            }
+
+            String accountScope = getAccountScopeFromContext();
+            CloudProvider.ProviderType providerType = CloudProvider.ProviderType.AWS;
+
+            log.debug("자격증명 해결 시작: tenantKey={}, providerType={}, accountScope={}", 
+                    tenantKey, providerType, accountScope);
+
+            // CredentialProviderPort를 통해 자격증명 해결
+            AwsCredentials credentials = (AwsCredentials) credentialProviderPort.resolveCredentials(
+                    tenantKey, providerType, accountScope);
+
+            if (credentials != null) {
+                log.debug("자격증명 해결 완료: tenantKey={}", tenantKey);
+            } else {
+                log.warn("자격증명 해결 결과가 null: tenantKey={}", tenantKey);
+            }
+
+        } catch (Exception e) {
+            log.error("자격증명 해결 실패: {}", e.getMessage(), e);
+            throw new BusinessException(AwsErrorCode.AWS_CREDENTIALS_INVALID, 
+                    "자격증명 해결에 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 컨텍스트에서 계정 스코프 정보를 추출합니다.
+     * 현재는 기본값을 반환하지만, 향후 요청 헤더나 컨텍스트에서 추출할 수 있습니다.
+     */
+    private String getAccountScopeFromContext() {
+        // TODO: 실제 요청 컨텍스트에서 계정 스코프 정보 추출
+        // 예: HTTP 헤더, MDC, 또는 별도 컨텍스트 홀더에서 추출
+        return "default"; // 기본 계정 스코프
+    }
+
+    /**
      * AWS Provider를 조회합니다.
      */
     private CloudProvider getAwsProvider() {
         return cloudProviderRepository.findFirstByProviderType(CloudProvider.ProviderType.AWS)
-                .orElseThrow(() -> new RuntimeException("AWS Provider not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(CloudErrorCode.CLOUD_PROVIDER_NOT_FOUND));
     }
 
     /**
      * AWS 예외를 비즈니스 예외로 변환합니다.
      */
     private RuntimeException translateException(Exception e) {
-        // TODO: CloudErrorTranslator 구현 후 사용
-        return new RuntimeException("AWS S3 operation failed: " + e.getMessage(), e);
+        log.error("AWS S3 operation failed", e);
+        
+        if (e instanceof software.amazon.awssdk.services.s3.model.NoSuchBucketException) {
+            return new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
+        }
+        
+        if (e instanceof software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException) {
+            return new BusinessException(S3ErrorCode.S3_BUCKET_ALREADY_EXISTS);
+        }
+        
+        if (e instanceof software.amazon.awssdk.services.s3.model.S3Exception) {
+            software.amazon.awssdk.services.s3.model.S3Exception s3Exception = (software.amazon.awssdk.services.s3.model.S3Exception) e;
+            String errorCode = s3Exception.awsErrorDetails().errorCode();
+            
+            switch (errorCode) {
+                case "NoSuchBucket":
+                    return new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
+                case "BucketAlreadyExists":
+                    return new BusinessException(S3ErrorCode.S3_BUCKET_ALREADY_EXISTS);
+                case "AccessDenied":
+                    return new BusinessException(S3ErrorCode.S3_BUCKET_ACCESS_DENIED);
+                case "InvalidBucketName":
+                    return new BusinessException(S3ErrorCode.S3_BUCKET_INVALID_NAME);
+                case "ServiceUnavailable":
+                    return new BusinessException(AwsErrorCode.AWS_SERVICE_UNAVAILABLE);
+                case "ThrottlingException":
+                    return new BusinessException(AwsErrorCode.AWS_QUOTA_EXCEEDED);
+                default:
+                    return new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED);
+            }
+        }
+        
+        if (e instanceof software.amazon.awssdk.core.exception.SdkClientException) {
+            return new BusinessException(AwsErrorCode.AWS_CREDENTIALS_INVALID);
+        }
+        
+        if (e instanceof software.amazon.awssdk.core.exception.SdkServiceException) {
+            return new BusinessException(AwsErrorCode.AWS_API_ERROR);
+        }
+        
+        // 일반적인 예외
+        return new BusinessException(CloudErrorCode.CLOUD_CONNECTION_FAILED);
     }
 }
