@@ -238,6 +238,11 @@
             <artifactId>sts</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>resourcegroupstaggingapi</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
