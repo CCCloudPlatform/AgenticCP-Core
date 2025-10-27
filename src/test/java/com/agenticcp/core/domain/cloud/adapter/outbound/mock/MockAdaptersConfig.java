@@ -1,15 +1,18 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.mock;
 
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.ec2.AwsEc2Mapper;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
 import lombok.extern.slf4j.Slf4j;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import software.amazon.awssdk.services.ec2.Ec2Client;
 
 import java.util.Map;
 
@@ -79,5 +82,19 @@ public class MockAdaptersConfig {
                          topic, key, payload);
             }
         };
+    }
+
+    @Bean
+    @Primary
+    public Ec2Client mockEc2Client() {
+        log.debug("Creating mock Ec2Client for test environment");
+        return Mockito.mock(Ec2Client.class);
+    }
+
+    @Bean
+    @Primary
+    public AwsEc2Mapper mockAwsEc2Mapper() {
+        log.debug("Creating mock AwsEc2Mapper for test environment");
+        return Mockito.mock(AwsEc2Mapper.class);
     }
 }
