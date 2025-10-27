@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 @EnableCaching
 public class HealthCheckCacheConfig {
     
-    @Bean
+    @Bean("healthCheckCacheManager")
     @org.springframework.context.annotation.Primary
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
