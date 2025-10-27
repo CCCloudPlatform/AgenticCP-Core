@@ -31,6 +31,17 @@ app:
   redis:
     enabled: false
 
+# AWS 설정
+aws:
+  enabled: ${AWS_ENABLED:false}
+  region: ${AWS_REGION:us-east-1}
+  access-key-id: ${AWS_ACCESS_KEY_ID:}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+  session-token: ${AWS_SESSION_TOKEN:}
+  endpoint-override: ${AWS_ENDPOINT_OVERRIDE:}
+  connection-timeout: ${AWS_CONNECTION_TIMEOUT:30000}
+  read-timeout: ${AWS_READ_TIMEOUT:30000}
+
 
 security:
   jwt:
