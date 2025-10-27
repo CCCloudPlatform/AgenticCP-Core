@@ -11,6 +11,8 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 
+import java.net.URI;
+
 @Slf4j
 @Configuration
 @ConditionalOnProperty(name = "aws.enabled", havingValue = "true")
@@ -41,20 +43,18 @@ public class AwsConfig {
     public Ec2Client ec2Client() {
         log.info("[AwsConfig] Creating EC2 client for region: {}", region);
         
-        // TODO: AWS SDK 의존성이 로드되면 Builder 패턴 사용
-        // Ec2Client.Builder builder = Ec2Client.builder()
-        //     .region(Region.of(region))
-        //     .credentialsProvider(createCredentialsProvider());
+        // AWS SDK Builder 패턴 사용
+        var builder = Ec2Client.builder()
+            .region(software.amazon.awssdk.regions.Region.of(region))
+            .credentialsProvider(createCredentialsProvider());
         
         // 테스트용 엔드포인트 오버라이드 (LocalStack 등)
         if (!endpointOverride.isEmpty()) {
             log.info("[AwsConfig] Using custom endpoint: {}", endpointOverride);
-            // builder.endpointOverride(URI.create(endpointOverride));
+            builder.endpointOverride(URI.create(endpointOverride));
         }
         
-        // 임시로 null 반환 (의존성 로드 후 수정 예정)
-        log.warn("[AwsConfig] EC2 client creation temporarily disabled - AWS SDK not loaded");
-        return null;
+        return builder.build();
     }
     
     /**
