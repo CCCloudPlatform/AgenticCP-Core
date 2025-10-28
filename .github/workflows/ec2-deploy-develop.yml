@@ -35,8 +35,50 @@ jobs:
             git reset --hard origin/${{ github.ref_name }}
           fi
           
-          docker-compose stop app
+          # Docker 상태 확인
+          echo "=== Docker 상태 확인 ==="
+          docker --version
+          docker-compose --version
+          docker ps -a
+          
+          # 기존 컨테이너 정리
+          echo "=== 기존 컨테이너 정리 ==="
+          docker-compose down --volumes --remove-orphans || true
+          
+          # Docker 시스템 정리
+          echo "=== Docker 시스템 정리 ==="
+          docker system prune -f || true
+          
+          # 이미지 빌드 전략 결정
+          echo "=== 이미지 빌드 전략 결정 ==="
+          if [ "${{ github.ref_name }}" = "develop" ] || [ "${{ github.ref_name }}" = "feature/cicd-ec2-setup" ]; then
+            echo "${{ github.ref_name }} 브랜치: 코드 변경사항 반영을 위해 새로 빌드"
+            docker-compose build --no-cache app
+          elif docker images | grep -q "agenticcp-core"; then
+            echo "기존 이미지 발견, 업데이트 빌드"
+            docker-compose build app
+          else
+            echo "이미지 없음, 새로 빌드"
+            docker-compose build --no-cache app
+          fi
+          
+          # 빌드 실패 시 강제 재빌드
+          if [ $? -ne 0 ]; then
+            echo "빌드 실패, 강제 재빌드 실행"
+            docker-compose build --no-cache --pull app
+          fi
+          
+          # 컨테이너 재시작
+          echo "=== 컨테이너 재시작 ==="
           docker-compose up -d app
           
+          # 컨테이너 상태 확인
+          echo "=== 컨테이너 상태 확인 ==="
+          docker ps -a
+          docker-compose logs app
+          
           sleep 30
+          
+          # 헬스체크
+          echo "=== 헬스체크 ==="
           curl -f http://localhost:8080/api/health || exit 1

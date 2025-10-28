@@ -11,10 +11,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/health")
+@RequestMapping("/api")
 public class HealthController {
 
-    @GetMapping
+    @GetMapping("/health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
