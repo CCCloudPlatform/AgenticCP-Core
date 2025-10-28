@@ -6,12 +6,19 @@ import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
-import java.util.Map;
+import java.time.Duration;
+import java.util.*;
+
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * 테스트 환경에서 사용할 Mock 어댑터들
@@ -79,5 +86,41 @@ public class MockAdaptersConfig {
                          topic, key, payload);
             }
         };
+    }
+
+    @Bean
+    @Primary
+    @ConditionalOnProperty(name = "app.redis.enabled", havingValue = "false", matchIfMissing = true)
+    public RedisTemplate<String, Object> mockRedisTemplate() {
+        RedisTemplate<String, Object> mockRedis = mock(RedisTemplate.class);
+        ValueOperations<String, Object> valueOps = mock(ValueOperations.class);
+        
+        Map<String, Object> cache = new HashMap<>();
+        
+        when(mockRedis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(anyString())).thenAnswer(invocation -> cache.get(invocation.getArgument(0)));
+        doAnswer(invocation -> {
+            cache.put(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(valueOps).set(anyString(), any(), any(Duration.class));
+        when(mockRedis.keys(anyString())).thenAnswer(invocation -> {
+            String pattern = ((String) invocation.getArgument(0)).replace("*", ".*");
+            return cache.keySet().stream()
+                    .filter(key -> key.matches(pattern))
+                    .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        });
+        when(mockRedis.delete(anyString())).thenAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            return cache.remove(key) != null ? 1L : 0L;
+        });
+        when(mockRedis.delete(any(Collection.class))).thenAnswer(invocation -> {
+            Collection<String> keys = invocation.getArgument(0);
+            long deleted = keys.stream().mapToLong(key -> cache.remove(key) != null ? 1L : 0L).sum();
+            return deleted;
+        });
+        when(mockRedis.hasKey(anyString())).thenAnswer(invocation -> cache.containsKey(invocation.getArgument(0)));
+
+        log.debug("Mock RedisTemplate configured - will use in-memory Map for caching");
+        return mockRedis;
     }
 }
