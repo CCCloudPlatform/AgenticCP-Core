@@ -1,0 +1,42 @@
+name: Deploy to Develop EC2
+
+on:
+  push:
+    branches: [develop, feature/cicd-ec2-setup]
+  workflow_dispatch:
+
+jobs:
+  # 기존 CI 워크플로우 재사용
+  test-and-build:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  # EC2 배포 (CI 성공 후 실행)
+  deploy:
+    needs: [test-and-build]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /opt/agenticcp-core
+          git fetch origin
+          # 현재 브랜치에 따라 배포
+          if [ "${{ github.ref_name }}" = "develop" ]; then
+            git reset --hard origin/develop
+          elif [ "${{ github.ref_name }}" = "feature/cicd-ec2-setup" ]; then
+            git reset --hard origin/feature/cicd-ec2-setup
+          else
+            git reset --hard origin/${{ github.ref_name }}
+          fi
+          
+          docker-compose stop app
+          docker-compose up -d app
+          
+          sleep 30
+          curl -f http://localhost:8080/api/health || exit 1
