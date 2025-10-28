@@ -15,7 +15,7 @@ jobs:
   deploy:
     needs: [test-and-build]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     continue-on-error: true  # EC2 연결 실패 시에도 워크플로우 계속
     
     steps:
@@ -38,7 +38,7 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        timeout: 12m
+        timeout: 20m
         retry: 3  # 3번 재시도
         retry_delay: 30s  # 30초 간격으로 재시도
         script: |
@@ -71,7 +71,7 @@ jobs:
           echo "=== JDK 17 + Maven 설치 ==="
           if ! command -v mvn &> /dev/null; then
             echo "Maven이 설치되지 않음, 설치 중..."
-            sudo apt-get update -qq
+            # apt-get update 없이 바로 설치 (더 빠름)
             sudo apt-get install -y openjdk-17-jdk maven
           else
             echo "Maven이 이미 설치됨"
@@ -130,6 +130,8 @@ jobs:
             # Maven으로 JAR 빌드 (ci.yml과 동일한 방식)
             echo "Maven 빌드 시작..."
             export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            
+            # Maven 빌드 실행
             mvn clean package -DskipTests -q -Dmaven.compiler.source=17 -Dmaven.compiler.target=17
             
             # JAR 파일을 Docker 컨테이너에 복사
