@@ -21,8 +21,11 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * 테스트 환경에서 사용할 Mock 어댑터들
+ * 테스트 환경에서만 사용할 Mock 어댑터들
  * 헥사고날 아키텍처의 포트 인터페이스만 정의하고 실제 구현체가 없을 때 사용
+ * 
+ * 주의: src/test 폴더에 있어 빌드 시 JAR에 포함되지 않음
+ * 프로덕션/Docker 환경에서는 실제 구현체가 필요함
  */
 @TestConfiguration
 @Profile("test")

@@ -7,7 +7,6 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import java.util.concurrent.TimeUnit;
 
@@ -16,9 +15,9 @@ import java.util.concurrent.TimeUnit;
 @ConditionalOnProperty(prefix = "app.redis", name = "enabled", havingValue = "false", matchIfMissing = true)
 public class HealthCheckCacheConfig {
     
-    @Bean
-    @Primary
-    public CacheManager cacheManager() {
+    @Bean("healthCheckCacheManager")
+    @org.springframework.context.annotation.Primary
+    public CacheManager healthCheckCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(1000)
