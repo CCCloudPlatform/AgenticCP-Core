@@ -2,6 +2,8 @@ package com.agenticcp.core.domain.cloud.service.aws;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.agenticcp.core.domain.cloud.port.model.Ec2CreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.Ec2DeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.Ec2Query;
@@ -36,6 +38,11 @@ public class Ec2UseCaseService {
 
     private final Ec2PortRouter ec2PortRouter;
     private final AuditEventPort auditEventPort;
+    @Autowired(required = false)
+    private CapabilityGuard capabilityGuard;
+
+    private static final String SERVICE_KEY = "EC2";
+    private static final String RESOURCE_TYPE = "INSTANCE";
 
     // ==================== 인스턴스 조회 ====================
 
@@ -135,6 +142,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] startInstance - instanceId={}", instanceId);
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).startInstance(instanceId);
 
             auditEventPort.record("START_INSTANCE", "EC2", "SUCCESS",
@@ -160,6 +170,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] stopInstance - instanceId={}", instanceId);
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).stopInstance(instanceId);
 
             auditEventPort.record("STOP_INSTANCE", "EC2", "SUCCESS",
@@ -185,6 +198,11 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] rebootInstance - instanceId={}", instanceId);
 
         try {
+            // 재부팅은 STOP/START 조합에 준해 둘 다 지원되는지 확인
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).rebootInstance(instanceId);
 
             auditEventPort.record("REBOOT_INSTANCE", "EC2", "SUCCESS",
@@ -210,6 +228,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] terminateInstance - instanceId={}", instanceId);
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).terminateInstance(instanceId);
 
             auditEventPort.record("TERMINATE_INSTANCE", "EC2", "SUCCESS",
@@ -235,6 +256,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] deleteInstance - request={}", request);
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).deleteInstance(request);
 
             auditEventPort.record("DELETE_INSTANCE", "EC2", "SUCCESS",
@@ -290,6 +314,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] addTags - instanceId={}, tags={}", instanceId, tags);
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).addTags(instanceId, tags);
 
             auditEventPort.record("ADD_TAGS", "EC2", "SUCCESS",
@@ -316,6 +343,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] removeTags - instanceId={}, tagKeys={}", instanceId, tagKeys.keySet());
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).removeTags(instanceId, tagKeys);
 
             auditEventPort.record("REMOVE_TAGS", "EC2", "SUCCESS",
