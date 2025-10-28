@@ -212,10 +212,22 @@ jobs:
           # 컨테이너 상태 확인
           echo "=== 컨테이너 상태 확인 ==="
           docker ps -a
+          
+          # 애플리케이션 로그 확인
+          echo "=== 애플리케이션 로그 (최근 50줄) ==="
+          docker-compose logs app | tail -50
+          
+          # 헬스체크 대기 및 재시도
+          echo "=== 헬스체크 시작 (최대 2분 대기) ==="
+          for i in {1..24}; do
+            echo "시도 $i/24..."
+            if curl -f http://localhost:8080/api/health 2>/dev/null; then
+              echo "헬스체크 성공!"
+              exit 0
+            fi
+            sleep 5
+          done
+          
+          echo "헬스체크 실패 - 애플리케이션 로그 확인"
           docker-compose logs app
-          
-          sleep 30
-          
-          # 헬스체크
-          echo "=== 헬스체크 ==="
-          curl -f http://localhost:8080/api/health || exit 1
+          exit 1
