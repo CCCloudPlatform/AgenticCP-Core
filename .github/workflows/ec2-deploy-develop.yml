@@ -74,25 +74,22 @@ jobs:
           
           # 2. 배포 전략 결정
           if [ "$INFRA_CHANGED" = "true" ]; then
-            echo "=== 인프라 변경: Docker 이미지 재빌드 ==="
-            docker-compose build --no-cache app
+            echo "=== 인프라 변경: 스마트 Docker 이미지 재빌드 ==="
+            # pom.xml 변경 시에만 --no-cache, 나머지는 캐시 활용
+            if git diff --name-only HEAD~1 HEAD | grep -q "pom\.xml"; then
+              echo "pom.xml 변경 감지: 완전 재빌드"
+              docker-compose build --no-cache app
+            else
+              echo "인프라 설정 변경: 캐시 활용 빌드"
+              docker-compose build app
+            fi
             docker-compose up -d app
           elif [ "$SOURCE_CHANGED" = "true" ]; then
-            echo "=== 소스 변경: JAR 빌드 후 교체 ==="
+            echo "=== 소스 변경: JAR 빌드 후 Docker 이미지 재빌드 ==="
             # Docker 컨테이너에서 Maven 실행
             docker run --rm -v $(pwd):/app -w /app maven:3.9-openjdk-17 mvn clean package -DskipTests -q
-            # 기존 컨테이너 중지
-            docker-compose stop app || true
-            # JAR 파일 교체
-            if docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar; then
-              echo "JAR 파일 교체 성공"
-            else
-              echo "JAR 파일 교체 실패, 컨테이너 재생성"
-              docker-compose up -d app
-              sleep 10
-              docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar
-            fi
-            # 컨테이너 재시작
+            # Docker 이미지 재빌드 (JAR 파일이 포함된 상태로)
+            docker-compose build app
             docker-compose up -d app
           else
             echo "=== 변경사항 없음: 컨테이너만 재시작 ==="
