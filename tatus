@@ -1,0 +1,57 @@
+[1mdiff --git a/.github/workflows/ec2-deploy-develop.yml b/.github/workflows/ec2-deploy-develop.yml[m
+[1mindex d2c7da6..0003e46 100644[m
+[1m--- a/.github/workflows/ec2-deploy-develop.yml[m
+[1m+++ b/.github/workflows/ec2-deploy-develop.yml[m
+[36m@@ -35,8 +35,50 @@[m [mjobs:[m
+             git reset --hard origin/${{ github.ref_name }}[m
+           fi[m
+           [m
+[31m-          docker-compose stop app[m
+[32m+[m[32m          # Docker 상태 확인[m
+[32m+[m[32m          echo "=== Docker 상태 확인 ==="[m
+[32m+[m[32m          docker --version[m
+[32m+[m[32m          docker-compose --version[m
+[32m+[m[32m          docker ps -a[m
+[32m+[m[41m          [m
+[32m+[m[32m          # 기존 컨테이너 정리[m
+[32m+[m[32m          echo "=== 기존 컨테이너 정리 ==="[m
+[32m+[m[32m          docker-compose down --volumes --remove-orphans || true[m
+[32m+[m[41m          [m
+[32m+[m[32m          # Docker 시스템 정리[m
+[32m+[m[32m          echo "=== Docker 시스템 정리 ==="[m
+[32m+[m[32m          docker system prune -f || true[m
+[32m+[m[41m          [m
+[32m+[m[32m          # 이미지 빌드 전략 결정[m
+[32m+[m[32m          echo "=== 이미지 빌드 전략 결정 ==="[m
+[32m+[m[32m          if [ "${{ github.ref_name }}" = "develop" ] || [ "${{ github.ref_name }}" = "feature/cicd-ec2-setup" ]; then[m
+[32m+[m[32m            echo "${{ github.ref_name }} 브랜치: 코드 변경사항 반영을 위해 새로 빌드"[m
+[32m+[m[32m            docker-compose build --no-cache app[m
+[32m+[m[32m          elif docker images | grep -q "agenticcp-core"; then[m
+[32m+[m[32m            echo "기존 이미지 발견, 업데이트 빌드"[m
+[32m+[m[32m            docker-compose build app[m
+[32m+[m[32m          else[m
+[32m+[m[32m            echo "이미지 없음, 새로 빌드"[m
+[32m+[m[32m            docker-compose build --no-cache app[m
+[32m+[m[32m          fi[m
+[32m+[m[41m          [m
+[32m+[m[32m          # 빌드 실패 시 강제 재빌드[m
+[32m+[m[32m          if [ $? -ne 0 ]; then[m
+[32m+[m[32m            echo "빌드 실패, 강제 재빌드 실행"[m
+[32m+[m[32m            docker-compose build --no-cache --pull app[m
+[32m+[m[32m          fi[m
+[32m+[m[41m          [m
+[32m+[m[32m          # 컨테이너 재시작[m
+[32m+[m[32m          echo "=== 컨테이너 재시작 ==="[m
+           docker-compose up -d app[m
+           [m
+[32m+[m[32m          # 컨테이너 상태 확인[m
+[32m+[m[32m          echo "=== 컨테이너 상태 확인 ==="[m
+[32m+[m[32m          docker ps -a[m
+[32m+[m[32m          docker-compose logs app[m
+[32m+[m[41m          [m
+           sleep 30[m
+[32m+[m[41m          [m
+[32m+[m[32m          # 헬스체크[m
+[32m+[m[32m          echo "=== 헬스체크 ==="[m
+           curl -f http://localhost:8080/api/health || exit 1[m
+\ No newline at end of file[m
