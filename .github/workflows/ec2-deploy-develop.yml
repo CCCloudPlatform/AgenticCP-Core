@@ -15,7 +15,7 @@ jobs:
   deploy:
     needs: [test-and-build]
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     continue-on-error: true  # EC2 연결 실패 시에도 워크플로우 계속
     
     steps:
@@ -38,7 +38,7 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        timeout: 20m
+        timeout: 12m
         retry: 3  # 3번 재시도
         retry_delay: 30s  # 30초 간격으로 재시도
         script: |
@@ -67,28 +67,14 @@ jobs:
           echo "=== Docker 시스템 정리 ==="
           docker system prune -f || true
           
-          # JDK 17 + Maven 설치 (ci.yml과 동일한 방식)
-          echo "=== JDK 17 + Maven 설치 ==="
-          if ! command -v mvn &> /dev/null; then
-            echo "Maven이 설치되지 않음, 설치 중..."
-            # apt-get update 없이 바로 설치 (더 빠름)
-            sudo apt-get install -y openjdk-17-jdk maven
-          else
-            echo "Maven이 이미 설치됨"
-          fi
-          
-          # Java 버전 확인 및 설정
-          echo "=== Java 버전 확인 ==="
+          # Maven 및 Java 확인 (EC2에 직접 설치됨)
+          echo "=== Maven 및 Java 확인 ==="
+          mvn --version
           java --version
-          echo "JAVA_HOME: $JAVA_HOME"
           
-          # JAVA_HOME 설정
+          # JAVA_HOME 설정 (Ubuntu 22.04 LTS 기본 경로)
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           echo "JAVA_HOME 설정: $JAVA_HOME"
-          
-          # Maven 버전 확인
-          echo "=== Maven 버전 확인 ==="
-          mvn --version
           
           # Maven 캐시 디렉토리 생성
           echo "=== Maven 캐시 설정 ==="
@@ -127,24 +113,37 @@ jobs:
             docker-compose up -d app
           elif [ "$SOURCE_CHANGED" = "true" ]; then
             echo "=== 소스 변경: Maven 빌드 후 JAR 교체 ==="
-            # Maven으로 JAR 빌드 (ci.yml과 동일한 방식)
+            # Maven으로 JAR 빌드 (Ubuntu 22.04 LTS)
             echo "Maven 빌드 시작..."
-            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            echo "Maven 빌드용 JAVA_HOME: $JAVA_HOME"
             
             # Maven 빌드 실행
-            mvn clean package -DskipTests -q -Dmaven.compiler.source=17 -Dmaven.compiler.target=17
-            
-            # JAR 파일을 Docker 컨테이너에 복사
-            echo "JAR 파일 교체 중..."
-            docker-compose stop app || true
-            
-            # 컨테이너가 실행 중인지 확인
-            if docker ps -q --filter "name=agenticcp-app" | grep -q .; then
-              echo "기존 컨테이너에서 JAR 파일 교체"
-              docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar
-              docker-compose up -d app
+            if mvn clean package -DskipTests -q -Dmaven.compiler.source=17 -Dmaven.compiler.target=17; then
+              echo "Maven 빌드 성공"
+              MAVEN_BUILD_SUCCESS=true
             else
-              echo "컨테이너가 없음, Docker 이미지 재빌드"
+              echo "Maven 빌드 실패, Docker로 빌드"
+              MAVEN_BUILD_SUCCESS=false
+            fi
+            
+            # Maven 빌드 성공 시에만 JAR 교체, 실패 시 Docker 빌드
+            if [ "$MAVEN_BUILD_SUCCESS" = "true" ]; then
+              # JAR 파일을 Docker 컨테이너에 복사
+              echo "JAR 파일 교체 중..."
+              docker-compose stop app || true
+              
+              # 컨테이너가 실행 중인지 확인
+              if docker ps -q --filter "name=agenticcp-app" | grep -q .; then
+                echo "기존 컨테이너에서 JAR 파일 교체"
+                docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar
+                docker-compose up -d app
+              else
+                echo "컨테이너가 없음, Docker 이미지 재빌드"
+                docker-compose build app
+                docker-compose up -d app
+              fi
+            else
+              echo "Docker로 빌드 실행"
               docker-compose build app
               docker-compose up -d app
             fi
