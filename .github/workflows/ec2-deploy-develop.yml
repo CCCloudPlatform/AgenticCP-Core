@@ -15,16 +15,32 @@ jobs:
   deploy:
     needs: [test-and-build]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
+    continue-on-error: true  # EC2 연결 실패 시에도 워크플로우 계속
     
     steps:
+    - name: Check EC2 Connection
+      run: |
+        echo "EC2 연결 확인 중..."
+        # EC2 연결 테스트
+        if timeout 10s bash -c "</dev/tcp/${{ secrets.EC2_HOST }}/22"; then
+          echo "EC2 연결 성공"
+          echo "EC2_READY=true" >> $GITHUB_ENV
+        else
+          echo "EC2 연결 실패 - EC2가 중지된 상태입니다"
+          echo "EC2_READY=false" >> $GITHUB_ENV
+        fi
+        
     - name: Deploy to EC2
+      if: env.EC2_READY == 'true'
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        timeout: 50m
+        timeout: 12m
+        retry: 3  # 3번 재시도
+        retry_delay: 30s  # 30초 간격으로 재시도
         script: |
           cd /opt/agenticcp-core
           git fetch origin
@@ -51,48 +67,23 @@ jobs:
           echo "=== Docker 시스템 정리 ==="
           docker system prune -f || true
           
-          # Maven 설치 (한 번만 설치)
-          echo "=== Maven 설치 확인 ==="
+          # JDK 17 + Maven 설치 (ci.yml과 동일한 방식)
+          echo "=== JDK 17 + Maven 설치 ==="
           if ! command -v mvn &> /dev/null; then
-            echo "Maven 설치 중..."
+            echo "Maven이 설치되지 않음, 설치 중..."
             sudo apt-get update -qq
-            sudo apt-get install -y maven
-            echo "Maven 설치 완료: $(mvn --version | head -1)"
+            sudo apt-get install -y openjdk-17-jdk maven
+            echo "Java version: $(java --version | head -1)"
+            echo "Maven version: $(mvn --version | head -1)"
           else
-            echo "Maven 이미 설치됨: $(mvn --version | head -1)"
+            echo "Maven이 이미 설치됨"
+            echo "Java version: $(java --version | head -1)"
+            echo "Maven version: $(mvn --version | head -1)"
           fi
           
-          # Maven 설정 최적화
-          echo "=== Maven 설정 최적화 ==="
+          # Maven 캐시 디렉토리 생성
+          echo "=== Maven 캐시 설정 ==="
           mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
-                    http://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <mirrors>
-              <mirror>
-                <id>aliyun-maven</id>
-                <name>Aliyun Maven</name>
-                <url>https://maven.aliyun.com/repository/central</url>
-                <mirrorOf>central</mirrorOf>
-              </mirror>
-            </mirrors>
-            <profiles>
-              <profile>
-                <id>fast-download</id>
-                <properties>
-                  <maven.wagon.http.retryHandler.count>3</maven.wagon.http.retryHandler.count>
-                  <maven.wagon.http.retryHandler.requestSentEnabled>true</maven.wagon.http.retryHandler.requestSentEnabled>
-                </properties>
-              </profile>
-            </profiles>
-            <activeProfiles>
-              <activeProfile>fast-download</activeProfile>
-            </activeProfiles>
-          </settings>
-          EOF
           
           
           # 1. 변경사항 분석
@@ -126,25 +117,22 @@ jobs:
             fi
             docker-compose up -d app
           elif [ "$SOURCE_CHANGED" = "true" ]; then
-            echo "=== 소스 변경: JAR 파일 교체 ==="
-            # Maven 실행 (호스트에서 직접 실행)
+            echo "=== 소스 변경: Maven 빌드 후 JAR 교체 ==="
+            # Maven으로 JAR 빌드 (ci.yml과 동일한 방식)
             echo "Maven 빌드 시작..."
-            if mvn clean package -DskipTests -q -T 4C; then
-              echo "Maven 빌드 성공"
-              
-              # JAR 파일만 교체 (Docker 이미지 재빌드 없이)
-              echo "JAR 파일 교체 중..."
-              docker-compose stop app || true
-              if docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar; then
-                echo "JAR 파일 교체 성공"
-                docker-compose up -d app
-              else
-                echo "JAR 파일 교체 실패, 컨테이너 재생성"
-                docker-compose build app
-                docker-compose up -d app
-              fi
+            mvn clean package -DskipTests -q
+            
+            # JAR 파일을 Docker 컨테이너에 복사
+            echo "JAR 파일 교체 중..."
+            docker-compose stop app || true
+            
+            # 컨테이너가 실행 중인지 확인
+            if docker ps -q --filter "name=agenticcp-app" | grep -q .; then
+              echo "기존 컨테이너에서 JAR 파일 교체"
+              docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar
+              docker-compose up -d app
             else
-              echo "Maven 빌드 실패, Docker 이미지 재빌드"
+              echo "컨테이너가 없음, Docker 이미지 재빌드"
               docker-compose build app
               docker-compose up -d app
             fi
