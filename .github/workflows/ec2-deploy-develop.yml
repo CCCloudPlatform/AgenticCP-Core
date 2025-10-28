@@ -15,7 +15,7 @@ jobs:
   deploy:
     needs: [test-and-build]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     continue-on-error: true  # EC2 연결 실패 시에도 워크플로우 계속
     
     steps:
@@ -38,9 +38,8 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        timeout: 12m
-        retry: 3  # 3번 재시도
-        retry_delay: 30s  # 30초 간격으로 재시도
+        timeout: 25m
+        command_timeout: 25m
         script: |
           cd /opt/agenticcp-core
           git fetch origin
@@ -99,7 +98,17 @@ jobs:
             INFRA_CHANGED=false
           fi
           
-          # 2. 배포 전략 결정
+          # 2. 기존 이미지 확인
+          IMAGE_EXISTS=false
+          # docker-compose가 생성하는 이미지 이름 확인
+          if docker images | grep -qE "(agenticcp-core.*app|.*agenticcp.*app)"; then
+            echo "기존 Docker 이미지 발견"
+            IMAGE_EXISTS=true
+          else
+            echo "기존 Docker 이미지 없음"
+          fi
+          
+          # 3. 배포 전략 결정
           if [ "$INFRA_CHANGED" = "true" ]; then
             echo "=== 인프라 변경: 스마트 Docker 이미지 재빌드 ==="
             # pom.xml 변경 시에만 --no-cache, 나머지는 캐시 활용
@@ -111,40 +120,81 @@ jobs:
               docker-compose build app
             fi
             docker-compose up -d app
+          elif [ "$IMAGE_EXISTS" = "false" ]; then
+            echo "=== 첫 배포: 빠른 이미지 생성 ==="
+            # 전략: Maven으로 JAR 빌드 후, 간단한 이미지 생성
+            echo "Maven 빌드 시작..."
+            if timeout 300 mvn clean package -DskipTests -q -Dmaven.compiler.source=17 -Dmaven.compiler.target=17; then
+              echo "Maven 빌드 성공"
+              # Dockerfile 임시 백업 및 간단한 버전 생성
+              cp Dockerfile Dockerfile.backup
+              
+              # 간단한 Dockerfile 생성 (빌드 스테이지 제거, JAR만 복사)
+              echo 'FROM eclipse-temurin:17-jre' > Dockerfile
+              echo 'RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*' >> Dockerfile
+              echo 'WORKDIR /app' >> Dockerfile
+              echo 'COPY target/*.jar app.jar' >> Dockerfile
+              echo 'RUN groupadd -r agenticcp && useradd -r -g agenticcp agenticcp' >> Dockerfile
+              echo 'RUN mkdir -p /app/logs && chown -R agenticcp:agenticcp /app' >> Dockerfile
+              echo 'USER agenticcp' >> Dockerfile
+              echo 'EXPOSE 8080' >> Dockerfile
+              echo 'HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:8080/api/health || exit 1' >> Dockerfile
+              echo 'ENTRYPOINT ["java", "-jar", "app.jar"]' >> Dockerfile
+              
+              # 간단한 이미지 빌드 (캐시만 다운로드, 1-2분)
+              timeout 240 docker-compose build app || {
+                echo "빌드 실패, 원래 Dockerfile로 재시도"
+                mv Dockerfile.backup Dockerfile
+                docker-compose build app
+              }
+              docker-compose up -d app
+              
+              # Dockerfile 복구 (다음 배포를 위해)
+              if [ -f Dockerfile.backup ]; then
+                echo "Dockerfile 복구 중..."
+                mv Dockerfile.backup Dockerfile
+              fi
+            else
+              echo "Maven 빌드 실패, 원래 Dockerfile로 빌드"
+              docker-compose build app
+              docker-compose up -d app
+            fi
           elif [ "$SOURCE_CHANGED" = "true" ]; then
             echo "=== 소스 변경: Maven 빌드 후 JAR 교체 ==="
             # Maven으로 JAR 빌드 (Ubuntu 22.04 LTS)
             echo "Maven 빌드 시작..."
             echo "Maven 빌드용 JAVA_HOME: $JAVA_HOME"
             
-            # Maven 빌드 실행
-            if mvn clean package -DskipTests -q -Dmaven.compiler.source=17 -Dmaven.compiler.target=17; then
+            # Maven 빌드 실행 (타임아웃 5분 설정)
+            if timeout 300 mvn clean package -DskipTests -q -Dmaven.compiler.source=17 -Dmaven.compiler.target=17; then
               echo "Maven 빌드 성공"
               MAVEN_BUILD_SUCCESS=true
             else
-              echo "Maven 빌드 실패, Docker로 빌드"
+              echo "Maven 빌드 실패 또는 타임아웃, 기존 컨테이너만 재시작"
               MAVEN_BUILD_SUCCESS=false
             fi
             
-            # Maven 빌드 성공 시에만 JAR 교체, 실패 시 Docker 빌드
+            # Maven 빌드 성공 시에만 JAR 교체
             if [ "$MAVEN_BUILD_SUCCESS" = "true" ]; then
-              # JAR 파일을 Docker 컨테이너에 복사
               echo "JAR 파일 교체 중..."
               docker-compose stop app || true
               
-              # 컨테이너가 실행 중인지 확인
-              if docker ps -q --filter "name=agenticcp-app" | grep -q .; then
+              # 컨테이너가 없으면 기존 이미지로 생성, 있으면 JAR 교체
+              if docker ps -aq --filter "name=agenticcp-app" | grep -q .; then
                 echo "기존 컨테이너에서 JAR 파일 교체"
+                docker-compose start app
+                sleep 3
                 docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar
-                docker-compose up -d app
+                docker-compose restart app
               else
-                echo "컨테이너가 없음, Docker 이미지 재빌드"
-                docker-compose build app
+                echo "기존 이미지로 컨테이너 생성 후 JAR 교체"
                 docker-compose up -d app
+                sleep 5
+                docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar
+                docker-compose restart app
               fi
             else
-              echo "Docker로 빌드 실행"
-              docker-compose build app
+              echo "컨테이너만 재시작 (빌드 없음)"
               docker-compose up -d app
             fi
           else
