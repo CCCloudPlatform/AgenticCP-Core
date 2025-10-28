@@ -57,5 +57,6 @@ export CONFIG_CIPHER_KEY="MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
 export SPRING_DATA_REDIS_HOST="localhost"
 export SPRING_DATA_REDIS_PORT="6379"
 export APP_REDIS_ENABLED="false"
+export AWS_ENABLED="true"
 
 mvn spring-boot:run -Dspring-boot.run.profiles=local

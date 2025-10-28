@@ -11,6 +11,7 @@ import com.agenticcp.core.domain.cloud.port.model.Ec2UpdateRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.aws.Ec2ManagementPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "aws.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "aws.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScoped {
 
@@ -322,7 +323,7 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
             
             // TODO: 실제 대기 로직 구현 (폴링 또는 이벤트 기반)
             // 현재는 단순히 상태 확인만 수행
-            DescribeInstanceStatusResponse response = ec2Client.describeInstanceStatus(request);
+            ec2Client.describeInstanceStatus(request);
             
             log.info("[AwsEc2ManagementAdapter] EC2 instance {} status check completed", instanceId);
             return true; // 임시로 항상 성공 반환

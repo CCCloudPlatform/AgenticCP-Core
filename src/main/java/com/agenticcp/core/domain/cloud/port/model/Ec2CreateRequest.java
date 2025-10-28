@@ -2,6 +2,8 @@ package com.agenticcp.core.domain.cloud.port.model;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
+import jakarta.validation.constraints.Min;
 
 import java.util.Map;
 
@@ -11,6 +13,7 @@ import java.util.Map;
  */
 @Value
 @Builder
+@Jacksonized
 public class Ec2CreateRequest {
     
     /**
@@ -57,12 +60,14 @@ public class Ec2CreateRequest {
     /**
      * 최소 생성 인스턴스 수
      */
+    @Min(1)
     @Builder.Default
     int minCount = 1;
     
     /**
      * 최대 생성 인스턴스 수
      */
+    @Min(1)
     @Builder.Default
     int maxCount = 1;
     

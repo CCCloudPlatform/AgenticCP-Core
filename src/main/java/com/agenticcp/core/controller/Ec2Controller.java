@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.Map;
 import java.util.Optional;
@@ -52,7 +53,24 @@ public class Ec2Controller {
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     public ResponseEntity<Page<CloudResource>> listInstances(
-            @Parameter(description = "조회 조건") Ec2Query query) {
+            @Parameter(description = "페이지 번호") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "인스턴스 ID") @RequestParam(required = false) String instanceId,
+            @Parameter(description = "인스턴스 이름") @RequestParam(required = false) String instanceName,
+            @Parameter(description = "인스턴스 상태") @RequestParam(required = false) String state,
+            @Parameter(description = "인스턴스 타입") @RequestParam(required = false) String instanceType,
+            @Parameter(description = "가용 영역") @RequestParam(required = false) String availabilityZone) {
+        
+        // Ec2Query 객체 생성
+        Ec2Query query = Ec2Query.builder()
+            .page(page)
+            .size(size)
+            .instanceId(instanceId)
+            .instanceName(instanceName)
+            .state(state)
+            .instanceType(instanceType)
+            .availabilityZone(availabilityZone)
+            .build();
         
         log.info("[Ec2Controller] listInstances - query={}", query);
         
@@ -119,7 +137,7 @@ public class Ec2Controller {
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     public ResponseEntity<String> createInstance(
-            @Parameter(description = "생성 요청 정보") @RequestBody Ec2CreateRequest request) {
+            @Parameter(description = "생성 요청 정보") @Valid @RequestBody Ec2CreateRequest request) {
         
         log.info("[Ec2Controller] createInstance - imageId={}, instanceType={}", 
                 request.getImageId(), request.getInstanceType());
