@@ -15,6 +15,7 @@ jobs:
   deploy:
     needs: [test-and-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     
     steps:
     - name: Deploy to EC2
@@ -23,6 +24,7 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
+        timeout: 50m
         script: |
           cd /opt/agenticcp-core
           git fetch origin
@@ -49,11 +51,18 @@ jobs:
           echo "=== Docker 시스템 정리 ==="
           docker system prune -f || true
           
-          # Maven은 Docker 컨테이너에 설치되어 있음
-          echo "=== Maven 확인 ==="
-          echo "Maven은 Docker 컨테이너에 설치되어 있습니다."
+          # Maven 설치 (한 번만 설치)
+          echo "=== Maven 설치 확인 ==="
+          if ! command -v mvn &> /dev/null; then
+            echo "Maven 설치 중..."
+            sudo apt-get update -qq
+            sudo apt-get install -y maven
+            echo "Maven 설치 완료: $(mvn --version | head -1)"
+          else
+            echo "Maven 이미 설치됨: $(mvn --version | head -1)"
+          fi
           
-          # Maven 설정 파일 생성 (ci.yml과 동일한 최적화)
+          # Maven 설정 최적화
           echo "=== Maven 설정 최적화 ==="
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml << 'EOF'
@@ -117,27 +126,39 @@ jobs:
             fi
             docker-compose up -d app
           elif [ "$SOURCE_CHANGED" = "true" ]; then
-            echo "=== 소스 변경: JAR 빌드 후 Docker 이미지 재빌드 ==="
-            # Docker 컨테이너에서 Maven 실행 (ci.yml과 동일한 최적화)
-            docker run --rm -v $(pwd):/app -v ~/.m2:/root/.m2 -w /app maven:3.9-openjdk-17 \
-              mvn clean package -DskipTests -q -T 4C
-            # Docker 이미지 재빌드 (JAR 파일이 포함된 상태로)
-            docker-compose build app
-            docker-compose up -d app
+            echo "=== 소스 변경: JAR 파일 교체 ==="
+            # Maven 실행 (호스트에서 직접 실행)
+            echo "Maven 빌드 시작..."
+            if mvn clean package -DskipTests -q -T 4C; then
+              echo "Maven 빌드 성공"
+              
+              # JAR 파일만 교체 (Docker 이미지 재빌드 없이)
+              echo "JAR 파일 교체 중..."
+              docker-compose stop app || true
+              if docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar; then
+                echo "JAR 파일 교체 성공"
+                docker-compose up -d app
+              else
+                echo "JAR 파일 교체 실패, 컨테이너 재생성"
+                docker-compose build app
+                docker-compose up -d app
+              fi
+            else
+              echo "Maven 빌드 실패, Docker 이미지 재빌드"
+              docker-compose build app
+              docker-compose up -d app
+            fi
           else
             echo "=== 변경사항 없음: 컨테이너만 재시작 ==="
             docker-compose up -d app
           fi
           
-          # 빌드 실패 시 강제 재빌드
-          if [ $? -ne 0 ]; then
+          # 빌드 실패 시 강제 재빌드 (인프라 변경 시에만)
+          if [ "$INFRA_CHANGED" = "true" ] && [ $? -ne 0 ]; then
             echo "빌드 실패, 강제 재빌드 실행"
             docker-compose build --no-cache --pull app
+            docker-compose up -d app
           fi
-          
-          # 컨테이너 재시작
-          echo "=== 컨테이너 재시작 ==="
-          docker-compose up -d app
           
           # 컨테이너 상태 확인
           echo "=== 컨테이너 상태 확인 ==="
