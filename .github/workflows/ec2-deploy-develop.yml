@@ -73,13 +73,22 @@ jobs:
             echo "Maven이 설치되지 않음, 설치 중..."
             sudo apt-get update -qq
             sudo apt-get install -y openjdk-17-jdk maven
-            echo "Java version: $(java --version | head -1)"
-            echo "Maven version: $(mvn --version | head -1)"
           else
             echo "Maven이 이미 설치됨"
-            echo "Java version: $(java --version | head -1)"
-            echo "Maven version: $(mvn --version | head -1)"
           fi
+          
+          # Java 버전 확인 및 설정
+          echo "=== Java 버전 확인 ==="
+          java --version
+          echo "JAVA_HOME: $JAVA_HOME"
+          
+          # JAVA_HOME 설정
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          echo "JAVA_HOME 설정: $JAVA_HOME"
+          
+          # Maven 버전 확인
+          echo "=== Maven 버전 확인 ==="
+          mvn --version
           
           # Maven 캐시 디렉토리 생성
           echo "=== Maven 캐시 설정 ==="
@@ -120,7 +129,8 @@ jobs:
             echo "=== 소스 변경: Maven 빌드 후 JAR 교체 ==="
             # Maven으로 JAR 빌드 (ci.yml과 동일한 방식)
             echo "Maven 빌드 시작..."
-            mvn clean package -DskipTests -q
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            mvn clean package -DskipTests -q -Dmaven.compiler.source=17 -Dmaven.compiler.target=17
             
             # JAR 파일을 Docker 컨테이너에 복사
             echo "JAR 파일 교체 중..."
