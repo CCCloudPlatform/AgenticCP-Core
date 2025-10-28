@@ -53,6 +53,38 @@ jobs:
           echo "=== Maven 확인 ==="
           echo "Maven은 Docker 컨테이너에 설치되어 있습니다."
           
+          # Maven 설정 파일 생성 (ci.yml과 동일한 최적화)
+          echo "=== Maven 설정 최적화 ==="
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                    http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>aliyun-maven</id>
+                <name>Aliyun Maven</name>
+                <url>https://maven.aliyun.com/repository/central</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+            <profiles>
+              <profile>
+                <id>fast-download</id>
+                <properties>
+                  <maven.wagon.http.retryHandler.count>3</maven.wagon.http.retryHandler.count>
+                  <maven.wagon.http.retryHandler.requestSentEnabled>true</maven.wagon.http.retryHandler.requestSentEnabled>
+                </properties>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>fast-download</activeProfile>
+            </activeProfiles>
+          </settings>
+          EOF
+          
           
           # 1. 변경사항 분석
           echo "=== 변경사항 분석 ==="
@@ -86,8 +118,9 @@ jobs:
             docker-compose up -d app
           elif [ "$SOURCE_CHANGED" = "true" ]; then
             echo "=== 소스 변경: JAR 빌드 후 Docker 이미지 재빌드 ==="
-            # Docker 컨테이너에서 Maven 실행
-            docker run --rm -v $(pwd):/app -w /app maven:3.9-openjdk-17 mvn clean package -DskipTests -q
+            # Docker 컨테이너에서 Maven 실행 (ci.yml과 동일한 최적화)
+            docker run --rm -v $(pwd):/app -v ~/.m2:/root/.m2 -w /app maven:3.9-openjdk-17 \
+              mvn clean package -DskipTests -q -T 4C
             # Docker 이미지 재빌드 (JAR 파일이 포함된 상태로)
             docker-compose build app
             docker-compose up -d app
