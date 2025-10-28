@@ -69,10 +69,10 @@ jobs:
           
           # Maven 및 Java 확인 (EC2에 직접 설치됨)
           echo "=== Maven 및 Java 확인 ==="
+          echo "Java 버전: $(java --version | head -1)"
           mvn --version
-          java --version
           
-          # JAVA_HOME 설정 (Ubuntu 22.04 LTS 기본 경로)
+          # JAVA_HOME 설정
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           echo "JAVA_HOME 설정: $JAVA_HOME"
           
