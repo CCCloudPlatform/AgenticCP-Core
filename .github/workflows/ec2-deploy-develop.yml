@@ -49,6 +49,10 @@ jobs:
           echo "=== Docker 시스템 정리 ==="
           docker system prune -f || true
           
+          # Maven은 Docker 컨테이너에 설치되어 있음
+          echo "=== Maven 확인 ==="
+          echo "Maven은 Docker 컨테이너에 설치되어 있습니다."
+          
           
           # 1. 변경사항 분석
           echo "=== 변경사항 분석 ==="
@@ -74,9 +78,12 @@ jobs:
             docker-compose build --no-cache app
             docker-compose up -d app
           elif [ "$SOURCE_CHANGED" = "true" ]; then
-            echo "=== 소스 변경: JAR 파일 교체 ==="
-            mvn clean package -DskipTests -q
+            echo "=== 소스 변경: JAR 빌드 후 교체 ==="
+            # Docker 컨테이너에서 Maven 실행
+            docker run --rm -v $(pwd):/app -w /app maven:3.9-openjdk-17 mvn clean package -DskipTests -q
+            # 기존 컨테이너 중지
             docker-compose stop app || true
+            # JAR 파일 교체
             if docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar; then
               echo "JAR 파일 교체 성공"
             else
@@ -85,6 +92,7 @@ jobs:
               sleep 10
               docker ps -q --filter "name=agenticcp-app" | head -1 | xargs -I {} docker cp target/*.jar {}:/app/app.jar
             fi
+            # 컨테이너 재시작
             docker-compose up -d app
           else
             echo "=== 변경사항 없음: 컨테이너만 재시작 ==="
