@@ -382,6 +382,86 @@ public class CloudAccountUseCaseService {
     }
 
     /**
+     * 프로바이더 타입별 계정을 조회합니다.
+     * 
+     * @param providerType 프로바이더 타입
+     * @return CloudAccountDto 리스트
+     */
+    @Transactional(readOnly = true)
+    public List<CloudAccountDto> getAccountsByProviderType(CloudProvider.ProviderType providerType) {
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("[CloudAccountUseCaseService] getAccountsByProviderType - tenantKey={}, providerType={}", 
+                 tenantKey, providerType);
+        
+        List<CloudAccount> accounts = cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType);
+        return CloudAccountMapper.toDtoList(accounts);
+    }
+
+    /**
+     * 특정 계정을 기본 계정으로 설정합니다.
+     * 
+     * @param accountId 계정 ID
+     * @return CloudAccountDto 업데이트된 계정 정보
+     */
+    @Transactional
+    public CloudAccountDto setAccountAsDefault(Long accountId) {
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("[CloudAccountUseCaseService] setAccountAsDefault - accountId={}, tenantKey={}", 
+                 accountId, tenantKey);
+        
+        Tenant tenant = tenantRepository.findByTenantKey(tenantKey)
+                .orElseThrow(() -> new BusinessException(
+                    CommonErrorCode.TENANT_CONTEXT_NOT_SET,
+                    "테넌트를 찾을 수 없습니다: " + tenantKey
+                ));
+        
+        CloudAccount account = cloudAccountRepository.findByIdAndTenantId(accountId, tenant.getId())
+                .orElseThrow(() -> new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_FOUND,
+                    "계정을 찾을 수 없습니다: " + accountId
+                ));
+        
+        // 기본 계정으로 설정하기 전에 기존 기본 계정 해제
+        cloudAccountDomainService.handleDefaultAccountSetting(
+            tenant.getId(), account.getProvider().getProviderType());
+        
+        // 현재 계정을 기본 계정으로 설정
+        account.setAsDefault();
+        CloudAccount updated = cloudAccountRepository.save(account);
+        
+        // 감사 로그 기록
+        Map<String, Object> auditData = new HashMap<>();
+        auditData.put("accountId", accountId);
+        auditData.put("accountName", updated.getAccountName());
+        auditData.put("providerType", account.getProvider().getProviderType().name());
+        auditEventPort.record("SET_DEFAULT_CLOUD_ACCOUNT", "CloudAccount", "SUCCESS", auditData);
+        
+        log.info("[CloudAccountUseCaseService] setAccountAsDefault - success");
+        return CloudAccountMapper.toDto(updated);
+    }
+
+    /**
+     * 프로바이더 타입별 기본 계정을 조회합니다.
+     * 
+     * @param providerType 프로바이더 타입
+     * @return CloudAccountDto
+     */
+    @Transactional(readOnly = true)
+    public CloudAccountDto getDefaultAccountByProviderType(CloudProvider.ProviderType providerType) {
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("[CloudAccountUseCaseService] getDefaultAccountByProviderType - tenantKey={}, providerType={}", 
+                 tenantKey, providerType);
+        
+        CloudAccount account = cloudAccountRepository.findDefaultByTenantKeyAndProviderType(tenantKey, providerType)
+                .orElseThrow(() -> new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_FOUND,
+                    String.format("프로바이더 타입 %s의 기본 계정을 찾을 수 없습니다", providerType)
+                ));
+        
+        return CloudAccountMapper.toDto(account);
+    }
+
+    /**
      * 검증 결과와 메타데이터로 JSON 메타데이터를 생성합니다.
      * 
      * @param validationResult 검증 결과
