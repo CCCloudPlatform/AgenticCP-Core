@@ -20,7 +20,8 @@ public class HealthController {
         response.put("status", "UP");
         response.put("timestamp", LocalDateTime.now());
         response.put("application", "AgenticCP-Core");
-        response.put("version", "1.0.0");
+        response.put("version", "1.0.1");
+        response.put("deployment", "EC2 Docker Deploy Test");
         
         return ResponseEntity.ok(ApiResponse.success(response));
     }
