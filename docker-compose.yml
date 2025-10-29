@@ -31,6 +31,7 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    # Infrastructure change test - 2025-10-29
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DATABASE_URL: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
