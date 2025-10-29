@@ -1,8 +1,8 @@
-name: Deploy to EC2 (Develop)
+name: Deploy to EC2
 
 on:
   push:
-    branches: [ develop ]
+    branches: [develop, feature/cicd-ec2-setup]
   workflow_dispatch:
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
+        username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         source: "./artifact/*.jar"
         target: "/tmp/"
@@ -93,7 +93,7 @@ jobs:
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
+        username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         timeout: 10m
         script: |
@@ -101,7 +101,13 @@ jobs:
           
           # 최신 코드 pull
           git fetch origin
-          git reset --hard origin/develop
+          if [ "${{ github.ref_name }}" = "develop" ]; then
+            git reset --hard origin/develop
+          elif [ "${{ github.ref_name }}" = "feature/cicd-ec2-setup" ]; then
+            git reset --hard origin/feature/cicd-ec2-setup
+          else
+            git reset --hard origin/${{ github.ref_name }}
+          fi
           
           # JAR 파일을 target 디렉토리로 복사
           mkdir -p target
@@ -112,71 +118,50 @@ jobs:
           echo "=== Docker 상태 확인 ==="
           docker ps -a
           
-          # 기존 컨테이너 중지
-          echo "=== 기존 컨테이너 중지 ==="
-          docker-compose stop app || true
-          
-          # MySQL, Redis가 실행 중인지 확인 및 시작
-          echo "=== MySQL, Redis 상태 확인 및 시작 ==="
-          
-          # MySQL 체크 및 시작
-          if docker-compose ps mysql 2>/dev/null | grep -q "Up"; then
-            echo "MySQL 이미 실행 중"
+          # 인프라 변경 감지 (docker-compose.yml, Dockerfile 등 변경 여부)
+          echo "=== 인프라 변경 감지 ==="
+          # 이전 커밋이 있는지 확인
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            CHANGED_FILES=$(git diff HEAD~1 --name-only)
+            if echo "$CHANGED_FILES" | grep -qE "(docker-compose\.yml|Dockerfile)"; then
+              echo "인프라 변경 감지됨 - 전체 서비스 재배포"
+              INFRA_CHANGED=true
+            else
+              echo "코드 변경만 감지됨 - app만 재배포"
+              INFRA_CHANGED=false
+            fi
           else
-            echo "MySQL 시작 중..."
-            docker-compose up -d mysql
-            echo "MySQL 시작 완료, 대기 중..."
-            sleep 10
+            # 첫 배포거나 커밋이 하나뿐인 경우
+            echo "첫 배포이거나 이전 커밋이 없음 - 전체 서비스 재배포"
+            INFRA_CHANGED=true
           fi
           
-          # Redis 체크 및 시작
-          if docker-compose ps redis 2>/dev/null | grep -q "Up"; then
-            echo "Redis 이미 실행 중"
+          if [ "$INFRA_CHANGED" = "true" ]; then
+            # 인프라 변경 시: 전체 서비스 재배포
+            echo "=== 기존 컨테이너 전체 중지 및 삭제 ==="
+            docker-compose down || true
+            
+            # app만 Dockerfile.develop로 빌드
+            echo "=== app 이미지를 Dockerfile.develop로 빌드 ==="
+            docker build -f Dockerfile.develop -t agenticcp-core_app:latest .
+            
+            echo "=== 전체 서비스 시작 ==="
+            docker-compose up -d
           else
-            echo "Redis 시작 중..."
-            docker-compose up -d redis
-            echo "Redis 시작 완료, 대기 중..."
-            sleep 5
-          fi
-          
-          # Docker 이미지 빌드
-          echo "=== Docker 이미지 빌드 ==="
-          
-          # Dockerfile 백업
-          cp Dockerfile Dockerfile.backup || true
-          
-          # 간단한 Dockerfile 생성 (빌드 없이 JAR만 사용)
-          cat > Dockerfile <<'EOF'
-          FROM eclipse-temurin:17-jre
-          
-          RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-          
-          WORKDIR /app
-          
-          COPY target/*.jar app.jar
-          
-          RUN groupadd -r agenticcp && useradd -r -g agenticcp agenticcp
-          RUN mkdir -p /app/logs && chown -R agenticcp:agenticcp /app
-          
-          USER agenticcp
-          
-          EXPOSE 8080
-          
-          HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-            CMD curl -f http://localhost:8080/api/actuator/health || exit 1
-          
-          ENTRYPOINT ["java", "-jar", "app.jar"]
-          EOF
-          
-          # Docker 이미지 빌드
-          docker-compose build app
-          
-          # 컨테이너 시작
-          docker-compose up -d app
-          
-          # Dockerfile 복구
-          if [ -f Dockerfile.backup ]; then
-            mv Dockerfile.backup Dockerfile
+            # 코드 변경만: app만 재배포
+            echo "=== 기존 app 컨테이너 중지 및 삭제 ==="
+            docker-compose stop app || true
+            docker rm -f agenticcp-app || true
+            
+            # Maven 빌드 없이 바로 Docker 이미지 빌드 (JAR만 사용)
+            echo "=== Docker 이미지 빌드 ==="
+            
+            # Dockerfile.develop을 사용하여 이미지 빌드
+            echo "=== Dockerfile.develop로 이미지 빌드 ==="
+            docker build -f Dockerfile.develop -t agenticcp-core_app:latest .
+            
+            # app 컨테이너만 시작 (mysql, redis는 이미 실행 중)
+            docker-compose up -d app
           fi
           
           # 컨테이너 상태 확인
@@ -202,3 +187,4 @@ jobs:
           echo "헬스체크 실패 - 애플리케이션 로그 확인"
           docker-compose logs app
           exit 1
+
