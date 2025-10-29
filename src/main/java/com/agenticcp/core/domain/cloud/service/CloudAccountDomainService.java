@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.service;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import lombok.RequiredArgsConstructor;
@@ -86,32 +87,40 @@ public class CloudAccountDomainService {
      * @param account 계정 엔티티
      * @param newStatus 새로운 상태
      */
-    public void changeAccountStatus(CloudAccount account, String newStatus) {
+    @Transactional
+    public void changeAccountStatus(CloudAccount account, AccountStatus newStatus) {
         log.info("[CloudAccountDomainService] changeAccountStatus - accountId={}, newStatus={}", 
                  account.getId(), newStatus);
         
-        switch (newStatus.toUpperCase()) {
-            case "ACTIVE":
+        switch (newStatus) {
+            case ACTIVE:
                 account.activate();
                 break;
-            case "INACTIVE":
+            case INACTIVE:
                 account.deactivate();
                 break;
-            case "SUSPENDED":
+            case SUSPENDED:
                 account.suspend();
                 break;
-            case "VERIFIED":
+            case VERIFIED:
                 account.markAsVerified();
                 break;
-            case "FAILED":
+            case FAILED:
                 account.markAsFailed();
                 break;
+            case VERIFYING:
+                throw new BusinessException(
+                    CloudErrorCode.INVALID_ACCOUNT_STATUS,
+                    "VERIFYING 상태로 직접 변경할 수 없습니다."
+                );
             default:
                 throw new BusinessException(
                     CloudErrorCode.INVALID_ACCOUNT_STATUS,
-                    String.format("유효하지 않은 계정 상태입니다: %s", newStatus)
+                    String.format("지원하지 않는 계정 상태입니다: %s", newStatus)
                 );
         }
+        cloudAccountRepository.save(account);
+        log.info("[CloudAccountDomainService] changeAccountStatus - success accountId={}, newStatus={}", account.getId(), newStatus);
     }
 
     /**
