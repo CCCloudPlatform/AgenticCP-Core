@@ -94,6 +94,10 @@ spring:
     username: agenticcp
     password: agenticcppassword
 
+cloud:
+  stub:
+    enabled: true  # Docker 개발 환경용 Stub 활성화
+
 ---
 spring:
   config:
