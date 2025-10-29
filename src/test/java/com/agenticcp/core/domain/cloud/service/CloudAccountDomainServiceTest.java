@@ -61,18 +61,64 @@ class CloudAccountDomainServiceTest {
         @Test
         @DisplayName("중복되지 않은 계정인 경우 예외가 발생하지 않는다")
         void validateAccountUniqueness_NotDuplicate_Success() {
-            // given - DomainService에서 중복 검증 없이 통과하므로 Mock 불필요
-            // 실제 validate는 Repository에서 검증하지만 현재 구현에서는 하지 않음
+            // given
+            given(cloudAccountRepository.existsByTenantIdAndAccountId(tenantId, accountId))
+                    .willReturn(false);
             
             // when & then - 예외가 발생하지 않아야 함
-            // 현재 CloudAccountDomainService.validateAccountUniqueness는 구현되지 않은 상태
+            cloudAccountDomainService.validateAccountUniqueness(tenantId, accountId, providerType);
+            
+            // verify
+            then(cloudAccountRepository).should(times(1))
+                    .existsByTenantIdAndAccountId(tenantId, accountId);
         }
 
         @Test
         @DisplayName("중복된 계정인 경우 BusinessException을 던진다")
         void validateAccountUniqueness_Duplicate_ThrowsException() {
-            // given - DomainService에서 중복 검증 로직 있을 때만 테스트 가능
-            // 현재 구현에서는 검증 로직이 없으므로 skip
+            // given
+            given(cloudAccountRepository.existsByTenantIdAndAccountId(tenantId, accountId))
+                    .willReturn(true);
+            
+            // when & then
+            assertThatThrownBy(() -> 
+                    cloudAccountDomainService.validateAccountUniqueness(tenantId, accountId, providerType))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("이미 등록된 계정입니다")
+                    .extracting("errorCode")
+                    .isEqualTo(CloudErrorCode.DUPLICATE_ACCOUNT);
+            
+            // verify
+            then(cloudAccountRepository).should(times(1))
+                    .existsByTenantIdAndAccountId(tenantId, accountId);
+        }
+
+        @Test
+        @DisplayName("accountId가 null인 경우 검증을 수행하지 않는다")
+        void validateAccountUniqueness_NullAccountId_SkipsValidation() {
+            // given
+            String nullAccountId = null;
+            
+            // when & then - 예외가 발생하지 않아야 함
+            cloudAccountDomainService.validateAccountUniqueness(tenantId, nullAccountId, providerType);
+            
+            // verify - Repository 호출이 없어야 함
+            then(cloudAccountRepository).should(never())
+                    .existsByTenantIdAndAccountId(any(), any());
+        }
+
+        @Test
+        @DisplayName("accountId가 빈 문자열인 경우 검증을 수행하지 않는다")
+        void validateAccountUniqueness_EmptyAccountId_SkipsValidation() {
+            // given
+            String emptyAccountId = "   ";
+            
+            // when & then - 예외가 발생하지 않아야 함
+            cloudAccountDomainService.validateAccountUniqueness(tenantId, emptyAccountId, providerType);
+            
+            // verify - Repository 호출이 없어야 함
+            then(cloudAccountRepository).should(never())
+                    .existsByTenantIdAndAccountId(any(), any());
         }
     }
 
