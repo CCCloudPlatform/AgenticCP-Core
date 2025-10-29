@@ -22,6 +22,8 @@ public class Ec2CapabilityConfig {
             "EC2",
             "INSTANCE",
             CspCapability.builder()
+                .supportsCreate(true)
+                .supportsUpdate(true)
                 .supportsStart(true)
                 .supportsStop(true)
                 .supportsTerminate(true)

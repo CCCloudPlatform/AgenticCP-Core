@@ -113,6 +113,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] createInstance - request={}", request);
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.CREATE);
+            }
             String instanceId = ec2PortRouter.ec2(ProviderType.AWS)
                 .createInstance(request);
 
@@ -286,6 +289,9 @@ public class Ec2UseCaseService {
         log.info("[Ec2UseCaseService] updateInstance - request={}", request);
 
         try {
+            if (capabilityGuard != null) {
+                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.UPDATE);
+            }
             ec2PortRouter.ec2(ProviderType.AWS).updateInstance(request);
 
             auditEventPort.record("UPDATE_INSTANCE", "EC2", "SUCCESS",

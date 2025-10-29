@@ -18,6 +18,8 @@ public class CapabilityGuard {
             throw new BusinessException(CloudErrorCode.CAPABILITY_NOT_DEFINED);
         }
         switch (op) {
+            case CREATE -> { if (!cap.isSupportsCreate()) throw new BusinessException(CloudErrorCode.UNSUPPORTED_OPERATION); }
+            case UPDATE -> { if (!cap.isSupportsUpdate()) throw new BusinessException(CloudErrorCode.UNSUPPORTED_OPERATION); }
             case START -> { if (!cap.isSupportsStart()) throw new BusinessException(CloudErrorCode.UNSUPPORTED_OPERATION); }
             case STOP -> { if (!cap.isSupportsStop()) throw new BusinessException(CloudErrorCode.UNSUPPORTED_OPERATION); }
             case TERMINATE -> { if (!cap.isSupportsTerminate()) throw new BusinessException(CloudErrorCode.UNSUPPORTED_OPERATION); }
@@ -26,5 +28,5 @@ public class CapabilityGuard {
         }
     }
 
-    public enum Operation { START, STOP, TERMINATE, TAGGING }
+    public enum Operation { CREATE, UPDATE, START, STOP, TERMINATE, TAGGING }
 }
