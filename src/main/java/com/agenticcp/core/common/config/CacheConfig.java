@@ -39,6 +39,7 @@ public class CacheConfig {
      * @return RedisCacheManager
      */
     @Bean("policyCacheManager")
+    @Primary
     @ConditionalOnProperty(prefix = "app.redis", name = "enabled", havingValue = "true")
     public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         
@@ -105,6 +106,7 @@ public class CacheConfig {
      * @return ConcurrentMapCacheManager
      */
     @Bean("policyCacheManager")
+    @Primary
     @ConditionalOnProperty(prefix = "app.redis", name = "enabled", havingValue = "false", matchIfMissing = true)
     public CacheManager inMemoryCacheManager() {
         return new ConcurrentMapCacheManager(

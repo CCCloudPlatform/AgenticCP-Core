@@ -31,6 +31,7 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    # Infrastructure change test - 2025-10-29
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DATABASE_URL: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
@@ -38,7 +39,7 @@ services:
       DATABASE_PASSWORD: agenticcppassword
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      APP_REDIS_ENABLED: "true"
+      APP_REDIS_ENABLED: "false"
       JWT_SECRET: ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=
       CONFIG_CIPHER_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
     depends_on:

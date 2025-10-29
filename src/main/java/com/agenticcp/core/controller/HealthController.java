@@ -11,16 +11,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/health")
+@RequestMapping("/api")
 public class HealthController {
 
-    @GetMapping
+    @GetMapping("/health")
     public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
         response.put("timestamp", LocalDateTime.now());
         response.put("application", "AgenticCP-Core");
-        response.put("version", "1.0.0");
+        response.put("version", "1.0.1");
+        response.put("deployment", "EC2 Docker Deploy Test");
         
         return ResponseEntity.ok(ApiResponse.success(response));
     }

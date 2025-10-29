@@ -4,6 +4,7 @@ import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.organization.entity.Organization;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
