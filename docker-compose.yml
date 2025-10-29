@@ -32,16 +32,18 @@ services:
     ports:
       - "8080:8080"
     # Infrastructure change test - 2025-10-29
+    env_file:
+      - .env
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      DATABASE_URL: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DATABASE_USERNAME: agenticcp
-      DATABASE_PASSWORD: agenticcppassword
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      APP_REDIS_ENABLED: "false"
-      JWT_SECRET: ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=
-      CONFIG_CIPHER_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      DATABASE_URL: ${DATABASE_URL:-jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-agenticcp}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-agenticcppassword}
+      SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT:-6379}
+      APP_REDIS_ENABLED: ${APP_REDIS_ENABLED:-false}
+      JWT_SECRET: ${JWT_SECRET}
+      CONFIG_CIPHER_KEY: ${CONFIG_CIPHER_KEY}
     depends_on:
       mysql:
         condition: service_healthy

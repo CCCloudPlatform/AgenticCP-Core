@@ -69,7 +69,7 @@ public class User extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private Status status = Status.ACTIVE;
+    private Status status = Status.PENDING;
 
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
@@ -149,5 +149,25 @@ public class User extends BaseEntity {
 
     public void lockAccount(int lockoutMinutes) {
         this.lockedUntil = LocalDateTime.now().plusMinutes(lockoutMinutes);
+    }
+
+    // 2FA 관련 Helper methods
+    public boolean isTwoFactorEnabled() {
+        return twoFactorEnabled != null && twoFactorEnabled;
+    }
+
+    public void enableTwoFactor(String secret) {
+        this.twoFactorEnabled = true;
+        this.twoFactorSecret = secret;
+        this.status = Status.ACTIVE; // 2FA 활성화 시 ACTIVE로 전환
+    }
+
+    public void disableTwoFactor() {
+        this.twoFactorEnabled = false;
+        this.twoFactorSecret = null;
+    }
+
+    public boolean isPendingTwoFactorSetup() {
+        return status == Status.PENDING && !isTwoFactorEnabled();
     }
 }
