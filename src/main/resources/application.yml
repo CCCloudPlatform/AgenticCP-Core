@@ -31,6 +31,12 @@ app:
   redis:
     enabled: false
 
+# AWS S3 설정
+aws:
+  s3:
+    region: ${AWS_REGION:us-east-1}
+    endpoint: ${AWS_S3_ENDPOINT:}
+
 
 security:
   jwt:
