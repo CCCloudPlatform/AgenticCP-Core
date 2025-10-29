@@ -32,6 +32,19 @@ public class MockAdaptersConfig {
                          tenantKey, providerType, accountScope);
                 return "mock-credentials";
             }
+
+            @Override
+            public String storeCredentials(String tenantKey, ProviderType providerType, 
+                                          String accountScope, Map<String, String> credentials) {
+                log.debug("Mock credential storage for tenant: {}, provider: {}, account: {}",
+                         tenantKey, providerType, accountScope);
+                return "mock-credential-key";
+            }
+
+            @Override
+            public void deleteCredentials(String credentialKey) {
+                log.debug("Mock credential deletion: credentialKey={}", credentialKey);
+            }
         };
     }
 
