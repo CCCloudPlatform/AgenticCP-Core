@@ -9,7 +9,6 @@ import com.agenticcp.core.domain.platform.entity.PlatformHealth;
 import com.agenticcp.core.domain.platform.repository.PlatformHealthRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,7 +34,6 @@ public class AdvancedHealthCheckService {
     private final List<HealthIndicator> healthIndicators;
     private final PlatformHealthRepository platformHealthRepository;
     
-    @Cacheable(value = "healthCheck", key = "'overall'")
     public HealthStatusResponse getOverallHealth() {
         log.info("Performing overall health check");
         long startTime = System.currentTimeMillis();
@@ -80,7 +78,6 @@ public class AdvancedHealthCheckService {
         return response;
     }
     
-    @Cacheable(value = "healthCheck", key = "#componentName")
     public ComponentHealthStatus getComponentHealth(String componentName) {
         log.info("Performing health check for component: {}", componentName);
         long startTime = System.currentTimeMillis();
