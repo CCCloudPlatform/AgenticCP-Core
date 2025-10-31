@@ -52,17 +52,9 @@ public class VpcController {
     public ResponseEntity<CloudResource> createVpc(@RequestBody VpcCreateRequest request) {
         log.info("[VpcController] createVpc - provider={}, vpcName={}", 
                 request.getProviderType(), request.getVpcName());
-        
-        try {
-            CloudResource vpc = vpcUseCaseService.createVpc(request);
-            
-            log.info("[VpcController] createVpc - success resourceId={}", vpc.getResourceId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(vpc);
-            
-        } catch (Exception e) {
-            log.error("[VpcController] createVpc - failed", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        CloudResource vpc = vpcUseCaseService.createVpc(request);
+        log.info("[VpcController] createVpc - success resourceId={}", vpc.getResourceId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(vpc);
     }
 
     /**
@@ -90,30 +82,23 @@ public class VpcController {
             @PathVariable String resourceId) {
         
         log.info("[VpcController] getVpc - provider={}, resourceId={}", providerType, resourceId);
-        
-        try {
-            ResourceIdentity vpcId = ResourceIdentity.builder()
-                    .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
-                    .accountScope(accountScope)
-                    .region(region)
-                    .providerResourceId(resourceId)
-                    .serviceKey("EC2")
-                    .resourceType("VPC")
-                    .build();
-            
-            Optional<CloudResource> vpc = vpcUseCaseService.getVpc(vpcId);
-            
-            if (vpc.isPresent()) {
-                log.info("[VpcController] getVpc - success resourceId={}", resourceId);
-                return ResponseEntity.ok(vpc.get());
-            } else {
-                log.warn("[VpcController] getVpc - not found resourceId={}", resourceId);
-                return ResponseEntity.notFound().build();
-            }
-            
-        } catch (Exception e) {
-            log.error("[VpcController] getVpc - failed", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        ResourceIdentity vpcId = ResourceIdentity.builder()
+                .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
+                .accountScope(accountScope)
+                .region(region)
+                .providerResourceId(resourceId)
+                .serviceKey("EC2")
+                .resourceType("VPC")
+                .build();
+
+        Optional<CloudResource> vpc = vpcUseCaseService.getVpc(vpcId);
+
+        if (vpc.isPresent()) {
+            log.info("[VpcController] getVpc - success resourceId={}", resourceId);
+            return ResponseEntity.ok(vpc.get());
+        } else {
+            log.warn("[VpcController] getVpc - not found resourceId={}", resourceId);
+            return ResponseEntity.notFound().build();
         }
     }
 
@@ -134,17 +119,9 @@ public class VpcController {
     )
     public ResponseEntity<List<CloudResource>> listVpcs(VpcQuery query) {
         log.info("[VpcController] listVpcs - provider={}", query.getProviderType());
-        
-        try {
-            List<CloudResource> vpcs = vpcUseCaseService.listVpcs(query);
-            
-            log.info("[VpcController] listVpcs - success count={}", vpcs.size());
-            return ResponseEntity.ok(vpcs);
-            
-        } catch (Exception e) {
-            log.error("[VpcController] listVpcs - failed", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        List<CloudResource> vpcs = vpcUseCaseService.listVpcs(query);
+        log.info("[VpcController] listVpcs - success count={}", vpcs.size());
+        return ResponseEntity.ok(vpcs);
     }
 
     /**
@@ -174,26 +151,18 @@ public class VpcController {
             @RequestBody VpcUpdateRequest request) {
         
         log.info("[VpcController] updateVpc - provider={}, resourceId={}", providerType, resourceId);
-        
-        try {
-            ResourceIdentity vpcId = ResourceIdentity.builder()
-                    .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
-                    .accountScope(accountScope)
-                    .region(region)
-                    .providerResourceId(resourceId)
-                    .serviceKey("EC2")
-                    .resourceType("VPC")
-                    .build();
-            
-            CloudResource vpc = vpcUseCaseService.updateVpc(vpcId, request);
-            
-            log.info("[VpcController] updateVpc - success resourceId={}", resourceId);
-            return ResponseEntity.ok(vpc);
-            
-        } catch (Exception e) {
-            log.error("[VpcController] updateVpc - failed", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        ResourceIdentity vpcId = ResourceIdentity.builder()
+                .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
+                .accountScope(accountScope)
+                .region(region)
+                .providerResourceId(resourceId)
+                .serviceKey("EC2")
+                .resourceType("VPC")
+                .build();
+
+        CloudResource vpc = vpcUseCaseService.updateVpc(vpcId, request);
+        log.info("[VpcController] updateVpc - success resourceId={}", resourceId);
+        return ResponseEntity.ok(vpc);
     }
 
     /**
@@ -221,25 +190,17 @@ public class VpcController {
             @PathVariable String resourceId) {
         
         log.info("[VpcController] deleteVpc - provider={}, resourceId={}", providerType, resourceId);
-        
-        try {
-            ResourceIdentity vpcId = ResourceIdentity.builder()
-                    .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
-                    .accountScope(accountScope)
-                    .region(region)
-                    .providerResourceId(resourceId)
-                    .serviceKey("EC2")
-                    .resourceType("VPC")
-                    .build();
-            
-            vpcUseCaseService.deleteVpc(vpcId);
-            
-            log.info("[VpcController] deleteVpc - success resourceId={}", resourceId);
-            return ResponseEntity.noContent().build();
-            
-        } catch (Exception e) {
-            log.error("[VpcController] deleteVpc - failed", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        ResourceIdentity vpcId = ResourceIdentity.builder()
+                .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
+                .accountScope(accountScope)
+                .region(region)
+                .providerResourceId(resourceId)
+                .serviceKey("EC2")
+                .resourceType("VPC")
+                .build();
+
+        vpcUseCaseService.deleteVpc(vpcId);
+        log.info("[VpcController] deleteVpc - success resourceId={}", resourceId);
+        return ResponseEntity.noContent().build();
     }
 }
