@@ -1,0 +1,608 @@
+package com.agenticcp.core.domain.organization.service;
+
+import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.common.enums.CommonErrorCode;
+import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
+import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.OrganizationHierarchyResponse;
+import com.agenticcp.core.domain.organization.dto.OrganizationPathResponse;
+import com.agenticcp.core.domain.organization.dto.OrganizationStatsResponse;
+import com.agenticcp.core.domain.organization.dto.MoveOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.AddUserToOrganizationRequest;
+import com.agenticcp.core.domain.organization.dto.UserResponse;
+import com.agenticcp.core.domain.organization.entity.Organization;
+import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
+import com.agenticcp.core.domain.user.entity.User;
+import com.agenticcp.core.domain.user.repository.UserRepository;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.tenant.repository.TenantRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional
+public class OrganizationService {
+    
+    private final OrganizationRepository organizationRepository;
+    private final UserRepository userRepository;
+    private final TenantRepository tenantRepository;
+    
+    /**
+     * 조직 생성
+     */
+    public OrganizationResponse createOrganization(CreateOrganizationRequest request) {
+        log.info("조직 생성 요청: orgName={}", request.getOrgName());
+        
+        // 조직명 중복 검사
+        validateOrgNameUnique(request.getOrgName());
+        
+        // 조직 키 생성 (orgName 기반)
+        String orgKey = generateOrgKey(request.getOrgName());
+        
+        // 조직 생성
+        Organization organization = Organization.builder()
+                .orgKey(orgKey)
+                .orgName(request.getOrgName())
+                .description(request.getDescription())
+                .status(Status.ACTIVE)
+                .orgType(request.getOrgType() != null ? 
+                    Organization.OrganizationType.valueOf(request.getOrgType()) : null)
+                .contactEmail(request.getContactEmail())
+                .contactPhone(request.getContactPhone())
+                .address(request.getAddress())
+                .website(request.getWebsite())
+                .maxUsers(request.getMaxUsers())
+                .settings(request.getSettings())
+                .build();
+        
+        // 상위 조직 설정
+        if (request.getParentOrganizationId() != null) {
+            Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
+            organization.setParentOrganization(parentOrg);
+        }
+        
+        Organization savedOrganization = organizationRepository.save(organization);
+        log.info("조직 생성 완료: id={}, orgName={}", savedOrganization.getId(), savedOrganization.getOrgName());
+        
+        return OrganizationResponse.from(savedOrganization);
+    }
+    
+    /**
+     * 조직 조회 (단일)
+     */
+    @Transactional(readOnly = true)
+    public OrganizationResponse getOrganization(Long id) {
+        log.info("조직 조회 요청: id={}", id);
+        
+        Organization organization = organizationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
+        
+        return OrganizationResponse.from(organization);
+    }
+    
+    /**
+     * 조직 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<OrganizationResponse> getOrganizations() {
+        log.info("조직 목록 조회 요청");
+        
+        List<Organization> organizations = organizationRepository.findAll();
+        
+        return organizations.stream()
+                .map(OrganizationResponse::from)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 조직 수정
+     */
+    public OrganizationResponse updateOrganization(Long id, UpdateOrganizationRequest request) {
+        log.info("조직 수정 요청: id={}, orgName={}", id, request.getOrgName());
+        
+        // 조직 존재 여부 확인
+        Organization organization = organizationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
+        
+        // 조직명 중복 검사 (자신 제외)
+        if (!organization.getOrgName().equals(request.getOrgName())) {
+            validateOrgNameUnique(request.getOrgName());
+        }
+        
+        // 조직 정보 수정
+        organization.setOrgName(request.getOrgName());
+        organization.setDescription(request.getDescription());
+        organization.setOrgType(request.getOrgType() != null ? 
+            Organization.OrganizationType.valueOf(request.getOrgType()) : null);
+        organization.setContactEmail(request.getContactEmail());
+        organization.setContactPhone(request.getContactPhone());
+        organization.setAddress(request.getAddress());
+        organization.setWebsite(request.getWebsite());
+        organization.setMaxUsers(request.getMaxUsers());
+        organization.setSettings(request.getSettings());
+        
+        // 상위 조직 변경
+        if (request.getParentOrganizationId() != null) {
+            Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
+            organization.setParentOrganization(parentOrg);
+        } else {
+            organization.setParentOrganization(null);
+        }
+        
+        Organization updatedOrganization = organizationRepository.save(organization);
+        log.info("조직 수정 완료: id={}, orgName={}", updatedOrganization.getId(), updatedOrganization.getOrgName());
+        
+        return OrganizationResponse.from(updatedOrganization);
+    }
+    
+    /**
+     * 조직 삭제
+     */
+    public void deleteOrganization(Long id) {
+        log.info("조직 삭제 요청: id={}", id);
+        
+        // 조직 존재 여부 확인
+        Organization organization = organizationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
+        
+        // 하위 조직 존재 여부 확인
+        if (organizationRepository.existsByParentOrganizationId(id)) {
+            throw new IllegalStateException("하위 조직이 존재하는 조직은 삭제할 수 없습니다: " + id);
+        }
+        
+        // 조직 삭제
+        organizationRepository.delete(organization);
+        log.info("조직 삭제 완료: id={}, orgName={}", id, organization.getOrgName());
+    }
+    
+    /**
+     * 조직명 중복 검증
+     */
+    private void validateOrgNameUnique(String orgName) {
+        if (organizationRepository.existsByOrgName(orgName)) {
+            throw new IllegalArgumentException("이미 존재하는 조직명입니다: " + orgName);
+        }
+    }
+    
+    /**
+     * 조직 키 생성
+     */
+    private String generateOrgKey(String orgName) {
+        String baseKey = orgName.toUpperCase()
+                .replaceAll("[^A-Z0-9]", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
+        
+        String orgKey = baseKey;
+        int counter = 1;
+        
+        while (organizationRepository.existsByOrgKey(orgKey)) {
+            orgKey = baseKey + "_" + counter;
+            counter++;
+        }
+        
+        return orgKey;
+    }
+    
+    /**
+     * 조직 수 조회
+     */
+    @Transactional(readOnly = true)
+    public long getOrganizationCount() {
+        return organizationRepository.count();
+    }
+    
+    /**
+     * 특정 조직의 하위 조직 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<OrganizationResponse> getChildOrganizations(Long parentOrgId) {
+        log.info("하위 조직 목록 조회 요청: parentOrgId={}", parentOrgId);
+        
+        // 상위 조직 존재 여부 확인
+        organizationRepository.findById(parentOrgId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + parentOrgId));
+        
+        List<Organization> childOrganizations = organizationRepository.findByParentOrganizationId(parentOrgId);
+        
+        return childOrganizations.stream()
+                .map(OrganizationResponse::from)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 전체 조직 트리 조회
+     */
+    public List<OrganizationHierarchyResponse> getOrganizationTree() {
+        log.info("[OrganizationService] 전체 조직 트리 조회 요청");
+        
+        List<Organization> organizations = organizationRepository.findAll();
+        Map<Long, List<Organization>> childrenMap = organizations.stream()
+                .filter(org -> org.getParentOrganization() != null)
+                .collect(Collectors.groupingBy(org -> org.getParentOrganization().getId()));
+        
+        List<Organization> rootOrganizations = organizationRepository.findRootOrganizations();
+        
+        List<OrganizationHierarchyResponse> result = rootOrganizations.stream()
+                .map(org -> buildHierarchyResponse(org, childrenMap, 0, org.getOrgName()))
+                .collect(Collectors.toList());
+        
+        log.info("[OrganizationService] 전체 조직 트리 조회 완료: count={}", result.size());
+        return result;
+    }
+    
+    /**
+     * 조직 경로 조회
+     */
+    public OrganizationPathResponse getOrganizationPath(Long orgId) {
+        log.info("[OrganizationService] 조직 경로 조회 요청: orgId={}", orgId);
+        
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        List<OrganizationResponse> path = new ArrayList<>();
+        Organization current = organization;
+        
+        while (current != null) {
+            path.add(0, OrganizationResponse.from(current));
+            current = current.getParentOrganization();
+        }
+        
+        OrganizationPathResponse result = OrganizationPathResponse.from(path);
+        log.info("[OrganizationService] 조직 경로 조회 완료: path={}", result.getFullPath());
+        return result;
+    }
+    
+    /**
+     * 상위 조직 목록 조회
+     */
+    public List<OrganizationResponse> getAncestors(Long orgId) {
+        log.info("[OrganizationService] 상위 조직 목록 조회 요청: orgId={}", orgId);
+        
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        List<OrganizationResponse> ancestors = new ArrayList<>();
+        Organization current = organization.getParentOrganization();
+        
+        while (current != null) {
+            ancestors.add(0, OrganizationResponse.from(current));
+            current = current.getParentOrganization();
+        }
+        
+        log.info("[OrganizationService] 상위 조직 목록 조회 완료: count={}", ancestors.size());
+        return ancestors;
+    }
+    
+    /**
+     * 하위 조직 목록 조회 (모든 레벨)
+     */
+    public List<OrganizationResponse> getDescendants(Long orgId) {
+        log.info("[OrganizationService] 하위 조직 목록 조회 요청: orgId={}", orgId);
+        
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        List<OrganizationResponse> descendants = new ArrayList<>();
+        collectDescendants(organization, descendants);
+        
+        log.info("[OrganizationService] 하위 조직 목록 조회 완료: count={}", descendants.size());
+        return descendants;
+    }
+    
+    /**
+     * 조직 이동
+     */
+    @Transactional
+    public OrganizationResponse moveOrganization(Long orgId, MoveOrganizationRequest request) {
+        log.info("[OrganizationService] 조직 이동 요청: orgId={}, newParentId={}", 
+                orgId, request.getNewParentId());
+        
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+        
+        // 새로운 상위 조직 검증
+        Organization newParent = null;
+        if (request.getNewParentId() != null) {
+            newParent = organizationRepository.findById(request.getNewParentId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getNewParentId()));
+            
+            // 순환 참조 방지
+            validateNoCircularReference(organization, newParent);
+        }
+        
+        organization.setParentOrganization(newParent);
+        Organization savedOrganization = organizationRepository.save(organization);
+        
+        log.info("[OrganizationService] 조직 이동 완료: orgId={}, newParentId={}", 
+                savedOrganization.getId(), newParent != null ? newParent.getId() : null);
+        return OrganizationResponse.from(savedOrganization);
+    }
+    
+    /**
+     * 조직 통계 조회
+     */
+    public OrganizationStatsResponse getOrganizationStats() {
+        log.info("[OrganizationService] 조직 통계 조회 요청");
+        
+        List<Organization> organizations = organizationRepository.findAll();
+        
+        long totalOrganizations = organizations.size();
+        long activeOrganizations = organizations.stream()
+                .filter(org -> Status.ACTIVE.equals(org.getStatus()))
+                .count();
+        long inactiveOrganizations = totalOrganizations - activeOrganizations;
+        
+        // 계층별 통계
+        Map<Integer, Long> levelStats = new HashMap<>();
+        int maxDepth = 0;
+        
+        for (Organization org : organizations) {
+            int level = calculateLevel(org);
+            levelStats.merge(level, 1L, Long::sum);
+            maxDepth = Math.max(maxDepth, level);
+        }
+        
+        List<OrganizationStatsResponse.LevelStats> levelStatsList = levelStats.entrySet().stream()
+                .map(entry -> OrganizationStatsResponse.LevelStats.builder()
+                        .level(entry.getKey())
+                        .count(entry.getValue())
+                        .description("Level " + entry.getKey())
+                        .build())
+                .sorted(Comparator.comparing(OrganizationStatsResponse.LevelStats::getLevel))
+                .collect(Collectors.toList());
+        
+        OrganizationStatsResponse result = OrganizationStatsResponse.builder()
+                .totalOrganizations(totalOrganizations)
+                .activeOrganizations(activeOrganizations)
+                .inactiveOrganizations(inactiveOrganizations)
+                .maxDepth(maxDepth)
+                .levelStats(levelStatsList)
+                .build();
+        
+        log.info("[OrganizationService] 조직 통계 조회 완료: total={}, active={}, maxDepth={}", 
+                totalOrganizations, activeOrganizations, maxDepth);
+        return result;
+    }
+    
+    // Helper methods
+    private OrganizationHierarchyResponse buildHierarchyResponse(Organization org, 
+                                                               Map<Long, List<Organization>> childrenMap, 
+                                                               int level, 
+                                                               String path) {
+        List<Organization> children = childrenMap.getOrDefault(org.getId(), List.of());
+        List<OrganizationHierarchyResponse> childResponses = children.stream()
+                .map(child -> buildHierarchyResponse(child, childrenMap, level + 1, path + " > " + child.getOrgName()))
+                .collect(Collectors.toList());
+        
+        OrganizationHierarchyResponse response = OrganizationHierarchyResponse.from(
+                OrganizationResponse.from(org), level, path);
+        response.setChildren(childResponses);
+        response.setChildrenCount(childResponses.size());
+        
+        return response;
+    }
+    
+    private void collectDescendants(Organization parent, List<OrganizationResponse> descendants) {
+        List<Organization> children = organizationRepository.findByParentOrganizationId(parent.getId());
+        for (Organization child : children) {
+            descendants.add(OrganizationResponse.from(child));
+            collectDescendants(child, descendants);
+        }
+    }
+    
+    private void validateNoCircularReference(Organization org, Organization newParent) {
+        Organization current = newParent;
+        while (current != null) {
+            if (current.getId().equals(org.getId())) {
+                throw new IllegalArgumentException("순환 참조가 발생합니다: " + org.getOrgName());
+            }
+            current = current.getParentOrganization();
+        }
+    }
+    
+    private int calculateLevel(Organization org) {
+        int level = 0;
+        Organization current = org.getParentOrganization();
+        while (current != null) {
+            level++;
+            current = current.getParentOrganization();
+        }
+        return level;
+    }
+    
+    /**
+     * 조직별 사용자 목록 조회
+     */
+    public List<UserResponse> getOrganizationUsers(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationUsers - organizationId={}", organizationId);
+        
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        
+        // 조직의 사용자 목록 조회
+        List<User> users = userRepository.findByOrganizationId(organizationId);
+        
+        return users.stream()
+            .map(this::convertToUserResponse)
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * 사용자를 조직에 추가
+     */
+    public UserResponse addUserToOrganization(Long organizationId, AddUserToOrganizationRequest request) {
+        log.info("[OrganizationService] addUserToOrganization - organizationId={}, userId={}", 
+                organizationId, request.getUserId());
+        
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        
+        // 사용자 존재 확인
+        User user = userRepository.findById(request.getUserId())
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
+        
+        // 이미 조직에 속한 사용자인지 확인
+        if (user.getOrganization() != null && user.getOrganization().getId().equals(organizationId)) {
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "이미 해당 조직에 속한 사용자입니다.");
+        }
+        
+        // 사용자를 조직에 추가
+        user.setOrganization(organization);
+        User savedUser = userRepository.save(user);
+        
+        log.info("[OrganizationService] addUserToOrganization - 사용자가 조직에 추가됨: userId={}, organizationId={}", 
+                savedUser.getId(), organizationId);
+        
+        return convertToUserResponse(savedUser);
+    }
+    
+    /**
+     * 사용자를 조직에서 제거
+     */
+    public void removeUserFromOrganization(Long organizationId, Long userId) {
+        log.info("[OrganizationService] removeUserFromOrganization - organizationId={}, userId={}", 
+                organizationId, userId);
+        
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        
+        // 사용자 존재 확인
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        // 사용자가 해당 조직에 속하는지 확인
+        if (user.getOrganization() == null || !user.getOrganization().getId().equals(organizationId)) {
+            throw new ResourceNotFoundException("User", "organization", organizationId);
+        }
+        
+        // 사용자를 조직에서 제거
+        user.setOrganization(null);
+        userRepository.save(user);
+        
+        log.info("[OrganizationService] removeUserFromOrganization - 사용자가 조직에서 제거됨: userId={}, organizationId={}", 
+                userId, organizationId);
+    }
+    
+    /**
+     * User 엔티티를 UserResponse DTO로 변환
+     */
+    private UserResponse convertToUserResponse(User user) {
+        return UserResponse.builder()
+            .id(user.getId())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .name(user.getName())
+            .role(user.getRole())
+            .status(user.getStatus())
+            .lastLogin(user.getLastLogin())
+            .department(user.getDepartment())
+            .jobTitle(user.getJobTitle())
+            .phoneNumber(user.getPhoneNumber())
+            .createdAt(user.getCreatedAt())
+            .updatedAt(user.getUpdatedAt())
+            .build();
+    }
+
+    // ========== 조직-테넌트 관계 관리 ==========
+
+    /**
+     * 조직별 테넌트 목록 조회
+     */
+    public List<Tenant> getOrganizationTenants(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationTenants - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+
+        // 조직의 테넌트 목록 조회
+        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
+
+        return tenants;
+    }
+
+    /**
+     * 조직별 테넌트 수 조회
+     */
+    public long getOrganizationTenantCount(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationTenantCount - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+
+        // 조직의 테넌트 수 조회
+        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
+        return tenants.size();
+    }
+
+    /**
+     * 조직별 활성 테넌트 수 조회
+     */
+    public long getActiveTenantCount(Long organizationId) {
+        log.info("[OrganizationService] getActiveTenantCount - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+
+        // 조직의 활성 테넌트 수 조회
+        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
+        return tenants.stream()
+            .filter(tenant -> tenant.getStatus() == Status.ACTIVE)
+            .count();
+    }
+
+    /**
+     * 조직별 테넌트 통계 조회
+     */
+    public Map<String, Object> getOrganizationTenantStats(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationTenantStats - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+
+        // 조직의 테넌트 목록 조회
+        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
+
+        // 통계 계산
+        long totalTenants = tenants.size();
+        long activeTenants = tenants.stream()
+            .filter(tenant -> tenant.getStatus() == Status.ACTIVE)
+            .count();
+        long inactiveTenants = totalTenants - activeTenants;
+        
+        int totalMaxUsers = tenants.stream()
+            .mapToInt(tenant -> tenant.getMaxUsers() != null ? tenant.getMaxUsers() : 0)
+            .sum();
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalTenants", totalTenants);
+        stats.put("activeTenants", activeTenants);
+        stats.put("inactiveTenants", inactiveTenants);
+        stats.put("totalMaxUsers", totalMaxUsers);
+        stats.put("organizationId", organizationId);
+        stats.put("organizationName", organization.getOrgName());
+
+        return stats;
+    }
+}
