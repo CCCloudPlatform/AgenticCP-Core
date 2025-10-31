@@ -5,8 +5,8 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.aws.CreateS3BucketCommand;
-import com.agenticcp.core.domain.cloud.port.model.aws.UpdateS3BucketCommand;
+import com.agenticcp.core.domain.cloud.port.model.storage.CreateObjectStorageContainerCommand;
+import com.agenticcp.core.domain.cloud.port.model.storage.UpdateObjectStorageContainerCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +54,7 @@ class AwsS3BucketManagementAdapterTest {
     @InjectMocks
     private AwsS3BucketManagementAdapter adapter;
 
-    private static final String BUCKET_NAME = "test-bucket";
+    private static final String CONTAINER_NAME = "test-container";
     private static final String TENANT_KEY = "test-tenant";
     private CloudProvider awsProvider;
 
@@ -69,26 +69,26 @@ class AwsS3BucketManagementAdapterTest {
     }
 
     @Nested
-    @DisplayName("버킷 생성 테스트")
-    class CreateBucketTest {
+    @DisplayName("Container 생성 테스트")
+    class CreateContainerTest {
 
         @Test
-        @DisplayName("정상적인 버킷 생성")
-        void createBucket_Success() {
+        @DisplayName("정상적인 Container 생성")
+        void createContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
                 when(credentialProviderPort.resolveCredentials(any(), any(), any())).thenReturn(mock(AwsCredentials.class));
                 when(cloudProviderRepository.findFirstByProviderType(any())).thenReturn(Optional.of(awsProvider));
 
-                CreateS3BucketCommand command = CreateS3BucketCommand.builder()
-                        .bucketName(BUCKET_NAME)
+                CreateObjectStorageContainerCommand command = CreateObjectStorageContainerCommand.builder()
+                        .containerName(CONTAINER_NAME)
                         .region("us-east-1")
                         .build();
 
                 CloudResource mockResource = CloudResource.builder()
-                        .resourceId(BUCKET_NAME)
-                        .resourceName(BUCKET_NAME)
+                        .resourceId(CONTAINER_NAME)
+                        .resourceName(CONTAINER_NAME)
                         .build();
                 when(mapper.toCloudResource(any(Bucket.class), any(CloudProvider.class))).thenReturn(mockResource);
 
@@ -97,11 +97,11 @@ class AwsS3BucketManagementAdapterTest {
                         .thenReturn(CreateBucketResponse.builder().build());
 
                 // When
-                CloudResource result = adapter.createBucket(command);
+                CloudResource result = adapter.createContainer(command);
 
                 // Then
                 assertThat(result).isNotNull();
-                assertThat(result.getResourceName()).isEqualTo(BUCKET_NAME);
+                assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
 
                 verify(credentialProviderPort).resolveCredentials(TENANT_KEY, CloudProvider.ProviderType.AWS, "default");
                 verify(s3Client).createBucket(any(CreateBucketRequest.class));
@@ -110,8 +110,8 @@ class AwsS3BucketManagementAdapterTest {
         }
 
         @Test
-        @DisplayName("이미 존재하는 버킷명으로 생성 시 예외 발생 (다른 계정 소유)")
-        void createBucket_AlreadyExists_ThrowsException() {
+        @DisplayName("이미 존재하는 Container명으로 생성 시 예외 발생 (다른 계정 소유)")
+        void createContainer_AlreadyExists_ThrowsException() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
@@ -120,13 +120,13 @@ class AwsS3BucketManagementAdapterTest {
                 when(s3Client.createBucket(any(CreateBucketRequest.class)))
                         .thenThrow(BucketAlreadyExistsException.builder().build());
 
-                CreateS3BucketCommand command = CreateS3BucketCommand.builder()
-                        .bucketName(BUCKET_NAME)
+                CreateObjectStorageContainerCommand command = CreateObjectStorageContainerCommand.builder()
+                        .containerName(CONTAINER_NAME)
                         .region("us-east-1")
                         .build();
 
                 // When & Then
-                assertThatThrownBy(() -> adapter.createBucket(command))
+                assertThatThrownBy(() -> adapter.createContainer(command))
                         .isInstanceOf(BusinessException.class);
 
                 verify(credentialProviderPort).resolveCredentials(TENANT_KEY, CloudProvider.ProviderType.AWS, "default");
@@ -136,12 +136,12 @@ class AwsS3BucketManagementAdapterTest {
     }
 
     @Nested
-    @DisplayName("버킷 삭제 테스트")
-    class DeleteBucketTest {
+    @DisplayName("Container 삭제 테스트")
+    class DeleteContainerTest {
 
         @Test
-        @DisplayName("정상적인 버킷 삭제")
-        void deleteBucket_Success() {
+        @DisplayName("정상적인 Container 삭제")
+        void deleteContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
@@ -155,7 +155,7 @@ class AwsS3BucketManagementAdapterTest {
                         .thenReturn(DeleteBucketResponse.builder().build());
 
                 // When
-                adapter.deleteBucket(BUCKET_NAME);
+                adapter.deleteContainer(CONTAINER_NAME);
 
                 // Then
                 verify(credentialProviderPort).resolveCredentials(TENANT_KEY, CloudProvider.ProviderType.AWS, "default");
@@ -165,8 +165,8 @@ class AwsS3BucketManagementAdapterTest {
         }
 
         @Test
-        @DisplayName("존재하지 않는 버킷 삭제 시 정상 처리")
-        void deleteBucket_NotFound_Success() {
+        @DisplayName("존재하지 않는 Container 삭제 시 정상 처리")
+        void deleteContainer_NotFound_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
@@ -178,7 +178,7 @@ class AwsS3BucketManagementAdapterTest {
                         .thenReturn(DeleteBucketResponse.builder().build());
 
                 // When
-                assertThatCode(() -> adapter.deleteBucket(BUCKET_NAME))
+                assertThatCode(() -> adapter.deleteContainer(CONTAINER_NAME))
                         .doesNotThrowAnyException();
 
                 // Then
@@ -190,12 +190,12 @@ class AwsS3BucketManagementAdapterTest {
     }
 
     @Nested
-    @DisplayName("버킷 강제 삭제 테스트")
-    class ForceDeleteBucketTest {
+    @DisplayName("Container 강제 삭제 테스트")
+    class ForceDeleteContainerTest {
 
         @Test
-        @DisplayName("정상적인 버킷 강제 삭제")
-        void forceDeleteBucket_Success() {
+        @DisplayName("정상적인 Container 강제 삭제")
+        void forceDeleteContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
@@ -212,7 +212,7 @@ class AwsS3BucketManagementAdapterTest {
                         .thenReturn(DeleteBucketResponse.builder().build());
 
                 // When
-                adapter.forceDeleteBucket(BUCKET_NAME);
+                adapter.forceDeleteContainer(CONTAINER_NAME);
 
                 // Then
                 verify(credentialProviderPort).resolveCredentials(TENANT_KEY, CloudProvider.ProviderType.AWS, "default");
@@ -223,26 +223,26 @@ class AwsS3BucketManagementAdapterTest {
     }
 
     @Nested
-    @DisplayName("버킷 수정 테스트")
-    class UpdateBucketTest {
+    @DisplayName("Container 수정 테스트")
+    class UpdateContainerTest {
 
         @Test
-        @DisplayName("정상적인 버킷 수정")
-        void updateBucket_Success() {
+        @DisplayName("정상적인 Container 수정")
+        void updateContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
                 when(credentialProviderPort.resolveCredentials(any(), any(), any())).thenReturn(mock(AwsCredentials.class));
                 when(cloudProviderRepository.findFirstByProviderType(any())).thenReturn(Optional.of(awsProvider));
 
-                UpdateS3BucketCommand command = UpdateS3BucketCommand.builder()
-                        .bucketName(BUCKET_NAME)
+                UpdateObjectStorageContainerCommand command = UpdateObjectStorageContainerCommand.builder()
+                        .containerName(CONTAINER_NAME)
                         .tags(Map.of("Environment", "Test"))
                         .build();
 
                 CloudResource mockResource = CloudResource.builder()
-                        .resourceId(BUCKET_NAME)
-                        .resourceName(BUCKET_NAME)
+                        .resourceId(CONTAINER_NAME)
+                        .resourceName(CONTAINER_NAME)
                         .build();
                 when(mapper.toCloudResource(any(Bucket.class), any(CloudProvider.class))).thenReturn(mockResource);
 
@@ -252,11 +252,11 @@ class AwsS3BucketManagementAdapterTest {
                         .thenReturn(PutBucketTaggingResponse.builder().build());
 
                 // When
-                CloudResource result = adapter.updateBucket(command);
+                CloudResource result = adapter.updateContainer(command);
 
                 // Then
                 assertThat(result).isNotNull();
-                assertThat(result.getResourceName()).isEqualTo(BUCKET_NAME);
+                assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
 
                 verify(credentialProviderPort).resolveCredentials(TENANT_KEY, CloudProvider.ProviderType.AWS, "default");
                 verify(s3Client).headBucket(any(HeadBucketRequest.class));
@@ -266,8 +266,8 @@ class AwsS3BucketManagementAdapterTest {
         }
 
         @Test
-        @DisplayName("존재하지 않는 버킷 수정 시 예외 발생")
-        void updateBucket_NotFound_ThrowsException() {
+        @DisplayName("존재하지 않는 Container 수정 시 예외 발생")
+        void updateContainer_NotFound_ThrowsException() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
@@ -276,13 +276,13 @@ class AwsS3BucketManagementAdapterTest {
                 when(s3Client.headBucket(any(HeadBucketRequest.class)))
                         .thenThrow(NoSuchBucketException.builder().build());
 
-                UpdateS3BucketCommand command = UpdateS3BucketCommand.builder()
-                        .bucketName(BUCKET_NAME)
+                UpdateObjectStorageContainerCommand command = UpdateObjectStorageContainerCommand.builder()
+                        .containerName(CONTAINER_NAME)
                         .tags(Map.of("Environment", "Test"))
                         .build();
 
                 // When & Then
-                assertThatThrownBy(() -> adapter.updateBucket(command))
+                assertThatThrownBy(() -> adapter.updateContainer(command))
                         .isInstanceOf(BusinessException.class);
 
                 verify(credentialProviderPort).resolveCredentials(TENANT_KEY, CloudProvider.ProviderType.AWS, "default");

@@ -6,7 +6,7 @@ import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudRegion;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.aws.S3BucketQuery;
+import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQuery;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudRegionRepository;
@@ -98,7 +98,7 @@ class AwsS3BucketDiscoveryAdapterTest {
                 when(credentialProviderPort.resolveCredentials(any(), any(), any())).thenReturn(mock(AwsCredentials.class));
                 when(cloudProviderRepository.findFirstByProviderType(CloudProvider.ProviderType.AWS)).thenReturn(Optional.of(awsProvider));
                 
-                S3BucketQuery query = S3BucketQuery.builder()
+                ObjectStorageContainerQuery query = ObjectStorageContainerQuery.builder()
                         .page(0)
                         .size(10)
                         .build();
@@ -124,7 +124,7 @@ class AwsS3BucketDiscoveryAdapterTest {
                 when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
                 // When
-                Page<CloudResource> result = adapter.listBuckets(query);
+                Page<CloudResource> result = adapter.listContainers(query);
 
                 // Then
                 assertThat(result).isNotNull();
@@ -148,13 +148,13 @@ class AwsS3BucketDiscoveryAdapterTest {
                 when(credentialProviderPort.resolveCredentials(any(), any(), any()))
                         .thenThrow(new RuntimeException("Credential resolution failed"));
 
-                S3BucketQuery query = S3BucketQuery.builder()
+                ObjectStorageContainerQuery query = ObjectStorageContainerQuery.builder()
                         .page(0)
                         .size(10)
                         .build();
 
                 // When & Then
-                assertThatThrownBy(() -> adapter.listBuckets(query))
+                assertThatThrownBy(() -> adapter.listContainers(query))
                         .isInstanceOf(BusinessException.class)
                         .hasMessageContaining("클라우드 서비스 연결에 실패했습니다");
 
@@ -203,7 +203,7 @@ class AwsS3BucketDiscoveryAdapterTest {
                 when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
                 // When
-                Optional<CloudResource> result = adapter.getBucket(BUCKET_NAME);
+                Optional<CloudResource> result = adapter.getContainer(BUCKET_NAME);
 
                 // Then
                 assertThat(result).isPresent();
@@ -228,7 +228,7 @@ class AwsS3BucketDiscoveryAdapterTest {
                         .thenThrow(NoSuchBucketException.builder().build());
 
                 // When
-                Optional<CloudResource> result = adapter.getBucket(BUCKET_NAME);
+                Optional<CloudResource> result = adapter.getContainer(BUCKET_NAME);
 
                 // Then
                 assertThat(result).isEmpty();
@@ -251,7 +251,7 @@ class AwsS3BucketDiscoveryAdapterTest {
                 when(s3Client.headBucket(any(HeadBucketRequest.class))).thenReturn(HeadBucketResponse.builder().build());
 
                 // When
-                boolean result = adapter.bucketExists(BUCKET_NAME);
+                boolean result = adapter.containerExists(BUCKET_NAME);
 
                 // Then
                 assertThat(result).isTrue();
@@ -270,7 +270,7 @@ class AwsS3BucketDiscoveryAdapterTest {
                         .thenThrow(NoSuchBucketException.builder().build());
 
                 // When
-                boolean result = adapter.bucketExists(BUCKET_NAME);
+                boolean result = adapter.containerExists(BUCKET_NAME);
 
                 // Then
                 assertThat(result).isFalse();
