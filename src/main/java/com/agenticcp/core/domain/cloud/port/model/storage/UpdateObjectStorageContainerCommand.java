@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model.aws;
+package com.agenticcp.core.domain.cloud.port.model.storage;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,12 +7,12 @@ import java.util.Map;
 
 @Getter
 @Builder
-public class UpdateS3BucketCommand {
+public class UpdateObjectStorageContainerCommand {
 
-    /**
-     * 업데이트할 버킷 이름 (필수)
-     */
-    private final String bucketName;
+/**
+ * 업데이트할 Container 이름 (필수)
+ */
+private final String containerName;
 
     /**
      * 버전 관리 활성화 여부 (선택적)

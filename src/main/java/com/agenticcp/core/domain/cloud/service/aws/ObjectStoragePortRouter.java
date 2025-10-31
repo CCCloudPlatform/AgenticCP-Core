@@ -2,8 +2,8 @@ package com.agenticcp.core.domain.cloud.service.aws;
 
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.S3BucketDiscoveryPort;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.S3BucketManagementPort;
+import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
+import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageManagementPort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -11,29 +11,29 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * S3 버킷 포트 라우터
+ * Object Storage Container 포트 라우터
  * 
  * 헥사고날 아키텍처의 애플리케이션 계층에서 클라우드 프로바이더 타입에 따라
- * 적절한 S3 버킷 포트 구현체를 선택하는 라우터입니다.
+ * 적절한 Object Storage Container 포트 구현체를 선택하는 라우터입니다.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
  */
 @Component
 @Slf4j
-public class S3BucketPortRouter {
+public class ObjectStoragePortRouter {
 
-    private final Map<CloudProvider.ProviderType, S3BucketDiscoveryPort> discoveryPorts;
-    private final Map<CloudProvider.ProviderType, S3BucketManagementPort> managementPorts;
+    private final Map<CloudProvider.ProviderType, ObjectStorageDiscoveryPort> discoveryPorts;
+    private final Map<CloudProvider.ProviderType, ObjectStorageManagementPort> managementPorts;
 
     /**
      * 생성자 - Spring이 자동으로 어댑터들을 주입합니다.
      * 
-     * @param discoveryPortList S3 버킷 발견 포트 구현체 목록
-     * @param managementPortList S3 버킷 관리 포트 구현체 목록
+     * @param discoveryPortList Object Storage Container 발견 포트 구현체 목록
+     * @param managementPortList Object Storage Container 관리 포트 구현체 목록
      */
-    public S3BucketPortRouter(List<S3BucketDiscoveryPort> discoveryPortList,
-                              List<S3BucketManagementPort> managementPortList) {
+    public ObjectStoragePortRouter(List<ObjectStorageDiscoveryPort> discoveryPortList,
+                                   List<ObjectStorageManagementPort> managementPortList) {
         
         // Discovery 포트 맵 초기화
         this.discoveryPorts = discoveryPortList.stream()
@@ -42,7 +42,7 @@ public class S3BucketPortRouter {
                 port -> ((ProviderScoped) port).getProviderType(),
                 port -> port,
                 (existing, replacement) -> {
-                    log.warn("중복된 S3 버킷 Discovery 포트 발견: provider={}, existing={}, replacement={}", 
+                    log.warn("중복된 Object Storage Container Discovery 포트 발견: provider={}, existing={}, replacement={}", 
                             ((ProviderScoped) existing).getProviderType(), 
                             existing.getClass().getSimpleName(), 
                             replacement.getClass().getSimpleName());
@@ -57,7 +57,7 @@ public class S3BucketPortRouter {
                 port -> ((ProviderScoped) port).getProviderType(),
                 port -> port,
                 (existing, replacement) -> {
-                    log.warn("중복된 S3 버킷 Management 포트 발견: provider={}, existing={}, replacement={}", 
+                    log.warn("중복된 Object Storage Container Management 포트 발견: provider={}, existing={}, replacement={}", 
                             ((ProviderScoped) existing).getProviderType(), 
                             existing.getClass().getSimpleName(), 
                             replacement.getClass().getSimpleName());
@@ -65,45 +65,45 @@ public class S3BucketPortRouter {
                 }
             ));
 
-        log.info("S3 버킷 포트 라우터 초기화 완료: discoveryPorts={}, managementPorts={}", 
+        log.info("Object Storage Container 포트 라우터 초기화 완료: discoveryPorts={}, managementPorts={}", 
                 discoveryPorts.keySet(), managementPorts.keySet());
     }
 
     /**
-     * 지정된 프로바이더 타입에 해당하는 S3 버킷 발견 포트를 반환합니다.
+     * 지정된 프로바이더 타입에 해당하는 Object Storage Container 발견 포트를 반환합니다.
      * 
      * @param providerType 클라우드 프로바이더 타입
-     * @return S3 버킷 발견 포트
+     * @return Object Storage Container 발견 포트
      * @throws IllegalArgumentException 지원하지 않는 프로바이더 타입인 경우
      */
-    public S3BucketDiscoveryPort discovery(CloudProvider.ProviderType providerType) {
-        S3BucketDiscoveryPort port = discoveryPorts.get(providerType);
+    public ObjectStorageDiscoveryPort discovery(CloudProvider.ProviderType providerType) {
+        ObjectStorageDiscoveryPort port = discoveryPorts.get(providerType);
         if (port == null) {
             log.error("지원하지 않는 프로바이더 타입: {}, 지원되는 타입: {}", providerType, discoveryPorts.keySet());
             throw new IllegalArgumentException("지원하지 않는 프로바이더 타입입니다: " + providerType);
         }
         
-        log.debug("S3 버킷 Discovery 포트 선택: provider={}, port={}", 
+        log.debug("Object Storage Container Discovery 포트 선택: provider={}, port={}", 
                 providerType, port.getClass().getSimpleName());
         
         return port;
     }
 
     /**
-     * 지정된 프로바이더 타입에 해당하는 S3 버킷 관리 포트를 반환합니다.
+     * 지정된 프로바이더 타입에 해당하는 Object Storage Container 관리 포트를 반환합니다.
      * 
      * @param providerType 클라우드 프로바이더 타입
-     * @return S3 버킷 관리 포트
+     * @return Object Storage Container 관리 포트
      * @throws IllegalArgumentException 지원하지 않는 프로바이더 타입인 경우
      */
-    public S3BucketManagementPort management(CloudProvider.ProviderType providerType) {
-        S3BucketManagementPort port = managementPorts.get(providerType);
+    public ObjectStorageManagementPort management(CloudProvider.ProviderType providerType) {
+        ObjectStorageManagementPort port = managementPorts.get(providerType);
         if (port == null) {
             log.error("지원하지 않는 프로바이더 타입: {}, 지원되는 타입: {}", providerType, managementPorts.keySet());
             throw new IllegalArgumentException("지원하지 않는 프로바이더 타입입니다: " + providerType);
         }
         
-        log.debug("S3 버킷 Management 포트 선택: provider={}, port={}", providerType, port.getClass().getSimpleName());
+        log.debug("Object Storage Container Management 포트 선택: provider={}, port={}", providerType, port.getClass().getSimpleName());
 
         return port;
     }

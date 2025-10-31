@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model.aws;
+package com.agenticcp.core.domain.cloud.port.model.storage;
 
 import lombok.Builder;
 import lombok.Data;
@@ -6,14 +6,14 @@ import lombok.Data;
 import java.util.Map;
 
 /**
- * S3 버킷 조회 조건 DTO
+ * Object Storage Container 조회 조건 DTO
  * 
  * @author AgenticCP Team
  * @version 1.0.0
  */
 @Data
 @Builder
-public class S3BucketQuery {
+public class ObjectStorageContainerQuery {
 
     /**
      * 페이징 정보
@@ -36,8 +36,8 @@ public class S3BucketQuery {
     /**
      * 기본값으로 페이징 설정
      */
-    public static S3BucketQuery defaultQuery() {
-        return S3BucketQuery.builder()
+    public static ObjectStorageContainerQuery defaultQuery() {
+        return ObjectStorageContainerQuery.builder()
                 .page(0)
                 .size(20)
                 .sortBy("name")

@@ -4,10 +4,10 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
-import com.agenticcp.core.domain.cloud.port.model.aws.S3BucketQuery;
+import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQuery;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.S3BucketDiscoveryPort;
+import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AwsS3BucketDiscoveryAdapter implements S3BucketDiscoveryPort, ProviderScoped {
+public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, ProviderScoped {
 
     private final S3Client s3Client;
     private final ResourceGroupsTaggingApiClient taggingClient;
@@ -63,7 +63,7 @@ public class AwsS3BucketDiscoveryAdapter implements S3BucketDiscoveryPort, Provi
     }
 
     @Override
-    public Page<CloudResource> listBuckets(S3BucketQuery query) {
+    public Page<CloudResource> listContainers(ObjectStorageContainerQuery query) {
         log.debug("Listing S3 buckets using Resource Groups Tagging API with query: {}", query);
 
         try {
@@ -143,24 +143,24 @@ public class AwsS3BucketDiscoveryAdapter implements S3BucketDiscoveryPort, Provi
     }
 
     @Override
-    public Optional<CloudResource> getBucket(String bucketName) {
-        log.debug("Getting S3 bucket details for: {}", bucketName);
+    public Optional<CloudResource> getContainer(String containerName) {
+        log.debug("Getting S3 bucket details for: {}", containerName);
 
         try {
             // 자격증명 해결
             resolveCredentials();
-            s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
-            log.debug("Bucket found: {}", bucketName);
+            s3Client.headBucket(HeadBucketRequest.builder().bucket(containerName).build());
+            log.debug("Bucket found: {}", containerName);
 
             CloudProvider awsProvider = getAwsProvider();
             Bucket bucketInfo = Bucket.builder()
-                    .name(bucketName)
+                    .name(containerName)
                     .build();
 
             CloudResource resource = mapper.toCloudResource(bucketInfo, awsProvider);
             try {
                 GetBucketLocationResponse locResponse = s3Client.getBucketLocation(
-                        r -> r.bucket(bucketName));
+                        r -> r.bucket(containerName));
 
                 String regionId = locResponse.locationConstraintAsString();
                 if (regionId == null || regionId.isEmpty()) {
@@ -170,7 +170,7 @@ public class AwsS3BucketDiscoveryAdapter implements S3BucketDiscoveryPort, Provi
                 resource.setRegion(mapper.toCloudRegion(regionId));
 
                 GetBucketTaggingResponse tagsResponse = s3Client.getBucketTagging(
-                        r -> r.bucket(bucketName));
+                        r -> r.bucket(containerName));
 
                 Map<String, String> tagsMap = tagsResponse.tagSet().stream()
                         .collect(Collectors.toMap(
@@ -180,51 +180,51 @@ public class AwsS3BucketDiscoveryAdapter implements S3BucketDiscoveryPort, Provi
                 try {
                     resource.setTags(objectMapper.writeValueAsString(tagsMap));
                 } catch (JsonProcessingException e) {
-                    log.warn("Failed to serialize tags for bucket {}: {}", bucketName, e.getMessage());
+                    log.warn("Failed to serialize tags for bucket {}: {}", containerName, e.getMessage());
                     resource.setTags("{}");
                 }
 
             } catch (S3Exception e) {
                 if (e.awsErrorDetails().errorCode().equals("NoSuchTagSet")) {
-                    log.debug("Bucket {} has no tags.", bucketName);
+                    log.debug("Bucket {} has no tags.", containerName);
                     resource.setTags("{}");
                 } else {
                     log.warn("Could not retrieve details (tags, location) for bucket {}: {}",
-                            bucketName, e.getMessage());
+                            containerName, e.getMessage());
                 }
             }
 
-            log.debug("Successfully retrieved S3 bucket details: {}", bucketName);
+            log.debug("Successfully retrieved S3 bucket details: {}", containerName);
             return Optional.of(resource);
 
         } catch (NoSuchBucketException e) {
-            log.debug("S3 bucket not found: {}", bucketName, e);
+            log.debug("S3 bucket not found: {}", containerName, e);
             return Optional.empty();
         } catch (Exception e) {
-            log.error("Failed to get S3 bucket: {}", bucketName, e);
+            log.error("Failed to get S3 bucket: {}", containerName, e);
             throw translateException(e);
         }
     }
 
     @Override
-    public boolean bucketExists(String bucketName) {
-        log.debug("Checking if S3 bucket exists: {}", bucketName);
+    public boolean containerExists(String containerName) {
+        log.debug("Checking if S3 bucket exists: {}", containerName);
         
         try {
             // 자격증명 해결
             resolveCredentials();
             HeadBucketRequest request = HeadBucketRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(containerName)
                     .build();
             
             s3Client.headBucket(request);
             return true;
             
         } catch (NoSuchBucketException e) {
-            log.debug("S3 bucket does not exist: {}", bucketName);
+            log.debug("S3 bucket does not exist: {}", containerName);
             return false;
         } catch (Exception e) {
-            log.error("Failed to check bucket existence: {}", bucketName, e);
+            log.error("Failed to check bucket existence: {}", containerName, e);
             throw translateException(e);
         }
     }

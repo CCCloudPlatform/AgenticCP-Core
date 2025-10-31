@@ -9,9 +9,9 @@ import com.agenticcp.core.domain.cloud.exception.AwsErrorCode;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.aws.CreateS3BucketCommand;
-import com.agenticcp.core.domain.cloud.port.model.aws.UpdateS3BucketCommand;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.S3BucketManagementPort;
+import com.agenticcp.core.domain.cloud.port.model.storage.CreateObjectStorageContainerCommand;
+import com.agenticcp.core.domain.cloud.port.model.storage.UpdateObjectStorageContainerCommand;
+import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, ProviderScoped {
+public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort, ProviderScoped {
 
     private final S3Client s3Client;
     private final AwsS3BucketMapper mapper;
@@ -55,9 +55,9 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
      * S3 버킷 생성, 태그 적용, 객체 소유권 및 잠금 설정을 수행합니다.
      */
     @Override
-    public CloudResource createBucket(CreateS3BucketCommand command) {
+    public CloudResource createContainer(CreateObjectStorageContainerCommand command) {
         log.info("Attempting to create S3 bucket: {} in region: {}",
-                command.getBucketName(), command.getRegion());
+                command.getContainerName(), command.getRegion());
 
         // 자격증명 해결
         resolveCredentials();
@@ -66,7 +66,7 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
 
         try {
             CreateBucketRequest.Builder requestBuilder = CreateBucketRequest.builder()
-                    .bucket(command.getBucketName());
+                    .bucket(command.getContainerName());
 
             // 리전 설정 (us-east-1은 기본 리전이므로 LocationConstraint 불필요)
             String region = command.getRegion();
@@ -90,20 +90,20 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
 
             // 버킷 생성 실행
             s3Client.createBucket(requestBuilder.build());
-            log.info("Successfully initiated bucket creation: {}", command.getBucketName());
+            log.info("Successfully initiated bucket creation: {}", command.getContainerName());
 
         } catch (BucketAlreadyOwnedByYouException e) {
             // 멱등성(Idempotency) 처리: 이미 내가 소유한 버킷이면 성공으로 간주
-            log.warn("S3 bucket {} already owned by you. Proceeding...", command.getBucketName());
+            log.warn("S3 bucket {} already owned by you. Proceeding...", command.getContainerName());
 
         } catch (BucketAlreadyExistsException e) {
             // 이름 충돌: 다른 계정이 소유한 버킷
-            log.error("S3 bucket name {} already exists (owned by another account).", command.getBucketName(), e);
+            log.error("S3 bucket name {} already exists (owned by another account).", command.getContainerName(), e);
             throw new BusinessException(S3ErrorCode.S3_BUCKET_ALREADY_EXISTS);
 
         } catch (Exception e) {
             // 그 외 AWS SDK 오류
-            log.error("Failed to create S3 bucket: {}", command.getBucketName(), e);
+            log.error("Failed to create S3 bucket: {}", command.getContainerName(), e);
             throw translateException(e);
         }
 
@@ -112,117 +112,117 @@ public class AwsS3BucketManagementAdapter implements S3BucketManagementPort, Pro
         try {
             // 태그 설정 (별도 API 호출)
             if (command.getTags() != null && !command.getTags().isEmpty()) {
-                setBucketTags(command.getBucketName(), command.getTags());
+                setBucketTags(command.getContainerName(), command.getTags());
             }
 
             Bucket createdBucketInfo = Bucket.builder()
-                    .name(command.getBucketName())
+                    .name(command.getContainerName())
                     .creationDate(creationTime)
                     .build();
 
             CloudProvider awsProvider = getAwsProvider();
             CloudResource resource = mapper.toCloudResource(createdBucketInfo, awsProvider);
 
-            log.info("Successfully created/verified S3 bucket resource: {}", command.getBucketName());
+            log.info("Successfully created/verified S3 bucket resource: {}", command.getContainerName());
             return resource;
 
         } catch (Exception e) {
             log.error("Failed during post-creation processing (tagging/mapping) for bucket: {}",
-                    command.getBucketName(), e);
+                    command.getContainerName(), e);
             throw new BusinessException(CloudErrorCode.CLOUD_TAG_OPERATION_FAILED);
         }
     }
 
     @Override
-    public void deleteBucket(String bucketName) {
-        log.info("Deleting S3 bucket: {}", bucketName);
+    public void deleteContainer(String containerName) {
+        log.info("Deleting S3 bucket: {}", containerName);
         
         // 자격증명 해결
         resolveCredentials();
         
         try {
             // 버킷이 비어있는지 확인
-            if (!isBucketEmpty(bucketName)) {
-                throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED, "Bucket is not empty. Use forceDeleteBucket to delete non-empty bucket: " + bucketName);
+            if (!isBucketEmpty(containerName)) {
+                throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED, "Bucket is not empty. Use forceDeleteContainer to delete non-empty bucket: " + containerName);
             }
             
             // 버킷 삭제
             DeleteBucketRequest request = DeleteBucketRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(containerName)
                     .build();
             
             s3Client.deleteBucket(request);
-            log.info("Successfully deleted S3 bucket: {}", bucketName);
+            log.info("Successfully deleted S3 bucket: {}", containerName);
             
         } catch (NoSuchBucketException e) {
-            log.error("S3 bucket not found: {}", bucketName);
+            log.error("S3 bucket not found: {}", containerName);
             throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
         } catch (Exception e) {
-            log.error("Failed to delete S3 bucket: {}", bucketName, e);
+            log.error("Failed to delete S3 bucket: {}", containerName, e);
             throw translateException(e);
         }
     }
 
     @Override
-    public void forceDeleteBucket(String bucketName) {
-        log.info("Force deleting S3 bucket: {}", bucketName);
+    public void forceDeleteContainer(String containerName) {
+        log.info("Force deleting S3 bucket: {}", containerName);
         
         // 자격증명 해결
         resolveCredentials();
         
         try {
             // 버킷 내 모든 객체 삭제
-            deleteAllObjects(bucketName);
+            deleteAllObjects(containerName);
             
             // 버킷 삭제
             DeleteBucketRequest request = DeleteBucketRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(containerName)
                     .build();
             
             s3Client.deleteBucket(request);
             
-            log.info("Successfully force deleted S3 bucket: {}", bucketName);
+            log.info("Successfully force deleted S3 bucket: {}", containerName);
             
         } catch (NoSuchBucketException e) {
-            log.error("S3 bucket not found: {}", bucketName);
+            log.error("S3 bucket not found: {}", containerName);
             throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
         } catch (Exception e) {
-            log.error("Failed to force delete S3 bucket: {}", bucketName, e);
+            log.error("Failed to force delete S3 bucket: {}", containerName, e);
             throw translateException(e);
         }
     }
 
     @Override
-    public CloudResource updateBucket(UpdateS3BucketCommand command) {
-        String bucketName = command.getBucketName();
-        log.info("Updating S3 bucket: {} with command: {}", bucketName, command);
+    public CloudResource updateContainer(UpdateObjectStorageContainerCommand command) {
+        String containerName = command.getContainerName();
+        log.info("Updating S3 bucket: {} with command: {}", containerName, command);
 
         // 자격증명 해결
         resolveCredentials();
 
         try {
-            if (!bucketExists(bucketName)) {
+            if (!bucketExists(containerName)) {
                 throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
             }
 
             if (command.getVersioningEnabled() != null) {
-                setBucketVersioning(bucketName, command.getVersioningEnabled());
+                setBucketVersioning(containerName, command.getVersioningEnabled());
             }
 
             if (command.getTags() != null) {
-                setBucketTags(bucketName, command.getTags());
+                setBucketTags(containerName, command.getTags());
             }
 
             CloudProvider awsProvider = getAwsProvider();
             Bucket updatedBucketInfo = Bucket.builder()
-                    .name(bucketName)
+                    .name(containerName)
                     .build();
 
             CloudResource resource = mapper.toCloudResource(updatedBucketInfo, awsProvider);
-            log.info("Successfully updated S3 bucket: {}", bucketName);
+            log.info("Successfully updated S3 bucket: {}", containerName);
             return resource;
         } catch (Exception e) {
-            log.error("Failed to update S3 bucket: {}", bucketName, e);
+            log.error("Failed to update S3 bucket: {}", containerName, e);
             throw translateException(e);
         }
     }

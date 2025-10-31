@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model.aws;
+package com.agenticcp.core.domain.cloud.port.model.storage;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,8 +7,8 @@ import java.util.Map;
 
 @Getter
 @Builder
-public class CreateS3BucketCommand {
-    private final String bucketName;
+public class CreateObjectStorageContainerCommand {
+    private final String containerName;
     private final String region;
     private final Map<String, String> tags;
     private final String objectOwnership;
