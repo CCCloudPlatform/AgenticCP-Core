@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.service.aws;
+package com.agenticcp.core.domain.cloud.service.storage;
 
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
