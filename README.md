@@ -49,18 +49,34 @@ CloudPlatform 2.0 Core Application - Spring Boot 기반의 멀티 클라우드 �
 
 #### 환경변수 설정
 
-애플리케이션 실행 전에 필요한 환경변수를 설정해야 합니다:
+⚠️ **보안 중요**: 애플리케이션 실행 전에 반드시 환경변수를 설정해야 합니다.
 
 ```bash
-# 환경변수 예시 파일 복사
+# 1. 환경변수 예시 파일 복사
 cp env.example .env
 
-# .env 파일을 편집하여 실제 값으로 변경
+# 2. .env 파일을 편집하여 실제 값으로 변경
 # 특히 다음 값들은 반드시 변경하세요:
 # - DATABASE_PASSWORD: 안전한 데이터베이스 비밀번호
-# - JWT_SECRET: 안전한 JWT 시크릿 (base64 인코딩)
-# - CONFIG_CIPHER_KEY: 안전한 암호화 키 (base64 인코딩)
+# - JWT_SECRET: 안전한 JWT 시크릿 (base64 인코딩, 최소 32바이트)
+# - CONFIG_CIPHER_KEY: 안전한 암호화 키 (base64 인코딩, 32바이트)
+
+# 3. 강력한 시크릿 생성 방법
+# JWT_SECRET 생성 (Base64):
+openssl rand -base64 32
+
+# CONFIG_CIPHER_KEY 생성 (Base64):
+openssl rand -base64 32
+
+# 또는 16진수로 생성 후 Base64 인코딩:
+openssl rand -hex 32 | base64
 ```
+
+⚠️ **보안 경고**:
+- `.env` 파일은 **절대 Git에 커밋하지 마세요!** (이미 `.gitignore`에 포함됨)
+- 프로덕션 환경에서는 반드시 강력한 시크릿을 사용하세요
+- 개발 환경과 프로덕션 환경에서 서로 다른 시크릿을 사용하세요
+- 정기적으로 시크릿을 로테이션하세요
 
 #### 방법 1: 하이브리드 모드 (권장) - 개발자 친화적
 ```bash
