@@ -1,4 +1,4 @@
-package com.agenticcp.core.controller;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vpc;
 
 import com.agenticcp.core.common.audit.AuditRequired;
 import com.agenticcp.core.common.enums.AuditResourceType;
