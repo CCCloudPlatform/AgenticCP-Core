@@ -5,9 +5,11 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.aws.AwsAccountValidation
 import com.agenticcp.core.domain.cloud.dto.AccountValidationRequest;
 import com.agenticcp.core.domain.cloud.dto.AccountValidationResult;
 import com.agenticcp.core.domain.cloud.dto.ConnectionTestResult;
+import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountValidationPort;
+import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
@@ -28,6 +30,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AccountValidationPortRouter implements AccountValidationPort {
 
+    private final CloudAccountRepository cloudAccountRepository;
     private final AwsAccountValidationAdapter awsAccountValidationAdapter;
     // 향후 추가될 어댑터들
     // private final AzureAccountValidationAdapter azureAccountValidationAdapter;
@@ -59,9 +62,17 @@ public class AccountValidationPortRouter implements AccountValidationPort {
     public ConnectionTestResult testConnection(Long accountId, Map<String, String> credentials) {
         log.debug("[AccountValidationPortRouter] testConnection - accountId={}", accountId);
         
-        // credentials에서 프로바이더 타입을 추론하거나, 계정 조회를 통해 확인
-        // 현재는 AWS만 지원하므로 직접 호출
-        return awsAccountValidationAdapter.testConnection(accountId, credentials);
+        // 계정 조회하여 프로바이더 타입 확인
+        CloudAccount account = cloudAccountRepository.findById(accountId)
+                .orElseThrow(() -> new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_FOUND,
+                    "계정을 찾을 수 없습니다: " + accountId
+                ));
+        
+        ProviderType providerType = account.getProvider().getProviderType();
+        AccountValidationPort adapter = getAdapterForProvider(providerType);
+        
+        return adapter.testConnection(accountId, credentials);
     }
 
     /**
