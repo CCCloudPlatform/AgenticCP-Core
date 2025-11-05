@@ -3,6 +3,9 @@ package com.agenticcp.core.domain.cloud.service;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.domain.cloud.command.DeleteCredentialCommand;
+import com.agenticcp.core.domain.cloud.command.ResolveCredentialCommand;
+import com.agenticcp.core.domain.cloud.command.StoreCredentialCommand;
 import com.agenticcp.core.domain.cloud.dto.*;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
@@ -10,9 +13,13 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.mapper.CloudAccountMapper;
+import com.agenticcp.core.domain.cloud.mapper.CredentialCommandMapper;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountValidationPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
+import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;
+import com.agenticcp.core.domain.cloud.service.AwsCredentialManager;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
@@ -44,9 +51,11 @@ public class CloudAccountUseCaseService {
     private final TenantRepository tenantRepository;
     private final CloudProviderRepository cloudProviderRepository;
     private final CloudAccountRepository cloudAccountRepository;
+    private final CloudAccountCredentialRepository cloudAccountCredentialRepository;
     private final CloudAccountDomainService cloudAccountDomainService;
     private final AccountValidationPort accountValidationPort;
-    private final AwsCredentialManager awsCredentialManager;
+    private final CredentialProviderPort credentialProviderPort;
+    private final CredentialCommandMapper credentialCommandMapper;
     private final AuditEventPort auditEventPort;
     private final AccountSyncPort accountSyncPort;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -102,13 +111,29 @@ public class CloudAccountUseCaseService {
             );
         }
         
-        // 4. 자격증명 암호화 저장 (AwsCredentialManager 사용)
-        CloudAccountCredential savedCredential = awsCredentialManager.storeCredentials(
-                tenant.getTenantKey(), 
+        // 4. 자격증명 암호화 저장 (CredentialProviderPort 사용)
+        StoreCredentialCommand storeCommand = credentialCommandMapper.toStoreCommand(
+                tenant.getTenantKey(),
+                request.getProviderType(),
+                request.getAccountId() != null ? request.getAccountId() : validationResult.getAccountId(),
                 request.getAccessKey(),
                 request.getSecretKey(),
                 request.getRegion() != null ? request.getRegion() : validationResult.getRegion()
         );
+        
+        String credentialKey = credentialProviderPort.storeCredentials(
+                storeCommand.getTenantKey(),
+                storeCommand.getProviderType(),
+                storeCommand.getAccountScope(),
+                storeCommand.getCredentials()
+        );
+        
+        // credentialKey로 CloudAccountCredential 엔티티 조회
+        CloudAccountCredential savedCredential = cloudAccountCredentialRepository.findByCredentialKey(credentialKey)
+                .orElseThrow(() -> new BusinessException(
+                    CloudErrorCode.CREDENTIAL_NOT_FOUND,
+                    "저장된 자격증명을 찾을 수 없습니다: " + credentialKey
+                ));
         
         // 5. 검증 결과(AccountId 등)와 함께 CloudAccount 엔티티 생성 및 저장
         CloudAccount cloudAccount = CloudAccount.builder()
@@ -234,10 +259,16 @@ public class CloudAccountUseCaseService {
         // 삭제 전 검증
         cloudAccountDomainService.validateAccountDeletion(account);
         
-        // 자격증명 삭제
+        // 자격증명 삭제 (CredentialProviderPort 사용)
         if (account.getCredential() != null) {
-            String credentialKey = account.getCredential().getCredentialKey();
-            awsCredentialManager.deleteCredentials(credentialKey);
+            DeleteCredentialCommand deleteCommand = credentialCommandMapper.toDeleteCommand(
+                    account.getProvider().getProviderType(),
+                    account.getCredential().getCredentialKey()
+            );
+            credentialProviderPort.deleteCredentials(
+                    deleteCommand.getProviderType(),
+                    deleteCommand.getCredentialKey()
+            );
         }
         
         // 소프트 삭제
@@ -277,15 +308,33 @@ public class CloudAccountUseCaseService {
                     "계정을 찾을 수 없습니다: " + accountId
                 ));
         
-        // 자격증명 조회
-        AwsCredentialManager.AwsCredentials credentials = 
-            awsCredentialManager.getCredentials(account.getCredential().getCredentialKey());
+        // 자격증명 조회 (CredentialProviderPort 사용)
+        if (account.getCredential() == null) {
+            throw new BusinessException(
+                CloudErrorCode.CREDENTIAL_NOT_FOUND,
+                "계정에 자격증명이 없습니다: " + accountId
+            );
+        }
         
-        // 연결 테스트
+        ResolveCredentialCommand resolveCommand = credentialCommandMapper.toResolveCommand(
+                tenant.getTenantKey(),
+                account.getProvider().getProviderType(),
+                account.getCredential().getCredentialKey()
+        );
+        
+        Object credentials = credentialProviderPort.resolveCredentials(
+                resolveCommand.getTenantKey(),
+                resolveCommand.getProviderType(),
+                resolveCommand.getAccountScope()
+        );
+        
+        // 연결 테스트를 위한 credentials Map 생성
         Map<String, String> credentialsMap = new HashMap<>();
-        credentialsMap.put("accessKeyId", credentials.getAccessKeyId());
-        credentialsMap.put("secretAccessKey", credentials.getSecretAccessKey());
-        credentialsMap.put("region", credentials.getRegion());
+        if (credentials instanceof AwsCredentialManager.AwsCredentials awsCredentials) {
+            credentialsMap.put("accessKeyId", awsCredentials.getAccessKeyId());
+            credentialsMap.put("secretAccessKey", awsCredentials.getSecretAccessKey());
+            credentialsMap.put("region", awsCredentials.getRegion());
+        }
         
         return accountValidationPort.testConnection(accountId, credentialsMap);
     }

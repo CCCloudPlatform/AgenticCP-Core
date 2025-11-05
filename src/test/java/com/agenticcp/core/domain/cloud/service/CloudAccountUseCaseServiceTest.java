@@ -9,9 +9,15 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.command.DeleteCredentialCommand;
+import com.agenticcp.core.domain.cloud.command.ResolveCredentialCommand;
+import com.agenticcp.core.domain.cloud.command.StoreCredentialCommand;
+import com.agenticcp.core.domain.cloud.mapper.CredentialCommandMapper;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountValidationPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
+import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
@@ -64,7 +70,13 @@ class CloudAccountUseCaseServiceTest {
     private AccountValidationPort accountValidationPort;
 
     @Mock
-    private AwsCredentialManager awsCredentialManager;
+    private CredentialProviderPort credentialProviderPort;
+
+    @Mock
+    private CredentialCommandMapper credentialCommandMapper;
+
+    @Mock
+    private CloudAccountCredentialRepository cloudAccountCredentialRepository;
 
     @Mock
     private AuditEventPort auditEventPort;
@@ -159,8 +171,17 @@ class CloudAccountUseCaseServiceTest {
                     .validateAccountUniqueness(anyLong(), anyString(), any(ProviderType.class));
             given(accountValidationPort.validateAccount(any(AccountValidationRequest.class)))
                     .willReturn(validationResult);
-            given(awsCredentialManager.storeCredentials(anyString(), anyString(), anyString(), anyString()))
-                    .willReturn(credential);
+            given(credentialCommandMapper.toStoreCommand(anyString(), any(ProviderType.class), anyString(), anyString(), anyString(), anyString()))
+                    .willReturn(StoreCredentialCommand.builder()
+                            .tenantKey(tenantKey)
+                            .providerType(ProviderType.AWS)
+                            .accountScope("123456789012")
+                            .credentials(Map.of("accessKeyId", "AKIAIOSFODNN7EXAMPLE", "secretAccessKey", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"))
+                            .build());
+            given(credentialProviderPort.storeCredentials(anyString(), any(ProviderType.class), anyString(), anyMap()))
+                    .willReturn(credential.getCredentialKey());
+            given(cloudAccountCredentialRepository.findByCredentialKey(credential.getCredentialKey()))
+                    .willReturn(Optional.of(credential));
             given(cloudAccountRepository.save(any(CloudAccount.class))).willReturn(cloudAccount);
             doNothing().when(auditEventPort).record(anyString(), anyString(), anyString(), anyMap());
 
@@ -179,7 +200,9 @@ class CloudAccountUseCaseServiceTest {
             then(cloudAccountDomainService).should(times(1))
                     .validateAccountUniqueness(tenant.getId(), registerRequest.getAccountId(), ProviderType.AWS);
             then(accountValidationPort).should(times(1)).validateAccount(any(AccountValidationRequest.class));
-            then(awsCredentialManager).should(times(1)).storeCredentials(anyString(), anyString(), anyString(), anyString());
+            then(credentialCommandMapper).should(times(1)).toStoreCommand(anyString(), any(ProviderType.class), anyString(), anyString(), anyString(), anyString());
+            then(credentialProviderPort).should(times(1)).storeCredentials(anyString(), any(ProviderType.class), anyString(), anyMap());
+            then(cloudAccountCredentialRepository).should(times(1)).findByCredentialKey(credential.getCredentialKey());
             then(cloudAccountRepository).should(times(1)).save(any(CloudAccount.class));
             then(auditEventPort).should(times(1)).record(anyString(), anyString(), anyString(), anyMap());
         }
@@ -209,7 +232,7 @@ class CloudAccountUseCaseServiceTest {
                     .isEqualTo(CloudErrorCode.ACCOUNT_VERIFICATION_FAILED);
 
             // verify
-            then(awsCredentialManager).should(never()).storeCredentials(anyString(), anyString(), anyString(), anyString());
+            then(credentialProviderPort).should(never()).storeCredentials(anyString(), any(ProviderType.class), anyString(), anyMap());
             then(cloudAccountRepository).should(never()).save(any(CloudAccount.class));
         }
 
@@ -249,8 +272,17 @@ class CloudAccountUseCaseServiceTest {
                     .validateAccountUniqueness(anyLong(), anyString(), any(ProviderType.class));
             given(accountValidationPort.validateAccount(any(AccountValidationRequest.class)))
                     .willReturn(validationResult);
-            given(awsCredentialManager.storeCredentials(anyString(), anyString(), anyString(), anyString()))
-                    .willReturn(credential);
+            given(credentialCommandMapper.toStoreCommand(anyString(), any(ProviderType.class), anyString(), anyString(), anyString(), anyString()))
+                    .willReturn(StoreCredentialCommand.builder()
+                            .tenantKey(tenantKey)
+                            .providerType(ProviderType.AWS)
+                            .accountScope("123456789012")
+                            .credentials(Map.of("accessKeyId", "AKIAIOSFODNN7EXAMPLE", "secretAccessKey", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"))
+                            .build());
+            given(credentialProviderPort.storeCredentials(anyString(), any(ProviderType.class), anyString(), anyMap()))
+                    .willReturn(credential.getCredentialKey());
+            given(cloudAccountCredentialRepository.findByCredentialKey(credential.getCredentialKey()))
+                    .willReturn(Optional.of(credential));
             doNothing().when(cloudAccountDomainService)
                     .handleDefaultAccountSetting(anyLong(), any(ProviderType.class));
             given(cloudAccountRepository.save(any(CloudAccount.class))).willReturn(cloudAccount);
@@ -330,8 +362,13 @@ class CloudAccountUseCaseServiceTest {
             given(cloudAccountRepository.findByIdAndTenantId(accountId, tenant.getId()))
                     .willReturn(Optional.of(cloudAccount));
             doNothing().when(cloudAccountDomainService).validateAccountDeletion(any(CloudAccount.class));
+            given(credentialCommandMapper.toDeleteCommand(any(ProviderType.class), anyString()))
+                    .willReturn(DeleteCredentialCommand.builder()
+                            .providerType(ProviderType.AWS)
+                            .credentialKey(credential.getCredentialKey())
+                            .build());
+            doNothing().when(credentialProviderPort).deleteCredentials(any(ProviderType.class), anyString());
             given(cloudAccountRepository.save(any(CloudAccount.class))).willReturn(cloudAccount);
-            doNothing().when(awsCredentialManager).deleteCredentials(anyString());
             doNothing().when(auditEventPort).record(anyString(), anyString(), anyString(), anyMap());
 
             // when
@@ -339,7 +376,8 @@ class CloudAccountUseCaseServiceTest {
 
             // then
             then(cloudAccountRepository).should(times(1)).save(any(CloudAccount.class));
-            then(awsCredentialManager).should(times(1)).deleteCredentials(credential.getCredentialKey());
+            then(credentialCommandMapper).should(times(1)).toDeleteCommand(ProviderType.AWS, credential.getCredentialKey());
+            then(credentialProviderPort).should(times(1)).deleteCredentials(ProviderType.AWS, credential.getCredentialKey());
             then(auditEventPort).should(times(1)).record(anyString(), anyString(), anyString(), anyMap());
         }
     }
@@ -363,11 +401,19 @@ class CloudAccountUseCaseServiceTest {
             given(tenantRepository.findByTenantKey(tenantKey)).willReturn(Optional.of(tenant));
             given(cloudAccountRepository.findByIdAndTenantId(accountId, tenant.getId()))
                     .willReturn(Optional.of(cloudAccount));
-            given(awsCredentialManager.getCredentials(credential.getCredentialKey()))
-                    .willReturn(AwsCredentialManager.AwsCredentials.builder()
-                            .accessKeyId("AKIAIOSFODNN7EXAMPLE")
-                            .secretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+            given(credentialCommandMapper.toResolveCommand(anyString(), any(ProviderType.class), anyString()))
+                    .willReturn(ResolveCredentialCommand.builder()
+                            .tenantKey(tenantKey)
+                            .providerType(ProviderType.AWS)
+                            .accountScope(credential.getCredentialKey())
                             .build());
+            AwsCredentialManager.AwsCredentials awsCredentials = AwsCredentialManager.AwsCredentials.builder()
+                    .accessKeyId("AKIAIOSFODNN7EXAMPLE")
+                    .secretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+                    .region("us-east-1")
+                    .build();
+            given(credentialProviderPort.resolveCredentials(anyString(), any(ProviderType.class), anyString()))
+                    .willReturn(awsCredentials);
             given(accountValidationPort.testConnection(eq(accountId), anyMap()))
                     .willReturn(expectedResult);
 
@@ -395,11 +441,19 @@ class CloudAccountUseCaseServiceTest {
             given(tenantRepository.findByTenantKey(tenantKey)).willReturn(Optional.of(tenant));
             given(cloudAccountRepository.findByIdAndTenantId(accountId, tenant.getId()))
                     .willReturn(Optional.of(cloudAccount));
-            given(awsCredentialManager.getCredentials(credential.getCredentialKey()))
-                    .willReturn(AwsCredentialManager.AwsCredentials.builder()
-                            .accessKeyId("AKIAIOSFODNN7EXAMPLE")
-                            .secretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+            given(credentialCommandMapper.toResolveCommand(anyString(), any(ProviderType.class), anyString()))
+                    .willReturn(ResolveCredentialCommand.builder()
+                            .tenantKey(tenantKey)
+                            .providerType(ProviderType.AWS)
+                            .accountScope(credential.getCredentialKey())
                             .build());
+            AwsCredentialManager.AwsCredentials awsCredentials = AwsCredentialManager.AwsCredentials.builder()
+                    .accessKeyId("AKIAIOSFODNN7EXAMPLE")
+                    .secretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+                    .region("us-east-1")
+                    .build();
+            given(credentialProviderPort.resolveCredentials(anyString(), any(ProviderType.class), anyString()))
+                    .willReturn(awsCredentials);
             given(accountValidationPort.testConnection(eq(accountId), anyMap()))
                     .willReturn(failedResult);
 
