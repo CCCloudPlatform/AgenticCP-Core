@@ -47,8 +47,9 @@ public interface CredentialProviderPort {
     /**
      * 자격증명을 삭제합니다.
      * 
+     * @param providerType 프로바이더 타입
      * @param credentialKey 자격증명 키 참조 (UUID)
      * @throws com.agenticcp.core.common.exception.BusinessException 자격증명 삭제 실패 시
      */
-    void deleteCredentials(String credentialKey);
+    void deleteCredentials(ProviderType providerType, String credentialKey);
 }

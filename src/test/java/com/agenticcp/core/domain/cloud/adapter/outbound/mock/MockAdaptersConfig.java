@@ -42,8 +42,8 @@ public class MockAdaptersConfig {
             }
 
             @Override
-            public void deleteCredentials(String credentialKey) {
-                log.debug("Mock credential deletion: credentialKey={}", credentialKey);
+            public void deleteCredentials(ProviderType providerType, String credentialKey) {
+                log.debug("Mock credential deletion: providerType={}, credentialKey={}", providerType, credentialKey);
             }
         };
     }

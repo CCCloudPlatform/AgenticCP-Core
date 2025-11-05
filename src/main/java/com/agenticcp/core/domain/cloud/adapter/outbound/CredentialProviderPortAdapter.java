@@ -76,12 +76,26 @@ public class CredentialProviderPortAdapter implements CredentialProviderPort {
     }
 
     @Override
-    public void deleteCredentials(String credentialKey) {
-        log.debug("[CredentialProviderPortAdapter] deleteCredentials - credentialKey={}", credentialKey);
+    public void deleteCredentials(ProviderType providerType, String credentialKey) {
+        log.debug("[CredentialProviderPortAdapter] deleteCredentials - providerType={}, credentialKey={}", 
+                providerType, credentialKey);
         
-        // 현재는 AWS만 지원하므로 AWS 자격증명 관리자로 위임
-        // 향후 다른 프로바이더 지원 시 credentialKey prefix 등으로 구분 가능
-        awsCredentialManager.deleteCredentials(credentialKey);
+        switch (providerType) {
+            case AWS:
+                awsCredentialManager.deleteCredentials(credentialKey);
+                break;
+            case AZURE:
+            case GCP:
+                throw new BusinessException(
+                    CloudErrorCode.UNSUPPORTED_OPERATION,
+                    String.format("프로바이더 타입 %s는 아직 지원되지 않습니다", providerType)
+                );
+            default:
+                throw new BusinessException(
+                    CloudErrorCode.UNSUPPORTED_OPERATION,
+                    String.format("알 수 없는 프로바이더 타입입니다: %s", providerType)
+                );
+        }
     }
 }
 
