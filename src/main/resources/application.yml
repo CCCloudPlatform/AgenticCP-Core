@@ -31,6 +31,12 @@ app:
   redis:
     enabled: false
 
+# AWS S3 설정
+aws:
+  s3:
+    region: ${AWS_REGION:us-east-1}
+    endpoint: ${AWS_S3_ENDPOINT:}
+
 
 security:
   jwt:
@@ -93,6 +99,10 @@ spring:
     url: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: agenticcp
     password: agenticcppassword
+
+cloud:
+  stub:
+    enabled: true  # Docker 개발 환경용 Stub 활성화
 
 ---
 spring:
