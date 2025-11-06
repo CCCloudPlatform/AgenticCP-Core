@@ -85,7 +85,7 @@ public class CloudAccountUseCaseService {
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(
-                    CloudErrorCode.PROVIDER_NOT_FOUND,
+                    CloudErrorCode.CLOUD_PROVIDER_NOT_FOUND,
                     "프로바이더를 찾을 수 없습니다: " + request.getProviderType()
                 ));
         
