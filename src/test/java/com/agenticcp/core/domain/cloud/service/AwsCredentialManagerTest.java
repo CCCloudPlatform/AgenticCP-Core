@@ -3,7 +3,7 @@ package com.agenticcp.core.domain.cloud.service;
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
-import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -123,7 +123,7 @@ class AwsCredentialManagerTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("자격증명 암호화에 실패했습니다")
                     .extracting("errorCode")
-                    .isEqualTo(CloudErrorCode.CREDENTIAL_ENCRYPTION_FAILED);
+                    .isEqualTo(CredentialErrorCode.CREDENTIAL_ENCRYPTION_FAILED);
 
             // verify
             then(credentialRepository).should(times(0)).save(any(CloudAccountCredential.class));
@@ -144,7 +144,7 @@ class AwsCredentialManagerTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("자격증명 암호화에 실패했습니다")
                     .extracting("errorCode")
-                    .isEqualTo(CloudErrorCode.CREDENTIAL_ENCRYPTION_FAILED);
+                    .isEqualTo(CredentialErrorCode.CREDENTIAL_ENCRYPTION_FAILED);
         }
     }
 
@@ -198,7 +198,7 @@ class AwsCredentialManagerTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("자격증명을 찾을 수 없습니다")
                     .extracting("errorCode")
-                    .isEqualTo(CloudErrorCode.CREDENTIAL_NOT_FOUND);
+                    .isEqualTo(CredentialErrorCode.CREDENTIAL_NOT_FOUND);
 
             // verify
             then(encryptionService).should(times(0)).decrypt(anyString());
@@ -227,7 +227,7 @@ class AwsCredentialManagerTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("자격증명 복호화에 실패했습니다")
                     .extracting("errorCode")
-                    .isEqualTo(CloudErrorCode.CREDENTIAL_DECRYPTION_FAILED);
+                    .isEqualTo(CredentialErrorCode.CREDENTIAL_DECRYPTION_FAILED);
         }
     }
 
@@ -262,7 +262,7 @@ class AwsCredentialManagerTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("삭제할 자격증명을 찾을 수 없습니다")
                     .extracting("errorCode")
-                    .isEqualTo(CloudErrorCode.CREDENTIAL_NOT_FOUND);
+                    .isEqualTo(CredentialErrorCode.CREDENTIAL_NOT_FOUND);
 
             // verify
             then(credentialRepository).should(times(0)).deleteByCredentialKey(anyString());

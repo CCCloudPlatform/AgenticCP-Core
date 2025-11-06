@@ -12,6 +12,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.mapper.CloudAccountMapper;
 import com.agenticcp.core.domain.cloud.mapper.CredentialCommandMapper;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
@@ -131,7 +132,7 @@ public class CloudAccountUseCaseService {
         // credentialKey로 CloudAccountCredential 엔티티 조회
         CloudAccountCredential savedCredential = cloudAccountCredentialRepository.findByCredentialKey(credentialKey)
                 .orElseThrow(() -> new BusinessException(
-                    CloudErrorCode.CREDENTIAL_NOT_FOUND,
+                    CredentialErrorCode.CREDENTIAL_NOT_FOUND,
                     "저장된 자격증명을 찾을 수 없습니다: " + credentialKey
                 ));
         
@@ -311,7 +312,7 @@ public class CloudAccountUseCaseService {
         // 자격증명 조회 (CredentialProviderPort 사용)
         if (account.getCredential() == null) {
             throw new BusinessException(
-                CloudErrorCode.CREDENTIAL_NOT_FOUND,
+                CredentialErrorCode.CREDENTIAL_NOT_FOUND,
                 "계정에 자격증명이 없습니다: " + accountId
             );
         }

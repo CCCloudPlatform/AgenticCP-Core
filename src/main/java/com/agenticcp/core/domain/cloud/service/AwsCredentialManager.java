@@ -3,7 +3,7 @@ package com.agenticcp.core.domain.cloud.service;
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
-import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,7 +66,7 @@ public class AwsCredentialManager {
         } catch (Exception e) {
             log.error("[AwsCredentialManager] storeCredentials - encryption failed", e);
             throw new BusinessException(
-                CloudErrorCode.CREDENTIAL_ENCRYPTION_FAILED,
+                CredentialErrorCode.CREDENTIAL_ENCRYPTION_FAILED,
                 "자격증명 암호화에 실패했습니다: " + e.getMessage()
             );
         }
@@ -85,7 +85,7 @@ public class AwsCredentialManager {
         
         CloudAccountCredential credential = credentialRepository.findByCredentialKey(credentialKey)
                 .orElseThrow(() -> new BusinessException(
-                    CloudErrorCode.CREDENTIAL_NOT_FOUND,
+                    CredentialErrorCode.CREDENTIAL_NOT_FOUND,
                     "자격증명을 찾을 수 없습니다: " + credentialKey
                 ));
         
@@ -103,7 +103,7 @@ public class AwsCredentialManager {
         } catch (Exception e) {
             log.error("[AwsCredentialManager] getCredentials - decryption failed", e);
             throw new BusinessException(
-                CloudErrorCode.CREDENTIAL_DECRYPTION_FAILED,
+                CredentialErrorCode.CREDENTIAL_DECRYPTION_FAILED,
                 "자격증명 복호화에 실패했습니다: " + e.getMessage()
             );
         }
@@ -122,7 +122,7 @@ public class AwsCredentialManager {
         if (!credentialRepository.existsByCredentialKey(credentialKey)) {
             log.warn("[AwsCredentialManager] deleteCredentials - credential not found: {}", credentialKey);
             throw new BusinessException(
-                CloudErrorCode.CREDENTIAL_NOT_FOUND,
+                CredentialErrorCode.CREDENTIAL_NOT_FOUND,
                 "삭제할 자격증명을 찾을 수 없습니다: " + credentialKey
             );
         }
