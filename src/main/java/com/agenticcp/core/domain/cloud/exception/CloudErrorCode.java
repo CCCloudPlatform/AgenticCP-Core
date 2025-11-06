@@ -23,7 +23,8 @@ public enum CloudErrorCode implements BaseErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, 4017, "유효하지 않은 자격증명입니다."),
     CONNECTION_TEST_FAILED(HttpStatus.BAD_REQUEST, 4018, "연결 테스트에 실패했습니다."),
     ACCOUNT_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4019, "계정 정보 동기화에 실패했습니다."),
-    ACCOUNT_DELETION_RESTRICTED(HttpStatus.CONFLICT, 4020, "연결된 리소스가 있어 계정을 삭제할 수 없습니다.");
+    ACCOUNT_DELETION_RESTRICTED(HttpStatus.CONFLICT, 4020, "연결된 리소스가 있어 계정을 삭제할 수 없습니다."),
+    SESSION_ISSUANCE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4021, "세션 발급에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
