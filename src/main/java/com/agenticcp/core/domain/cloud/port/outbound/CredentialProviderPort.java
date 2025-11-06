@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.outbound;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 
 import java.util.Map;
 
@@ -52,4 +53,18 @@ public interface CredentialProviderPort {
      * @throws com.agenticcp.core.common.exception.BusinessException 자격증명 삭제 실패 시
      */
     void deleteCredentials(ProviderType providerType, String credentialKey);
+    
+    /**
+     * 단기 세션/토큰을 JIT(Just-In-Time)로 발급받고 반환합니다.
+     * 
+     * Redis에 캐시된 세션이 있으면 반환하고, 없거나 만료되었으면 새로 발급합니다.
+     * 세션 발급 및 캐싱 로직은 프로바이더별 어댑터에서 구현됩니다.
+     * 
+     * @param tenantKey 테넌트 키
+     * @param accountId 계정 ID
+     * @param providerType 프로바이더 타입
+     * @return CloudSessionCredential 세션/토큰 자격증명
+     * @throws com.agenticcp.core.common.exception.BusinessException 세션 발급 실패 시
+     */
+    CloudSessionCredential getSession(String tenantKey, Long accountId, ProviderType providerType);
 }
