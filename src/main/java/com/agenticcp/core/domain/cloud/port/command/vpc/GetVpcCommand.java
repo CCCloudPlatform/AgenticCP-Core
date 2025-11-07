@@ -1,0 +1,21 @@
+package com.agenticcp.core.domain.cloud.port.command.vpc;
+
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+
+import lombok.Builder;
+
+/**
+ * VPC 단건 조회 명령.
+ */
+@Builder
+public record GetVpcCommand(
+        CloudProvider.ProviderType providerType,
+        String accountScope,
+        String region,
+        String providerResourceId,
+        String serviceKey,
+        String resourceType,
+
+) {
+}
+
