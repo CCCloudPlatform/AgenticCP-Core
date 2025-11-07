@@ -76,14 +76,14 @@ public class VpcController {
         severity = AuditSeverity.LOW
     )
     public ResponseEntity<CloudResource> getVpc(
-            @PathVariable String providerType,
+            @PathVariable CloudProvider.ProviderType providerType,
             @PathVariable String accountScope,
             @PathVariable String region,
             @PathVariable String resourceId) {
         
         log.info("[VpcController] getVpc - provider={}, resourceId={}", providerType, resourceId);
         ResourceIdentity vpcId = ResourceIdentity.builder()
-                .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
+                .providerType(providerType)
                 .accountScope(accountScope)
                 .region(region)
                 .providerResourceId(resourceId)
@@ -144,7 +144,7 @@ public class VpcController {
         severity = AuditSeverity.MEDIUM
     )
     public ResponseEntity<CloudResource> updateVpc(
-            @PathVariable String providerType,
+            @PathVariable CloudProvider.ProviderType providerType,
             @PathVariable String accountScope,
             @PathVariable String region,
             @PathVariable String resourceId,
@@ -152,7 +152,7 @@ public class VpcController {
         
         log.info("[VpcController] updateVpc - provider={}, resourceId={}", providerType, resourceId);
         ResourceIdentity vpcId = ResourceIdentity.builder()
-                .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
+                .providerType(providerType)
                 .accountScope(accountScope)
                 .region(region)
                 .providerResourceId(resourceId)
@@ -184,14 +184,14 @@ public class VpcController {
         severity = AuditSeverity.HIGH
     )
     public ResponseEntity<Void> deleteVpc(
-            @PathVariable String providerType,
+            @PathVariable CloudProvider.ProviderType providerType,
             @PathVariable String accountScope,
             @PathVariable String region,
             @PathVariable String resourceId) {
         
         log.info("[VpcController] deleteVpc - provider={}, resourceId={}", providerType, resourceId);
         ResourceIdentity vpcId = ResourceIdentity.builder()
-                .providerType(com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType.valueOf(providerType.toUpperCase()))
+                .providerType(providerType)
                 .accountScope(accountScope)
                 .region(region)
                 .providerResourceId(resourceId)
