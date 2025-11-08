@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.security.controller;
 
 import com.agenticcp.core.common.dto.exception.ApiResponse;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.security.dto.EffectivePolicySetDTO;
 import com.agenticcp.core.domain.security.dto.SecurityPolicyDTO;
 import com.agenticcp.core.domain.security.entity.SecurityPolicy;
@@ -20,16 +21,16 @@ import java.util.List;
 
 /**
  * 테넌트 정책 관리 컨트롤러
- * 
+ *
  * <p>테넌트별 정책 조회, 초기화, 캐시 관리 API를 제공합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/security/tenant-policies")
+@RequestMapping("/v1/security/tenant-policies")
 @RequiredArgsConstructor
 @Tag(name = "Tenant Policy Management", description = "테넌트별 정책 관리 API")
 public class TenantPolicyController {
@@ -122,7 +123,7 @@ public class TenantPolicyController {
         log.info("[TenantPolicyController] initializeDefaultPolicies - tenantId={}", tenantId);
         
         Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new RuntimeException("테넌트를 찾을 수 없습니다: " + tenantId));
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant", "id", tenantId));
         
         List<SecurityPolicy> policies = tenantPolicyService.initializeDefaultPolicies(tenant);
         List<SecurityPolicyDTO> policyDTOs = SecurityPolicyMapper.toDTOList(policies);
