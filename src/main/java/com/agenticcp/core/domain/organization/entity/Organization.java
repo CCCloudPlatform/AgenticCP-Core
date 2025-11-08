@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.user.entity;
+package com.agenticcp.core.domain.organization.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "organizations")
@@ -28,9 +29,9 @@ public class Organization extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+    // 테넌트들과의 관계 (1:N)
+    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Tenant> tenants;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_org_id")
