@@ -11,12 +11,12 @@ import java.time.LocalDateTime;
 
 /**
  * 사용자 조건 데이터 전송 객체
- * 
+ *
  * <p>정책의 사용자 관련 조건을 정의합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Data
 @Builder

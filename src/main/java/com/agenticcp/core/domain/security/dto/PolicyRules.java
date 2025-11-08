@@ -9,13 +9,13 @@ import java.util.List;
 
 /**
  * 정책 규칙 데이터 전송 객체
- * 
+ *
  * <p>정책의 규칙들을 정의하는 DTO입니다.
  * JSON 형태로 저장되어 정책 엔진에서 파싱하여 사용됩니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Data
 @Builder
