@@ -19,6 +19,8 @@ public interface CloudProviderRepository extends BaseRepository<CloudProvider, L
     List<CloudProvider> findByStatus(Status status);
 
     List<CloudProvider> findByProviderType(CloudProvider.ProviderType providerType);
+    
+    Optional<CloudProvider> findFirstByProviderType(CloudProvider.ProviderType providerType);
 
     @Query("SELECT cp FROM CloudProvider cp WHERE cp.status = :status AND cp.isDeleted = false")
     List<CloudProvider> findActiveProviders(@Param("status") Status status);

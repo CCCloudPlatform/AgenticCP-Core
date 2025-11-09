@@ -1,7 +1,8 @@
-package com.agenticcp.core.domain.user.entity;
+package com.agenticcp.core.domain.organization.entity;
 
-import com.agenticcp.core.common.entity.TenantAwareEntity;
+import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "organizations")
@@ -16,7 +18,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Organization extends TenantAwareEntity {
+public class Organization extends BaseEntity {
 
     @Column(name = "org_key", nullable = false, unique = true)
     private String orgKey;
@@ -27,6 +29,9 @@ public class Organization extends TenantAwareEntity {
     @Column(name = "description")
     private String description;
 
+    // 테넌트들과의 관계 (1:N)
+    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Tenant> tenants;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_org_id")

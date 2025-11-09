@@ -1,6 +1,8 @@
 package com.agenticcp.core.domain.security.controller;
 
 import com.agenticcp.core.domain.security.service.AuthorizationService;
+
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,26 +22,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-    properties = {
-        "app.redis.enabled=false",
-        "spring.cache.type=simple",
-        "spring.datasource.url=jdbc:h2:mem:testdb",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.jpa.show-sql=false",
-        "logging.level.org.springframework.web=WARN",
-        "logging.level.org.hibernate=WARN",
-        "logging.level.org.springframework.boot.autoconfigure=WARN",
-        "logging.level.org.springframework.context=WARN",
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.redis.RedisAutoConfiguration",
-        "security.jwt.secret=ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=",
-        "config.cipher.key=MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
-    }
-)
+@SpringBootTest
+@Disabled("SecurityConfig 인증 설정으로 인해 임시 비활성화")
 @AutoConfigureMockMvc
-@org.junit.jupiter.api.Disabled("ApplicationContext 로딩 실패로 인해 임시 비활성화")
 class SecurityScenarioIntegrationTest {
 
     @Autowired
@@ -126,5 +111,3 @@ class SecurityScenarioIntegrationTest {
         }
     }
 }
-
-

@@ -40,17 +40,19 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(authz -> authz
-                // 공개 엔드포인트
-                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
-                .requestMatchers("/api/health", "/actuator/**").permitAll()
+                // 공개 엔드포인트 (context path /api 제외)
+                .requestMatchers("/auth/register", "/auth/login", "/auth/refresh").permitAll()
+                .requestMatchers("/health", "/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // 2FA 엔드포인트 - 인증 필요
+                .requestMatchers("/auth/2fa/**").authenticated()
                 // 테넌트별 권한/역할 조회는 공개, 초기화/캐시무효화는 인증 필요
                 .requestMatchers(org.springframework.http.HttpMethod.GET,
-                        "/api/v1/tenants/*/roles",
-                        "/api/v1/tenants/*/permissions").permitAll()
+                        "/v1/tenants/*/roles",
+                        "/v1/tenants/*/permissions").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST,
-                        "/api/v1/tenants/*/init-permissions",
-                        "/api/v1/tenants/*/cache/evict").authenticated()
+                        "/v1/tenants/*/init-permissions",
+                        "/v1/tenants/*/cache/evict").authenticated()
                 // 나머지는 인증 필요
                 .anyRequest().authenticated()
             )

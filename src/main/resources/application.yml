@@ -8,7 +8,7 @@ spring:
   datasource:
     url: ${DATABASE_URL:jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DATABASE_USERNAME:agenticcp}
-    password: ${DATABASE_PASSWORD:agenticcppassword}
+    password: ${DATABASE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -31,10 +31,16 @@ app:
   redis:
     enabled: false
 
+# AWS S3 설정
+aws:
+  s3:
+    region: ${AWS_REGION:us-east-1}
+    endpoint: ${AWS_S3_ENDPOINT:}
+
 security:
   jwt:
     # base64 인코딩된 256비트 이상 키를 사용하세요. 예시는 개발용입니다.
-    secret: ${JWT_SECRET:ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=}
+    secret: ${JWT_SECRET:}
     access-token-expiration-ms: ${JWT_ACCESS_EXP_MS:3600000}
     refresh-token-expiration-ms: ${JWT_REFRESH_EXP_MS:604800000}
 
@@ -61,6 +67,28 @@ management:
     health:
       show-details: always
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      cloud.aws.ec2.list:
+        slidingWindowSize: 50
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+  retry:
+    instances:
+      cloud.aws.ec2.list:
+        maxAttempts: 3
+        waitDuration: 200ms
+  ratelimiter:
+    instances:
+      cloud.aws:
+        limitForPeriod: 50
+        limitRefreshPeriod: 1s
+  bulkhead:
+    instances:
+      cloud.aws:
+        maxConcurrentCalls: 50
+
 ---
 spring:
   config:
@@ -70,6 +98,11 @@ spring:
     url: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: agenticcp
     password: agenticcppassword
+
+cloud:
+  stub:
+    enabled: true # Docker 개발 환경용 Stub 활성화
+
 ---
 spring:
   config:
