@@ -1,11 +1,14 @@
 spring:
-  
+  autoconfigure:
+    exclude:
+      - org.redisson.spring.starter.RedissonAutoConfiguration
+
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
-    password: 
-  
+    password:
+
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -13,15 +16,14 @@ spring:
     properties:
       hibernate:
         format_sql: false
-        dialect: org.hibernate.dialect.H2Dialect
-  
+
   cache:
     type: simple
-  
+
   redis:
     host: ${SPRING_REDIS_HOST:localhost}
     port: ${SPRING_REDIS_PORT:6379}
-    password: 
+    password:
     timeout: 2000ms
     lettuce:
       pool:
@@ -31,7 +33,7 @@ spring:
 
 app:
   redis:
-    enabled: false
+    enabled: ${APP_REDIS_ENABLED:false}
 
 # 테스트용 암호화 키
 config:
