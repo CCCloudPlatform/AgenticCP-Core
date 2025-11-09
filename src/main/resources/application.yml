@@ -96,8 +96,8 @@ spring:
       on-profile: docker
   datasource:
     url: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: agenticcp
-    password: agenticcppassword
+    username: ${DATABASE_USERNAME:agenticcp}
+    password: ${DATABASE_PASSWORD:agenticcppassword}
 
 cloud:
   stub:
@@ -109,9 +109,9 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/agenticcp}
-    username: ${DATABASE_USERNAME:agenticcp}
-    password: ${DATABASE_PASSWORD:agenticcppassword}
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
