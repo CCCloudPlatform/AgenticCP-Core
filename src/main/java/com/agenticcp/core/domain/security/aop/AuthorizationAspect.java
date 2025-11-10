@@ -13,6 +13,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+/**
+ * 권한 검증 AOP Aspect
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-10
+ */
 @Aspect
 @Component
 @RequiredArgsConstructor
