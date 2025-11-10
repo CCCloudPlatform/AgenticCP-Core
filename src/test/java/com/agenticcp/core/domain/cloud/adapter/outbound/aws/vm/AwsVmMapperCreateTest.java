@@ -1,6 +1,6 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.aws.ec2;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm;
 
-import com.agenticcp.core.domain.cloud.port.model.Ec2CreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.services.ec2.model.InstanceType;
@@ -13,21 +13,21 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * AwsEc2Mapper 생성 기능 테스트
+ * AwsVmMapper 생성 기능 테스트
  */
-class AwsEc2MapperCreateTest {
+class AwsVmMapperCreateTest {
 
-    private AwsEc2Mapper mapper;
+    private AwsVmMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new AwsEc2Mapper();
+        mapper = new AwsVmMapper();
     }
 
     @Test
     void toRunInstancesRequest_기본요청() {
         // Given
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .minCount(1)
@@ -53,7 +53,7 @@ class AwsEc2MapperCreateTest {
     @Test
     void toRunInstancesRequest_전체옵션요청() {
         // Given
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.small")
             .keyName("my-key-pair")
@@ -98,7 +98,7 @@ class AwsEc2MapperCreateTest {
     @Test
     void toRunInstancesRequest_다양한인스턴스타입() {
         // Given
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("m5.large")
             .minCount(1)
@@ -115,7 +115,7 @@ class AwsEc2MapperCreateTest {
     @Test
     void toRunInstancesRequest_빈태그() {
         // Given
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .tags(Map.of()) // 빈 태그 맵
@@ -133,7 +133,7 @@ class AwsEc2MapperCreateTest {
     @Test
     void toRunInstancesRequest_null태그() {
         // Given
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .tags(null) // null 태그

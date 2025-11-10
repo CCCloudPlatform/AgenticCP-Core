@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.mock;
 
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.ec2.AwsEc2Mapper;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm.AwsVmMapper;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
@@ -93,8 +93,8 @@ public class MockAdaptersConfig {
 
     @Bean
     @Primary
-    public AwsEc2Mapper mockAwsEc2Mapper() {
-        log.debug("Creating mock AwsEc2Mapper for test environment");
-        return Mockito.mock(AwsEc2Mapper.class);
+    public AwsVmMapper mockAwsVmMapper() {
+        log.debug("Creating mock AwsVmMapper for test environment");
+        return Mockito.mock(AwsVmMapper.class);
     }
 }

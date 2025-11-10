@@ -11,15 +11,14 @@ import software.amazon.awssdk.services.ec2.Ec2Client;
 import java.net.URI;
 
 /**
- * AWS EC2 클라이언트 설정
- * 
- * AWS CLI를 사용하여 자격증명을 관리합니다.
- * AWS CLI로 설정된 자격증명을 자동으로 사용합니다.
+ * AWS VM(EC2) 클라이언트 설정
+ *
+ * AWS CLI에 설정된 자격증명을 사용하여 EC2 클라이언트를 구성합니다.
  */
 @Slf4j
 @Configuration
 @ConditionalOnProperty(name = "aws.enabled", havingValue = "true", matchIfMissing = true)
-public class AwsEc2Config {
+public class AwsVmConfig {
     
     @Value("${aws.region:us-east-1}")
     private String region;
@@ -35,7 +34,7 @@ public class AwsEc2Config {
     
     @Bean
     public Ec2Client ec2Client() {
-        log.info("[AwsEc2Config] Creating EC2 client for region: {}", region);
+        log.info("[AwsVmConfig] Creating EC2 client for region: {}", region);
         
         try {
             // AWS SDK Builder 패턴 사용 - DefaultCredentialsProvider 사용 (AWS CLI 자격증명)
@@ -45,17 +44,17 @@ public class AwsEc2Config {
             
             // 테스트용 엔드포인트 오버라이드 (LocalStack 등)
             if (!endpointOverride.isEmpty()) {
-                log.info("[AwsEc2Config] Using custom endpoint: {}", endpointOverride);
+                log.info("[AwsVmConfig] Using custom endpoint: {}", endpointOverride);
                 builder.endpointOverride(URI.create(endpointOverride));
             }
             
             Ec2Client client = builder.build();
-            log.info("[AwsEc2Config] EC2 client created successfully for region: {}", region);
-            log.info("[AwsEc2Config] Using AWS CLI credentials (DefaultCredentialsProvider)");
+            log.info("[AwsVmConfig] EC2 client created successfully for region: {}", region);
+            log.info("[AwsVmConfig] Using AWS CLI credentials (DefaultCredentialsProvider)");
             return client;
             
         } catch (Exception e) {
-            log.error("[AwsEc2Config] Failed to create EC2 client: {}", e.getMessage(), e);
+            log.error("[AwsVmConfig] Failed to create EC2 client: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create AWS EC2 client", e);
         }
     }

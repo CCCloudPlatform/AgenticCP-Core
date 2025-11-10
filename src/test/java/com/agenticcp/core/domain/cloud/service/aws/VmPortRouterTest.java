@@ -11,15 +11,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Ec2PortRouter 간단 테스트
+ * VmPortRouter 간단 테스트
  */
 @ExtendWith(MockitoExtension.class)
-class Ec2PortRouterTest {
+class VmPortRouterTest {
 
     @Test
     void 라우터_인스턴스_생성_테스트() {
         // Given & When
-        Ec2PortRouter router = new Ec2PortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of());
 
         // Then
         assertThat(router).isNotNull();
@@ -28,10 +28,10 @@ class Ec2PortRouterTest {
     @Test
     void 지원되지_않는_제공업체_예외_발생() {
         // Given
-        Ec2PortRouter router = new Ec2PortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of());
 
         // When & Then
-        assertThatThrownBy(() -> router.ec2(ProviderType.AWS))
+        assertThatThrownBy(() -> router.vm(ProviderType.AWS))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported provider: AWS");
     }
@@ -39,7 +39,7 @@ class Ec2PortRouterTest {
     @Test
     void 지원되는_제공업체_목록_조회() {
         // Given
-        Ec2PortRouter router = new Ec2PortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of());
 
         // When
         var supportedProviders = router.getSupportedProviders();
@@ -51,7 +51,7 @@ class Ec2PortRouterTest {
     @Test
     void 제공업체_지원_여부_확인() {
         // Given
-        Ec2PortRouter router = new Ec2PortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of());
 
         // When & Then
         assertThat(router.isProviderSupported(ProviderType.AWS)).isFalse();
@@ -61,7 +61,7 @@ class Ec2PortRouterTest {
     @Test
     void 등록된_포트_개수_확인() {
         // Given
-        Ec2PortRouter router = new Ec2PortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of());
 
         // When
         int portCount = router.getPortCount();

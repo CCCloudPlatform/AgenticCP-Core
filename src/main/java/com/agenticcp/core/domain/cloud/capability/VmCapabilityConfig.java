@@ -10,16 +10,16 @@ import jakarta.annotation.PostConstruct;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class Ec2CapabilityConfig {
+public class VmCapabilityConfig {
 
     private final CapabilityRegistry capabilityRegistry;
 
     @PostConstruct
-    public void initializeEc2Capabilities() {
-        log.info("[Ec2CapabilityConfig] Register EC2 capabilities for AWS");
+    public void initializeVmCapabilities() {
+        log.info("[VmCapabilityConfig] Register VM capabilities for AWS");
         capabilityRegistry.register(
             ProviderType.AWS,
-            "EC2",
+            "VM",
             "INSTANCE",
             CspCapability.builder()
                 .supportsCreate(true)

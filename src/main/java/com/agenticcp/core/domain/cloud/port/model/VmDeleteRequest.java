@@ -4,12 +4,12 @@ import lombok.Builder;
 import lombok.Value;
 
 /**
- * EC2 인스턴스 삭제 요청을 정의하는 모델
- * AWS EC2 API의 TerminateInstances 요청을 도메인 중심으로 추상화
+ * 가상머신(Virtual Machine) 삭제 요청을 정의하는 모델
+ * AWS EC2 등 VM 종료 API를 도메인 중심으로 추상화합니다.
  */
 @Value
 @Builder
-public class Ec2DeleteRequest {
+public class VmDeleteRequest {
     
     /**
      * 삭제할 인스턴스 ID
@@ -41,8 +41,8 @@ public class Ec2DeleteRequest {
     /**
      * 기본 인스턴스 삭제 요청 생성
      */
-    public static Ec2DeleteRequest basic(String instanceId) {
-        return Ec2DeleteRequest.builder()
+    public static VmDeleteRequest basic(String instanceId) {
+        return VmDeleteRequest.builder()
             .instanceId(instanceId)
             .force(false)
             .createSnapshot(false)
@@ -52,8 +52,8 @@ public class Ec2DeleteRequest {
     /**
      * 강제 삭제 요청 생성
      */
-    public static Ec2DeleteRequest force(String instanceId, String reason) {
-        return Ec2DeleteRequest.builder()
+    public static VmDeleteRequest force(String instanceId, String reason) {
+        return VmDeleteRequest.builder()
             .instanceId(instanceId)
             .force(true)
             .reason(reason)
@@ -64,8 +64,8 @@ public class Ec2DeleteRequest {
     /**
      * 스냅샷 생성 후 삭제 요청 생성
      */
-    public static Ec2DeleteRequest withSnapshot(String instanceId, String reason) {
-        return Ec2DeleteRequest.builder()
+    public static VmDeleteRequest withSnapshot(String instanceId, String reason) {
+        return VmDeleteRequest.builder()
             .instanceId(instanceId)
             .force(false)
             .reason(reason)
@@ -76,8 +76,8 @@ public class Ec2DeleteRequest {
     /**
      * 비용 최적화를 위한 삭제 요청 생성
      */
-    public static Ec2DeleteRequest costOptimization(String instanceId) {
-        return Ec2DeleteRequest.builder()
+    public static VmDeleteRequest costOptimization(String instanceId) {
+        return VmDeleteRequest.builder()
             .instanceId(instanceId)
             .force(false)
             .reason("Cost optimization")
@@ -88,8 +88,8 @@ public class Ec2DeleteRequest {
     /**
      * 환경 정리를 위한 삭제 요청 생성
      */
-    public static Ec2DeleteRequest environmentCleanup(String instanceId) {
-        return Ec2DeleteRequest.builder()
+    public static VmDeleteRequest environmentCleanup(String instanceId) {
+        return VmDeleteRequest.builder()
             .instanceId(instanceId)
             .force(false)
             .reason("Environment cleanup")
@@ -100,8 +100,8 @@ public class Ec2DeleteRequest {
     /**
      * 보안 사고로 인한 긴급 삭제 요청 생성
      */
-    public static Ec2DeleteRequest securityIncident(String instanceId) {
-        return Ec2DeleteRequest.builder()
+    public static VmDeleteRequest securityIncident(String instanceId) {
+        return VmDeleteRequest.builder()
             .instanceId(instanceId)
             .force(true)
             .reason("Security incident")

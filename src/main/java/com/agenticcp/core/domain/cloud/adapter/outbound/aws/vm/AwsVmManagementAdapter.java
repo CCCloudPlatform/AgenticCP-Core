@@ -1,17 +1,16 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.aws.ec2;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm;
 
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.CloudErrorTranslator;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.Ec2CreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.Ec2DeleteRequest;
-import com.agenticcp.core.domain.cloud.port.model.Ec2Query;
-import com.agenticcp.core.domain.cloud.port.model.Ec2UpdateRequest;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.Ec2ManagementPort;
+import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
+import com.agenticcp.core.domain.cloud.port.model.VmQuery;
+import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -27,9 +26,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * AWS EC2 인스턴스 관리 어댑터
+ * AWS VM 인스턴스 관리 어댑터
  * 
- * Ec2ManagementPort 인터페이스를 구현하여 AWS EC2 인스턴스의
+ * VmManagementPort 인터페이스를 구현하여 AWS VM 인스턴스의
  * 조회, 생성, 수정, 삭제, 생명주기 관리 기능을 제공합니다.
  * 
  * 핵사고날 아키텍처의 어댑터 계층에 해당하며, AWS SDK와 도메인 계층을 연결합니다.
@@ -38,17 +37,17 @@ import java.util.stream.Collectors;
 @Component
 @ConditionalOnProperty(name = "aws.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
-public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScoped {
+public class AwsVmManagementAdapter implements VmManagementPort, ProviderScoped {
 
     private final Ec2Client ec2Client;
-    private final AwsEc2Mapper mapper;
+    private final AwsVmMapper mapper;
 
     // ==================== 인스턴스 조회 ====================
 
     @Override
-    public Page<CloudResource> listInstances(Ec2Query query) {
+    public Page<CloudResource> listInstances(VmQuery query) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Listing EC2 instances with query: {}", query);
+            log.debug("[AwsVmManagementAdapter] Listing VM instances with query: {}", query);
             
             DescribeInstancesRequest request = mapper.toDescribeInstancesRequest(query);
             DescribeInstancesResponse response = ec2Client.describeInstances(request);
@@ -65,11 +64,11 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
             
             List<CloudResource> pagedResources = resources.subList(start, end);
             
-            log.debug("[AwsEc2ManagementAdapter] Found {} EC2 instances", resources.size());
+            log.debug("[AwsVmManagementAdapter] Found {} VM instances", resources.size());
             return new PageImpl<>(pagedResources, pageable, resources.size());
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to list EC2 instances", t);
+            log.error("[AwsVmManagementAdapter] Failed to list VM instances", t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -77,7 +76,7 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public Optional<CloudResource> getInstance(String instanceId) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Getting EC2 instance: {}", instanceId);
+            log.debug("[AwsVmManagementAdapter] Getting VM instance: {}", instanceId);
             
             DescribeInstancesRequest request = DescribeInstancesRequest.builder()
                 .instanceIds(instanceId)
@@ -90,11 +89,11 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
                 .findFirst()
                 .map(mapper::toCloudResource);
             
-            log.debug("[AwsEc2ManagementAdapter] Instance {} found: {}", instanceId, result.isPresent());
+            log.debug("[AwsVmManagementAdapter] Instance {} found: {}", instanceId, result.isPresent());
             return result;
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to get EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to get VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -102,20 +101,20 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     // ==================== 인스턴스 생성 ====================
 
     @Override
-    public String createInstance(Ec2CreateRequest request) {
+    public String createInstance(VmCreateRequest request) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Creating EC2 instance with request: {}", request);
+            log.debug("[AwsVmManagementAdapter] Creating VM instance with request: {}", request);
             
             RunInstancesRequest awsRequest = mapper.toRunInstancesRequest(request);
             RunInstancesResponse response = ec2Client.runInstances(awsRequest);
             
             String instanceId = response.instances().get(0).instanceId();
-            log.info("[AwsEc2ManagementAdapter] Successfully created EC2 instance: {}", instanceId);
+            log.info("[AwsVmManagementAdapter] Successfully created VM instance: {}", instanceId);
             
             return instanceId;
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to create EC2 instance", t);
+            log.error("[AwsVmManagementAdapter] Failed to create VM instance", t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -125,17 +124,17 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public void startInstance(String instanceId) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Starting EC2 instance: {}", instanceId);
+            log.debug("[AwsVmManagementAdapter] Starting VM instance: {}", instanceId);
             
             StartInstancesRequest request = StartInstancesRequest.builder()
                 .instanceIds(instanceId)
                 .build();
             
             ec2Client.startInstances(request);
-            log.info("[AwsEc2ManagementAdapter] Successfully started EC2 instance: {}", instanceId);
+            log.info("[AwsVmManagementAdapter] Successfully started VM instance: {}", instanceId);
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to start EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to start VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -143,17 +142,17 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public void stopInstance(String instanceId) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Stopping EC2 instance: {}", instanceId);
+            log.debug("[AwsVmManagementAdapter] Stopping VM instance: {}", instanceId);
             
             StopInstancesRequest request = StopInstancesRequest.builder()
                 .instanceIds(instanceId)
                 .build();
             
             ec2Client.stopInstances(request);
-            log.info("[AwsEc2ManagementAdapter] Successfully stopped EC2 instance: {}", instanceId);
+            log.info("[AwsVmManagementAdapter] Successfully stopped VM instance: {}", instanceId);
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to stop EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to stop VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -161,17 +160,17 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public void rebootInstance(String instanceId) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Rebooting EC2 instance: {}", instanceId);
+            log.debug("[AwsVmManagementAdapter] Rebooting VM instance: {}", instanceId);
             
             RebootInstancesRequest request = RebootInstancesRequest.builder()
                 .instanceIds(instanceId)
                 .build();
             
             ec2Client.rebootInstances(request);
-            log.info("[AwsEc2ManagementAdapter] Successfully rebooted EC2 instance: {}", instanceId);
+            log.info("[AwsVmManagementAdapter] Successfully rebooted VM instance: {}", instanceId);
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to reboot EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to reboot VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -179,33 +178,33 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public void terminateInstance(String instanceId) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Terminating EC2 instance: {}", instanceId);
+            log.debug("[AwsVmManagementAdapter] Terminating VM instance: {}", instanceId);
             
             TerminateInstancesRequest request = TerminateInstancesRequest.builder()
                 .instanceIds(instanceId)
                 .build();
             
             ec2Client.terminateInstances(request);
-            log.info("[AwsEc2ManagementAdapter] Successfully terminated EC2 instance: {}", instanceId);
+            log.info("[AwsVmManagementAdapter] Successfully terminated VM instance: {}", instanceId);
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to terminate EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to terminate VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
 
     @Override
-    public void deleteInstance(Ec2DeleteRequest request) {
+    public void deleteInstance(VmDeleteRequest request) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Deleting EC2 instance: {}", request.getInstanceId());
+            log.debug("[AwsVmManagementAdapter] Deleting VM instance: {}", request.getInstanceId());
             
             TerminateInstancesRequest awsRequest = mapper.toTerminateInstancesRequest(request);
             ec2Client.terminateInstances(awsRequest);
             
-            log.info("[AwsEc2ManagementAdapter] Successfully deleted EC2 instance: {}", request.getInstanceId());
+            log.info("[AwsVmManagementAdapter] Successfully deleted VM instance: {}", request.getInstanceId());
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to delete EC2 instance: {}", request.getInstanceId(), t);
+            log.error("[AwsVmManagementAdapter] Failed to delete VM instance: {}", request.getInstanceId(), t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -213,17 +212,17 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     // ==================== 인스턴스 수정 ====================
 
     @Override
-    public void updateInstance(Ec2UpdateRequest request) {
+    public void updateInstance(VmUpdateRequest request) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Updating EC2 instance: {}", request.getInstanceId());
+            log.debug("[AwsVmManagementAdapter] Updating VM instance: {}", request.getInstanceId());
             
             ModifyInstanceAttributeRequest awsRequest = mapper.toModifyInstanceAttributeRequest(request);
             ec2Client.modifyInstanceAttribute(awsRequest);
             
-            log.info("[AwsEc2ManagementAdapter] Successfully updated EC2 instance: {}", request.getInstanceId());
+            log.info("[AwsVmManagementAdapter] Successfully updated VM instance: {}", request.getInstanceId());
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to update EC2 instance: {}", request.getInstanceId(), t);
+            log.error("[AwsVmManagementAdapter] Failed to update VM instance: {}", request.getInstanceId(), t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -233,7 +232,7 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public void addTags(String instanceId, Map<String, String> tags) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Adding tags to EC2 instance: {} - tags: {}", instanceId, tags);
+            log.debug("[AwsVmManagementAdapter] Adding tags to VM instance: {} - tags: {}", instanceId, tags);
             
             List<Tag> tagList = tags.entrySet().stream()
                 .map(entry -> Tag.builder()
@@ -248,10 +247,10 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
                 .build();
             
             ec2Client.createTags(request);
-            log.info("[AwsEc2ManagementAdapter] Successfully added tags to EC2 instance: {}", instanceId);
+            log.info("[AwsVmManagementAdapter] Successfully added tags to VM instance: {}", instanceId);
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to add tags to EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to add tags to VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -259,7 +258,7 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public void removeTags(String instanceId, Map<String, String> tagKeys) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Removing tags from EC2 instance: {} - tag keys: {}", instanceId, tagKeys.keySet());
+            log.debug("[AwsVmManagementAdapter] Removing tags from VM instance: {} - tag keys: {}", instanceId, tagKeys.keySet());
             
             List<String> keysToRemove = tagKeys.keySet().stream()
                 .collect(Collectors.toList());
@@ -272,10 +271,10 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
                 .build();
             
             ec2Client.deleteTags(request);
-            log.info("[AwsEc2ManagementAdapter] Successfully removed tags from EC2 instance: {}", instanceId);
+            log.info("[AwsVmManagementAdapter] Successfully removed tags from VM instance: {}", instanceId);
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to remove tags from EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to remove tags from VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -283,7 +282,7 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public Map<String, String> getTags(String instanceId) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Getting tags for EC2 instance: {}", instanceId);
+            log.debug("[AwsVmManagementAdapter] Getting tags for VM instance: {}", instanceId);
             
             DescribeTagsRequest request = DescribeTagsRequest.builder()
                 .filters(Filter.builder()
@@ -300,11 +299,11 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
                     TagDescription::value
                 ));
             
-            log.debug("[AwsEc2ManagementAdapter] Found {} tags for EC2 instance: {}", tags.size(), instanceId);
+            log.debug("[AwsVmManagementAdapter] Found {} tags for VM instance: {}", tags.size(), instanceId);
             return tags;
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to get tags for EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to get tags for VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -314,7 +313,7 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public boolean waitForInstanceStatus(String instanceId, String status, int timeoutSeconds) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Waiting for EC2 instance {} to reach status: {} (timeout: {}s)", 
+            log.debug("[AwsVmManagementAdapter] Waiting for VM instance {} to reach status: {} (timeout: {}s)", 
                 instanceId, status, timeoutSeconds);
             
             DescribeInstanceStatusRequest request = DescribeInstanceStatusRequest.builder()
@@ -325,11 +324,11 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
             // 현재는 단순히 상태 확인만 수행
             ec2Client.describeInstanceStatus(request);
             
-            log.info("[AwsEc2ManagementAdapter] EC2 instance {} status check completed", instanceId);
+            log.info("[AwsVmManagementAdapter] VM instance {} status check completed", instanceId);
             return true; // 임시로 항상 성공 반환
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to wait for EC2 instance status: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to wait for VM instance status: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -337,7 +336,7 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
     @Override
     public String getInstanceStatus(String instanceId) {
         try {
-            log.debug("[AwsEc2ManagementAdapter] Getting status for EC2 instance: {}", instanceId);
+            log.debug("[AwsVmManagementAdapter] Getting status for VM instance: {}", instanceId);
             
             DescribeInstancesRequest request = DescribeInstancesRequest.builder()
                 .instanceIds(instanceId)
@@ -351,11 +350,11 @@ public class AwsEc2ManagementAdapter implements Ec2ManagementPort, ProviderScope
                 .map(instance -> instance.state().nameAsString())
                 .orElse("unknown");
             
-            log.debug("[AwsEc2ManagementAdapter] EC2 instance {} status: {}", instanceId, status);
+            log.debug("[AwsVmManagementAdapter] VM instance {} status: {}", instanceId, status);
             return status;
 
         } catch (Throwable t) {
-            log.error("[AwsEc2ManagementAdapter] Failed to get status for EC2 instance: {}", instanceId, t);
+            log.error("[AwsVmManagementAdapter] Failed to get status for VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
         }
     }

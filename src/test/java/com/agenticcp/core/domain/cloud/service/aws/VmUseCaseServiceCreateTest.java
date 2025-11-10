@@ -1,9 +1,9 @@
 package com.agenticcp.core.domain.cloud.service.aws;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.model.Ec2CreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.Ec2ManagementPort;
+import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,34 +18,34 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
- * EC2 유스케이스 서비스 생성 기능 테스트
+ * VM 유스케이스 서비스 생성 기능 테스트
  */
 @ExtendWith(MockitoExtension.class)
-class Ec2UseCaseServiceCreateTest {
+class VmUseCaseServiceCreateTest {
 
     @Mock
-    private Ec2PortRouter ec2PortRouter;
+    private VmPortRouter vmPortRouter;
 
     @Mock
     private AuditEventPort auditEventPort;
 
     @Mock
-    private Ec2ManagementPort ec2ManagementPort;
+    private VmManagementPort vmManagementPort;
 
-    private Ec2UseCaseService ec2UseCaseService;
+    private VmUseCaseService vmUseCaseService;
 
     @BeforeEach
     void setUp() {
-        ec2UseCaseService = new Ec2UseCaseService(ec2PortRouter, auditEventPort);
+        vmUseCaseService = new VmUseCaseService(vmPortRouter, auditEventPort);
         
-        // Ec2PortRouter가 AWS 포트를 반환하도록 설정
-        when(ec2PortRouter.ec2(ProviderType.AWS)).thenReturn(ec2ManagementPort);
+        // VmPortRouter가 AWS 포트를 반환하도록 설정
+        when(vmPortRouter.vm(ProviderType.AWS)).thenReturn(vmManagementPort);
     }
 
     @Test
     void createInstance_성공() {
         // Given
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .keyName("my-key")
@@ -56,21 +56,21 @@ class Ec2UseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-1234567890abcdef0";
-        when(ec2ManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
+        when(vmManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
 
         // When
-        String result = ec2UseCaseService.createInstance(request);
+        String result = vmUseCaseService.createInstance(request);
 
         // Then
         assertThat(result).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
-        verify(ec2ManagementPort).createInstance(request);
+        verify(vmManagementPort).createInstance(request);
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
             eq("CREATE_INSTANCE"), 
-            eq("EC2"), 
+            eq("VM"), 
             eq("SUCCESS"), 
             any(Map.class)
         );
@@ -79,7 +79,7 @@ class Ec2UseCaseServiceCreateTest {
     @Test
     void createInstance_최소요청() {
         // Given - 최소 필수 정보만 포함
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .minCount(1)
@@ -87,21 +87,21 @@ class Ec2UseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-abcdef1234567890";
-        when(ec2ManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
+        when(vmManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
 
         // When
-        String result = ec2UseCaseService.createInstance(request);
+        String result = vmUseCaseService.createInstance(request);
 
         // Then
         assertThat(result).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
-        verify(ec2ManagementPort).createInstance(request);
+        verify(vmManagementPort).createInstance(request);
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
             eq("CREATE_INSTANCE"), 
-            eq("EC2"), 
+            eq("VM"), 
             eq("SUCCESS"), 
             any(Map.class)
         );
@@ -110,7 +110,7 @@ class Ec2UseCaseServiceCreateTest {
     @Test
     void createInstance_예외발생시_감사로그기록() {
         // Given
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .minCount(1)
@@ -118,11 +118,11 @@ class Ec2UseCaseServiceCreateTest {
             .build();
 
         RuntimeException exception = new RuntimeException("AWS API Error");
-        when(ec2ManagementPort.createInstance(request)).thenThrow(exception);
+        when(vmManagementPort.createInstance(request)).thenThrow(exception);
 
         // When & Then
         try {
-            ec2UseCaseService.createInstance(request);
+            vmUseCaseService.createInstance(request);
         } catch (RuntimeException e) {
             assertThat(e).isEqualTo(exception);
         }
@@ -130,7 +130,7 @@ class Ec2UseCaseServiceCreateTest {
         // 실패 감사 로그 기록 확인
         verify(auditEventPort).record(
             eq("CREATE_INSTANCE"), 
-            eq("EC2"), 
+            eq("VM"), 
             eq("FAILED"), 
             any(Map.class)
         );
@@ -139,7 +139,7 @@ class Ec2UseCaseServiceCreateTest {
     @Test
     void createInstance_태그포함요청() {
         // Given - 태그가 포함된 요청
-        Ec2CreateRequest request = Ec2CreateRequest.builder()
+        VmCreateRequest request = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .keyName("my-key")
@@ -156,21 +156,21 @@ class Ec2UseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-tagged1234567890";
-        when(ec2ManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
+        when(vmManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
 
         // When
-        String result = ec2UseCaseService.createInstance(request);
+        String result = vmUseCaseService.createInstance(request);
 
         // Then
         assertThat(result).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
-        verify(ec2ManagementPort).createInstance(request);
+        verify(vmManagementPort).createInstance(request);
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
             eq("CREATE_INSTANCE"), 
-            eq("EC2"), 
+            eq("VM"), 
             eq("SUCCESS"), 
             any(Map.class)
         );

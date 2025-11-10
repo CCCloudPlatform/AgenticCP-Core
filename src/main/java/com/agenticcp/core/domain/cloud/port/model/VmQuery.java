@@ -6,12 +6,12 @@ import lombok.Value;
 import java.util.Map;
 
 /**
- * EC2 인스턴스 조회 조건을 정의하는 모델
- * AWS EC2 API의 DescribeInstances 요청 조건을 도메인 중심으로 추상화
+ * 가상머신(Virtual Machine) 조회 조건을 정의하는 모델
+ * AWS EC2 등 VM 조회 API의 요청 조건을 도메인 중심으로 추상화합니다.
  */
 @Value
 @Builder
-public class Ec2Query {
+public class VmQuery {
     
     /**
      * 특정 인스턴스 ID로 조회 (단일 인스턴스 조회 시 사용)
@@ -60,15 +60,15 @@ public class Ec2Query {
     /**
      * 모든 인스턴스 조회를 위한 기본 쿼리 생성
      */
-    public static Ec2Query all() {
-        return Ec2Query.builder().build();
+    public static VmQuery all() {
+        return VmQuery.builder().build();
     }
     
     /**
      * 특정 인스턴스 ID로 조회하는 쿼리 생성
      */
-    public static Ec2Query byInstanceId(String instanceId) {
-        return Ec2Query.builder()
+    public static VmQuery byInstanceId(String instanceId) {
+        return VmQuery.builder()
             .instanceId(instanceId)
             .build();
     }
@@ -76,8 +76,8 @@ public class Ec2Query {
     /**
      * 특정 상태의 인스턴스만 조회하는 쿼리 생성
      */
-    public static Ec2Query byState(String state) {
-        return Ec2Query.builder()
+    public static VmQuery byState(String state) {
+        return VmQuery.builder()
             .state(state)
             .build();
     }
@@ -85,8 +85,8 @@ public class Ec2Query {
     /**
      * 특정 인스턴스 타입만 조회하는 쿼리 생성
      */
-    public static Ec2Query byInstanceType(String instanceType) {
-        return Ec2Query.builder()
+    public static VmQuery byInstanceType(String instanceType) {
+        return VmQuery.builder()
             .instanceType(instanceType)
             .build();
     }

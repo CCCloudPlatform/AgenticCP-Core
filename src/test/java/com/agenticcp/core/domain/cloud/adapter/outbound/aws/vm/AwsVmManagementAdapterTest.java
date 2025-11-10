@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.aws.ec2;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,22 +14,22 @@ import static org.mockito.Mockito.mock;
 /**
  * AWS EC2 관리 어댑터 기본 테스트
  * 
- * AwsEc2ManagementAdapter의 기본 기능을 테스트합니다.
+ * AwsVmManagementAdapter의 기본 기능을 테스트합니다.
  */
 @ExtendWith(MockitoExtension.class)
-class AwsEc2ManagementAdapterTest {
+class AwsVmManagementAdapterTest {
 
     @Mock
-    private Ec2Client ec2Client;
+    private Ec2Client vmClient;
 
     @Mock
-    private AwsEc2Mapper mapper;
+    private AwsVmMapper mapper;
 
-    private AwsEc2ManagementAdapter adapter;
+    private AwsVmManagementAdapter adapter;
 
     @BeforeEach
     void setUp() {
-        adapter = new AwsEc2ManagementAdapter(ec2Client, mapper);
+        adapter = new AwsVmManagementAdapter(vmClient, mapper);
     }
 
     @Test
@@ -44,7 +44,7 @@ class AwsEc2ManagementAdapterTest {
     @Test
     void 어댑터_인스턴스_생성_테스트() {
         // Given & When
-        AwsEc2ManagementAdapter adapter = new AwsEc2ManagementAdapter(ec2Client, mapper);
+        AwsVmManagementAdapter adapter = new AwsVmManagementAdapter(vmClient, mapper);
 
         // Then
         assertThat(adapter).isNotNull();
@@ -55,10 +55,10 @@ class AwsEc2ManagementAdapterTest {
     void 어댑터_의존성_주입_테스트() {
         // Given
         Ec2Client mockClient = mock(Ec2Client.class);
-        AwsEc2Mapper mockMapper = mock(AwsEc2Mapper.class);
+        AwsVmMapper mockMapper = mock(AwsVmMapper.class);
 
         // When
-        AwsEc2ManagementAdapter adapter = new AwsEc2ManagementAdapter(mockClient, mockMapper);
+        AwsVmManagementAdapter adapter = new AwsVmManagementAdapter(mockClient, mockMapper);
 
         // Then
         assertThat(adapter).isNotNull();

@@ -2,11 +2,11 @@ package com.agenticcp.core.domain.cloud.port;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.Ec2CreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.Ec2DeleteRequest;
-import com.agenticcp.core.domain.cloud.port.model.Ec2Query;
-import com.agenticcp.core.domain.cloud.port.model.Ec2UpdateRequest;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.Ec2ManagementPort;
+import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
+import com.agenticcp.core.domain.cloud.port.model.VmQuery;
+import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,22 +26,22 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * EC2 관리 포트 계약 테스트
+ * VM 관리 포트 계약 테스트
  * 
- * Ec2ManagementPort 인터페이스의 모든 메서드가 올바르게 동작하는지 검증합니다.
+ * VmManagementPort 인터페이스의 모든 메서드가 올바르게 동작하는지 검증합니다.
  * 이 테스트는 포트 인터페이스의 계약(contract)을 정의하고 검증합니다.
  */
 @ExtendWith(MockitoExtension.class)
-class Ec2ManagementContractTest {
+class VmManagementContractTest {
 
     @Mock
-    private Ec2ManagementPort ec2ManagementPort;
+    private VmManagementPort vmManagementPort;
 
     private CloudResource testInstance;
-    private Ec2Query testQuery;
-    private Ec2CreateRequest testCreateRequest;
-    private Ec2UpdateRequest testUpdateRequest;
-    private Ec2DeleteRequest testDeleteRequest;
+    private VmQuery testQuery;
+    private VmCreateRequest testCreateRequest;
+    private VmUpdateRequest testUpdateRequest;
+    private VmDeleteRequest testDeleteRequest;
 
     @BeforeEach
     void setUp() {
@@ -51,24 +51,24 @@ class Ec2ManagementContractTest {
             .displayName("Test Instance")
             .build();
 
-        testQuery = Ec2Query.builder()
+        testQuery = VmQuery.builder()
             .page(0)
             .size(10)
             .build();
 
-        testCreateRequest = Ec2CreateRequest.builder()
+        testCreateRequest = VmCreateRequest.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .minCount(1)
             .maxCount(1)
             .build();
 
-        testUpdateRequest = Ec2UpdateRequest.builder()
+        testUpdateRequest = VmUpdateRequest.builder()
             .instanceId("i-1234567890abcdef0")
             .instanceType("t3.small")
             .build();
 
-        testDeleteRequest = Ec2DeleteRequest.basic("i-1234567890abcdef0");
+        testDeleteRequest = VmDeleteRequest.basic("i-1234567890abcdef0");
     }
 
     @Test
@@ -79,132 +79,132 @@ class Ec2ManagementContractTest {
             PageRequest.of(0, 10), 
             1
         );
-        when(ec2ManagementPort.listInstances(any(Ec2Query.class))).thenReturn(expectedPage);
+        when(vmManagementPort.listInstances(any(VmQuery.class))).thenReturn(expectedPage);
 
         // When
-        Page<CloudResource> result = ec2ManagementPort.listInstances(testQuery);
+        Page<CloudResource> result = vmManagementPort.listInstances(testQuery);
 
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getResourceId()).isEqualTo("i-1234567890abcdef0");
-        verify(ec2ManagementPort).listInstances(testQuery);
+        verify(vmManagementPort).listInstances(testQuery);
     }
 
     @Test
     void getInstance_계약_테스트() {
         // Given
-        when(ec2ManagementPort.getInstance("i-1234567890abcdef0"))
+        when(vmManagementPort.getInstance("i-1234567890abcdef0"))
             .thenReturn(Optional.of(testInstance));
 
         // When
-        Optional<CloudResource> result = ec2ManagementPort.getInstance("i-1234567890abcdef0");
+        Optional<CloudResource> result = vmManagementPort.getInstance("i-1234567890abcdef0");
 
         // Then
         assertThat(result).isPresent();
         assertThat(result.get().getResourceId()).isEqualTo("i-1234567890abcdef0");
-        verify(ec2ManagementPort).getInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).getInstance("i-1234567890abcdef0");
     }
 
     @Test
     void getInstance_존재하지_않는_인스턴스_계약_테스트() {
         // Given
-        when(ec2ManagementPort.getInstance("i-nonexistent"))
+        when(vmManagementPort.getInstance("i-nonexistent"))
             .thenReturn(Optional.empty());
 
         // When
-        Optional<CloudResource> result = ec2ManagementPort.getInstance("i-nonexistent");
+        Optional<CloudResource> result = vmManagementPort.getInstance("i-nonexistent");
 
         // Then
         assertThat(result).isEmpty();
-        verify(ec2ManagementPort).getInstance("i-nonexistent");
+        verify(vmManagementPort).getInstance("i-nonexistent");
     }
 
     @Test
     void createInstance_계약_테스트() {
         // Given
         String expectedInstanceId = "i-1234567890abcdef0";
-        when(ec2ManagementPort.createInstance(any(Ec2CreateRequest.class)))
+        when(vmManagementPort.createInstance(any(VmCreateRequest.class)))
             .thenReturn(expectedInstanceId);
 
         // When
-        String result = ec2ManagementPort.createInstance(testCreateRequest);
+        String result = vmManagementPort.createInstance(testCreateRequest);
 
         // Then
         assertThat(result).isEqualTo(expectedInstanceId);
-        verify(ec2ManagementPort).createInstance(testCreateRequest);
+        verify(vmManagementPort).createInstance(testCreateRequest);
     }
 
     @Test
     void startInstance_계약_테스트() {
         // Given
-        doNothing().when(ec2ManagementPort).startInstance(anyString());
+        doNothing().when(vmManagementPort).startInstance(anyString());
 
         // When
-        ec2ManagementPort.startInstance("i-1234567890abcdef0");
+        vmManagementPort.startInstance("i-1234567890abcdef0");
 
         // Then
-        verify(ec2ManagementPort).startInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).startInstance("i-1234567890abcdef0");
     }
 
     @Test
     void stopInstance_계약_테스트() {
         // Given
-        doNothing().when(ec2ManagementPort).stopInstance(anyString());
+        doNothing().when(vmManagementPort).stopInstance(anyString());
 
         // When
-        ec2ManagementPort.stopInstance("i-1234567890abcdef0");
+        vmManagementPort.stopInstance("i-1234567890abcdef0");
 
         // Then
-        verify(ec2ManagementPort).stopInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).stopInstance("i-1234567890abcdef0");
     }
 
     @Test
     void rebootInstance_계약_테스트() {
         // Given
-        doNothing().when(ec2ManagementPort).rebootInstance(anyString());
+        doNothing().when(vmManagementPort).rebootInstance(anyString());
 
         // When
-        ec2ManagementPort.rebootInstance("i-1234567890abcdef0");
+        vmManagementPort.rebootInstance("i-1234567890abcdef0");
 
         // Then
-        verify(ec2ManagementPort).rebootInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).rebootInstance("i-1234567890abcdef0");
     }
 
     @Test
     void terminateInstance_계약_테스트() {
         // Given
-        doNothing().when(ec2ManagementPort).terminateInstance(anyString());
+        doNothing().when(vmManagementPort).terminateInstance(anyString());
 
         // When
-        ec2ManagementPort.terminateInstance("i-1234567890abcdef0");
+        vmManagementPort.terminateInstance("i-1234567890abcdef0");
 
         // Then
-        verify(ec2ManagementPort).terminateInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).terminateInstance("i-1234567890abcdef0");
     }
 
     @Test
     void deleteInstance_계약_테스트() {
         // Given
-        doNothing().when(ec2ManagementPort).deleteInstance(any(Ec2DeleteRequest.class));
+        doNothing().when(vmManagementPort).deleteInstance(any(VmDeleteRequest.class));
 
         // When
-        ec2ManagementPort.deleteInstance(testDeleteRequest);
+        vmManagementPort.deleteInstance(testDeleteRequest);
 
         // Then
-        verify(ec2ManagementPort).deleteInstance(testDeleteRequest);
+        verify(vmManagementPort).deleteInstance(testDeleteRequest);
     }
 
     @Test
     void updateInstance_계약_테스트() {
         // Given
-        doNothing().when(ec2ManagementPort).updateInstance(any(Ec2UpdateRequest.class));
+        doNothing().when(vmManagementPort).updateInstance(any(VmUpdateRequest.class));
 
         // When
-        ec2ManagementPort.updateInstance(testUpdateRequest);
+        vmManagementPort.updateInstance(testUpdateRequest);
 
         // Then
-        verify(ec2ManagementPort).updateInstance(testUpdateRequest);
+        verify(vmManagementPort).updateInstance(testUpdateRequest);
     }
 
     @Test
@@ -214,13 +214,13 @@ class Ec2ManagementContractTest {
             "Environment", "Development",
             "Project", "TestProject"
         );
-        doNothing().when(ec2ManagementPort).addTags(anyString(), any(Map.class));
+        doNothing().when(vmManagementPort).addTags(anyString(), any(Map.class));
 
         // When
-        ec2ManagementPort.addTags("i-1234567890abcdef0", tags);
+        vmManagementPort.addTags("i-1234567890abcdef0", tags);
 
         // Then
-        verify(ec2ManagementPort).addTags("i-1234567890abcdef0", tags);
+        verify(vmManagementPort).addTags("i-1234567890abcdef0", tags);
     }
 
     @Test
@@ -230,13 +230,13 @@ class Ec2ManagementContractTest {
             "Environment", "",
             "Project", ""
         );
-        doNothing().when(ec2ManagementPort).removeTags(anyString(), any(Map.class));
+        doNothing().when(vmManagementPort).removeTags(anyString(), any(Map.class));
 
         // When
-        ec2ManagementPort.removeTags("i-1234567890abcdef0", tagKeys);
+        vmManagementPort.removeTags("i-1234567890abcdef0", tagKeys);
 
         // Then
-        verify(ec2ManagementPort).removeTags("i-1234567890abcdef0", tagKeys);
+        verify(vmManagementPort).removeTags("i-1234567890abcdef0", tagKeys);
     }
 
     @Test
@@ -246,64 +246,64 @@ class Ec2ManagementContractTest {
             "Environment", "Development",
             "Project", "TestProject"
         );
-        when(ec2ManagementPort.getTags("i-1234567890abcdef0"))
+        when(vmManagementPort.getTags("i-1234567890abcdef0"))
             .thenReturn(expectedTags);
 
         // When
-        Map<String, String> result = ec2ManagementPort.getTags("i-1234567890abcdef0");
+        Map<String, String> result = vmManagementPort.getTags("i-1234567890abcdef0");
 
         // Then
         assertThat(result).isEqualTo(expectedTags);
-        verify(ec2ManagementPort).getTags("i-1234567890abcdef0");
+        verify(vmManagementPort).getTags("i-1234567890abcdef0");
     }
 
     @Test
     void getInstanceStatus_계약_테스트() {
         // Given
         String expectedStatus = "running";
-        when(ec2ManagementPort.getInstanceStatus("i-1234567890abcdef0"))
+        when(vmManagementPort.getInstanceStatus("i-1234567890abcdef0"))
             .thenReturn(expectedStatus);
 
         // When
-        String result = ec2ManagementPort.getInstanceStatus("i-1234567890abcdef0");
+        String result = vmManagementPort.getInstanceStatus("i-1234567890abcdef0");
 
         // Then
         assertThat(result).isEqualTo(expectedStatus);
-        verify(ec2ManagementPort).getInstanceStatus("i-1234567890abcdef0");
+        verify(vmManagementPort).getInstanceStatus("i-1234567890abcdef0");
     }
 
     @Test
     void waitForInstanceStatus_계약_테스트() {
         // Given
-        when(ec2ManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300))
+        when(vmManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300))
             .thenReturn(true);
 
         // When
-        boolean result = ec2ManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
+        boolean result = vmManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
 
         // Then
         assertThat(result).isTrue();
-        verify(ec2ManagementPort).waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
+        verify(vmManagementPort).waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
     }
 
     @Test
     void waitForInstanceStatus_타임아웃_계약_테스트() {
         // Given
-        when(ec2ManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300))
+        when(vmManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300))
             .thenReturn(false);
 
         // When
-        boolean result = ec2ManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
+        boolean result = vmManagementPort.waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
 
         // Then
         assertThat(result).isFalse();
-        verify(ec2ManagementPort).waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
+        verify(vmManagementPort).waitForInstanceStatus("i-1234567890abcdef0", "running", 300);
     }
 
     @Test
     void providerScoped_계약_테스트() {
         // Given
-        Ec2ManagementPortWithProvider providerPort = mock(Ec2ManagementPortWithProvider.class);
+        VmManagementPortWithProvider providerPort = mock(VmManagementPortWithProvider.class);
         when(providerPort.getProviderType()).thenReturn(ProviderType.AWS);
 
         // When
@@ -317,6 +317,6 @@ class Ec2ManagementContractTest {
     /**
      * ProviderScoped를 구현하는 테스트용 인터페이스
      */
-    private interface Ec2ManagementPortWithProvider extends Ec2ManagementPort, ProviderScoped {
+    private interface VmManagementPortWithProvider extends VmManagementPort, ProviderScoped {
     }
 }

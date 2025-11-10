@@ -8,13 +8,13 @@ import jakarta.validation.constraints.Min;
 import java.util.Map;
 
 /**
- * EC2 인스턴스 생성 요청을 정의하는 모델
- * AWS EC2 API의 RunInstances 요청을 도메인 중심으로 추상화
+ * 가상머신(Virtual Machine) 생성 요청을 정의하는 모델
+ * AWS EC2의 RunInstances 등 VM 생성 API를 도메인 중심으로 추상화합니다.
  */
 @Value
 @Builder
 @Jacksonized
-public class Ec2CreateRequest {
+public class VmCreateRequest {
     
     /**
      * AMI ID (Amazon Machine Image)
@@ -74,8 +74,8 @@ public class Ec2CreateRequest {
     /**
      * 기본 인스턴스 생성 요청 생성
      */
-    public static Ec2CreateRequest basic(String imageId, String instanceType) {
-        return Ec2CreateRequest.builder()
+    public static VmCreateRequest basic(String imageId, String instanceType) {
+        return VmCreateRequest.builder()
             .imageId(imageId)
             .instanceType(instanceType)
             .minCount(1)
@@ -86,8 +86,8 @@ public class Ec2CreateRequest {
     /**
      * 웹 서버용 인스턴스 생성 요청 생성
      */
-    public static Ec2CreateRequest webServer(String imageId, String instanceType, String keyName) {
-        return Ec2CreateRequest.builder()
+    public static VmCreateRequest webServer(String imageId, String instanceType, String keyName) {
+        return VmCreateRequest.builder()
             .imageId(imageId)
             .instanceType(instanceType)
             .keyName(keyName)
@@ -102,8 +102,8 @@ public class Ec2CreateRequest {
     /**
      * 개발 환경용 인스턴스 생성 요청 생성
      */
-    public static Ec2CreateRequest development(String imageId, String instanceType, String keyName) {
-        return Ec2CreateRequest.builder()
+    public static VmCreateRequest development(String imageId, String instanceType, String keyName) {
+        return VmCreateRequest.builder()
             .imageId(imageId)
             .instanceType(instanceType)
             .keyName(keyName)

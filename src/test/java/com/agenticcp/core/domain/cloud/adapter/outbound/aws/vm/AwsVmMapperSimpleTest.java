@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.aws.ec2;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,22 +8,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * AwsEc2Mapper 간단 테스트
+ * AwsVmMapper 간단 테스트
  */
 @ExtendWith(MockitoExtension.class)
-class AwsEc2MapperSimpleTest {
+class AwsVmMapperSimpleTest {
 
-    private AwsEc2Mapper mapper;
+    private AwsVmMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new AwsEc2Mapper();
+        mapper = new AwsVmMapper();
     }
 
     @Test
     void 매퍼_인스턴스_생성_테스트() {
         // Given & When
-        AwsEc2Mapper mapper = new AwsEc2Mapper();
+        AwsVmMapper mapper = new AwsVmMapper();
 
         // Then
         assertThat(mapper).isNotNull();
@@ -37,7 +37,7 @@ class AwsEc2MapperSimpleTest {
         // When & Then
         // 리플렉션을 사용해서 private 메서드 테스트
         try {
-            var method = AwsEc2Mapper.class.getDeclaredMethod("getCpuCores", String.class);
+            var method = AwsVmMapper.class.getDeclaredMethod("getCpuCores", String.class);
             method.setAccessible(true);
             Integer result = (Integer) method.invoke(mapper, instanceType);
             
@@ -56,7 +56,7 @@ class AwsEc2MapperSimpleTest {
         // When & Then
         // 리플렉션을 사용해서 private 메서드 테스트
         try {
-            var method = AwsEc2Mapper.class.getDeclaredMethod("getMemoryGb", String.class);
+            var method = AwsVmMapper.class.getDeclaredMethod("getMemoryGb", String.class);
             method.setAccessible(true);
             Integer result = (Integer) method.invoke(mapper, instanceType);
             

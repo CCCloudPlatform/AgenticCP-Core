@@ -6,12 +6,12 @@ import lombok.Value;
 import java.util.Map;
 
 /**
- * EC2 인스턴스 수정 요청을 정의하는 모델
- * AWS EC2 API의 ModifyInstanceAttribute 요청을 도메인 중심으로 추상화
+ * 가상머신(Virtual Machine) 수정 요청을 정의하는 모델
+ * AWS EC2 등 VM 설정 변경 API를 도메인 중심으로 추상화합니다.
  */
 @Value
 @Builder
-public class Ec2UpdateRequest {
+public class VmUpdateRequest {
     
     /**
      * 수정할 인스턴스 ID
@@ -45,8 +45,8 @@ public class Ec2UpdateRequest {
     /**
      * 인스턴스 타입만 변경하는 요청 생성
      */
-    public static Ec2UpdateRequest changeInstanceType(String instanceId, String newInstanceType) {
-        return Ec2UpdateRequest.builder()
+    public static VmUpdateRequest changeInstanceType(String instanceId, String newInstanceType) {
+        return VmUpdateRequest.builder()
             .instanceId(instanceId)
             .instanceType(newInstanceType)
             .build();
@@ -55,8 +55,8 @@ public class Ec2UpdateRequest {
     /**
      * 사용자 데이터만 변경하는 요청 생성
      */
-    public static Ec2UpdateRequest changeUserData(String instanceId, String newUserData) {
-        return Ec2UpdateRequest.builder()
+    public static VmUpdateRequest changeUserData(String instanceId, String newUserData) {
+        return VmUpdateRequest.builder()
             .instanceId(instanceId)
             .userData(newUserData)
             .build();
@@ -65,8 +65,8 @@ public class Ec2UpdateRequest {
     /**
      * 태그만 추가하는 요청 생성
      */
-    public static Ec2UpdateRequest addTags(String instanceId, Map<String, String> tags) {
-        return Ec2UpdateRequest.builder()
+    public static VmUpdateRequest addTags(String instanceId, Map<String, String> tags) {
+        return VmUpdateRequest.builder()
             .instanceId(instanceId)
             .tagsToAdd(tags)
             .build();
@@ -75,8 +75,8 @@ public class Ec2UpdateRequest {
     /**
      * 태그만 제거하는 요청 생성
      */
-    public static Ec2UpdateRequest removeTags(String instanceId, Map<String, String> tags) {
-        return Ec2UpdateRequest.builder()
+    public static VmUpdateRequest removeTags(String instanceId, Map<String, String> tags) {
+        return VmUpdateRequest.builder()
             .instanceId(instanceId)
             .tagsToRemove(tags)
             .build();
@@ -85,8 +85,8 @@ public class Ec2UpdateRequest {
     /**
      * 환경을 변경하는 요청 생성 (개발 -> 스테이징 -> 프로덕션)
      */
-    public static Ec2UpdateRequest changeEnvironment(String instanceId, String environment) {
-        return Ec2UpdateRequest.builder()
+    public static VmUpdateRequest changeEnvironment(String instanceId, String environment) {
+        return VmUpdateRequest.builder()
             .instanceId(instanceId)
             .tagsToAdd(Map.of("Environment", environment))
             .build();
