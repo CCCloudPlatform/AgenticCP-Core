@@ -6,7 +6,9 @@ import com.agenticcp.core.common.audit.AuditRequired;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.exception.AuthorizationException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
+import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.service.PlatformConfigService;
 import com.agenticcp.core.domain.platform.service.ConfigHistoryQueryService;
 import com.agenticcp.core.domain.platform.dto.ConfigHistoryResponse;
@@ -95,7 +97,8 @@ public class PlatformConfigController {
      *
      * @param configKey 조회할 설정 키
      * @param showSecret 민감 정보 복호화 여부 (true: 복호화, false: 마스킹)
-     * @return 플랫폼 설정 (존재하지 않으면 404)
+     * @return 플랫폼 설정
+     * @throws com.agenticcp.core.common.exception.ResourceNotFoundException 설정을 찾을 수 없는 경우
      */
     @GetMapping("/{configKey}")
     @Operation(summary = "특정 플랫폼 설정 조회")
@@ -115,16 +118,15 @@ public class PlatformConfigController {
         if (reveal) {
             enforceAdmin();
         }
-        return platformConfigService.getConfigByKey(configKey, reveal)
-                .map(config -> {
-                    ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
-                    if (reveal) {
-                        builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-                        builder.header("Pragma", "no-cache");
-                    }
-                    return builder.body(ApiResponse.success(config));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        PlatformConfig config = platformConfigService.getConfigByKey(configKey, reveal)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformConfigErrorCode.CONFIG_NOT_FOUND));
+        
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        if (reveal) {
+            builder.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+            builder.header("Pragma", "no-cache");
+        }
+        return builder.body(ApiResponse.success(config));
     }
 
     /**
