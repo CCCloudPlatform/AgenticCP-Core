@@ -19,7 +19,18 @@ import lombok.NoArgsConstructor;
  * @version 1.0.0
  */
 @Entity
-@Table(name = "platform_configs")
+@Table(
+        name = "platform_configs",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_platform_config_tenant_key",
+                        columnNames = {"tenant_id", "config_key"}
+                )
+        },
+        indexes = {
+                @Index(name = "idx_platform_config_tenant", columnList = "tenant_id")
+        }
+)
 @Data
 @Builder
 @NoArgsConstructor
@@ -35,7 +46,7 @@ public class PlatformConfig extends BaseEntity {
      * 길이: 3자 이상 255자 이하
      * </p>
      */
-    @Column(name = "config_key", nullable = false, unique = true)
+    @Column(name = "config_key", nullable = false)
     private String configKey;
 
     /**
@@ -60,6 +71,16 @@ public class PlatformConfig extends BaseEntity {
     @Column(name = "config_type")
     @Enumerated(EnumType.STRING)
     private ConfigType configType;
+
+    /**
+     * 테넌트 식별자
+     * <p>
+     * 테넌트별로 설정을 분리하기 위한 필드입니다.
+     * null인 경우 글로벌(공용) 설정으로 간주합니다.
+     * </p>
+     */
+    @Column(name = "tenant_id", length = 64)
+    private String tenantId;
 
     /**
      * 설정 설명

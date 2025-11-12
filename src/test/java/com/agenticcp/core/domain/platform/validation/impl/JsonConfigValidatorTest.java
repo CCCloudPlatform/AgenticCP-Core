@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.platform.validation.impl;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ class JsonConfigValidatorTest {
 
     @BeforeEach
     void setUp() {
-        validator = new JsonConfigValidator();
+        validator = new JsonConfigValidator(new ObjectMapper());
     }
 
     @Test
