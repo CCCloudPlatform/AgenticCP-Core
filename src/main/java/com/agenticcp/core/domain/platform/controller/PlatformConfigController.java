@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,8 +31,9 @@ import java.util.List;
  * @author AgenticCP Team
  * @version 1.0.0
  */
+@Slf4j
 @RestController
-@RequestMapping("/api/platform/configs")
+@RequestMapping("/v1/platform/configs")
 @RequiredArgsConstructor
 @Tag(name = "Platform Configuration", description = "플랫폼 설정 관리 API")
 @AuditController(
@@ -69,6 +71,7 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getAllConfigs(
             @RequestParam(value = "showSecret", required = false) Boolean showSecret,
             @RequestParam(value = "isSystem", required = false) Boolean isSystem) {
+        log.info("[PlatformConfigController] getAllConfigs - showSecret={}, isSystem={}", showSecret, isSystem);
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
@@ -105,6 +108,7 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<PlatformConfig>> getConfigByKey(
             @PathVariable String configKey,
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+        log.info("[PlatformConfigController] getConfigByKey - configKey={}, showSecret={}", configKey, showSecret);
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
@@ -144,6 +148,7 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getConfigsByType(
             @PathVariable PlatformConfig.ConfigType configType,
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+        log.info("[PlatformConfigController] getConfigsByType - configType={}, showSecret={}", configType, showSecret);
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
@@ -178,6 +183,7 @@ public class PlatformConfigController {
     )
     public ResponseEntity<ApiResponse<List<PlatformConfig>>> getSystemConfigs(
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
+        log.info("[PlatformConfigController] getSystemConfigs - showSecret={}", showSecret);
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
@@ -228,6 +234,7 @@ public class PlatformConfigController {
     @PostMapping
     @Operation(summary = "플랫폼 설정 생성")
     public ResponseEntity<ApiResponse<PlatformConfig>> createConfig(@RequestBody PlatformConfig platformConfig) {
+        log.info("[PlatformConfigController] createConfig - configKey={}", platformConfig.getConfigKey());
         PlatformConfig createdConfig = platformConfigService.createConfig(platformConfig);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(createdConfig, "플랫폼 설정이 생성되었습니다."));
@@ -252,6 +259,7 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<PlatformConfig>> updateConfig(
             @PathVariable String configKey, 
             @RequestBody PlatformConfig platformConfig) {
+        log.info("[PlatformConfigController] updateConfig - configKey={}", configKey);
         PlatformConfig updatedConfig = platformConfigService.updateConfig(configKey, platformConfig);
         return ResponseEntity.ok(ApiResponse.success(updatedConfig, "플랫폼 설정이 수정되었습니다."));
     }
@@ -271,6 +279,7 @@ public class PlatformConfigController {
     @DeleteMapping("/{configKey}")
     @Operation(summary = "플랫폼 설정 삭제")
     public ResponseEntity<ApiResponse<Void>> deleteConfig(@PathVariable String configKey) {
+        log.info("[PlatformConfigController] deleteConfig - configKey={}", configKey);
         platformConfigService.deleteConfig(configKey);
         return ResponseEntity.ok(ApiResponse.success(null, "플랫폼 설정이 삭제되었습니다."));
     }
@@ -301,6 +310,7 @@ public class PlatformConfigController {
             @PathVariable String configKey,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        log.info("[PlatformConfigController] getConfigHistory - configKey={}, page={}, size={}", configKey, page, size);
         // 관리자 전용 조회
         enforceAdmin();
         Page<ConfigHistoryResponse> history = configHistoryQueryService.getHistory(configKey, page, size);

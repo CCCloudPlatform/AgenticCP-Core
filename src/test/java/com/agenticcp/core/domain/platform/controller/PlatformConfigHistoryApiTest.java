@@ -56,7 +56,7 @@ public class PlatformConfigHistoryApiTest {
         when(queryService.getHistory(Mockito.eq("secure.key"), anyInt(), anyInt())).thenReturn(page);
 
         // enforceAdmin()가 현재 SecurityContext를 검사하므로, 여기서는 403을 기대
-        mockMvc.perform(get("/api/platform/configs/secure.key/history")
+        mockMvc.perform(get("/v1/platform/configs/secure.key/history")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
     }
