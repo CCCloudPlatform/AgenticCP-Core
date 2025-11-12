@@ -38,7 +38,8 @@ public class BooleanConfigValidator extends BaseConfigValidator {
 
         log.debug("[BooleanConfigValidator] validateValueByType - BOOLEAN type validation");
 
-        if (configValue == null || configValue.trim().isEmpty()) {
+        // BaseConfigValidator에서 이미 null 체크를 수행하므로, 여기서는 빈 문자열만 체크
+        if (configValue.trim().isEmpty()) {
             throw new ConfigValidationException(PlatformConfigErrorCode.CONFIG_VALUE_REQUIRED);
         }
 
