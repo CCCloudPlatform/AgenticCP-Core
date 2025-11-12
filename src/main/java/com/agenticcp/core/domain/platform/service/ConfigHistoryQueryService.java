@@ -17,6 +17,16 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+/**
+ * 플랫폼 설정 변경 이력 조회 서비스
+ * <p>
+ * AuditLog 테이블에서 플랫폼 설정의 변경 이력을 조회하고 변환하는 서비스입니다.
+ * 민감 정보(ENCRYPTED 타입, secret, password, key, token, credential 등)는 자동으로 마스킹 처리됩니다.
+ * </p>
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ */
 @Service
 @RequiredArgsConstructor
 public class ConfigHistoryQueryService {
@@ -26,6 +36,19 @@ public class ConfigHistoryQueryService {
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 플랫폼 설정 변경 이력 조회
+     * <p>
+     * 지정된 설정 키의 변경 이력을 페이지네이션으로 조회합니다.
+     * AuditLog 테이블에서 PLATFORM_CONFIG 리소스 타입의 로그를 조회하며,
+     * 메타데이터에서 reason, valueType 등을 추출하고 민감 정보는 마스킹 처리합니다.
+     * </p>
+     *
+     * @param configKey 조회할 설정 키
+     * @param page 페이지 번호 (0부터 시작)
+     * @param size 페이지 크기 (1~100 사이로 제한)
+     * @return 설정 변경 이력 페이지
+     */
     public Page<ConfigHistoryResponse> getHistory(String configKey, int page, int size) {
         Pageable pageable = PageRequest.of(page, Math.min(Math.max(size, 1), 100));
         
@@ -100,7 +123,15 @@ public class ConfigHistoryQueryService {
     }
     
     /**
-     * details JSON 문자열을 JsonNode로 파싱
+     * 메타데이터 JSON 문자열을 JsonNode로 파싱
+     * <p>
+     * AuditLog의 메타데이터 필드(JSON 문자열)를 JsonNode로 변환합니다.
+     * null이거나 빈 문자열인 경우 빈 ObjectNode를 반환합니다.
+     * </p>
+     *
+     * @param details 파싱할 JSON 문자열 (메타데이터)
+     * @return 파싱된 JsonNode (null이거나 빈 문자열이면 빈 ObjectNode)
+     * @throws JsonProcessingException JSON 파싱 실패 시
      */
     private JsonNode parseDetails(String details) throws JsonProcessingException {
         if (details == null || details.trim().isEmpty()) {
@@ -111,6 +142,14 @@ public class ConfigHistoryQueryService {
     
     /**
      * JsonNode에서 문자열 필드 추출
+     * <p>
+     * JsonNode에서 지정된 필드명의 문자열 값을 추출합니다.
+     * 필드가 존재하지 않거나 null인 경우 null을 반환합니다.
+     * </p>
+     *
+     * @param node JSON 노드
+     * @param fieldName 추출할 필드명
+     * @return 필드 값 (존재하지 않거나 null이면 null)
      */
     private String extractString(JsonNode node, String fieldName) {
         if (node == null || !node.has(fieldName)) {
@@ -122,6 +161,14 @@ public class ConfigHistoryQueryService {
     
     /**
      * JsonNode에서 문자열 필드 추출 (여러 필드명 시도)
+     * <p>
+     * 여러 필드명을 순차적으로 시도하여 첫 번째로 찾은 값을 반환합니다.
+     * 모든 필드명을 시도했지만 값을 찾지 못한 경우 null을 반환합니다.
+     * </p>
+     *
+     * @param node JSON 노드
+     * @param fieldNames 시도할 필드명 목록 (순서대로 시도)
+     * @return 첫 번째로 찾은 필드 값 (모두 없으면 null)
      */
     private String extractStringWithFallback(JsonNode node, String... fieldNames) {
         for (String fieldName : fieldNames) {
@@ -135,6 +182,14 @@ public class ConfigHistoryQueryService {
     
     /**
      * JsonNode에서 값을 추출하고 민감한 값은 마스킹 처리
+     * <p>
+     * JsonNode에서 지정된 필드의 값을 추출하며, valueType이 민감한 타입인 경우 마스킹 처리합니다.
+     * </p>
+     *
+     * @param node JSON 노드
+     * @param fieldName 추출할 필드명
+     * @param valueType 값의 타입 (민감 여부 판단에 사용)
+     * @return 추출된 값 (민감한 타입이면 마스킹 처리됨)
      */
     private String extractAndMaskValue(JsonNode node, String fieldName, String valueType) {
         String value = extractString(node, fieldName);
@@ -152,6 +207,15 @@ public class ConfigHistoryQueryService {
     
     /**
      * JsonNode에서 값을 추출하고 민감한 값은 마스킹 처리 (여러 필드명 시도)
+     * <p>
+     * 여러 필드명을 순차적으로 시도하여 첫 번째로 찾은 값을 반환하며,
+     * valueType이 민감한 타입인 경우 마스킹 처리합니다.
+     * </p>
+     *
+     * @param node JSON 노드
+     * @param valueType 값의 타입 (민감 여부 판단에 사용)
+     * @param fieldNames 시도할 필드명 목록 (순서대로 시도)
+     * @return 첫 번째로 찾은 필드 값 (민감한 타입이면 마스킹 처리됨, 모두 없으면 null)
      */
     private String extractAndMaskValueWithFallback(JsonNode node, String valueType, String... fieldNames) {
         for (String fieldName : fieldNames) {
@@ -169,6 +233,14 @@ public class ConfigHistoryQueryService {
     
     /**
      * 민감한 값 타입인지 확인
+     * <p>
+     * valueType 문자열에 다음 키워드가 포함되어 있는지 확인합니다:
+     * secret, password, key, token, credential
+     * 대소문자를 구분하지 않습니다.
+     * </p>
+     *
+     * @param valueType 확인할 값 타입
+     * @return 민감한 타입이면 true, 그렇지 않으면 false
      */
     private boolean isSensitiveValueType(String valueType) {
         if (valueType == null) {
@@ -185,6 +257,17 @@ public class ConfigHistoryQueryService {
     
     /**
      * 민감한 값 마스킹 처리
+     * <p>
+     * 민감한 값을 마스킹하여 반환합니다.
+     * <ul>
+     *   <li>값이 null이거나 길이가 4 이하인 경우: "****" 반환</li>
+     *   <li>값이 "ENCRYPTED"인 경우: "***" 반환</li>
+     *   <li>그 외의 경우: 앞 2자리 + "****" + 뒤 2자리 형태로 부분 마스킹</li>
+     * </ul>
+     * </p>
+     *
+     * @param value 마스킹할 값
+     * @return 마스킹된 값
      */
     private String maskSensitiveValue(String value) {
         if (value == null || value.length() <= 4) {

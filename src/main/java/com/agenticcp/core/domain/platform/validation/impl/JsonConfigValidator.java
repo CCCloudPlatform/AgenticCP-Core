@@ -26,6 +26,18 @@ public class JsonConfigValidator extends BaseConfigValidator {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * JSON 타입 설정 값 검증
+     * <p>
+     * 설정 값이 유효한 JSON 형식인지 검증합니다.
+     * ObjectMapper를 사용하여 JSON 파싱을 시도하고, 파싱에 실패하면 예외를 발생시킵니다.
+     * 공백은 자동으로 제거된 후 검증됩니다.
+     * </p>
+     *
+     * @param configValue 검증할 설정 값
+     * @param configType 설정 타입 (JSON이 아니면 검증하지 않음)
+     * @throws ConfigValidationException 설정 값이 null이거나 빈 문자열이거나 유효한 JSON 형식이 아닌 경우
+     */
     @Override
     protected void validateValueByType(String configValue, PlatformConfig.ConfigType configType) {
         if (configType != PlatformConfig.ConfigType.JSON) {
