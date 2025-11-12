@@ -209,12 +209,14 @@ public class PlatformConfigController {
     private void enforceAdmin() {
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getAuthorities() == null) {
+            log.warn("[PlatformConfigController] enforceAdmin - authentication or authorities is null");
             throw new AuthorizationException();
         }
         boolean isAdmin = auth.getAuthorities().stream()
                 .map(Object::toString)
                 .anyMatch(role -> role.contains("ADMIN"));
         if (!isAdmin) {
+            log.warn("[PlatformConfigController] enforceAdmin - user does not have ADMIN role, authorities={}", auth.getAuthorities());
             throw new AuthorizationException();
         }
     }

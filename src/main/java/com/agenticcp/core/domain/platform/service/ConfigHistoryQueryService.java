@@ -8,8 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,11 +26,10 @@ import java.time.ZoneId;
  * @author AgenticCP Team
  * @version 1.0.0
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ConfigHistoryQueryService {
-
-    private static final Logger log = LoggerFactory.getLogger(ConfigHistoryQueryService.class);
     
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
@@ -107,7 +105,7 @@ public class ConfigHistoryQueryService {
                         LocalDateTime.ofInstant(auditLog.getTimestamp(), ZoneId.systemDefault())
                 );
             } catch (Exception e) {
-                log.warn("Failed to parse audit log details for logId={}: {}", auditLog.getId(), e.getMessage());
+                log.warn("[ConfigHistoryQueryService] Failed to parse audit log details for logId={}: {}", auditLog.getId(), e.getMessage(), e);
                 // 파싱 실패 시 기본값으로 응답 생성
                 return new ConfigHistoryResponse(
                         auditLog.getAction(),
@@ -135,8 +133,10 @@ public class ConfigHistoryQueryService {
      */
     private JsonNode parseDetails(String details) throws JsonProcessingException {
         if (details == null || details.trim().isEmpty()) {
+            log.debug("[ConfigHistoryQueryService] parseDetails - details is null or empty, returning empty ObjectNode");
             return objectMapper.createObjectNode();
         }
+        log.debug("[ConfigHistoryQueryService] parseDetails - parsing JSON details");
         return objectMapper.readTree(details);
     }
     
@@ -248,11 +248,17 @@ public class ConfigHistoryQueryService {
         }
         
         String lowerType = valueType.toLowerCase();
-        return lowerType.contains("secret") || 
-               lowerType.contains("password") || 
-               lowerType.contains("key") || 
-               lowerType.contains("token") ||
-               lowerType.contains("credential");
+        boolean isSensitive = lowerType.contains("secret") || 
+                             lowerType.contains("password") || 
+                             lowerType.contains("key") || 
+                             lowerType.contains("token") ||
+                             lowerType.contains("credential");
+        
+        if (isSensitive) {
+            log.debug("[ConfigHistoryQueryService] isSensitiveValueType - valueType={} is sensitive", valueType);
+        }
+        
+        return isSensitive;
     }
     
     /**
@@ -271,16 +277,20 @@ public class ConfigHistoryQueryService {
      */
     private String maskSensitiveValue(String value) {
         if (value == null || value.length() <= 4) {
+            log.debug("[ConfigHistoryQueryService] maskSensitiveValue - value is null or too short, returning full mask");
             return "****";
         }
         
         // ENCRYPTED 타입은 완전 마스킹 (보안상 더 안전)
         if ("ENCRYPTED".equalsIgnoreCase(value)) {
+            log.debug("[ConfigHistoryQueryService] maskSensitiveValue - ENCRYPTED type, returning full mask");
             return "***";
         }
         
         // 다른 민감한 값들은 부분 마스킹
-        return value.substring(0, 2) + "****" + value.substring(value.length() - 2);
+        String masked = value.substring(0, 2) + "****" + value.substring(value.length() - 2);
+        log.debug("[ConfigHistoryQueryService] maskSensitiveValue - partial masking applied");
+        return masked;
     }
 }
 
