@@ -9,6 +9,7 @@ import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.util.EncryptedValueMasker;
  
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,19 +26,11 @@ import java.util.Map;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConfigAuditService {
 
     private final AuditLogger auditLogger;
     private final ApplicationEventPublisher eventPublisher;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    public ConfigAuditService(AuditLogger auditLogger,
-                              ApplicationEventPublisher eventPublisher) {
-        this.auditLogger = auditLogger;
-        this.eventPublisher = eventPublisher;
-    }
-
-    // 테스트에서 직접 new 호출 시에도 동일한 동작을 위해 2-인자 생성자만 유지
 
     /**
      * 설정 변경 감사 기록 (공통 엔트리 포인트)

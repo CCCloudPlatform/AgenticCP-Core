@@ -4,6 +4,7 @@ import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -18,13 +19,10 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class JsonConfigValidator extends BaseConfigValidator {
 
     private final ObjectMapper objectMapper;
-
-    public JsonConfigValidator() {
-        this.objectMapper = new ObjectMapper();
-    }
 
     /**
      * JSON 타입 설정 값 검증
