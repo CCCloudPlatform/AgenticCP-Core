@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -239,7 +240,7 @@ public class PlatformConfigController {
      */
     @PostMapping
     @Operation(summary = "플랫폼 설정 생성")
-    public ResponseEntity<ApiResponse<PlatformConfig>> createConfig(@RequestBody PlatformConfig platformConfig) {
+    public ResponseEntity<ApiResponse<PlatformConfig>> createConfig(@Valid @RequestBody PlatformConfig platformConfig) {
         log.info("[PlatformConfigController] createConfig - configKey={}", 
                 LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2));
         PlatformConfig createdConfig = platformConfigService.createConfig(platformConfig);
@@ -265,7 +266,7 @@ public class PlatformConfigController {
     @Operation(summary = "플랫폼 설정 수정")
     public ResponseEntity<ApiResponse<PlatformConfig>> updateConfig(
             @PathVariable String configKey, 
-            @RequestBody PlatformConfig platformConfig) {
+            @Valid @RequestBody PlatformConfig platformConfig) {
         log.info("[PlatformConfigController] updateConfig - configKey={}", 
                 LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig updatedConfig = platformConfigService.updateConfig(configKey, platformConfig);
