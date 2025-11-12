@@ -10,6 +10,7 @@ import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.service.PlatformConfigService;
 import com.agenticcp.core.domain.platform.service.ConfigHistoryQueryService;
 import com.agenticcp.core.domain.platform.dto.ConfigHistoryResponse;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import org.springframework.data.domain.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -108,7 +109,8 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<PlatformConfig>> getConfigByKey(
             @PathVariable String configKey,
             @RequestParam(value = "showSecret", required = false) Boolean showSecret) {
-        log.info("[PlatformConfigController] getConfigByKey - configKey={}, showSecret={}", configKey, showSecret);
+        log.info("[PlatformConfigController] getConfigByKey - configKey={}, showSecret={}", 
+                LogMaskingUtils.mask(configKey, 2, 2), showSecret);
         boolean reveal = Boolean.TRUE.equals(showSecret);
         if (reveal) {
             enforceAdmin();
@@ -236,7 +238,8 @@ public class PlatformConfigController {
     @PostMapping
     @Operation(summary = "플랫폼 설정 생성")
     public ResponseEntity<ApiResponse<PlatformConfig>> createConfig(@RequestBody PlatformConfig platformConfig) {
-        log.info("[PlatformConfigController] createConfig - configKey={}", platformConfig.getConfigKey());
+        log.info("[PlatformConfigController] createConfig - configKey={}", 
+                LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2));
         PlatformConfig createdConfig = platformConfigService.createConfig(platformConfig);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(createdConfig, "플랫폼 설정이 생성되었습니다."));
@@ -261,7 +264,8 @@ public class PlatformConfigController {
     public ResponseEntity<ApiResponse<PlatformConfig>> updateConfig(
             @PathVariable String configKey, 
             @RequestBody PlatformConfig platformConfig) {
-        log.info("[PlatformConfigController] updateConfig - configKey={}", configKey);
+        log.info("[PlatformConfigController] updateConfig - configKey={}", 
+                LogMaskingUtils.mask(configKey, 2, 2));
         PlatformConfig updatedConfig = platformConfigService.updateConfig(configKey, platformConfig);
         return ResponseEntity.ok(ApiResponse.success(updatedConfig, "플랫폼 설정이 수정되었습니다."));
     }
@@ -281,7 +285,8 @@ public class PlatformConfigController {
     @DeleteMapping("/{configKey}")
     @Operation(summary = "플랫폼 설정 삭제")
     public ResponseEntity<ApiResponse<Void>> deleteConfig(@PathVariable String configKey) {
-        log.info("[PlatformConfigController] deleteConfig - configKey={}", configKey);
+        log.info("[PlatformConfigController] deleteConfig - configKey={}", 
+                LogMaskingUtils.mask(configKey, 2, 2));
         platformConfigService.deleteConfig(configKey);
         return ResponseEntity.ok(ApiResponse.success(null, "플랫폼 설정이 삭제되었습니다."));
     }
@@ -312,7 +317,8 @@ public class PlatformConfigController {
             @PathVariable String configKey,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        log.info("[PlatformConfigController] getConfigHistory - configKey={}, page={}, size={}", configKey, page, size);
+        log.info("[PlatformConfigController] getConfigHistory - configKey={}, page={}, size={}", 
+                LogMaskingUtils.mask(configKey, 2, 2), page, size);
         // 관리자 전용 조회
         enforceAdmin();
         Page<ConfigHistoryResponse> history = configHistoryQueryService.getHistory(configKey, page, size);
