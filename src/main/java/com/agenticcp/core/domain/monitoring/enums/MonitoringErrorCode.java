@@ -7,6 +7,10 @@ import org.springframework.http.HttpStatus;
 /**
  * 모니터링 도메인 에러 코드
  * 범위: 8000-8999 (MONITORING 카테고리)
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 public enum MonitoringErrorCode implements BaseErrorCode {
 
