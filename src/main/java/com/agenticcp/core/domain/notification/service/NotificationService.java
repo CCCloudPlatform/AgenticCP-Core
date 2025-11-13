@@ -4,11 +4,11 @@ import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
 import com.agenticcp.core.domain.notification.entity.NotificationChannelEntity;
-import com.agenticcp.core.domain.notification.enums.NotificationPriority;
 import com.agenticcp.core.domain.notification.enums.NotificationStatus;
-import com.agenticcp.core.domain.notification.enums.NotificationType;
 import com.agenticcp.core.domain.notification.repository.NotificationChannelRepository;
 import com.agenticcp.core.domain.notification.repository.NotificationRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,14 +17,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.concurrent.CompletableFuture;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 알림 서비스
@@ -40,11 +35,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class NotificationService {
 
     /** 알림 데이터 저장소 */
@@ -76,7 +72,7 @@ public class NotificationService {
     @Transactional
     public NotificationResponse sendNotification(NotificationRequest request) {
         try {
-            log.info("알림 발송 시작: {}", request.getNotificationId());
+            log.info("[NotificationService] sendNotification - 알림 발송 시작: {}", request.getNotificationId());
 
             // 1. 알림 엔티티 생성 및 저장
             // - 요청 데이터를 Notification 엔티티로 변환
@@ -94,11 +90,11 @@ public class NotificationService {
             // - 발송 시간, 오류 메시지 등 기록
             updateNotificationStatus(notification, response);
 
-            log.info("알림 발송 완료: {}, 상태: {}", request.getNotificationId(), response.getStatus());
+            log.info("[NotificationService] sendNotification - 알림 발송 완료: {}, 상태: {}", request.getNotificationId(), response.getStatus());
             return response;
 
         } catch (Exception e) {
-            log.error("알림 발송 실패: {}", request.getNotificationId(), e);
+            log.error("[NotificationService] sendNotification - 알림 발송 실패: {}", request.getNotificationId(), e);
             // 실패 시 실패 응답 생성
             return NotificationResponse.builder()
                     .notificationId(request.getNotificationId())
@@ -186,6 +182,7 @@ public class NotificationService {
      * @param notification 업데이트할 알림 엔티티
      * @param response 알림 발송 결과
      */
+    @Transactional
     private void updateNotificationStatus(Notification notification, NotificationResponse response) {
         // 발송 결과에 따른 상태 업데이트
         notification.setStatus(response.getStatus());                    // 발송 상태 (SENT, FAILED 등)
@@ -213,7 +210,7 @@ public class NotificationService {
         try {
             return objectMapper.writeValueAsString(map);
         } catch (Exception e) {
-            log.error("Map을 JSON으로 변환 중 오류 발생: {}", e.getMessage(), e);
+            log.error("[NotificationService] convertMapToJson - Map을 JSON으로 변환 중 오류 발생: {}", e.getMessage(), e);
             return null;
         }
     }
@@ -235,7 +232,7 @@ public class NotificationService {
         try {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
-            log.error("JSON을 Map으로 변환 중 오류 발생: {}", e.getMessage(), e);
+            log.error("[NotificationService] convertJsonToMap - JSON을 Map으로 변환 중 오류 발생: {}", e.getMessage(), e);
             return null;
         }
     }
@@ -250,7 +247,7 @@ public class NotificationService {
      * @return 알림 히스토리
      */
     public Page<Notification> getNotificationHistory(String tenantId, Pageable pageable) {
-        log.info("알림 히스토리 조회: tenantId={}", tenantId);
+        log.info("[NotificationService] getNotificationHistory - 알림 히스토리 조회: tenantId={}", tenantId);
         return notificationRepository.findByTenantIdAndIsDeletedFalse(tenantId, pageable);
     }
 
@@ -263,7 +260,7 @@ public class NotificationService {
      * @return 알림 히스토리
      */
     public Page<Notification> getNotificationHistoryByUser(String tenantId, Long userId, Pageable pageable) {
-        log.info("사용자별 알림 히스토리 조회: tenantId={}, userId={}", tenantId, userId);
+        log.info("[NotificationService] getNotificationHistoryByUser - 사용자별 알림 히스토리 조회: tenantId={}, userId={}", tenantId, userId);
         return notificationRepository.findByTenantIdAndUserIdAndIsDeletedFalse(tenantId, userId, pageable);
     }
 
@@ -284,10 +281,11 @@ public class NotificationService {
      * 
      * @param channel 생성할 채널 정보
      * @return 생성된 채널
+     * @throws RuntimeException 채널 설정이 유효하지 않은 경우
      */
     @Transactional
     public NotificationChannelEntity createChannel(NotificationChannelEntity channel) {
-        log.info("알림 채널 생성: channelName={}, tenantId={}", channel.getChannelName(), channel.getTenantId());
+        log.info("[NotificationService] createChannel - 알림 채널 생성: channelName={}, tenantId={}", channel.getChannelName(), channel.getTenantId());
         
         // 채널 설정 검증
         validateChannelConfiguration(channel);
@@ -295,7 +293,7 @@ public class NotificationService {
         // 채널 저장
         NotificationChannelEntity savedChannel = channelRepository.save(channel);
         
-        log.info("알림 채널 생성 완료: channelId={}", savedChannel.getId());
+        log.info("[NotificationService] createChannel - 알림 채널 생성 완료: channelId={}", savedChannel.getId());
         return savedChannel;
     }
 
@@ -305,10 +303,11 @@ public class NotificationService {
      * @param channelId 수정할 채널 ID
      * @param channel 수정할 채널 정보
      * @return 수정된 채널
+     * @throws RuntimeException 채널을 찾을 수 없거나 설정이 유효하지 않은 경우
      */
     @Transactional
     public NotificationChannelEntity updateChannel(Long channelId, NotificationChannelEntity channel) {
-        log.info("알림 채널 수정: channelId={}", channelId);
+        log.info("[NotificationService] updateChannel - 알림 채널 수정: channelId={}", channelId);
         
         // 기존 채널 조회
         NotificationChannelEntity existingChannel = channelRepository.findById(channelId)
@@ -329,7 +328,7 @@ public class NotificationService {
         // 채널 저장
         NotificationChannelEntity updatedChannel = channelRepository.save(existingChannel);
         
-        log.info("알림 채널 수정 완료: channelId={}", updatedChannel.getId());
+        log.info("[NotificationService] updateChannel - 알림 채널 수정 완료: channelId={}", updatedChannel.getId());
         return updatedChannel;
     }
 
@@ -337,10 +336,11 @@ public class NotificationService {
      * 알림 채널 삭제
      * 
      * @param channelId 삭제할 채널 ID
+     * @throws RuntimeException 채널을 찾을 수 없는 경우
      */
     @Transactional
     public void deleteChannel(Long channelId) {
-        log.info("알림 채널 삭제: channelId={}", channelId);
+        log.info("[NotificationService] deleteChannel - 알림 채널 삭제: channelId={}", channelId);
         
         // 기존 채널 조회
         NotificationChannelEntity existingChannel = channelRepository.findById(channelId)
@@ -350,7 +350,7 @@ public class NotificationService {
         existingChannel.setIsDeleted(true);
         channelRepository.save(existingChannel);
         
-        log.info("알림 채널 삭제 완료: channelId={}", channelId);
+        log.info("[NotificationService] deleteChannel - 알림 채널 삭제 완료: channelId={}", channelId);
     }
 
     /**
@@ -370,7 +370,7 @@ public class NotificationService {
             }
         }
         
-        log.debug("채널 설정 검증 완료: channelName={}", channel.getChannelName());
+        log.debug("[NotificationService] validateChannelConfiguration - 채널 설정 검증 완료: channelName={}", channel.getChannelName());
     }
 
     // ==================== 비동기 알림 발송 메서드들 ====================
@@ -384,15 +384,15 @@ public class NotificationService {
     @Async("notificationExecutor")
     public CompletableFuture<NotificationResponse> sendNotificationAsync(NotificationRequest request) {
         try {
-            log.info("비동기 알림 발송 시작: {}", request.getNotificationId());
+            log.info("[NotificationService] sendNotificationAsync - 비동기 알림 발송 시작: {}", request.getNotificationId());
             
             NotificationResponse response = sendNotification(request);
             
-            log.info("비동기 알림 발송 완료: {}", request.getNotificationId());
+            log.info("[NotificationService] sendNotificationAsync - 비동기 알림 발송 완료: {}", request.getNotificationId());
             return CompletableFuture.completedFuture(response);
             
         } catch (Exception e) {
-            log.error("비동기 알림 발송 실패: {}", request.getNotificationId(), e);
+            log.error("[NotificationService] sendNotificationAsync - 비동기 알림 발송 실패: {}", request.getNotificationId(), e);
             return CompletableFuture.completedFuture(
                 NotificationResponse.builder()
                     .notificationId(request.getNotificationId())
