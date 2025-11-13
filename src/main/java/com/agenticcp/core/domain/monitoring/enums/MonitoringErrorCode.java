@@ -72,7 +72,11 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     HEALTH_INDICATOR_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 8093, "헬스 인디케이터 오류가 발생했습니다."),
     CACHE_EVICTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8094, "캐시 제거에 실패했습니다."),
     HEALTH_SUMMARY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8095, "헬스체크 요약 생성에 실패했습니다."),
-    COMPONENT_HEALTH_CHECK_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8096, "컴포넌트 헬스체크에 실패했습니다.");
+    COMPONENT_HEALTH_CHECK_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8096, "컴포넌트 헬스체크에 실패했습니다."),
+    
+    // 데이터 보관 정책 관련 (8101-8110)
+    RETENTION_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, 8101, "보관 정책을 찾을 수 없습니다."),
+    RETENTION_POLICY_DISABLED(HttpStatus.BAD_REQUEST, 8102, "비활성화된 보관 정책입니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
