@@ -18,9 +18,15 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * MetricsCollectorFactoryImpl 단위 테스트
- * 메트릭 수집기 팩토리 구현체의 핵심 비즈니스 로직을 검증
+ * 
+ * <p>메트릭 수집기 팩토리 구현체의 핵심 비즈니스 로직을 검증합니다.
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("MetricsCollectorFactoryImpl 단위 테스트")
 class MetricsCollectorFactoryImplTest {
 
     @Mock
@@ -52,7 +58,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("시스템 수집기 생성 성공")
-        void createSystemCollector_Success() {
+        void createCollector_WhenSystemType_ReturnsSystemCollector() {
             // Given
             systemMetricsCollector.setEnabled(true);
             metricsCollectorFactory.setCollectorEnabled(CollectorType.SYSTEM, true);
@@ -68,7 +74,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("애플리케이션 수집기 생성 성공")
-        void createApplicationCollector_Success() {
+        void createCollector_WhenApplicationType_ReturnsApplicationCollector() {
             // Given
             micrometerMetricsCollector.setEnabled(true);
             metricsCollectorFactory.setCollectorEnabled(CollectorType.APPLICATION, true);
@@ -84,7 +90,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("모든 활성화된 수집기 생성 성공")
-        void createAllCollectors_Success() {
+        void createAllCollectors_WhenCalled_ReturnsAllCollectors() {
             // Given
             systemMetricsCollector.setEnabled(true);
             metricsCollectorFactory.setCollectorEnabled(CollectorType.SYSTEM, true);
@@ -110,7 +116,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("null 수집기 타입으로 생성 시 예외 발생")
-        void createCollector_NullType_ThrowsException() {
+        void createCollector_WhenNullType_ThrowsException() {
             // When & Then
             assertThatThrownBy(() -> metricsCollectorFactory.createCollector(null))
                     .isInstanceOf(BusinessException.class)
@@ -119,7 +125,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("비활성화된 수집기 생성 시 예외 발생")
-        void createCollector_DisabledCollector_ThrowsException() {
+        void createCollector_WhenDisabled_ThrowsException() {
             // Given
             metricsCollectorFactory.setCollectorEnabled(CollectorType.SYSTEM, false);
 
@@ -131,7 +137,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("존재하지 않는 수집기 타입으로 생성 시 예외 발생")
-        void createCollector_UnsupportedType_ThrowsException() {
+        void createCollector_WhenUnsupportedType_ThrowsException() {
             // When & Then
             // CollectorType enum에 없는 값은 컴파일 타임에 방지되지만, 
             // 런타임에 null이나 잘못된 값이 전달될 수 있음
@@ -149,7 +155,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("수집기 활성화/비활성화 설정")
-        void setCollectorEnabled_Success() {
+        void setCollectorEnabled_WhenCalled_UpdatesStatus() {
             // Given
             CollectorType type = CollectorType.SYSTEM;
 
@@ -169,16 +175,21 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("수집기 존재 여부 확인")
-        void hasCollector_Success() {
-            // When & Then
-            assertThat(metricsCollectorFactory.hasCollector(CollectorType.SYSTEM)).isTrue();
-            assertThat(metricsCollectorFactory.hasCollector(CollectorType.APPLICATION)).isTrue();
-            assertThat(metricsCollectorFactory.hasCollector(null)).isFalse();
+        void hasCollector_WhenSystemType_ReturnsTrue() {
+            // When
+            boolean systemExists = metricsCollectorFactory.hasCollector(CollectorType.SYSTEM);
+            boolean applicationExists = metricsCollectorFactory.hasCollector(CollectorType.APPLICATION);
+            boolean nullExists = metricsCollectorFactory.hasCollector(null);
+
+            // Then
+            assertThat(systemExists).isTrue();
+            assertThat(applicationExists).isTrue();
+            assertThat(nullExists).isFalse();
         }
 
         @Test
         @DisplayName("수집기 설정 정보 조회")
-        void getCollectorConfig_Success() {
+        void getCollectorConfig_WhenSystemType_ReturnsConfig() {
             // When
             var systemConfig = metricsCollectorFactory.getCollectorConfig(CollectorType.SYSTEM);
             var applicationConfig = metricsCollectorFactory.getCollectorConfig(CollectorType.APPLICATION);
@@ -192,7 +203,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("수집기 설정 정보 업데이트")
-        void updateCollectorConfig_Success() {
+        void updateCollectorConfig_WhenCalled_UpdatesConfig() {
             // Given
             var newConfig = MetricsCollectorFactoryImpl.CollectorConfig.builder()
                     .enabled(false)
@@ -222,7 +233,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("CollectorConfig 빌더 패턴 테스트")
-        void collectorConfigBuilder_Success() {
+        void collectorConfigBuilder_WhenCalled_CreatesConfig() {
             // When
             var config = MetricsCollectorFactoryImpl.CollectorConfig.builder()
                     .enabled(true)
@@ -240,7 +251,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("CollectorConfig toBuilder 테스트")
-        void collectorConfigToBuilder_Success() {
+        void collectorConfigToBuilder_WhenCalled_CreatesUpdatedConfig() {
             // Given
             var originalConfig = MetricsCollectorFactoryImpl.CollectorConfig.builder()
                     .enabled(true)
@@ -272,7 +283,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("MonitoringErrorCode 값 확인")
-        void monitoringErrorCode_Values() {
+        void monitoringErrorCode_WhenChecked_HasCorrectValues() {
             // When & Then
             assertThat(MonitoringErrorCode.COLLECTOR_NOT_FOUND.getHttpStatus().value()).isEqualTo(404);
             assertThat(MonitoringErrorCode.COLLECTOR_DISABLED.getHttpStatus().value()).isEqualTo(503);
@@ -283,7 +294,7 @@ class MetricsCollectorFactoryImplTest {
 
         @Test
         @DisplayName("에러 코드 형식 확인")
-        void errorCodeFormat_Validation() {
+        void monitoringErrorCode_WhenChecked_HasCorrectFormat() {
             // When & Then
             assertThat(MonitoringErrorCode.COLLECTOR_NOT_FOUND.getCode()).isEqualTo("MONITORING_8051");
             assertThat(MonitoringErrorCode.COLLECTOR_DISABLED.getCode()).isEqualTo("MONITORING_8052");
