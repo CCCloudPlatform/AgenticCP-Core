@@ -4,6 +4,9 @@ import com.agenticcp.core.domain.monitoring.dto.SystemMetrics;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.entity.Metric.MetricType;
 import com.agenticcp.core.domain.monitoring.entity.MetricThreshold;
+import com.agenticcp.core.domain.monitoring.entity.TenantCollectorConfig;
+import com.agenticcp.core.domain.monitoring.enums.CollectorType;
+import com.agenticcp.core.domain.monitoring.enums.QuotaExceededAction;
 import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 
@@ -293,5 +296,23 @@ public class TestDataBuilder {
                 .alertEnabled(true)
                 .alertDuration(300)
                 .severity(MetricThreshold.Severity.MEDIUM);
+    }
+
+    // ==================== TenantCollectorConfig 관련 ====================
+
+    /**
+     * 기본 TenantCollectorConfig 빌더
+     */
+    public static TenantCollectorConfig.TenantCollectorConfigBuilder tenantCollectorConfigBuilder() {
+        return TenantCollectorConfig.builder()
+                .tenantId("tenant-001")
+                .collectorType(CollectorType.SYSTEM)
+                .isEnabled(true)
+                .collectionInterval(60000L)
+                .retryCount(3)
+                .timeout(30000L)
+                .targetMetrics("[\"cpu.usage\", \"memory.usage\"]")
+                .collectorSettings("{\"region\": \"us-east-1\"}")
+                .priority(100);
     }
 }

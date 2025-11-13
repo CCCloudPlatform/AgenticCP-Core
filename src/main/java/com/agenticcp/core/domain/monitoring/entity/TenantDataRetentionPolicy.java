@@ -11,6 +11,10 @@ import java.time.LocalDateTime;
  * 테넌트별 데이터 보관 정책 엔티티
  * 
  * 테넌트별로 메트릭 데이터의 보관 기간과 정책을 관리합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Entity
 @Table(name = "tenant_data_retention_policies", indexes = {
