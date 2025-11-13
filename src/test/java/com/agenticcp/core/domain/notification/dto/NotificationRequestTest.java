@@ -39,38 +39,38 @@ class NotificationRequestTest {
     @DisplayName("빌더 패턴 테스트")
     class BuilderTest {
 
-        @Test
+    @Test
         @DisplayName("빌더 패턴으로 모든 필드 설정 성공")
         void builder_WhenAllFieldsSet_ReturnsRequestWithAllFields() {
-            // Given
-            String notificationId = "test-001";
-            String tenantId = "1";
-            Long userId = 100L;
-            String title = "테스트 알림";
-            String content = "테스트 내용";
-            NotificationType type = NotificationType.ALERT;
-            NotificationPriority priority = NotificationPriority.MEDIUM;
-            String recipient = "test@example.com";
-            Map<String, Object> data = Map.of("key", "value");
-            Map<String, Object> metadata = Map.of("source", "test");
-            LocalDateTime scheduledAt = LocalDateTime.now().plusHours(1);
+        // Given
+        String notificationId = "test-001";
+        String tenantId = "1";
+        Long userId = 100L;
+        String title = "테스트 알림";
+        String content = "테스트 내용";
+        NotificationType type = NotificationType.ALERT;
+        NotificationPriority priority = NotificationPriority.MEDIUM;
+        String recipient = "test@example.com";
+        Map<String, Object> data = Map.of("key", "value");
+        Map<String, Object> metadata = Map.of("source", "test");
+        LocalDateTime scheduledAt = LocalDateTime.now().plusHours(1);
 
-            // When
-            NotificationRequest request = NotificationRequest.builder()
-                    .notificationId(notificationId)
-                    .tenantId(tenantId)
-                    .userId(userId)
-                    .title(title)
-                    .content(content)
-                    .type(type)
-                    .priority(priority)
-                    .recipient(recipient)
-                    .data(data)
-                    .metadata(metadata)
-                    .scheduledAt(scheduledAt)
-                    .build();
+        // When
+        NotificationRequest request = NotificationRequest.builder()
+                .notificationId(notificationId)
+                .tenantId(tenantId)
+                .userId(userId)
+                .title(title)
+                .content(content)
+                .type(type)
+                .priority(priority)
+                .recipient(recipient)
+                .data(data)
+                .metadata(metadata)
+                .scheduledAt(scheduledAt)
+                .build();
 
-            // Then
+        // Then
             assertThat(request.getNotificationId()).isEqualTo(notificationId);
             assertThat(request.getTenantId()).isEqualTo(tenantId);
             assertThat(request.getUserId()).isEqualTo(userId);
@@ -84,20 +84,20 @@ class NotificationRequestTest {
             assertThat(request.getScheduledAt()).isEqualTo(scheduledAt);
         }
 
-        @Test
+    @Test
         @DisplayName("빌더 패턴으로 선택적 필드 null 허용")
         void builder_WhenOptionalFieldsNull_ReturnsRequestWithNullFields() {
-            // When
-            NotificationRequest request = NotificationRequest.builder()
-                    .notificationId("test-002")
-                    .tenantId("1")
-                    .title("테스트")
-                    .content("내용")
-                    .type(NotificationType.ALERT)
-                    .priority(NotificationPriority.MEDIUM)
-                    .build();
+        // When
+        NotificationRequest request = NotificationRequest.builder()
+                .notificationId("test-002")
+                .tenantId("1")
+                .title("테스트")
+                .content("내용")
+                .type(NotificationType.ALERT)
+                .priority(NotificationPriority.MEDIUM)
+                .build();
 
-            // Then
+        // Then
             assertThat(request).isNotNull();
             assertThat(request.getNotificationId()).isEqualTo("test-002");
             assertThat(request.getTenantId()).isEqualTo("1");
@@ -321,62 +321,62 @@ class NotificationRequestTest {
     @DisplayName("Object 메서드 테스트")
     class ObjectMethodTest {
 
-        @Test
+    @Test
         @DisplayName("toString 메서드 테스트")
         void toString_WhenCalled_ShouldContainFields() {
-            // Given
-            NotificationRequest request = NotificationRequest.builder()
-                    .notificationId("test-003")
-                    .tenantId("1")
-                    .title("테스트 알림")
-                    .content("테스트 내용")
-                    .type(NotificationType.ALERT)
-                    .priority(NotificationPriority.HIGH)
-                    .build();
+        // Given
+        NotificationRequest request = NotificationRequest.builder()
+                .notificationId("test-003")
+                .tenantId("1")
+                .title("테스트 알림")
+                .content("테스트 내용")
+                .type(NotificationType.ALERT)
+                .priority(NotificationPriority.HIGH)
+                .build();
 
-            // When
-            String toString = request.toString();
+        // When
+        String toString = request.toString();
 
-            // Then
+        // Then
             assertThat(toString).isNotNull();
             assertThat(toString).contains("test-003");
             assertThat(toString).contains("테스트 알림");
             assertThat(toString).contains("ALERT");
             assertThat(toString).contains("HIGH");
-        }
+    }
 
-        @Test
+    @Test
         @DisplayName("equals와 hashCode 테스트")
         void equalsAndHashCode_WhenSameFields_ShouldBeEqual() {
-            // Given
-            NotificationRequest request1 = NotificationRequest.builder()
-                    .notificationId("test-004")
-                    .tenantId("1")
-                    .title("테스트")
-                    .content("내용")
-                    .type(NotificationType.ALERT)
-                    .priority(NotificationPriority.MEDIUM)
-                    .build();
+        // Given
+        NotificationRequest request1 = NotificationRequest.builder()
+                .notificationId("test-004")
+                .tenantId("1")
+                .title("테스트")
+                .content("내용")
+                .type(NotificationType.ALERT)
+                .priority(NotificationPriority.MEDIUM)
+                .build();
 
-            NotificationRequest request2 = NotificationRequest.builder()
-                    .notificationId("test-004")
-                    .tenantId("1")
-                    .title("테스트")
-                    .content("내용")
-                    .type(NotificationType.ALERT)
-                    .priority(NotificationPriority.MEDIUM)
-                    .build();
+        NotificationRequest request2 = NotificationRequest.builder()
+                .notificationId("test-004")
+                .tenantId("1")
+                .title("테스트")
+                .content("내용")
+                .type(NotificationType.ALERT)
+                .priority(NotificationPriority.MEDIUM)
+                .build();
 
-            NotificationRequest request3 = NotificationRequest.builder()
-                    .notificationId("test-005")
-                    .tenantId("1")
-                    .title("테스트")
-                    .content("내용")
-                    .type(NotificationType.ALERT)
-                    .priority(NotificationPriority.MEDIUM)
-                    .build();
+        NotificationRequest request3 = NotificationRequest.builder()
+                .notificationId("test-005")
+                .tenantId("1")
+                .title("테스트")
+                .content("내용")
+                .type(NotificationType.ALERT)
+                .priority(NotificationPriority.MEDIUM)
+                .build();
 
-            // Then
+        // Then
             assertThat(request1).isEqualTo(request2);
             assertThat(request1).isNotEqualTo(request3);
             assertThat(request1.hashCode()).isEqualTo(request2.hashCode());
