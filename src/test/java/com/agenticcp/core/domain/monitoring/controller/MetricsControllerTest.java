@@ -13,7 +13,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.Disabled;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -38,9 +37,13 @@ import static org.mockito.Mockito.*;
  * MetricsController 단위 테스트
  * API 엔드포인트의 핵심 비즈니스 로직을 검증
  * 테스트 가이드라인에 따라 @Nested 클래스로 그룹화
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
-@Disabled("Controller test disabled")
+@DisplayName("MetricsController 테스트")
 class MetricsControllerTest {
 
     @Mock
