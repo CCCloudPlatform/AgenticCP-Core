@@ -30,6 +30,8 @@ spring:
 app:
   redis:
     enabled: false
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
 
 # AWS S3 설정
 aws:
@@ -37,6 +39,32 @@ aws:
     region: ${AWS_REGION:us-east-1}
     endpoint: ${AWS_S3_ENDPOINT:}
 
+# 이메일 설정
+spring:
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    from: ${MAIL_FROM:noreply@agenticcp.com}
+  
+  # Thymeleaf 설정 (이메일 템플릿용)
+  thymeleaf:
+    mode: HTML
+    encoding: UTF-8
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false  # 개발 환경에서는 캐시 비활성화
 
 security:
   jwt:
