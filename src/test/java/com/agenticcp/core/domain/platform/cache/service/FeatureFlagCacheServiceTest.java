@@ -30,10 +30,13 @@ import static org.mockito.Mockito.lenient;
 
 /**
  * FeatureFlagCacheService 단위 테스트
+ * <p>
  * 캐시 조회/저장/무효화/Warm-up 및 분산 락 기능 검증
- * 
+ * </p>
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("FeatureFlagCacheService 단위 테스트")
