@@ -5,6 +5,7 @@ import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidator;
+import com.agenticcp.core.domain.tenant.service.TenantService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ public class PlatformConfigServiceMaskingTest {
 
     private PlatformConfigRepository repository;
     private EncryptionService encryptionService;
+    private TenantService tenantService;
     private PlatformConfigService service;
     private MockedStatic<TenantContextHolder> tenantContextHolderMock;
 
@@ -39,8 +41,22 @@ public class PlatformConfigServiceMaskingTest {
         
         repository = Mockito.mock(PlatformConfigRepository.class);
         encryptionService = Mockito.mock(EncryptionService.class);
+        tenantService = Mockito.mock(TenantService.class);
         List<ConfigValidator> validators = Collections.emptyList();
-        service = new PlatformConfigService(repository, validators, encryptionService, Mockito.mock(ConfigAuditService.class), Mockito.mock(org.springframework.context.ApplicationEventPublisher.class), Mockito.mock(com.agenticcp.core.common.logging.masking.MaskingService.class));
+        
+        // TenantService mock 설정: 테넌트가 존재한다고 가정
+        when(tenantService.getTenantByKey("test-tenant-key"))
+                .thenReturn(Optional.of(Mockito.mock(com.agenticcp.core.domain.tenant.entity.Tenant.class)));
+        
+        service = new PlatformConfigService(
+                repository, 
+                validators, 
+                encryptionService, 
+                Mockito.mock(ConfigAuditService.class), 
+                Mockito.mock(org.springframework.context.ApplicationEventPublisher.class), 
+                Mockito.mock(com.agenticcp.core.common.logging.masking.MaskingService.class),
+                tenantService
+        );
     }
 
     @AfterEach

@@ -9,6 +9,7 @@ import com.agenticcp.core.domain.platform.validation.ConfigValidator;
 import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
 import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.common.logging.masking.MaskingType;
+import com.agenticcp.core.domain.tenant.service.TenantService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,6 +59,9 @@ class PlatformConfigServiceTest {
     @Mock
     private MaskingService maskingService;
 
+    @Mock
+    private TenantService tenantService;
+
     @InjectMocks
     private PlatformConfigService platformConfigService;
 
@@ -71,6 +75,11 @@ class PlatformConfigServiceTest {
         tenantContextHolderMock = mockStatic(TenantContextHolder.class);
         tenantContextHolderMock.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
                 .thenReturn("test-tenant-key");
+        
+        // TenantService mock 설정: 테넌트가 존재한다고 가정
+        when(tenantService.getTenantByKey("test-tenant-key"))
+                .thenReturn(Optional.of(mock(com.agenticcp.core.domain.tenant.entity.Tenant.class)));
+        
         // Mock validator 리스트 설정
         List<ConfigValidator> mockValidators = Arrays.asList(configValidator);
         ReflectionTestUtils.setField(platformConfigService, "configValidators", mockValidators);
