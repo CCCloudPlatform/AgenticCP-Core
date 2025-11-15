@@ -5,7 +5,7 @@ import com.agenticcp.core.domain.platform.cache.dto.CacheHealthStatusDto;
 import com.agenticcp.core.domain.platform.cache.dto.CacheMetricsDto;
 import com.agenticcp.core.domain.platform.cache.service.FeatureFlagCacheHealthService;
 import com.agenticcp.core.domain.platform.cache.service.FeatureFlagCacheService;
-import com.agenticcp.core.domain.platform.exception.FeatureFlagCacheErrorCode;
+import com.agenticcp.core.domain.platform.enums.FeatureFlagCacheErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
