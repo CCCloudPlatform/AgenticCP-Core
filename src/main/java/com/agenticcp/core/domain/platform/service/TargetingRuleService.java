@@ -20,12 +20,14 @@ import java.util.stream.Collectors;
 
 /**
  * 타겟팅 규칙 관리 서비스
- * 
+ * <p>
  * 기능 플래그의 타겟팅 규칙을 관리하는 서비스입니다.
  * 타겟팅 규칙의 생성, 수정, 삭제, 활성화/비활성화 기능을 제공합니다.
- * 
+ * </p>
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @Slf4j
 @Service
@@ -38,9 +40,10 @@ public class TargetingRuleService {
 
     /**
      * 기능 플래그의 모든 타겟팅 규칙 조회
-     * 
+     *
      * @param flagKey 기능 플래그 키
      * @return 타겟팅 규칙 목록
+     * @throws ResourceNotFoundException 기능 플래그를 찾을 수 없는 경우
      */
     public TargetRuleListResponse getTargetingRules(String flagKey) {
         log.info("[TargetingRuleService] getTargetingRules - flagKey={}", LogMaskingUtils.mask(flagKey, 2, 2));
@@ -72,9 +75,10 @@ public class TargetingRuleService {
 
     /**
      * 특정 타겟팅 규칙 조회
-     * 
+     *
      * @param ruleId 규칙 ID
      * @return 타겟팅 규칙
+     * @throws ResourceNotFoundException 타겟팅 규칙을 찾을 수 없는 경우
      */
     public TargetRuleResponse getTargetingRule(Long ruleId) {
         log.info("[TargetingRuleService] getTargetingRule - ruleId={}", ruleId);
@@ -90,10 +94,12 @@ public class TargetingRuleService {
 
     /**
      * 타겟팅 규칙 생성
-     * 
+     *
      * @param flagKey 기능 플래그 키
      * @param request 생성 요청 DTO
      * @return 생성된 타겟팅 규칙
+     * @throws ResourceNotFoundException 기능 플래그를 찾을 수 없는 경우
+     * @throws BusinessException 규칙 이름이 중복되는 경우
      */
     @Transactional
     public TargetRuleResponse createTargetingRule(String flagKey, CreateTargetRuleRequest request) {
@@ -130,10 +136,12 @@ public class TargetingRuleService {
 
     /**
      * 타겟팅 규칙 수정
-     * 
+     *
      * @param ruleId 규칙 ID
      * @param request 수정 요청 DTO
      * @return 수정된 타겟팅 규칙
+     * @throws ResourceNotFoundException 타겟팅 규칙을 찾을 수 없는 경우
+     * @throws BusinessException 규칙 이름이 중복되는 경우
      */
     @Transactional
     public TargetRuleResponse updateTargetingRule(Long ruleId, UpdateTargetRuleRequest request) {
@@ -179,8 +187,9 @@ public class TargetingRuleService {
 
     /**
      * 타겟팅 규칙 삭제 (논리 삭제)
-     * 
+     *
      * @param ruleId 규칙 ID
+     * @throws ResourceNotFoundException 타겟팅 규칙을 찾을 수 없는 경우
      */
     @Transactional
     public void deleteTargetingRule(Long ruleId) {
@@ -199,9 +208,10 @@ public class TargetingRuleService {
 
     /**
      * 타겟팅 규칙 활성화
-     * 
+     *
      * @param ruleId 규칙 ID
      * @return 활성화된 타겟팅 규칙
+     * @throws ResourceNotFoundException 타겟팅 규칙을 찾을 수 없는 경우
      */
     @Transactional
     public TargetRuleResponse activateTargetingRule(Long ruleId) {
@@ -222,9 +232,10 @@ public class TargetingRuleService {
 
     /**
      * 타겟팅 규칙 비활성화
-     * 
+     *
      * @param ruleId 규칙 ID
      * @return 비활성화된 타겟팅 규칙
+     * @throws ResourceNotFoundException 타겟팅 규칙을 찾을 수 없는 경우
      */
     @Transactional
     public TargetRuleResponse deactivateTargetingRule(Long ruleId) {
