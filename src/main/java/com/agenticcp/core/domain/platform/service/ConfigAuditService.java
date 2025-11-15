@@ -8,6 +8,7 @@ import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.util.EncryptedValueMasker;
+import com.agenticcp.core.common.context.TenantContextHolder;
  
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,8 +57,13 @@ public class ConfigAuditService {
         log.info("[ConfigAuditService] logConfigChange called - action={} key={} userId={} reason={} type={}",
                 normalizedAction, configKey, userId, reason, valueType);
 
+        String tenantKey = TenantContextHolder.getCurrentTenantKey();
+
         Map<String, Object> details = new HashMap<>();
         details.put("configKey", configKey);
+        if (tenantKey != null) {
+            details.put("tenantKey", tenantKey);
+        }
         boolean encryptedType = EncryptedValueMasker.isEncryptedType(valueType);
         details.put("oldValue", EncryptedValueMasker.maskForAudit(oldValue, encryptedType));
         details.put("newValue", EncryptedValueMasker.maskForAudit(newValue, encryptedType));
@@ -73,6 +79,9 @@ public class ConfigAuditService {
         metadata.put("eventCategory", "CONFIGURE");
         metadata.put("resourceType", "PlatformConfig");
         metadata.put("resourceId", configKey);
+        if (tenantKey != null) {
+            metadata.put("tenantKey", tenantKey);
+        }
 
         Map<String, Object> oldValueMap = new HashMap<>();
         oldValueMap.put("value", EncryptedValueMasker.maskForAudit(oldValue, encryptedType));

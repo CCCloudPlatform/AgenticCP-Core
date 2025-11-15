@@ -94,6 +94,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated())
@@ -115,6 +116,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
@@ -134,6 +136,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
@@ -153,6 +156,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
@@ -172,6 +176,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
@@ -191,6 +196,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isBadRequest())
@@ -217,6 +223,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newConfig)))
                 .andExpect(status().isConflict())
@@ -251,6 +258,7 @@ class PlatformConfigControllerIntegrationTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         mockMvc.perform(put("/v1/platform/configs/system.config.key")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatedConfig)))
                 .andExpect(status().isForbidden())
@@ -271,7 +279,8 @@ class PlatformConfigControllerIntegrationTest {
         platformConfigRepository.save(systemConfig);
 
         // When & Then
-        mockMvc.perform(delete("/v1/platform/configs/system.config.key"))
+        mockMvc.perform(delete("/v1/platform/configs/system.config.key")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errorCode").value("PLATFORM_6013"));
@@ -281,7 +290,8 @@ class PlatformConfigControllerIntegrationTest {
     @DisplayName("존재하지 않는 설정 조회 실패")
     void shouldFailToGetNonExistentConfig() throws Exception {
         // When & Then
-        mockMvc.perform(get("/v1/platform/configs/non.existent.key"))
+        mockMvc.perform(get("/v1/platform/configs/non.existent.key")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isNotFound());
     }
 
@@ -297,7 +307,8 @@ class PlatformConfigControllerIntegrationTest {
         platformConfigRepository.save(config);
 
         // When & Then
-        mockMvc.perform(get("/v1/platform/configs/system.test.config.key"))
+        mockMvc.perform(get("/v1/platform/configs/system.test.config.key")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.configKey").value("system.test.config.key"))
@@ -319,13 +330,14 @@ class PlatformConfigControllerIntegrationTest {
 
         // When
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true));
 
         // Then: 저장된 값이 평문이 아니고, isEncrypted=true
-        PlatformConfig saved = platformConfigRepository.findByConfigKey("system.secret.api.token").orElseThrow();
+        PlatformConfig saved = platformConfigRepository.findByTenantIdAndConfigKey("test-tenant-key", "system.secret.api.token").orElseThrow();
         assert saved.getIsEncrypted() != null && saved.getIsEncrypted();
         assert saved.getConfigValue() != null && !saved.getConfigValue().equals(plaintext);
         // 대략적 Base64 형태 및 IV 포함 길이 확인 (12바이트 IV + 태그 포함 암호문)
@@ -344,17 +356,21 @@ class PlatformConfigControllerIntegrationTest {
                 .isSystem(true)
                 .build();
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated());
 
         // When & Then: showSecret 미지정 → 기본 false, 마스킹("Encrypted")
-        mockMvc.perform(get("/v1/platform/configs/system.masked.secret.key"))
+        mockMvc.perform(get("/v1/platform/configs/system.masked.secret.key")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("Encrypted"));
 
         // When & Then: showSecret=false 명시
-        mockMvc.perform(get("/v1/platform/configs/system.masked.secret.key").param("showSecret", "false"))
+        mockMvc.perform(get("/v1/platform/configs/system.masked.secret.key")
+                        .param("tenantKey", "test-tenant-key")
+                        .param("showSecret", "false"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("Encrypted"));
     }
@@ -370,6 +386,7 @@ class PlatformConfigControllerIntegrationTest {
                 .isSystem(true)
                 .build();
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated());
@@ -384,6 +401,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When & Then: showSecret=true 시 평문 반환
         mockMvc.perform(get("/v1/platform/configs/system.admin.secret.key")
+                        .param("tenantKey", "test-tenant-key")
                         .param("showSecret", "true")
                         .header("X-Reason", "integration-test")
                         .header("X-Forwarded-For", "203.0.113.10"))
@@ -404,6 +422,7 @@ class PlatformConfigControllerIntegrationTest {
                 .isSystem(false)
                 .build();
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated());
@@ -417,7 +436,9 @@ class PlatformConfigControllerIntegrationTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         // When & Then: 403
-        mockMvc.perform(get("/v1/platform/configs/user.secret.key").param("showSecret", "true"))
+        mockMvc.perform(get("/v1/platform/configs/user.secret.key")
+                        .param("tenantKey", "test-tenant-key")
+                        .param("showSecret", "true"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
     }
@@ -438,6 +459,7 @@ class PlatformConfigControllerIntegrationTest {
 
         // When: 설정 생성
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated());
@@ -456,6 +478,7 @@ class PlatformConfigControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/v1/platform/configs/system.maintenance_mode")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatedConfig)))
                 .andExpect(status().isOk());
@@ -474,6 +497,7 @@ class PlatformConfigControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/v1/platform/configs/system.maintenance_mode")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatedConfig)))
                 .andExpect(status().isOk());
@@ -498,20 +522,23 @@ class PlatformConfigControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated());
 
         // When: 캐시 워밍 (첫 번째 조회 - DB에서 로드)
         long firstCallStart = System.nanoTime();
-        mockMvc.perform(get("/v1/platform/configs/system.cache.performance.test"))
+        mockMvc.perform(get("/v1/platform/configs/system.cache.performance.test")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("initial-value"));
         long firstCallDuration = System.nanoTime() - firstCallStart;
 
         // When: 캐시된 조회 (두 번째 조회 - 캐시에서 로드)
         long secondCallStart = System.nanoTime();
-        mockMvc.perform(get("/v1/platform/configs/system.cache.performance.test"))
+        mockMvc.perform(get("/v1/platform/configs/system.cache.performance.test")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("initial-value"));
         long secondCallDuration = System.nanoTime() - secondCallStart;
@@ -531,12 +558,14 @@ class PlatformConfigControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/v1/platform/configs/system.cache.performance.test")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatedConfig)))
                 .andExpect(status().isOk());
 
         // Then: 업데이트된 값이 즉시 반영됨
-        mockMvc.perform(get("/v1/platform/configs/system.cache.performance.test"))
+        mockMvc.perform(get("/v1/platform/configs/system.cache.performance.test")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("updated-value"));
     }
@@ -554,6 +583,7 @@ class PlatformConfigControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated());
@@ -577,6 +607,7 @@ class PlatformConfigControllerIntegrationTest {
                                 .build();
 
                         mockMvc.perform(put("/v1/platform/configs/system.concurrency.test")
+                                        .param("tenantKey", "test-tenant-key")
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(updatedConfig)))
                                 .andExpect(status().isOk());
@@ -593,7 +624,8 @@ class PlatformConfigControllerIntegrationTest {
             CompletableFuture<Void> readTask = CompletableFuture.runAsync(() -> {
                 for (int i = 0; i < 10; i++) {
                     try {
-                        String response = mockMvc.perform(get("/v1/platform/configs/system.concurrency.test"))
+                        String response = mockMvc.perform(get("/v1/platform/configs/system.concurrency.test")
+                                        .param("tenantKey", "test-tenant-key"))
                                 .andExpect(status().isOk())
                                 .andReturn()
                                 .getResponse()
@@ -650,12 +682,14 @@ class PlatformConfigControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/v1/platform/configs")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isCreated());
 
         // When: 첫 번째 조회 (캐시 미스 - DB에서 로드)
-        mockMvc.perform(get("/v1/platform/configs/system.cache.hit.test"))
+        mockMvc.perform(get("/v1/platform/configs/system.cache.hit.test")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("cache-test-value"));
 
@@ -671,7 +705,8 @@ class PlatformConfigControllerIntegrationTest {
         }
 
         // When: 두 번째 조회 (캐시 히트)
-        mockMvc.perform(get("/v1/platform/configs/system.cache.hit.test"))
+        mockMvc.perform(get("/v1/platform/configs/system.cache.hit.test")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("cache-test-value"));
 
@@ -683,12 +718,14 @@ class PlatformConfigControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/v1/platform/configs/system.cache.hit.test")
+                        .param("tenantKey", "test-tenant-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatedConfig)))
                 .andExpect(status().isOk());
 
         // Then: 캐시가 무효화되어 업데이트된 값이 반영됨
-        mockMvc.perform(get("/v1/platform/configs/system.cache.hit.test"))
+        mockMvc.perform(get("/v1/platform/configs/system.cache.hit.test")
+                        .param("tenantKey", "test-tenant-key"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.configValue").value("updated-cache-test-value"));
     }

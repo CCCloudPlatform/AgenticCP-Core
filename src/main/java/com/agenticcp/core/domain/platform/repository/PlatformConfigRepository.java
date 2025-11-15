@@ -31,7 +31,7 @@ public interface PlatformConfigRepository extends JpaRepository<PlatformConfig, 
      * @param configKey 조회할 설정 키
      * @return 플랫폼 설정 (존재하지 않으면 Optional.empty())
      */
-    Optional<PlatformConfig> findByConfigKey(String configKey);
+    Optional<PlatformConfig> findByTenantIdAndConfigKey(String tenantKey, String configKey);
 
     /**
      * 설정 타입으로 플랫폼 설정 목록 조회
@@ -42,7 +42,7 @@ public interface PlatformConfigRepository extends JpaRepository<PlatformConfig, 
      * @param configType 조회할 설정 타입
      * @return 해당 타입의 플랫폼 설정 목록
      */
-    List<PlatformConfig> findByConfigType(PlatformConfig.ConfigType configType);
+    List<PlatformConfig> findByTenantIdAndConfigType(String tenantKey, PlatformConfig.ConfigType configType);
 
     /**
      * 시스템 설정 여부로 플랫폼 설정 목록 조회
@@ -53,7 +53,7 @@ public interface PlatformConfigRepository extends JpaRepository<PlatformConfig, 
      * @param isSystem 시스템 설정 여부 (true: 시스템 설정, false: 사용자 설정)
      * @return 해당하는 플랫폼 설정 목록
      */
-    List<PlatformConfig> findByIsSystem(Boolean isSystem);
+    List<PlatformConfig> findByTenantIdAndIsSystem(String tenantKey, Boolean isSystem);
 
     /**
      * 활성화된 플랫폼 설정 목록 조회
@@ -63,8 +63,8 @@ public interface PlatformConfigRepository extends JpaRepository<PlatformConfig, 
      *
      * @return 활성화된 플랫폼 설정 목록
      */
-    @Query("SELECT pc FROM PlatformConfig pc WHERE pc.isDeleted = false")
-    List<PlatformConfig> findAllActive();
+    @Query("SELECT pc FROM PlatformConfig pc WHERE pc.tenantId = :tenantKey AND pc.isDeleted = false")
+    List<PlatformConfig> findAllActiveByTenantId(@Param("tenantKey") String tenantKey);
 
     /**
      * 설정 키 패턴으로 활성화된 플랫폼 설정 목록 조회
@@ -76,6 +76,6 @@ public interface PlatformConfigRepository extends JpaRepository<PlatformConfig, 
      * @param pattern 설정 키 패턴 (SQL LIKE 문법)
      * @return 패턴과 일치하는 활성화된 플랫폼 설정 목록
      */
-    @Query("SELECT pc FROM PlatformConfig pc WHERE pc.configKey LIKE :pattern AND pc.isDeleted = false")
-    List<PlatformConfig> findByConfigKeyPattern(@Param("pattern") String pattern);
+    @Query("SELECT pc FROM PlatformConfig pc WHERE pc.tenantId = :tenantKey AND pc.configKey LIKE :pattern AND pc.isDeleted = false")
+    List<PlatformConfig> findByTenantIdAndConfigKeyPattern(@Param("tenantKey") String tenantKey, @Param("pattern") String pattern);
 }

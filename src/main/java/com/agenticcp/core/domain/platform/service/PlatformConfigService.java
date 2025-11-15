@@ -10,6 +10,7 @@ import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidator;
 import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
 import com.agenticcp.core.common.util.LogMaskingUtils;
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.security.core.Authentication;
@@ -45,6 +46,24 @@ public class PlatformConfigService {
     private final ConfigAuditService configAuditService;
     private final ApplicationEventPublisher eventPublisher;
     private final MaskingService maskingService;
+    private final com.agenticcp.core.domain.tenant.service.TenantService tenantService;
+
+    /**
+     * 테넌트 키를 조회하고 유효성을 검증합니다.
+     * 
+     * @return 유효한 테넌트 키
+     * @throws ConfigValidationException 테넌트가 존재하지 않는 경우
+     */
+    private String requireTenantKey() {
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        
+        // 테넌트 존재 여부 검증 (보안 및 데이터 무결성 보장)
+        if (!tenantService.getTenantByKey(tenantKey).isPresent()) {
+            throw new ConfigValidationException(PlatformConfigErrorCode.INVALID_TENANT_KEY);
+        }
+        
+        return tenantKey;
+    }
 
     /**
      * 전체 플랫폼 설정 조회 (민감 정보 마스킹)
@@ -55,12 +74,13 @@ public class PlatformConfigService {
      * @return 플랫폼 설정 목록 (민감 정보 마스킹)
      */
     public List<PlatformConfig> getAllConfigs() {
-        log.info("[PlatformConfigService] getAllConfigs");
-        List<PlatformConfig> result = platformConfigRepository.findAllActive()
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getAllConfigs - tenantKey={}", tenantKey);
+        List<PlatformConfig> result = platformConfigRepository.findAllActiveByTenantId(tenantKey)
                 .stream()
                 .map(pc -> toResponse(pc, false))
                 .toList();
-        log.info("[PlatformConfigService] getAllConfigs - success count={}", result.size());
+        log.info("[PlatformConfigService] getAllConfigs - success count={} tenantKey={}", result.size(), tenantKey);
         return result;
     }
 
@@ -74,12 +94,13 @@ public class PlatformConfigService {
      * @return 플랫폼 설정 목록
      */
     public List<PlatformConfig> getAllConfigs(boolean showSecret) {
-        log.info("[PlatformConfigService] getAllConfigs - showSecret={}", showSecret);
-        List<PlatformConfig> result = platformConfigRepository.findAllActive()
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getAllConfigs - showSecret={} tenantKey={}", showSecret, tenantKey);
+        List<PlatformConfig> result = platformConfigRepository.findAllActiveByTenantId(tenantKey)
                 .stream()
                 .map(pc -> toResponse(pc, showSecret))
                 .toList();
-        log.info("[PlatformConfigService] getAllConfigs - success count={}", result.size());
+        log.info("[PlatformConfigService] getAllConfigs - success count={} tenantKey={}", result.size(), tenantKey);
         return result;
     }
 
@@ -94,20 +115,19 @@ public class PlatformConfigService {
      * @return 플랫폼 설정 목록
      */
     public List<PlatformConfig> getAllConfigs(boolean showSecret, Boolean isSystem) {
-        log.info("[PlatformConfigService] getAllConfigs - showSecret={}, isSystem={}", showSecret, isSystem);
-        
-        List<PlatformConfig> sourceConfigs;
-        if (isSystem != null) {
-            sourceConfigs = platformConfigRepository.findByIsSystem(isSystem);
-        } else {
-            sourceConfigs = platformConfigRepository.findAllActive();
-        }
-        
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getAllConfigs - showSecret={}, isSystem={}, tenantKey={}", showSecret, isSystem, tenantKey);
+
+        List<PlatformConfig> sourceConfigs =
+                isSystem != null
+                        ? platformConfigRepository.findByTenantIdAndIsSystem(tenantKey, isSystem)
+                        : platformConfigRepository.findAllActiveByTenantId(tenantKey);
+
         List<PlatformConfig> result = sourceConfigs.stream()
                 .map(pc -> toResponse(pc, showSecret))
                 .toList();
         
-        log.info("[PlatformConfigService] getAllConfigs - success count={}", result.size());
+        log.info("[PlatformConfigService] getAllConfigs - success count={} tenantKey={}", result.size(), tenantKey);
         return result;
     }
 
@@ -121,10 +141,11 @@ public class PlatformConfigService {
      * @return 플랫폼 설정 (존재하지 않으면 Optional.empty())
      */
     public Optional<PlatformConfig> getConfigByKey(String configKey) {
-        log.info("[PlatformConfigService] getConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-        Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getConfigByKey - tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
+        Optional<PlatformConfig> result = platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, configKey)
                 .map(pc -> toResponse(pc, false));
-        log.info("[PlatformConfigService] getConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
+        log.info("[PlatformConfigService] getConfigByKey - found={} tenantKey={} configKey={}", result.isPresent(), tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
         return result;
     }
 
@@ -139,10 +160,11 @@ public class PlatformConfigService {
      * @return 플랫폼 설정 (존재하지 않으면 Optional.empty())
      */
     public Optional<PlatformConfig> getConfigByKey(String configKey, boolean showSecret) {
-        log.info("[PlatformConfigService] getConfigByKey - showSecret={} configKey={}", showSecret, LogMaskingUtils.mask(configKey, 2, 2));
-        Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getConfigByKey - showSecret={} tenantKey={} configKey={}", showSecret, tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
+        Optional<PlatformConfig> result = platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, configKey)
                 .map(pc -> toResponse(pc, showSecret));
-        log.info("[PlatformConfigService] getConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
+        log.info("[PlatformConfigService] getConfigByKey - found={} tenantKey={} configKey={}", result.isPresent(), tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
         return result;
     }
 
@@ -156,12 +178,16 @@ public class PlatformConfigService {
      * @param configKey 조회할 설정 키
      * @return 플랫폼 설정 (존재하지 않으면 Optional.empty(), 민감 정보 마스킹)
      */
-    @Cacheable(value = "platformConfigs", key = "#configKey")
+    @Cacheable(
+            value = "platformConfigs",
+            key = "T(java.lang.String).valueOf(T(com.agenticcp.core.common.context.TenantContextHolder).getCurrentTenantKey()) + ':' + #configKey"
+    )
     public Optional<PlatformConfig> getCachedConfigByKey(String configKey) {
-        log.info("[PlatformConfigService] getCachedConfigByKey - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-        Optional<PlatformConfig> result = platformConfigRepository.findByConfigKey(configKey)
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getCachedConfigByKey - tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
+        Optional<PlatformConfig> result = platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, configKey)
                 .map(pc -> toResponse(pc, false));
-        log.info("[PlatformConfigService] getCachedConfigByKey - found={} configKey={}", result.isPresent(), LogMaskingUtils.mask(configKey, 2, 2));
+        log.info("[PlatformConfigService] getCachedConfigByKey - found={} tenantKey={} configKey={}", result.isPresent(), tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
         return result;
     }
 
@@ -176,10 +202,11 @@ public class PlatformConfigService {
      * @throws ResourceNotFoundException 설정을 찾을 수 없는 경우
      */
     public PlatformConfig getConfigByKeyOrThrow(String configKey) {
-        log.info("[PlatformConfigService] getConfigByKeyOrThrow - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-        PlatformConfig config = platformConfigRepository.findByConfigKey(configKey)
-                .orElseThrow(() -> new ResourceNotFoundException("PlatformConfig", "configKey", configKey));
-        log.info("[PlatformConfigService] getConfigByKeyOrThrow - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getConfigByKeyOrThrow - tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
+        PlatformConfig config = platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, configKey)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformConfigErrorCode.CONFIG_NOT_FOUND));
+        log.info("[PlatformConfigService] getConfigByKeyOrThrow - success tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
         return config;
     }
 
@@ -193,12 +220,13 @@ public class PlatformConfigService {
      * @return 해당 타입의 플랫폼 설정 목록 (민감 정보 마스킹)
      */
     public List<PlatformConfig> getConfigsByType(PlatformConfig.ConfigType configType) {
-        log.info("[PlatformConfigService] getConfigsByType - type={}", configType);
-        List<PlatformConfig> result = platformConfigRepository.findByConfigType(configType)
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getConfigsByType - tenantKey={} type={}", tenantKey, configType);
+        List<PlatformConfig> result = platformConfigRepository.findByTenantIdAndConfigType(tenantKey, configType)
                 .stream()
                 .map(pc -> toResponse(pc, false))
                 .toList();
-        log.info("[PlatformConfigService] getConfigsByType - success count={} type={}", result.size(), configType);
+        log.info("[PlatformConfigService] getConfigsByType - success count={} tenantKey={} type={}", result.size(), tenantKey, configType);
         return result;
     }
 
@@ -213,12 +241,13 @@ public class PlatformConfigService {
      * @return 해당 타입의 플랫폼 설정 목록
      */
     public List<PlatformConfig> getConfigsByType(PlatformConfig.ConfigType configType, boolean showSecret) {
-        log.info("[PlatformConfigService] getConfigsByType - showSecret={} type={}", showSecret, configType);
-        List<PlatformConfig> result = platformConfigRepository.findByConfigType(configType)
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getConfigsByType - showSecret={} tenantKey={} type={}", showSecret, tenantKey, configType);
+        List<PlatformConfig> result = platformConfigRepository.findByTenantIdAndConfigType(tenantKey, configType)
                 .stream()
                 .map(pc -> toResponse(pc, showSecret))
                 .toList();
-        log.info("[PlatformConfigService] getConfigsByType - success count={} type={}", result.size(), configType);
+        log.info("[PlatformConfigService] getConfigsByType - success count={} tenantKey={} type={}", result.size(), tenantKey, configType);
         return result;
     }
 
@@ -231,12 +260,13 @@ public class PlatformConfigService {
      * @return 시스템 설정 목록 (민감 정보 마스킹)
      */
     public List<PlatformConfig> getSystemConfigs() {
-        log.info("[PlatformConfigService] getSystemConfigs");
-        List<PlatformConfig> result = platformConfigRepository.findByIsSystem(true)
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getSystemConfigs - tenantKey={}", tenantKey);
+        List<PlatformConfig> result = platformConfigRepository.findByTenantIdAndIsSystem(tenantKey, true)
                 .stream()
                 .map(pc -> toResponse(pc, false))
                 .toList();
-        log.info("[PlatformConfigService] getSystemConfigs - success count={}", result.size());
+        log.info("[PlatformConfigService] getSystemConfigs - success count={} tenantKey={}", result.size(), tenantKey);
         return result;
     }
 
@@ -250,12 +280,13 @@ public class PlatformConfigService {
      * @return 시스템 설정 목록
      */
     public List<PlatformConfig> getSystemConfigs(boolean showSecret) {
-        log.info("[PlatformConfigService] getSystemConfigs - showSecret={}", showSecret);
-        List<PlatformConfig> result = platformConfigRepository.findByIsSystem(true)
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] getSystemConfigs - showSecret={} tenantKey={}", showSecret, tenantKey);
+        List<PlatformConfig> result = platformConfigRepository.findByTenantIdAndIsSystem(tenantKey, true)
                 .stream()
                 .map(pc -> toResponse(pc, showSecret))
                 .toList();
-        log.info("[PlatformConfigService] getSystemConfigs - success count={}", result.size());
+        log.info("[PlatformConfigService] getSystemConfigs - success count={} tenantKey={}", result.size(), tenantKey);
         return result;
     }
 
@@ -279,26 +310,34 @@ public class PlatformConfigService {
      * @throws BusinessException 중복 키 또는 암호화 실패 시
      */
     @Transactional
-    @CacheEvict(value = "platformConfigs", key = "#platformConfig.configKey", beforeInvocation = false)
+    @CacheEvict(
+            value = "platformConfigs",
+            key = "T(com.agenticcp.core.common.context.TenantContextHolder).getCurrentTenantKey() + ':' + #platformConfig.configKey",
+            beforeInvocation = false
+    )
     public PlatformConfig createConfig(PlatformConfig platformConfig) {
-        log.info("[PlatformConfigService] createConfig - configKey={} isEncrypted={} type={}",
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] createConfig - tenantKey={} configKey={} isEncrypted={} type={}",
+                tenantKey,
                 LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2),
                 platformConfig.getIsEncrypted(),
                 platformConfig.getConfigType());
+
+        platformConfig.setTenantId(tenantKey);
         
         // 네임스페이스 기반 자동 isSystem 설정
         if (platformConfig.getIsSystem() == null) {
             boolean isSystemKey = platformConfig.getConfigKey().matches("^system\\..*");
             platformConfig.setIsSystem(isSystemKey);
-            log.info("[PlatformConfigService] createConfig - auto-set isSystem={} for configKey={}", 
-                    isSystemKey, LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2));
+            log.info("[PlatformConfigService] createConfig - auto-set isSystem={} for tenantKey={} configKey={}",
+                    isSystemKey, tenantKey, LogMaskingUtils.mask(platformConfig.getConfigKey(), 2, 2));
         }
         
         // 설정 검증 수행
         validateConfig(platformConfig);
         
         // 중복 키 검증
-        if (platformConfigRepository.findByConfigKey(platformConfig.getConfigKey()).isPresent()) {
+        if (platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, platformConfig.getConfigKey()).isPresent()) {
             throw new ConfigValidationException(PlatformConfigErrorCode.CONFIG_ALREADY_EXISTS);
         }
 
@@ -321,7 +360,7 @@ public class PlatformConfigService {
         }
 
         PlatformConfig saved = platformConfigRepository.save(platformConfig);
-        log.info("[PlatformConfigService] createConfig - success configKey={}", LogMaskingUtils.mask(saved.getConfigKey(), 2, 2));
+        log.info("[PlatformConfigService] createConfig - success tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(saved.getConfigKey(), 2, 2));
 
         // 감사 로그
         try {
@@ -363,10 +402,16 @@ public class PlatformConfigService {
      * @throws BusinessException 암호화 실패 시
      */
     @Transactional
-    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
+    @CacheEvict(
+            value = "platformConfigs",
+            key = "T(com.agenticcp.core.common.context.TenantContextHolder).getCurrentTenantKey() + ':' + #configKey",
+            beforeInvocation = false
+    )
     public PlatformConfig updateConfig(String configKey, PlatformConfig updatedConfig) {
-        log.info("[PlatformConfigService] updateConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-        PlatformConfig existingConfig = getConfigByKeyOrThrow(configKey);
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] updateConfig - tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
+        PlatformConfig existingConfig = platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, configKey)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformConfigErrorCode.CONFIG_NOT_FOUND));
         
         // 시스템 설정 타입 변경 방지
         if (Boolean.TRUE.equals(existingConfig.getIsSystem()) && 
@@ -374,16 +419,16 @@ public class PlatformConfigService {
             throw new ConfigValidationException(PlatformConfigErrorCode.SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN);
         }
         
-
         // 업데이트할 설정에 키 설정 (검증을 위해)
         updatedConfig.setConfigKey(configKey);
+        updatedConfig.setTenantId(tenantKey);
         
         // 네임스페이스 기반 자동 isSystem 설정 (기존 값이 없는 경우에만)
         if (updatedConfig.getIsSystem() == null) {
             boolean isSystemKey = configKey.matches("^system\\..*");
             updatedConfig.setIsSystem(isSystemKey);
-            log.info("[PlatformConfigService] updateConfig - auto-set isSystem={} for configKey={}", 
-                    isSystemKey, LogMaskingUtils.mask(configKey, 2, 2));
+            log.info("[PlatformConfigService] updateConfig - auto-set isSystem={} for tenantKey={} configKey={}",
+                    isSystemKey, tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
         }
         
         // 설정 검증 수행
@@ -418,7 +463,7 @@ public class PlatformConfigService {
         existingConfig.setDescription(updatedConfig.getDescription());
         
         PlatformConfig saved = platformConfigRepository.save(existingConfig);
-        log.info("[PlatformConfigService] updateConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+        log.info("[PlatformConfigService] updateConfig - success tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
 
         // 감사 로그
         try {
@@ -455,10 +500,16 @@ public class PlatformConfigService {
      * @throws ConfigValidationException 시스템 설정 삭제 시도 시
      */
     @Transactional
-    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
+    @CacheEvict(
+            value = "platformConfigs",
+            key = "T(com.agenticcp.core.common.context.TenantContextHolder).getCurrentTenantKey() + ':' + #configKey",
+            beforeInvocation = false
+    )
     public void deleteConfig(String configKey) {
-        log.info("[PlatformConfigService] deleteConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-        PlatformConfig config = getConfigByKeyOrThrow(configKey);
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] deleteConfig - tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
+        PlatformConfig config = platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, configKey)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformConfigErrorCode.CONFIG_NOT_FOUND));
         
         // 시스템 설정 삭제 방지
         if (Boolean.TRUE.equals(config.getIsSystem())) {
@@ -469,7 +520,7 @@ public class PlatformConfigService {
         String rawOldValue = config.getConfigValue();
         config.setIsDeleted(true);
         platformConfigRepository.save(config);
-        log.info("[PlatformConfigService] deleteConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+        log.info("[PlatformConfigService] deleteConfig - success tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
 
         // 감사 로그
         try {
@@ -499,10 +550,16 @@ public class PlatformConfigService {
      * @throws ConfigValidationException 시스템 설정 삭제 시도 시
      */
     @Transactional
-    @CacheEvict(value = "platformConfigs", key = "#configKey", beforeInvocation = false)
+    @CacheEvict(
+            value = "platformConfigs",
+            key = "T(com.agenticcp.core.common.context.TenantContextHolder).getCurrentTenantKey() + ':' + #configKey",
+            beforeInvocation = false
+    )
     public void hardDeleteConfig(String configKey) {
-        log.info("[PlatformConfigService] hardDeleteConfig - configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
-        PlatformConfig config = getConfigByKeyOrThrow(configKey);
+        String tenantKey = requireTenantKey();
+        log.info("[PlatformConfigService] hardDeleteConfig - tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
+        PlatformConfig config = platformConfigRepository.findByTenantIdAndConfigKey(tenantKey, configKey)
+                .orElseThrow(() -> new ResourceNotFoundException(PlatformConfigErrorCode.CONFIG_NOT_FOUND));
         
         // 시스템 설정 삭제 방지
         if (Boolean.TRUE.equals(config.getIsSystem())) {
@@ -510,7 +567,7 @@ public class PlatformConfigService {
         }
         
         platformConfigRepository.delete(config);
-        log.info("[PlatformConfigService] hardDeleteConfig - success configKey={}", LogMaskingUtils.mask(configKey, 2, 2));
+        log.info("[PlatformConfigService] hardDeleteConfig - success tenantKey={} configKey={}", tenantKey, LogMaskingUtils.mask(configKey, 2, 2));
     }
 
     /**
@@ -580,8 +637,14 @@ public class PlatformConfigService {
 
         if (isEncryptedType) {
             if (showSecret) {
+                String configValue = source.getConfigValue();
+                if (configValue == null || configValue.isEmpty()) {
+                    throw new BusinessException(PlatformConfigErrorCode.ENCRYPTED_PAYLOAD_INVALID, 
+                            "암호화된 설정 값이 비어있습니다.");
+                }
+                
                 try {
-                    String decrypted = encryptionService.decrypt(source.getConfigValue());
+                    String decrypted = encryptionService.decrypt(configValue);
                     builder.configValue(decrypted);
                 } catch (IllegalArgumentException e) {
                     throw new BusinessException(PlatformConfigErrorCode.ENCRYPTED_PAYLOAD_INVALID, e.getMessage());
@@ -652,6 +715,7 @@ public class PlatformConfigService {
     private void publishConfigChangeEvent(ConfigChangeEvent.ChangeType changeType, String configKey, 
                                         String oldValue, String newValue, Boolean isEncrypted, String reason) {
         try {
+            String tenantKey = requireTenantKey();
             String userId = getCurrentUserId();
             String oldValueMasked = maskValueForEvent(oldValue, isEncrypted);
             String newValueMasked = maskValueForEvent(newValue, isEncrypted);
@@ -659,13 +723,13 @@ public class PlatformConfigService {
             ConfigChangeEvent event;
             switch (changeType) {
                 case CREATE:
-                    event = ConfigChangeEvent.create(configKey, newValueMasked, newValue, userId, reason);
+                    event = ConfigChangeEvent.create(tenantKey, configKey, newValueMasked, newValue, userId, reason);
                     break;
                 case UPDATE:
-                    event = ConfigChangeEvent.update(configKey, oldValueMasked, newValueMasked, newValue, userId, reason);
+                    event = ConfigChangeEvent.update(tenantKey, configKey, oldValueMasked, newValueMasked, newValue, userId, reason);
                     break;
                 case DELETE:
-                    event = ConfigChangeEvent.delete(configKey, oldValueMasked, userId, reason);
+                    event = ConfigChangeEvent.delete(tenantKey, configKey, oldValueMasked, userId, reason);
                     break;
                 default:
                     log.warn("[PlatformConfigService] Unknown change type: {}", changeType);
@@ -673,8 +737,8 @@ public class PlatformConfigService {
             }
             
             eventPublisher.publishEvent(event);
-            log.debug("[PlatformConfigService] Config change event published: configKey={}, changeType={}", 
-                     LogMaskingUtils.mask(configKey, 2, 2), changeType);
+            log.debug("[PlatformConfigService] Config change event published: tenantKey={} configKey={}, changeType={}", 
+                     tenantKey, LogMaskingUtils.mask(configKey, 2, 2), changeType);
         } catch (Exception ex) {
             log.warn("[PlatformConfigService] Failed to publish config change event: {}", ex.getMessage());
         }

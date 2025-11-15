@@ -166,7 +166,15 @@ public enum PlatformConfigErrorCode implements BaseErrorCode {
      * 설정 키는 반드시 'system.' 또는 'user.'로 시작해야 합니다.
      * </p>
      */
-    INVALID_CONFIG_NAMESPACE(HttpStatus.BAD_REQUEST, 6023, "설정 키는 'system.' 또는 'user.' 네임스페이스를 사용해야 합니다.");
+    INVALID_CONFIG_NAMESPACE(HttpStatus.BAD_REQUEST, 6023, "설정 키는 'system.' 또는 'user.' 네임스페이스를 사용해야 합니다."),
+    
+    /**
+     * 유효하지 않은 테넌트 키일 때 발생하는 에러
+     * <p>
+     * 테넌트가 DB에 존재하지 않거나 유효하지 않은 경우 발생합니다.
+     * </p>
+     */
+    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 6024, "유효하지 않은 테넌트 키입니다. 테넌트가 존재하지 않습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;

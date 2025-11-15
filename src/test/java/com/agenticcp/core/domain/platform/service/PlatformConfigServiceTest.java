@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.platform.service;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
@@ -8,12 +9,14 @@ import com.agenticcp.core.domain.platform.validation.ConfigValidator;
 import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
 import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.common.logging.masking.MaskingType;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
@@ -60,9 +63,14 @@ class PlatformConfigServiceTest {
 
     private PlatformConfig validConfig;
     private PlatformConfig systemConfig;
+    private MockedStatic<TenantContextHolder> tenantContextHolderMock;
 
     @BeforeEach
     void setUp() {
+        // TenantContextHolder Mock 설정
+        tenantContextHolderMock = mockStatic(TenantContextHolder.class);
+        tenantContextHolderMock.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
+                .thenReturn("test-tenant-key");
         // Mock validator 리스트 설정
         List<ConfigValidator> mockValidators = Arrays.asList(configValidator);
         ReflectionTestUtils.setField(platformConfigService, "configValidators", mockValidators);
@@ -96,11 +104,19 @@ class PlatformConfigServiceTest {
                 .build();
     }
 
+    @AfterEach
+    void tearDown() {
+        if (tenantContextHolderMock != null) {
+            tenantContextHolderMock.close();
+        }
+        TenantContextHolder.clear();
+    }
+
     @Test
     @DisplayName("유효한 설정 생성 성공")
     void shouldCreateValidConfig() {
         // Given
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.empty());
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
 
         // When
@@ -109,7 +125,7 @@ class PlatformConfigServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(validConfig.getConfigKey(), result.getConfigKey());
-        verify(platformConfigRepository).findByConfigKey(validConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", validConfig.getConfigKey());
         verify(platformConfigRepository).save(validConfig);
         verify(configValidator).validate(validConfig);
     }
@@ -118,13 +134,13 @@ class PlatformConfigServiceTest {
     @DisplayName("중복 키로 인한 설정 생성 실패")
     void shouldFailToCreateConfigWithDuplicateKey() {
         // Given
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(validConfig));
 
         // When & Then
         ConfigValidationException exception = assertThrows(ConfigValidationException.class,
                 () -> platformConfigService.createConfig(validConfig));
         assertEquals(PlatformConfigErrorCode.CONFIG_ALREADY_EXISTS, exception.getErrorCode());
-        verify(platformConfigRepository).findByConfigKey(validConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", validConfig.getConfigKey());
         verify(platformConfigRepository, never()).save(any(PlatformConfig.class));
     }
 
@@ -139,7 +155,7 @@ class PlatformConfigServiceTest {
                 .isEncrypted(false)
                 .build();
 
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(validConfig));
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
 
         // When
@@ -147,7 +163,7 @@ class PlatformConfigServiceTest {
 
         // Then
         assertNotNull(result);
-        verify(platformConfigRepository).findByConfigKey(validConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", validConfig.getConfigKey());
         verify(platformConfigRepository).save(any(PlatformConfig.class));
         verify(configValidator).validate(any(PlatformConfig.class));
     }
@@ -162,7 +178,7 @@ class PlatformConfigServiceTest {
                 .isEncrypted(false)
                 .build();
 
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(validConfig));
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
 
         // When: 업데이트 수행
@@ -170,7 +186,7 @@ class PlatformConfigServiceTest {
 
         // Then: 업데이트가 성공하고 @CacheEvict 어노테이션이 적용되었는지 확인
         assertNotNull(result);
-        verify(platformConfigRepository).findByConfigKey(validConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", validConfig.getConfigKey());
         verify(platformConfigRepository).save(any(PlatformConfig.class));
         verify(configValidator).validate(any(PlatformConfig.class));
         
@@ -186,13 +202,13 @@ class PlatformConfigServiceTest {
                 .configType(PlatformConfig.ConfigType.NUMBER)  // 타입 변경
                 .build();
 
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(systemConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(systemConfig));
 
         // When & Then
         ConfigValidationException exception = assertThrows(ConfigValidationException.class,
                 () -> platformConfigService.updateConfig(systemConfig.getConfigKey(), updatedConfig));
         assertEquals(PlatformConfigErrorCode.SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN, exception.getErrorCode());
-        verify(platformConfigRepository).findByConfigKey(systemConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", systemConfig.getConfigKey());
         verify(platformConfigRepository, never()).save(any(PlatformConfig.class));
     }
 
@@ -206,7 +222,7 @@ class PlatformConfigServiceTest {
                 .description("updated description")
                 .build();
 
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(systemConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(systemConfig));
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(systemConfig);
 
         // When
@@ -214,7 +230,7 @@ class PlatformConfigServiceTest {
 
         // Then
         assertNotNull(result);
-        verify(platformConfigRepository).findByConfigKey(systemConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", systemConfig.getConfigKey());
         verify(platformConfigRepository).save(any(PlatformConfig.class));
     }
 
@@ -222,14 +238,14 @@ class PlatformConfigServiceTest {
     @DisplayName("유효한 설정 삭제 성공")
     void shouldDeleteValidConfig() {
         // Given
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(validConfig));
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
 
         // When
         platformConfigService.deleteConfig(validConfig.getConfigKey());
 
         // Then
-        verify(platformConfigRepository).findByConfigKey(validConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", validConfig.getConfigKey());
         verify(platformConfigRepository).save(any(PlatformConfig.class));
         assertTrue(validConfig.getIsDeleted());
     }
@@ -238,13 +254,13 @@ class PlatformConfigServiceTest {
     @DisplayName("시스템 설정 삭제 실패")
     void shouldFailToDeleteSystemConfig() {
         // Given
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(systemConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(systemConfig));
 
         // When & Then
         ConfigValidationException exception = assertThrows(ConfigValidationException.class,
                 () -> platformConfigService.deleteConfig(systemConfig.getConfigKey()));
         assertEquals(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_DELETE, exception.getErrorCode());
-        verify(platformConfigRepository).findByConfigKey(systemConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", systemConfig.getConfigKey());
         verify(platformConfigRepository, never()).save(any(PlatformConfig.class));
     }
 
@@ -252,13 +268,13 @@ class PlatformConfigServiceTest {
     @DisplayName("시스템 설정 하드 삭제 실패")
     void shouldFailToHardDeleteSystemConfig() {
         // Given
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(systemConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(systemConfig));
 
         // When & Then
         ConfigValidationException exception = assertThrows(ConfigValidationException.class,
                 () -> platformConfigService.hardDeleteConfig(systemConfig.getConfigKey()));
         assertEquals(PlatformConfigErrorCode.SYSTEM_CONFIG_CANNOT_DELETE, exception.getErrorCode());
-        verify(platformConfigRepository).findByConfigKey(systemConfig.getConfigKey());
+        verify(platformConfigRepository).findByTenantIdAndConfigKey("test-tenant-key", systemConfig.getConfigKey());
         verify(platformConfigRepository, never()).delete(any(PlatformConfig.class));
     }
 
@@ -281,7 +297,7 @@ class PlatformConfigServiceTest {
     @DisplayName("설정 생성 시 ConfigChangeEvent 발행")
     void shouldPublishConfigChangeEventOnCreate() {
         // Given
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.empty());
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
         when(maskingService.applyMaskingStrategy(anyString(), eq(MaskingType.SECRET_KEY))).thenReturn("ma***ed");
 
@@ -311,7 +327,7 @@ class PlatformConfigServiceTest {
                 .isEncrypted(false)
                 .build();
 
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(validConfig));
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
         when(maskingService.applyMaskingStrategy(anyString(), eq(MaskingType.SECRET_KEY))).thenReturn("ma***ed");
 
@@ -335,7 +351,7 @@ class PlatformConfigServiceTest {
     @DisplayName("설정 삭제 시 ConfigChangeEvent 발행")
     void shouldPublishConfigChangeEventOnDelete() {
         // Given
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.of(validConfig));
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.of(validConfig));
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(validConfig);
         when(maskingService.applyMaskingStrategy(anyString(), eq(MaskingType.SECRET_KEY))).thenReturn("ma***ed");
 
@@ -366,7 +382,7 @@ class PlatformConfigServiceTest {
                 .description("Encrypted config")
                 .build();
 
-        when(platformConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        when(platformConfigRepository.findByTenantIdAndConfigKey(anyString(), anyString())).thenReturn(Optional.empty());
         when(platformConfigRepository.save(any(PlatformConfig.class))).thenReturn(encryptedConfig);
         when(encryptionService.encrypt(anyString())).thenReturn("encrypted-value");
         // 암호화된 값은 "Encrypted"로 마스킹되므로 MaskingService 호출 안 됨
