@@ -85,5 +85,60 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
      * 테넌트별 기간 내 감사 로그 조회 (대시보드용)
      */
     List<AuditLog> findByTenantIdAndTimestampBetween(String tenantId, Instant startDate, Instant endDate);
+
+    /**
+     * 리소스 타입과 기간으로 감사 로그 조회 (플랫폼 레벨)
+     * 
+     * @param resourceType 리소스 타입
+     * @param startDate 시작 일시
+     * @param endDate 종료 일시
+     * @return 감사 로그 목록
+     */
+    @Query("SELECT a FROM AuditLog a WHERE " +
+           "a.resourceType = :resourceType " +
+           "AND a.timestamp >= :startDate " +
+           "AND a.timestamp <= :endDate " +
+           "AND a.isDeleted = false " +
+           "ORDER BY a.timestamp DESC")
+    List<AuditLog> findByResourceTypeAndTimestampBetween(
+        @Param("resourceType") AuditResourceType resourceType,
+        @Param("startDate") Instant startDate,
+        @Param("endDate") Instant endDate
+    );
+
+    /**
+     * 리소스 타입으로 감사 로그 조회 (페이징)
+     * 
+     * @param resourceType 리소스 타입
+     * @param pageable 페이징 정보
+     * @return 감사 로그 목록 (페이징)
+     */
+    @Query("SELECT a FROM AuditLog a WHERE " +
+           "a.resourceType = :resourceType " +
+           "AND a.isDeleted = false " +
+           "ORDER BY a.timestamp DESC")
+    Page<AuditLog> findByResourceType(
+        @Param("resourceType") AuditResourceType resourceType,
+        Pageable pageable
+    );
+
+    /**
+     * 리소스 타입과 액션으로 감사 로그 조회 (페이징)
+     * 
+     * @param resourceType 리소스 타입
+     * @param action 액션
+     * @param pageable 페이징 정보
+     * @return 감사 로그 목록 (페이징)
+     */
+    @Query("SELECT a FROM AuditLog a WHERE " +
+           "a.resourceType = :resourceType " +
+           "AND a.action = :action " +
+           "AND a.isDeleted = false " +
+           "ORDER BY a.timestamp DESC")
+    Page<AuditLog> findByResourceTypeAndAction(
+        @Param("resourceType") AuditResourceType resourceType,
+        @Param("action") String action,
+        Pageable pageable
+    );
 }
 
