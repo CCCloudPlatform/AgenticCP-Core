@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -37,7 +36,6 @@ class FeatureFlagServiceTest {
     @Mock
     private FeatureFlagSyncService syncService;
 
-    @InjectMocks
     private FeatureFlagService featureFlagService;
 
     private FeatureFlag testFlag;
@@ -51,6 +49,9 @@ class FeatureFlagServiceTest {
                 .isEnabled(true)
                 .status(Status.ACTIVE)
                 .build();
+        
+        // Optional<FeatureFlagSyncService>로 래핑하여 생성자 주입
+        featureFlagService = new FeatureFlagService(featureFlagRepository, Optional.of(syncService));
     }
 
     @Nested
@@ -79,8 +80,8 @@ class FeatureFlagServiceTest {
         void createFlag_WithoutRedis_NoEvent() {
             // Given
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(testFlag);
-            // syncService가 null인 경우를 시뮬레이션하기 위해 별도로 서비스 생성
-            FeatureFlagService serviceWithoutRedis = new FeatureFlagService(featureFlagRepository, null);
+            // syncService가 Optional.empty()인 경우를 시뮬레이션하기 위해 별도로 서비스 생성
+            FeatureFlagService serviceWithoutRedis = new FeatureFlagService(featureFlagRepository, Optional.empty());
 
             // When
             FeatureFlag result = serviceWithoutRedis.createFlag(testFlag);
@@ -89,7 +90,8 @@ class FeatureFlagServiceTest {
             assertThat(result).isNotNull();
             assertThat(result.getFlagKey()).isEqualTo("test-feature");
             verify(featureFlagRepository).save(testFlag);
-            // syncService가 null이므로 이벤트 발행되지 않음
+            // syncService가 Optional.empty()이므로 이벤트 발행되지 않음
+            verify(syncService, never()).publishCreated(anyString());
         }
 
         @Test
