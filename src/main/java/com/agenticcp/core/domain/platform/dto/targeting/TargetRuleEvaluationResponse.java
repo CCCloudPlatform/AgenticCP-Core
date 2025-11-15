@@ -10,9 +10,10 @@ import java.util.List;
 
 /**
  * 타겟팅 규칙 평가 응답 DTO
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @Data
 @Builder
@@ -44,6 +45,7 @@ public class TargetRuleEvaluationResponse {
 
     /**
      * 개별 규칙 평가 상세 정보
+     *
      */
     @Data
     @Builder
