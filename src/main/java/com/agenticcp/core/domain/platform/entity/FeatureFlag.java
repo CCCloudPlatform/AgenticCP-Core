@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.platform.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.domain.platform.enums.FeatureFlagSeverity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,6 +34,11 @@ public class FeatureFlag extends BaseEntity {
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
+
+    @Column(name = "severity")
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private FeatureFlagSeverity severity = FeatureFlagSeverity.LOW;
 
     @Column(name = "target_tenants", columnDefinition = "TEXT")
     private String targetTenants; // JSON array of tenant IDs
