@@ -15,12 +15,11 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 감사 로그 데이터베이스 저장 리스너
+ * 감사 이벤트를 수신하여 데이터베이스에 저장하는 리스너입니다.
+ * 민감 정보 마스킹 후 엔티티로 변환하여 저장합니다.
  * 
- * AuditPublishEvent를 받아서 데이터베이스에 감사 로그를 저장합니다.
- *
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Slf4j
 @Component

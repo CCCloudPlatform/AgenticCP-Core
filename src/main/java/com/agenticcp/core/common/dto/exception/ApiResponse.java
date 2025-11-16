@@ -11,6 +11,14 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
+/**
+ * API 표준 응답 포맷을 제공하는 제네릭 DTO입니다.
+ * 성공/실패 여부, 메시지, 데이터, 에러 코드, 필드 오류, 타임스탬프를 포함합니다.
+ * 
+ * @param <T> 응답 데이터 타입
+ * @author Agentic
+ * @since 2025-10-01
+ */
 @Getter
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)

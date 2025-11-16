@@ -16,6 +16,13 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Order(2)
+/**
+ * 요청 단위로 MDC 컨텍스트를 구성/정리하는 서블릿 필터입니다.
+ * 요청 ID/테넌트/클라이언트 정보 등을 설정합니다.
+ * 
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ */
 public class MdcLoggingFilter implements Filter {
 
     private final MdcContextProvider mdcContextProvider;

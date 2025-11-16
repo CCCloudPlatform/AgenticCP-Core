@@ -5,6 +5,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 
+/**
+ * MDC 컨텍스트 공통 제공 추상 클래스입니다.
+ * 클라이언트 IP, User-Agent, 세션 ID 수집 및 마스킹 지원을 제공합니다.
+ * 
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ */
 @RequiredArgsConstructor
 public abstract class AbstractMdcContextProvider implements MdcContextProvider {
     

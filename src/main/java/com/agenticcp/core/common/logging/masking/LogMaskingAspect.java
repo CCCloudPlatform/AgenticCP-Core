@@ -12,13 +12,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 /**
- * 로그 마스킹 AOP
- * 
- * 메서드 파라미터에 @Masked 애노테이션이 적용된 경우
- * 자동으로 마스킹 처리를 수행합니다.
+ * 로그 마스킹 AOP Aspect입니다. @Masked가 지정된 파라미터/객체에 마스킹을 적용합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Slf4j
 @Aspect

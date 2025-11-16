@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 비밀번호 마스킹 전략
- * 
- * 비밀번호는 보안상 전체를 별표로 마스킹 처리합니다.
+ * 비밀번호 마스킹 전략입니다. 전체를 별표로 마스킹합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Component
 public class PasswordMaskingStrategy implements MaskingStrategy {

@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 기본 마스킹 전략
- * 
- * 특별한 마스킹 규칙이 없는 경우 사용하는 기본 전략입니다.
+ * 기본 마스킹 전략입니다. 특별 규칙이 없을 때 사용됩니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Component
 public class DefaultMaskingStrategy implements MaskingStrategy {

@@ -8,10 +8,11 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * 감사 로그 조회 응답 DTO
+ * 감사 로그 단건 조회 응답 DTO입니다.
+ * 저장된 감사 이벤트의 상세 정보를 반환합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 public record AuditLogResponse(
     Long id,

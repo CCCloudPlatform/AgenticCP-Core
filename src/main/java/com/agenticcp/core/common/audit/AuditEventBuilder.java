@@ -10,12 +10,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 감사 이벤트 빌더
+ * 감사 이벤트 DTO를 생성하는 빌더입니다.
+ * 컨텍스트를 기반으로 필드를 채워 {@link com.agenticcp.core.common.dto.audit.AuditEventDto}를 만듭니다.
  * 
- * AuditEvent 객체를 생성하기 위한 빌더 클래스입니다.
- *
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 public class AuditEventBuilder {
     

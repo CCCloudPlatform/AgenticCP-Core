@@ -11,10 +11,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import java.time.Instant;
 
 /**
- * 감사 로그 검색 요청 DTO
+ * 감사 로그 검색 요청 DTO입니다.
+ * 기간/필터/페이지 정보를 포함합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 public record AuditLogSearchRequest(
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)

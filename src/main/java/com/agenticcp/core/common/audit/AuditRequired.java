@@ -9,12 +9,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 메서드 레벨 감사 로깅 애노테이션
- * 
- * 개별 메서드에 감사 로깅을 적용할 때 사용합니다.
+ * 메서드 레벨 감사 로깅 애노테이션입니다.
+ * 액션/리소스/심각도 및 데이터 포함 여부를 설정합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

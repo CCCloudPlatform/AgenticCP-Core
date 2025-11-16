@@ -8,9 +8,11 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * 감사 이벤트 데이터 모델
+ * 단일 감사 이벤트를 표현하는 DTO입니다.
+ * 요청/응답 요약 및 메타데이터를 포함합니다.
+ * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 public record AuditEventDto(
     String action,

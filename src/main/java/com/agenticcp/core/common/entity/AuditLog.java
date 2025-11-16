@@ -8,12 +8,10 @@ import lombok.*;
 import java.time.Instant;
 
 /**
- * 감사 로그 엔티티
- * 
- * 모든 감사 이벤트를 데이터베이스에 영구 저장합니다.
+ * 감사 로그 엔티티입니다. 감사 이벤트를 데이터베이스에 영구 저장합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Entity
 @Table(name = "audit_logs", indexes = {

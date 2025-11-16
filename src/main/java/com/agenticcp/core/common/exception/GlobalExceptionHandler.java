@@ -27,6 +27,13 @@ import org.springframework.security.core.AuthenticationException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 애플리케이션 전역 예외 처리기입니다.
+ * 도메인 비즈니스 예외 및 공통 시스템 예외를 표준 응답으로 변환합니다.
+ * 
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ */
 @Slf4j
 @RequiredArgsConstructor
 @Order(1)

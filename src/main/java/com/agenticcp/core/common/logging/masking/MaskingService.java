@@ -8,15 +8,10 @@ import java.lang.reflect.Field;
 import java.util.*;
 
 /**
- * 민감 정보 마스킹 처리 서비스
- * 
- * @Masked 애노테이션이 적용된 필드를 자동으로 감지하고
- * 해당하는 마스킹 전략을 적용하여 민감 정보를 보호합니다.
- * 
- * 기존 LogMaskingUtils의 모든 기능을 통합하여 제공합니다.
+ * 민감 정보 마스킹 처리 서비스입니다. @Masked 필드/Map/List를 재귀적으로 마스킹합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Slf4j
 @Service

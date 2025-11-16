@@ -5,6 +5,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+/**
+ * 운영 환경에서 MDC 컨텍스트를 설정하는 구현체입니다.
+ * 세션/사용자/클라이언트 정보를 확장 수집합니다.
+ * 
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ */
 @Component
 @Profile("prod")
 public class ProdMdcContextProvider extends AbstractMdcContextProvider {

@@ -14,12 +14,11 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 /**
- * 감사 로깅 전용 로거
- * 
- * 감사 이벤트를 JSON 형태로 로깅합니다.
+ * 감사 이벤트를 JSON 형태로 기록하는 로거입니다.
+ * 심각도에 따라 로그 레벨을 다르게 적용합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Component
 @RequiredArgsConstructor

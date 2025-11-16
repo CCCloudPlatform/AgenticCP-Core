@@ -16,13 +16,12 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 
 /**
- * 감사 로깅 처리 서비스
- * 
- * Aspect에서 추출한 감사 메타데이터를 바탕으로 감사 이벤트를 생성하고 발행합니다.
- * 실제 로깅 및 DB 저장은 이벤트 리스너들이 처리합니다.
+ * 감사 로깅 처리 서비스입니다.
+ * 추출된 감사 컨텍스트로 이벤트를 생성하여 발행합니다.
+ * 파일/DB 기록은 리스너에서 수행됩니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Slf4j
 @Service

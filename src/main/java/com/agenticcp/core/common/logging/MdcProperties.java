@@ -5,6 +5,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.List;
 
+/**
+ * MDC 로깅 설정을 주입받는 설정 프로퍼티 클래스입니다.
+ * 사용 여부, 요청 ID 생성 규칙, 마스킹 옵션 등을 제어합니다.
+ * 
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ */
 @Getter
 @ConfigurationProperties(prefix = "logging.mdc")
 public class MdcProperties {

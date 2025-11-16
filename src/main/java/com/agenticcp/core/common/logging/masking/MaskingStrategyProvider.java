@@ -9,13 +9,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 마스킹 전략을 관리하는 Provider 클래스
- * 
- * 모든 MaskingStrategy Bean을 자동으로 수집하고 Map으로 관리하여
- * MaskingService가 개별 전략에 의존하지 않도록 합니다.
+ * 마스킹 전략을 수집·제공하는 Provider입니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Slf4j
 @Component

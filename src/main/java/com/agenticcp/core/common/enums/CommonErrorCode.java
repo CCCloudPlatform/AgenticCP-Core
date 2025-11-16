@@ -12,15 +12,6 @@ import org.springframework.http.HttpStatus;
  * 모든 도메인별 에러 코드는 반드시 {@link BaseErrorCode} 인터페이스를 구현해야 합니다.
  * </p>
  *
- * <pre>
- * {@literal @}Override
- * public String getCode() {
- * // ErrorCategory는 도메인에 맞게 변경 (예: USER)
- * return ErrorCategory.USER.generate(codeNumber);
- * }
- * }
- * </pre>
- *
  * @see BaseErrorCode
  * @see ErrorCategory
  * @author AgenticCP Team

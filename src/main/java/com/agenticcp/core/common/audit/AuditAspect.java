@@ -14,15 +14,12 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Method;
 
 /**
- * 통합 감사 로깅 AOP Aspect
- * 
- * @AuditController가 붙은 클래스 내부의 모든 메서드 또는
- * @AuditRequired가 붙은 모든 메서드를 대상으로 합니다.
- * 
- * 우선순위: 메서드 레벨 @AuditRequired > 클래스 레벨 @AuditController
+ * 감사 로깅을 적용하는 AOP Aspect입니다.
+ * 클래스/메서드 애노테이션을 기준으로 감사를 수행합니다.
+ * 우선순위: 메서드 레벨 {@link AuditRequired} > 클래스 레벨 {@link AuditController}.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
  */
 @Slf4j
 @Aspect
