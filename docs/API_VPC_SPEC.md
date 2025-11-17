@@ -168,9 +168,51 @@ VPC(가상 사설 클라우드) 생성/조회/수정/삭제를 위한 REST API�
   - Not Found는 컨트롤러에서 직접 `404` 반환하는 케이스가 존재(getVpc)
 
 ## 구현 참고
-- 컨트롤러: `src/main/java/com/agenticcp/core/controller/VpcController.java`
-- AWS 어댑터: `src/main/java/com/agenticcp/core/domain/cloud/adapter/outbound/aws/vpc/AwsVpcManagementAdapter.java`
-- 매퍼: `src/main/java/com/agenticcp/core/domain/cloud/adapter/outbound/aws/vpc/AwsVpcMapper.java`
-- 유즈케이스/라우팅: `VpcUseCaseService` → `VpcPortRouter` → `VpcManagementPort`
+
+### 아키텍처
+- **컨트롤러**: `src/main/java/com/agenticcp/core/domain/cloud/controller/VpcController.java`
+- **유즈케이스 서비스**: `src/main/java/com/agenticcp/core/domain/cloud/port/outbound/vpc/VpcUseCaseService.java`
+- **포트 라우터**: `src/main/java/com/agenticcp/core/domain/cloud/port/outbound/vpc/VpcPortRouter.java`
+- **포트 인터페이스**: `src/main/java/com/agenticcp/core/domain/cloud/port/outbound/vpc/VpcManagementPort.java`
+- **AWS 어댑터**: `src/main/java/com/agenticcp/core/domain/cloud/adapter/outbound/aws/vpc/AwsVpcManagementAdapter.java`
+- **매퍼**: `src/main/java/com/agenticcp/core/domain/cloud/adapter/outbound/aws/vpc/AwsVpcMapper.java`
+
+### 주요 설계 패턴
+
+#### Command 패턴
+- DTO와 포트 모델 간 의존성을 분리하기 위해 Command 객체 사용
+- Command 클래스:
+  - `CreateVpcCommand`: VPC 생성 명령
+  - `GetVpcCommand`: VPC 단건 조회 명령
+  - `ListVpcsQuery`: VPC 목록 조회 쿼리
+  - `UpdateVpcCommand`: VPC 수정 명령
+  - `DeleteVpcCommand`: VPC 삭제 명령
+- 위치: `src/main/java/com/agenticcp/core/domain/cloud/port/command/vpc/`
+
+#### 상수 관리
+- `VpcConstants`: VPC 관련 공통 상수 정의
+  - `SERVICE_KEY = "EC2"`: AWS EC2 서비스 키
+  - `RESOURCE_TYPE = "VPC"`: VPC 리소스 타입
+- 위치: `src/main/java/com/agenticcp/core/domain/cloud/port/outbound/vpc/VpcConstants.java`
+
+#### CloudResource 매핑 개선
+- `AwsVpcMapper`에서 `CloudResource`의 `provider`, `service`, `region` 필드를 JPA 엔티티로 조회
+- Repository 의존성:
+  - `CloudProviderRepository`: CloudProvider 엔티티 조회
+  - `CloudServiceRepository`: CloudService 엔티티 조회 (신규 생성)
+  - `CloudRegionRepository`: CloudRegion 엔티티 조회 (findByProviderTypeAndRegionKey 메서드 추가)
+- 매핑 로직:
+  - AWS VPC 응답을 `CloudResource`로 변환 시 관련 엔티티를 조회하여 설정
+  - 태그에서 리소스 이름 추출 (Name 태그 우선)
+  - 태그 및 메타데이터를 JSON 문자열로 변환
+  - 생명주기 상태 매핑
+
+### 데이터 흐름
+1. **Controller** → DTO 검증 및 `ResourceIdentity` 생성
+2. **VpcUseCaseService** → DTO를 Command로 변환, `CapabilityGuard` 검증
+3. **VpcPortRouter** → ProviderType에 따라 적절한 어댑터 선택
+4. **AwsVpcManagementAdapter** → AWS SDK 호출 (Ec2Client)
+5. **AwsVpcMapper** → AWS 응답을 `CloudResource`로 변환 (엔티티 조회 포함)
+6. **Controller** → `CloudResource` 반환
 
 
