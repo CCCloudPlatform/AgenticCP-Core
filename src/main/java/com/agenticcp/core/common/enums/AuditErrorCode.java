@@ -24,7 +24,11 @@ public enum AuditErrorCode implements BaseErrorCode {
     AUDIT_LOG_EXPORT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8005, "감사 로그 내보내기에 실패했습니다."),
     AUDIT_LOG_SEARCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8006, "감사 로그 검색에 실패했습니다."),
     INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, 8007, "유효하지 않은 날짜 범위입니다."),
-    AUDIT_LOG_CONVERSION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8008, "감사 로그 변환에 실패했습니다.");
+    AUDIT_LOG_CONVERSION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8008, "감사 로그 변환에 실패했습니다."),
+    AUDIT_LOG_MASKING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8009, "감사 로그 마스킹에 실패했습니다."),
+    AUDIT_LOG_PERSISTENCE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8010, "감사 로그 저장에 실패했습니다."),
+    AUDIT_DATA_EXTRACTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8011, "감사 데이터 추출에 실패했습니다."),
+    AUDIT_EVENT_PUBLISH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8012, "감사 이벤트 발행에 실패했습니다.");
     
     private final HttpStatus httpStatus;
     private final int codeNumber;

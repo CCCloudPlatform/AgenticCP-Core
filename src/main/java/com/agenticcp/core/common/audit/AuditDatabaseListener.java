@@ -2,6 +2,8 @@ package com.agenticcp.core.common.audit;
 
 import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.entity.AuditLog;
+import com.agenticcp.core.common.enums.AuditErrorCode;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.common.repository.AuditLogRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -18,8 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
  * 감사 이벤트를 수신하여 데이터베이스에 저장하는 리스너입니다.
  * 민감 정보 마스킹 후 엔티티로 변환하여 저장합니다.
  * 
+ * 감사 데이터 처리 실패 시 {@link AuditErrorCode}를 포함한 {@link BusinessException}을 발생시킵니다.
+ *
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.1.0
  */
 @Slf4j
 @Component
@@ -30,34 +35,63 @@ public class AuditDatabaseListener {
     private final ObjectMapper objectMapper;
     private final MaskingService maskingService;
 
+    /**
+     * 감사 이벤트를 처리하여 DB에 영구 저장합니다.
+     *
+     * @param event 감사 이벤트
+     * @throws BusinessException 마스킹 실패 또는 저장 실패 시
+     */
     @Async
     @EventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleAuditEvent(AuditPublishEvent event) {
-        try {
-            AuditEventDto auditEventDto = event.getAuditEventDto();
-            
-            log.debug("감사 로그 DB 저장 시작 [Action: {}, RequestId: {}]", 
-                     auditEventDto.action(), auditEventDto.requestId());
+        AuditEventDto auditEventDto = event.getAuditEventDto();
 
-            // DB에 저장하기 직전, 민감 정보를 마스킹 처리
+        log.debug("감사 로그 DB 저장 시작 [Action: {}, RequestId: {}, TenantId: {}, UserId: {}]",
+                auditEventDto.action(), auditEventDto.requestId(), auditEventDto.tenantId(), auditEventDto.userId());
+
+        maskSensitiveData(auditEventDto);
+
+        try {
+            AuditLog auditLog = convertToEntity(auditEventDto);
+            auditLogRepository.save(auditLog);
+
+            log.debug("감사 로그 DB 저장 완료 [Action: {}, RequestId: {}, TenantId: {}, UserId: {}, ID: {}]",
+                    auditEventDto.action(), auditEventDto.requestId(), auditEventDto.tenantId(),
+                    auditEventDto.userId(), auditLog.getId());
+
+        } catch (Exception e) {
+            log.error("감사 로그 DB 저장 실패 [Action: {}, RequestId: {}, TenantId: {}, UserId: {}]: {}",
+                    auditEventDto.action(), auditEventDto.requestId(), auditEventDto.tenantId(),
+                    auditEventDto.userId(), e.getMessage(), e);
+            throw new BusinessException(AuditErrorCode.AUDIT_LOG_PERSISTENCE_FAILED);
+        }
+    }
+
+    /**
+     * 감사 이벤트에 포함된 민감 데이터를 마스킹합니다.
+     *
+     * @param auditEventDto 감사 이벤트 DTO
+     */
+    private void maskSensitiveData(AuditEventDto auditEventDto) {
+        try {
             maskingService.mask(auditEventDto.requestData());
             maskingService.mask(auditEventDto.oldValue());
             maskingService.mask(auditEventDto.newValue());
             maskingService.mask(auditEventDto.responseData());
-
-            AuditLog auditLog = convertToEntity(auditEventDto);
-            auditLogRepository.save(auditLog);
-
-            log.debug("감사 로그 DB 저장 완료 [Action: {}, RequestId: {}, ID: {}]", 
-                     auditEventDto.action(), auditEventDto.requestId(), auditLog.getId());
-
-        } catch (Exception e) {
-            log.error("감사 로그 DB 저장 실패 [Action: {}]: {}",
-                     event.getAuditEventDto().action(), e.getMessage(), e);
+        } catch (Exception maskingException) {
+            log.error("감사 데이터 마스킹 실패 [Action: {}, RequestId: {}]: {}",
+                    auditEventDto.action(), auditEventDto.requestId(), maskingException.getMessage(), maskingException);
+            throw new BusinessException(AuditErrorCode.AUDIT_LOG_MASKING_FAILED);
         }
     }
 
+    /**
+     * 감사 이벤트 DTO를 감사 로그 엔티티로 변환합니다.
+     *
+     * @param dto 감사 이벤트 DTO
+     * @return 저장 가능한 감사 로그 엔티티
+     */
     private AuditLog convertToEntity(AuditEventDto dto) {
         return AuditLog.builder()
                 .action(dto.action())
@@ -84,6 +118,12 @@ public class AuditDatabaseListener {
                 .build();
     }
 
+    /**
+     * 객체를 JSON 문자열로 직렬화합니다.
+     *
+     * @param data 직렬화 대상 객체
+     * @return JSON 문자열, 직렬화할 값이 없으면 {@code null}
+     */
     private String toJson(Object data) {
         if (data == null) {
             return null;
