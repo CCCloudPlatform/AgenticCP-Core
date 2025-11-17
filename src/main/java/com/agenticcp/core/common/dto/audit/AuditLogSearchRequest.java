@@ -12,10 +12,11 @@ import java.time.Instant;
 
 /**
  * 감사 로그 검색 요청 DTO입니다.
- * 기간/필터/페이지 정보를 포함합니다.
- * 
+ * 기간/필터/페이지 정보를 포함하며 {@link org.springframework.web.bind.annotation.ModelAttribute}로 바인딩됩니다.
+ *
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 public record AuditLogSearchRequest(
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)

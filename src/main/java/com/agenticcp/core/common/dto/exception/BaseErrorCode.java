@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
  * 
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 public interface BaseErrorCode {
     HttpStatus getHttpStatus();

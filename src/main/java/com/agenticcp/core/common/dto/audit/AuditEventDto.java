@@ -9,10 +9,11 @@ import java.util.Map;
 
 /**
  * 단일 감사 이벤트를 표현하는 DTO입니다.
- * 요청/응답 요약 및 메타데이터를 포함합니다.
- * 
+ * 감사 파이프라인 내부에서 저장/전달되는 요청·응답 메타 데이터를 캡슐화합니다.
+ *
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 public record AuditEventDto(
     String action,

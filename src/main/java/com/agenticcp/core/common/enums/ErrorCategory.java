@@ -8,6 +8,7 @@ import com.agenticcp.core.common.dto.exception.BaseErrorCode;
  * @see BaseErrorCode
  * @see CommonErrorCode
  * @author AgenticCP Team
+ * @version 1.0.0
  * @since 2025-09-22
  */
 public enum ErrorCategory {

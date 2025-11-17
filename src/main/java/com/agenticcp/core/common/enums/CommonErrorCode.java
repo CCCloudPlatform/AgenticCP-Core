@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
  * @see BaseErrorCode
  * @see ErrorCategory
  * @author AgenticCP Team
+ * @version 1.0.0
  */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
