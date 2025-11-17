@@ -30,9 +30,10 @@ import java.util.stream.Collectors;
 /**
  * 애플리케이션 전역 예외 처리기입니다.
  * 도메인 비즈니스 예외 및 공통 시스템 예외를 표준 응답으로 변환합니다.
- * 
+ *
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -42,6 +43,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private final ErrorCodeRegistry errorCodeRegistry;
 
+    /**
+     * 비즈니스 예외를 도메인별 HTTP 상태 코드와 함께 응답으로 변환합니다.
+     * SECURITY 카테고리 예외는 보안 감사 목적의 별도 로깅을 수행합니다.
+     *
+     * @param e 도메인 비즈니스 예외
+     * @return 표준 {@link ApiResponse} 에러 응답
+     */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Object> handleBusinessException(BusinessException e) {
         BaseErrorCode errorCode = e.getErrorCode();
@@ -58,6 +66,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(errorCode, e.getMessage()));
     }
 
+    /**
+     * 데이터 액세스 계층에서 발생한 예외를 내부 서버 오류로 변환합니다.
+     *
+     * @param e 데이터베이스 관련 예외
+     * @return HTTP 500 응답
+     */
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<Object> handleDataAccessException(DataAccessException e) {
         log.error("DataAccessException: ", e);
@@ -66,6 +80,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.DATABASE_ERROR));
     }
 
+    /**
+     * 역직렬화 실패 등 요청 본문을 읽지 못한 경우 BAD_REQUEST로 매핑합니다.
+     */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -75,6 +92,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.BAD_REQUEST));
     }
 
+    /**
+     * 지원하지 않는 HTTP 메서드 호출 시 METHOD_NOT_ALLOWED로 응답합니다.
+     */
     @Override
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
             HttpRequestMethodNotSupportedException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -84,6 +104,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.METHOD_NOT_ALLOWED));
     }
 
+    /**
+     * 필수 요청 파라미터 누락을 필드 검증 실패 응답으로 변환합니다.
+     */
     @Override
     protected ResponseEntity<Object> handleMissingServletRequestParameter(
             MissingServletRequestParameterException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -92,6 +115,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildFieldErrorsResponse(CommonErrorCode.FIELD_VALIDATION_ERROR, List.of(fieldError));
     }
 
+    /**
+     * 경로/쿼리 파라미터 타입 불일치 시 상세 필드 오류를 제공합니다.
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Object> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
         log.warn("MethodArgumentTypeMismatchException: {}", e.getMessage());
@@ -99,6 +125,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildFieldErrorsResponse(CommonErrorCode.FIELD_VALIDATION_ERROR, List.of(fieldError));
     }
 
+    /**
+     * Bean Validation 제약 조건 위반을 필드 오류 목록으로 변환합니다.
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Object> handleConstraintViolationException(ConstraintViolationException e) {
         log.warn("ConstraintViolationException: {}", e.getMessage());
@@ -108,6 +137,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildFieldErrorsResponse(CommonErrorCode.FIELD_VALIDATION_ERROR, fields);
     }
 
+    /**
+     * DTO 바인딩 단계에서 발생한 {@link MethodArgumentNotValidException}을
+     * 검증 코드 Registry 기반 메시지로 변환합니다.
+     */
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -140,6 +173,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.FIELD_VALIDATION_ERROR, fieldErrors));
     }
 
+    /**
+     * 예상치 못한 예외를 내부 서버 오류로 매핑하고 전체 스택 트레이스를 기록합니다.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleUnexpectedException(Exception e) {
         log.error("Unexpected Exception: ", e);
@@ -148,6 +184,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
 
+    /**
+     * Spring Security 인가 예외를 FORBIDDEN 응답으로 변환합니다.
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Object> handleAccessDeniedException(AccessDeniedException e) {
         log.warn("AccessDeniedException: {}", e.getMessage());
@@ -156,6 +195,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.FORBIDDEN, e.getMessage()));
     }
 
+    /**
+     * 인증 실패 예외를 HTTP 401 응답으로 변환합니다.
+     */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Object> handleAuthenticationException(AuthenticationException e) {
         log.warn("AuthenticationException: {}", e.getMessage());
@@ -164,6 +206,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.UNAUTHORIZED, e.getMessage()));
     }
 
+    /**
+     * 필드 오류 응답 생성을 공통화합니다.
+     *
+     * @param errorCode 필드 검증용 에러 코드
+     * @param fieldErrors 유효성 검증 실패 목록
+     * @return {@link ApiResponse} 기반 ResponseEntity
+     */
     private ResponseEntity<Object> buildFieldErrorsResponse(BaseErrorCode errorCode, List<ApiResponse.FieldErrorResponse> fieldErrors) {
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
