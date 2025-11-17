@@ -36,10 +36,12 @@ import java.time.LocalDateTime;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-13
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class MonitoringAlertService {
     
     private final MonitoringNotificationService monitoringNotificationService;
@@ -66,19 +68,19 @@ public class MonitoringAlertService {
         MetricThreshold threshold = event.getThreshold();
         Metric metric = event.getMetric();
         
-        log.info("🚨 임계값 초과 이벤트 수신: {} = {} (임계값: {})", 
+        log.info("[MonitoringAlertService] handleThresholdExceeded - 🚨 임계값 초과 이벤트 수신: {} = {} (임계값: {})", 
             metric.getMetricName(), metric.getMetricValue(), threshold.getThresholdValue());
         
         // 알림 중복 방지 체크 (시나리오 3)
         if (isDuplicateAlert(threshold, metric)) {
-            log.debug("⏸️ 중복 알림 방지: {} (쿨다운 기간 내)", metric.getMetricName());
+            log.debug("[MonitoringAlertService] handleThresholdExceeded - ⏸️ 중복 알림 방지: {} (쿨다운 기간 내)", metric.getMetricName());
             return;
         }
         
         // Alert 엔티티 생성 및 저장
         Alert alert = createThresholdAlert(threshold, metric);
         Alert savedAlert = alertRepository.save(alert);
-        log.info("📝 Alert 저장 완료: id={}, name={}", savedAlert.getId(), savedAlert.getAlertName());
+        log.info("[MonitoringAlertService] handleThresholdExceeded - 📝 Alert 저장 완료: id={}, name={}", savedAlert.getId(), savedAlert.getAlertName());
         
         // 알림 발송 (기존 MonitoringNotificationService 재사용)
         monitoringNotificationService.sendThresholdViolationAlert(
@@ -89,7 +91,7 @@ public class MonitoringAlertService {
         
         // 알림 발송 기록 (NotificationDeDuplicationService)
         recordAlertSent(threshold, metric);
-        log.info("✅ 임계값 초과 알림 처리 완료: {}", metric.getMetricName());
+        log.info("[MonitoringAlertService] handleThresholdExceeded - ✅ 임계값 초과 알림 처리 완료: {}", metric.getMetricName());
     }
     
     /**
@@ -104,14 +106,14 @@ public class MonitoringAlertService {
     @EventListener
     @Transactional
     public void handleHealthStatusChanged(HealthStatusChangedEvent event) {
-        log.info("🔄 헬스 상태 변화 이벤트 수신: {} {} -> {}", 
+        log.info("[MonitoringAlertService] handleHealthStatusChanged - 🔄 헬스 상태 변화 이벤트 수신: {} {} -> {}", 
             event.getServiceName(), event.getPreviousStatus(), event.getNewStatus());
         
         // CRITICAL 또는 WARNING 상태면 Alert 생성
         if ("CRITICAL".equals(event.getNewStatus()) || "WARNING".equals(event.getNewStatus())) {
             Alert alert = createHealthAlert(event);
             Alert savedAlert = alertRepository.save(alert);
-            log.info("📝 Alert 저장 완료: id={}, name={}", savedAlert.getId(), savedAlert.getAlertName());
+            log.info("[MonitoringAlertService] handleHealthStatusChanged - 📝 Alert 저장 완료: id={}, name={}", savedAlert.getId(), savedAlert.getAlertName());
             
             // 긴급 알림 발송
             monitoringNotificationService.sendSystemStatusChangeAlert(
@@ -121,7 +123,7 @@ public class MonitoringAlertService {
                 event.getTenantId()
             );
             
-            log.info("✅ 헬스 상태 변화 알림 처리 완료: {}", event.getServiceName());
+            log.info("[MonitoringAlertService] handleHealthStatusChanged - ✅ 헬스 상태 변화 알림 처리 완료: {}", event.getServiceName());
         }
     }
     
@@ -143,7 +145,7 @@ public class MonitoringAlertService {
         boolean canSend = deDuplicationService.canSendNotification(key, DEFAULT_COOLDOWN);
         
         if (!canSend) {
-            log.debug("⏸️ 중복 알림 방지: {} (쿨다운 기간 내)", key);
+            log.debug("[MonitoringAlertService] isDuplicateAlert - ⏸️ 중복 알림 방지: {} (쿨다운 기간 내)", key);
         }
         
         return !canSend; // canSend=false면 중복=true
@@ -161,12 +163,16 @@ public class MonitoringAlertService {
         // NotificationDeDuplicationService 사용
         deDuplicationService.recordNotificationSent(key);
         
-        log.debug("알림 발송 기록: {}", key);
+        log.debug("[MonitoringAlertService] recordAlertSent - 알림 발송 기록: {}", key);
     }
     
     
     /**
      * Alert 키 생성
+     *
+     * @param threshold 임계값 규칙
+     * @param metric 메트릭 값
+     * @return 생성된 Alert 키
      */
     private String generateAlertKey(MetricThreshold threshold, Metric metric) {
         return String.format("alert_sent:%d:%s:%s", 

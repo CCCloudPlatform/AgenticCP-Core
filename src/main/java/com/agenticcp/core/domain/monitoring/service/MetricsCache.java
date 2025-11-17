@@ -62,10 +62,13 @@ public class MetricsCache {
     
     /**
      * MetricsCache 생성자
+     *
+     * <p>메트릭 캐시를 초기화합니다.
+     * 애플리케이션 메트릭 저장을 위한 ConcurrentHashMap을 생성합니다.
      */
     public MetricsCache() {
         this.lastSuccessfulApplicationMetrics = new ConcurrentHashMap<>();
-        log.info("MetricsCache가 초기화되었습니다. 캐시 만료 시간: {}분", CACHE_EXPIRATION_MINUTES);
+        log.info("[MetricsCache] MetricsCache - MetricsCache가 초기화되었습니다. 캐시 만료 시간: {}분", CACHE_EXPIRATION_MINUTES);
     }
     
     /**
@@ -75,14 +78,14 @@ public class MetricsCache {
      */
     public void cacheSystemMetrics(SystemMetrics systemMetrics) {
         if (systemMetrics == null) {
-            log.warn("캐시에 저장할 시스템 메트릭이 null입니다.");
+            log.warn("[MetricsCache] cacheSystemMetrics - 캐시에 저장할 시스템 메트릭이 null입니다.");
             return;
         }
         
         this.lastSuccessfulSystemMetrics = systemMetrics;
         this.lastSystemMetricsTimestamp = LocalDateTime.now();
         
-        log.debug("시스템 메트릭이 캐시에 저장되었습니다. timestamp={}", lastSystemMetricsTimestamp);
+        log.debug("[MetricsCache] cacheSystemMetrics - 시스템 메트릭이 캐시에 저장되었습니다. timestamp={}", lastSystemMetricsTimestamp);
     }
     
     /**
@@ -92,7 +95,7 @@ public class MetricsCache {
      */
     public void cacheApplicationMetrics(List<Metric> metrics) {
         if (metrics == null || metrics.isEmpty()) {
-            log.warn("캐시에 저장할 애플리케이션 메트릭이 비어있습니다.");
+            log.warn("[MetricsCache] cacheApplicationMetrics - 캐시에 저장할 애플리케이션 메트릭이 비어있습니다.");
             return;
         }
         
@@ -104,7 +107,7 @@ public class MetricsCache {
         
         this.lastApplicationMetricsTimestamp = LocalDateTime.now();
         
-        log.debug("애플리케이션 메트릭 {}개가 캐시에 저장되었습니다. timestamp={}", 
+        log.debug("[MetricsCache] cacheApplicationMetrics - 애플리케이션 메트릭 {}개가 캐시에 저장되었습니다. timestamp={}", 
                 metrics.size(), lastApplicationMetricsTimestamp);
     }
     
@@ -115,16 +118,16 @@ public class MetricsCache {
      */
     public SystemMetrics getLastSuccessfulSystemMetrics() {
         if (lastSuccessfulSystemMetrics == null) {
-            log.debug("캐시된 시스템 메트릭이 없습니다.");
+            log.debug("[MetricsCache] getLastSuccessfulSystemMetrics - 캐시된 시스템 메트릭이 없습니다.");
             return null;
         }
         
         if (isCacheExpired(lastSystemMetricsTimestamp)) {
-            log.warn("캐시된 시스템 메트릭이 만료되었습니다. timestamp={}", lastSystemMetricsTimestamp);
+            log.warn("[MetricsCache] getLastSuccessfulSystemMetrics - 캐시된 시스템 메트릭이 만료되었습니다. timestamp={}", lastSystemMetricsTimestamp);
             return null;
         }
         
-        log.debug("캐시된 시스템 메트릭을 반환합니다. timestamp={}", lastSystemMetricsTimestamp);
+        log.debug("[MetricsCache] getLastSuccessfulSystemMetrics - 캐시된 시스템 메트릭을 반환합니다. timestamp={}", lastSystemMetricsTimestamp);
         return lastSuccessfulSystemMetrics;
     }
     
@@ -135,16 +138,16 @@ public class MetricsCache {
      */
     public List<Metric> getLastSuccessfulApplicationMetrics() {
         if (lastSuccessfulApplicationMetrics.isEmpty()) {
-            log.debug("캐시된 애플리케이션 메트릭이 없습니다.");
+            log.debug("[MetricsCache] getLastSuccessfulApplicationMetrics - 캐시된 애플리케이션 메트릭이 없습니다.");
             return new ArrayList<>();
         }
         
         if (isCacheExpired(lastApplicationMetricsTimestamp)) {
-            log.warn("캐시된 애플리케이션 메트릭이 만료되었습니다. timestamp={}", lastApplicationMetricsTimestamp);
+            log.warn("[MetricsCache] getLastSuccessfulApplicationMetrics - 캐시된 애플리케이션 메트릭이 만료되었습니다. timestamp={}", lastApplicationMetricsTimestamp);
             return new ArrayList<>();
         }
         
-        log.debug("캐시된 애플리케이션 메트릭 {}개를 반환합니다. timestamp={}", 
+        log.debug("[MetricsCache] getLastSuccessfulApplicationMetrics - 캐시된 애플리케이션 메트릭 {}개를 반환합니다. timestamp={}", 
                 lastSuccessfulApplicationMetrics.size(), lastApplicationMetricsTimestamp);
         return new ArrayList<>(lastSuccessfulApplicationMetrics.values());
     }
@@ -164,7 +167,7 @@ public class MetricsCache {
         boolean expired = LocalDateTime.now().isAfter(expirationTime);
         
         if (expired) {
-            log.debug("캐시가 만료되었습니다. timestamp={}, expirationTime={}", timestamp, expirationTime);
+            log.debug("[MetricsCache] isCacheExpired - 캐시가 만료되었습니다. timestamp={}, expirationTime={}", timestamp, expirationTime);
         }
         
         return expired;
@@ -176,7 +179,7 @@ public class MetricsCache {
     public void clearSystemMetricsCache() {
         this.lastSuccessfulSystemMetrics = null;
         this.lastSystemMetricsTimestamp = null;
-        log.info("시스템 메트릭 캐시가 초기화되었습니다.");
+        log.info("[MetricsCache] clearSystemMetricsCache - 시스템 메트릭 캐시가 초기화되었습니다.");
     }
     
     /**
@@ -185,7 +188,7 @@ public class MetricsCache {
     public void clearApplicationMetricsCache() {
         this.lastSuccessfulApplicationMetrics.clear();
         this.lastApplicationMetricsTimestamp = null;
-        log.info("애플리케이션 메트릭 캐시가 초기화되었습니다.");
+        log.info("[MetricsCache] clearApplicationMetricsCache - 애플리케이션 메트릭 캐시가 초기화되었습니다.");
     }
     
     /**
@@ -194,7 +197,7 @@ public class MetricsCache {
     public void clearAll() {
         clearSystemMetricsCache();
         clearApplicationMetricsCache();
-        log.info("모든 메트릭 캐시가 초기화되었습니다.");
+        log.info("[MetricsCache] clearAll - 모든 메트릭 캐시가 초기화되었습니다.");
     }
     
     /**

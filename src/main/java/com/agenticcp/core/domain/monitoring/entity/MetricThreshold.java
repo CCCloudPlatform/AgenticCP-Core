@@ -2,7 +2,11 @@ package com.agenticcp.core.domain.monitoring.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -19,7 +23,7 @@ import java.time.LocalDateTime;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Entity
 @Table(name = "metric_thresholds", indexes = {
@@ -29,7 +33,9 @@ import java.time.LocalDateTime;
     @Index(name = "idx_metric_thresholds_created_at", columnList = "created_at")
 })
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false, exclude = {"id", "createdAt", "updatedAt"})
 @ToString(callSuper = true)
 public class MetricThreshold extends BaseEntity {
@@ -37,6 +43,8 @@ public class MetricThreshold extends BaseEntity {
     /**
      * 메트릭 이름 (예: cpu.usage, memory.used)
      */
+    @NotBlank(message = "메트릭 이름은 필수입니다")
+    @Size(max = 100, message = "메트릭 이름은 100자를 초과할 수 없습니다")
     @Column(name = "metric_name", nullable = false, length = 100)
     private String metricName;
 
@@ -45,17 +53,22 @@ public class MetricThreshold extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "threshold_type", nullable = false, length = 20)
+    @NotNull(message = "임계값 타입은 필수입니다")
     private ThresholdType thresholdType;
 
     /**
      * 임계값
      */
+    @NotNull(message = "임계값은 필수입니다")
     @Column(name = "threshold_value", nullable = false)
     private Double thresholdValue;
 
     /**
      * 비교 연산자 (>, >=, <, <=, ==, !=)
      */
+    @NotBlank(message = "연산자는 필수입니다")
+    @Size(max = 10, message = "연산자는 10자를 초과할 수 없습니다")
+    @Pattern(regexp = "^(>|>=|<|<=|==|!=)$", message = "연산자는 >, >=, <, <=, ==, != 중 하나여야 합니다")
     @Column(name = "operator", nullable = false, length = 10)
     private String operator;
 
@@ -63,6 +76,7 @@ public class MetricThreshold extends BaseEntity {
      * 활성화 여부
      */
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     /**
@@ -75,12 +89,14 @@ public class MetricThreshold extends BaseEntity {
      * 알림 활성화 여부
      */
     @Column(name = "alert_enabled", nullable = false)
+    @Builder.Default
     private Boolean alertEnabled = true;
 
     /**
      * 알림 지속 시간 (초)
      */
     @Column(name = "alert_duration")
+    @Builder.Default
     private Integer alertDuration = 300; // 5분
 
     /**
@@ -88,6 +104,7 @@ public class MetricThreshold extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "severity", length = 20)
+    @Builder.Default
     private Severity severity = Severity.MEDIUM;
 
     /**
@@ -113,22 +130,6 @@ public class MetricThreshold extends BaseEntity {
         MEDIUM,     // 보통
         HIGH,       // 높음
         CRITICAL    // 위험
-    }
-
-    @Builder
-    public MetricThreshold(String metricName, ThresholdType thresholdType, Double thresholdValue, 
-                          String operator, Boolean isActive, String description, Boolean alertEnabled, 
-                          Integer alertDuration, Severity severity, LocalDateTime lastAlertAt) {
-        this.metricName = metricName;
-        this.thresholdType = thresholdType;
-        this.thresholdValue = thresholdValue;
-        this.operator = operator;
-        this.isActive = isActive;
-        this.description = description;
-        this.alertEnabled = alertEnabled;
-        this.alertDuration = alertDuration;
-        this.severity = severity;
-        this.lastAlertAt = lastAlertAt;
     }
 
     /**

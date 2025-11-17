@@ -168,14 +168,17 @@ public enum PlatformConfigErrorCode implements BaseErrorCode {
      */
     INVALID_CONFIG_NAMESPACE(HttpStatus.BAD_REQUEST, 6023, "설정 키는 'system.' 또는 'user.' 네임스페이스를 사용해야 합니다."),
     
+    // 기능 플래그 승인 관련 에러
+    FLAG_CHANGE_REQUIRES_APPROVAL(HttpStatus.FORBIDDEN, 6024, "이 플래그 변경은 승인이 필요합니다."),
+    FLAG_APPROVAL_NOT_FOUND(HttpStatus.NOT_FOUND, 6025, "승인 요청을 찾을 수 없습니다."),
+    FLAG_APPROVAL_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, 6026, "이미 처리된 승인 요청입니다.");
     /**
      * 유효하지 않은 테넌트 키일 때 발생하는 에러
      * <p>
      * 테넌트가 DB에 존재하지 않거나 유효하지 않은 경우 발생합니다.
      * </p>
      */
-    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 6024, "유효하지 않은 테넌트 키입니다. 테넌트가 존재하지 않습니다.");
-
+    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 6027 "유효하지 않은 테넌트 키입니다. 테넌트가 존재하지 않습니다.");
     private final HttpStatus httpStatus;
     private final int codeNumber;
     private final String message;

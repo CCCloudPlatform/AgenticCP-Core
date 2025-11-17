@@ -12,12 +12,12 @@ import java.time.LocalDateTime;
 
 /**
  * 보안 정책 DTO
- * 
+ *
  * <p>SecurityPolicy 엔티티의 데이터 전송 객체로, JSON 직렬화 시 Lazy Loading 문제를 해결합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Schema(description = "보안 정책 DTO")
 @Data

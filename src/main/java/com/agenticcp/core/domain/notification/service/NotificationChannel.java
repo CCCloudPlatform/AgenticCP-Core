@@ -5,7 +5,14 @@ import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 
 /**
  * 알림 채널 인터페이스
- * 확장 가능한 알림 시스템을 위한 플러그인 아키텍처의 핵심 인터페이스
+ * 
+ * <p>확장 가능한 알림 시스템을 위한 플러그인 아키텍처의 핵심 인터페이스입니다.</p>
+ * 
+ * <p>이 인터페이스를 구현하여 다양한 알림 채널(Slack, Email, Discord 등)을 추가할 수 있습니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 public interface NotificationChannel {
     

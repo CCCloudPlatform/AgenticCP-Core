@@ -8,12 +8,12 @@ import lombok.NoArgsConstructor;
 
 /**
  * 기본 정책 템플릿
- * 
+ *
  * <p>테넌트 생성 시 자동으로 생성되는 기본 보안 정책 템플릿을 정의합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Data
 @Builder
