@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -99,20 +100,16 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("기본 보관 정책 생성 - 테넌트 컨텍스트 없음")
-        void createDefaultRetentionPolicy_WhenNoTenantContext_ReturnsBadRequest() {
+        void createDefaultRetentionPolicy_WhenNoTenantContext_ThrowsException() {
             // Given
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
                         .thenThrow(new IllegalStateException("테넌트 컨텍스트가 없습니다"));
 
                 // When & Then
-                ResponseEntity<ApiResponse<TenantDataRetentionPolicy>> response = 
-                        controller.createDefaultRetentionPolicy();
-
-                // Then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(response.getBody()).isNotNull();
-                assertThat(response.getBody().isSuccess()).isFalse();
+                assertThatThrownBy(() -> controller.createDefaultRetentionPolicy())
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("테넌트 컨텍스트가 없습니다");
 
                 verify(retentionService, never()).createDefaultRetentionPolicy(anyString());
             }

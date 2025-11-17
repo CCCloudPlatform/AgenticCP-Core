@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.notification.controller;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.dto.exception.ApiResponse;
+import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.entity.Notification;
@@ -79,8 +80,10 @@ public class NotificationController {
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(response, "알림이 성공적으로 발송되었습니다."));
         } else {
+            String errorMessage = response.getMessage() != null ? response.getMessage() : 
+                    (response.getErrorMessage() != null ? response.getErrorMessage() : "알림 발송에 실패했습니다.");
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(null, response.getMessage()));
+                    .body(ApiResponse.error(CommonErrorCode.BAD_REQUEST, errorMessage));
         }
     }
 

@@ -23,6 +23,7 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     METRIC_NOT_FOUND(HttpStatus.NOT_FOUND, 8011, "메트릭을 찾을 수 없습니다."),
     INVALID_METRIC_NAME(HttpStatus.BAD_REQUEST, 8012, "유효하지 않은 메트릭 이름입니다."),
     INVALID_TIME_RANGE(HttpStatus.BAD_REQUEST, 8013, "유효하지 않은 시간 범위입니다."),
+    METRIC_NAMES_RETRIEVAL_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8014, "메트릭 이름 목록 조회 중 오류가 발생했습니다."),
 
     // 메트릭 타입 관련 (8021-8030)
     INVALID_METRIC_TYPE(HttpStatus.BAD_REQUEST, 8021, "유효하지 않은 메트릭 타입입니다."),

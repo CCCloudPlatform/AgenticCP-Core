@@ -596,11 +596,11 @@ class MetricsControllerTest {
 
         @Test
         @DisplayName("메트릭 이름 목록 조회 중 예외 발생")
-        void getMetricNames_WhenException_ShouldThrowBusinessException() {
+        void getMetricNames_WhenException_ShouldThrowRuntimeException() {
             // 테스트 케이스: 메트릭 이름 목록 조회 중 예외 발생
-            // 목적: 데이터베이스 오류 등으로 예외가 발생할 때 적절히 처리되는지 확인
+            // 목적: 데이터베이스 오류 등으로 예외가 발생할 때 GlobalExceptionHandler가 처리하는지 확인
             // 검증 항목:
-            // 1. BusinessException이 발생하는지
+            // 1. RuntimeException이 발생하는지 (GlobalExceptionHandler가 처리)
             // 2. 예외 메시지가 적절한지
             
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
@@ -612,8 +612,8 @@ class MetricsControllerTest {
 
                 // When & Then
                 assertThatThrownBy(() -> metricsController.getMetricNames())
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("메트릭 이름 목록 조회 중 오류가 발생했습니다.");
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage("Database error");
             }
         }
     }
@@ -628,12 +628,12 @@ class MetricsControllerTest {
     class ExceptionHandlingTest {
 
         @Test
-        @DisplayName("Repository 예외 발생 시 BusinessException 변환")
-        void getMetrics_WhenRepositoryException_ShouldThrowBusinessException() {
-            // 테스트 케이스: Repository 예외 발생 시 BusinessException 변환
-            // 목적: 데이터베이스 연결 실패 등으로 예외가 발생할 때 적절히 처리되는지 확인
+        @DisplayName("Repository 예외 발생 시 RuntimeException 전파")
+        void getMetrics_WhenRepositoryException_ShouldThrowRuntimeException() {
+            // 테스트 케이스: Repository 예외 발생 시 RuntimeException 전파
+            // 목적: 데이터베이스 연결 실패 등으로 예외가 발생할 때 GlobalExceptionHandler가 처리하는지 확인
             // 검증 항목:
-            // 1. BusinessException이 발생하는지
+            // 1. RuntimeException이 발생하는지 (GlobalExceptionHandler가 처리)
             // 2. 예외 메시지가 적절한지
             
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
@@ -646,8 +646,8 @@ class MetricsControllerTest {
 
                 // When & Then
                 assertThatThrownBy(() -> metricsController.getMetrics(null, null, pageable))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("메트릭 목록 조회 중 오류가 발생했습니다.");
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage("Database connection failed");
             }
         }
 
