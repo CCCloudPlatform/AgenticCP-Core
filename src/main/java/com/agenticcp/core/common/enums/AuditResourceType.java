@@ -16,6 +16,8 @@ public enum AuditResourceType {
 
     USER("사용자"),
     TENANT("테넌트"),
+    TENANT_CONFIG("테넌트설정"),
+    TENANT_TYPE_CONFIG("테넌트타입설정"),
     POLICY("보안정책"),
     ROLE("역할"),
     PERMISSION("권한"),

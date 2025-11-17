@@ -12,65 +12,53 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * 테넌트별 설정 엔티티
+ * 테넌트 타입별 기본 설정 엔티티
  * 
- * 개별 테넌트의 설정값을 저장하고 관리합니다.
- * 플랫폼 설정과 테넌트 타입 설정을 상속받아 오버라이드할 수 있습니다.
+ * 테넌트 타입(ENTERPRISE, STANDARD, TRIAL)에 따른 기본 설정값을 저장합니다.
+ * 이 설정은 해당 타입의 모든 테넌트에 적용되는 기본값으로 사용됩니다.
+ * 개별 테넌트는 이 값을 오버라이드할 수 있습니다.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2025-10-23
  */
 @Entity
-@Table(name = "tenant_configs", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id", "config_key"}))
+@Table(name = "tenant_type_configs",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_type", "config_key"}),
+       indexes = {
+           @Index(name = "idx_tenant_type_configs_type", columnList = "tenant_type"),
+           @Index(name = "idx_tenant_type_configs_key", columnList = "config_key"),
+           @Index(name = "idx_tenant_type_configs_config_type", columnList = "config_type")
+       })
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TenantConfig extends BaseEntity {
+public class TenantTypeConfig extends BaseEntity {
 
-    /**
-     * 설정이 속한 테넌트
-     */
-    @NotNull(message = "테넌트는 필수입니다")
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+    @NotNull(message = "테넌트 타입은 필수입니다")
+    @Column(name = "tenant_type", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private Tenant.TenantType tenantType;
 
-    /**
-     * 설정 키 (예: max_users, storage_limit)
-     */
     @NotBlank(message = "설정 키는 필수입니다")
     @Size(min = 1, max = 100, message = "설정 키는 1-100자 사이여야 합니다")
     @Column(name = "config_key", nullable = false, length = 100)
     private String configKey;
 
-    /**
-     * 설정 값 (JSON, 문자열, 숫자 등 다양한 형식 지원)
-     */
     @Column(name = "config_value", columnDefinition = "TEXT")
     private String configValue;
 
-    /**
-     * 설정 값의 타입
-     */
     @NotNull(message = "설정 타입은 필수입니다")
     @Column(name = "config_type", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private ConfigType configType;
 
-    /**
-     * 설정에 대한 설명
-     */
     @Size(max = 500, message = "설명은 500자를 초과할 수 없습니다")
     @Column(name = "description", length = 500)
     private String description;
 
-    /**
-     * 값이 암호화되어 저장되었는지 여부
-     */
     @Builder.Default
     @Column(name = "is_encrypted", nullable = false)
     private Boolean isEncrypted = false;
@@ -151,5 +139,15 @@ public class TenantConfig extends BaseEntity {
      */
     public boolean isType(ConfigType type) {
         return this.configType == type;
+    }
+
+    /**
+     * 특정 테넌트 타입에 대한 설정인지 확인
+     * 
+     * @param type 확인할 테넌트 타입
+     * @return 동일한 테넌트 타입이면 true
+     */
+    public boolean isForTenantType(Tenant.TenantType type) {
+        return this.tenantType == type;
     }
 }

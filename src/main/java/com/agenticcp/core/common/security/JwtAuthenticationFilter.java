@@ -72,10 +72,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * 요청에서 JWT 토큰 추출
      */
     private String extractTokenFromRequest(HttpServletRequest request) {
-        String authHeader = request.getHeader(AUTHORIZATION_HEADER);
+        String authHeader = request.getHeader(JwtConstants.AUTHORIZATION_HEADER);
         
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith(BEARER_PREFIX)) {
-            return authHeader.substring(BEARER_PREFIX.length());
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith(JwtConstants.BEARER_PREFIX)) {
+            return authHeader.substring(JwtConstants.BEARER_PREFIX.length());
         }
         
         return null;
