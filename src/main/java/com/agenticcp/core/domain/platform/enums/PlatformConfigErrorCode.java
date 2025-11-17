@@ -171,7 +171,7 @@ public enum PlatformConfigErrorCode implements BaseErrorCode {
     // 기능 플래그 승인 관련 에러
     FLAG_CHANGE_REQUIRES_APPROVAL(HttpStatus.FORBIDDEN, 6024, "이 플래그 변경은 승인이 필요합니다."),
     FLAG_APPROVAL_NOT_FOUND(HttpStatus.NOT_FOUND, 6025, "승인 요청을 찾을 수 없습니다."),
-    FLAG_APPROVAL_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, 6026, "이미 처리된 승인 요청입니다.");
+    FLAG_APPROVAL_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, 6026, "이미 처리된 승인 요청입니다."),
     /**
      * 유효하지 않은 테넌트 키일 때 발생하는 에러
      * <p>
