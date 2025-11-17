@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.port.command.vpc;
 import java.util.Map;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 
 import lombok.Builder;
 
@@ -21,7 +22,8 @@ public record ListVpcsQuery(
         Integer page,
         Integer size,
         String sortBy,
-        String sortDirection
+        String sortDirection,
+        CloudSessionCredential session
 ) {
 }
 

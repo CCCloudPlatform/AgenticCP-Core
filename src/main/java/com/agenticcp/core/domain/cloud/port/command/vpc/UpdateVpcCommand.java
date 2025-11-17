@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.port.command.vpc;
 import java.util.Map;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 
 import lombok.Builder;
 
@@ -19,7 +20,8 @@ public record UpdateVpcCommand(
         String description,
         Map<String, String> tags,
         String tenantKey,
-        Map<String, Object> providerSpecificConfig
+        Map<String, Object> providerSpecificConfig,
+        CloudSessionCredential session
 ) {
 }
 

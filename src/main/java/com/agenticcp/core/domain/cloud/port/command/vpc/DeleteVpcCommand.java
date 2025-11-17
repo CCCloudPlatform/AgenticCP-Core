@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.command.vpc;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 
 import lombok.Builder;
 
@@ -15,7 +16,8 @@ public record DeleteVpcCommand(
         String providerResourceId,
         String serviceKey,
         String resourceType,
-        String tenantKey
+        String tenantKey,
+        CloudSessionCredential session
 ) {
 }
 
