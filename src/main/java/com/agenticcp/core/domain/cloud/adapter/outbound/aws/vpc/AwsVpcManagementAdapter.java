@@ -7,8 +7,9 @@ import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VpcManagementPort;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.ec2.Ec2Client;

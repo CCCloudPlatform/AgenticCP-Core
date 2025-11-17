@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vpc;
+package com.agenticcp.core.domain.cloud.controller;
 
 import com.agenticcp.core.common.audit.AuditRequired;
 import com.agenticcp.core.common.enums.AuditResourceType;
@@ -6,9 +6,10 @@ import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcUseCaseService;
 import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
-import com.agenticcp.core.domain.cloud.service.aws.VpcUseCaseService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.service.aws;
+package com.agenticcp.core.domain.cloud.port.outbound.vpc;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,9 +9,9 @@ import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VpcManagementPort;
 
 import lombok.RequiredArgsConstructor;
 

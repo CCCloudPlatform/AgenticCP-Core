@@ -1,9 +1,9 @@
-package com.agenticcp.core.domain.cloud.service.aws;
+package com.agenticcp.core.domain.cloud.port.outbound.vpc;
 
 import org.springframework.stereotype.Component;
 
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VpcManagementPort;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 
 import java.util.Map;
 import java.util.EnumMap;
