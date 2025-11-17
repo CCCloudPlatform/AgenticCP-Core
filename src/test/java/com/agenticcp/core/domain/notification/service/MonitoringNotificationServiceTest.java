@@ -19,6 +19,8 @@ import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,14 +32,20 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 /**
- * 모니터링 알림 서비스 테스트
+ * 모니터링 알림 서비스 단위 테스트
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("MonitoringNotificationService 단위 테스트")
 class MonitoringNotificationServiceTest {
 
     @Mock
@@ -140,189 +148,182 @@ class MonitoringNotificationServiceTest {
         }
     }
 
-    /**
-     * 임계값 초과 알림 발송 성공 테스트
-     * 
-     * Given: CPU 사용률이 임계값을 초과한 메트릭 데이터
-     * When: 임계값 초과 알림 발송 요청
-     * Then: 알림이 성공적으로 발송되고 적절한 우선순위로 설정됨
-     */
-    @Test
-    void testSendThresholdViolationAlert_Success() {
-        // Given
-        Double thresholdValue = 80.0;
-        String operator = ">";
-        
-        NotificationResponse mockResponse = NotificationResponse.builder()
-                .notificationId("threshold_cpu.usage_123456789")
-                .status(NotificationStatus.SENT)
-                .success(true)
-                .message("알림이 성공적으로 발송되었습니다.")
-                .build();
+    @Nested
+    @DisplayName("임계값 위반 알림 발송 테스트")
+    class SendThresholdViolationAlertTest {
 
-        when(notificationService.sendNotification(any(NotificationRequest.class)))
-                .thenReturn(mockResponse);
+        @Test
+        @DisplayName("정상 발송 시 알림 발송 성공")
+        void sendThresholdViolationAlert_WhenValidMetric_ReturnsSuccess() {
+            // Given
+            Double thresholdValue = 80.0;
+            String operator = ">";
+            
+            NotificationResponse mockResponse = NotificationResponse.builder()
+                    .notificationId("threshold_cpu.usage_123456789")
+                    .status(NotificationStatus.SENT)
+                    .success(true)
+                    .message("알림이 성공적으로 발송되었습니다.")
+                    .build();
 
-        // When
-        monitoringNotificationService.sendThresholdViolationAlert(testMetric, thresholdValue, operator);
+            when(notificationService.sendNotification(any(NotificationRequest.class)))
+                    .thenReturn(mockResponse);
 
-        // Then
-        verify(notificationService, times(1)).sendNotification(argThat(request ->
-            request.getTenantId().equals("123") &&
-            request.getUserId().equals(10L) &&  // 테넌트 관리자 ID 확인
-            request.getType() == NotificationType.ALERT
-        ));
-        verify(tenantRepository).findByTenantKey("123");
-        verify(userRepository).findActiveUsersByTenant(testTenant, Status.ACTIVE);
-    }
-
-    /**
-     * 긴급 우선순위 임계값 초과 알림 테스트
-     * 
-     * Given: CPU 사용률이 90% 이상인 메트릭 데이터
-     * When: 임계값 초과 알림 발송 요청
-     * Then: URGENT 우선순위로 알림이 발송됨
-     */
-    @Test
-    void testSendThresholdViolationAlert_UrgentPriority() {
-        // Given
-        Metric urgentMetric = Metric.builder()
-                .metricName("cpu.usage")
-                .metricValue(95.0) // 90% 이상으로 설정하여 URGENT 우선순위 테스트
-                .unit("%")
-                .metricType(Metric.MetricType.SYSTEM)
-                .collectedAt(LocalDateTime.now())
-                .source("system-monitor")
-                .status(Metric.Status.ACTIVE)
-                .tenantId("123")
-                .build();
-        Double thresholdValue = 90.0;
-        String operator = ">";
-
-        NotificationResponse mockResponse = NotificationResponse.builder()
-                .notificationId("threshold_cpu.usage_123456789")
-                .status(NotificationStatus.SENT)
-                .success(true)
-                .build();
-
-        when(notificationService.sendNotification(any(NotificationRequest.class)))
-                .thenReturn(mockResponse);
-
-        // When
-        monitoringNotificationService.sendThresholdViolationAlert(urgentMetric, thresholdValue, operator);
-
-        // Then
-        verify(notificationService, times(1)).sendNotification(argThat(request -> 
-            request.getPriority() == NotificationPriority.URGENT
-        ));
-    }
-
-    /**
-     * 시스템 상태 변경 알림 발송 성공 테스트
-     * 
-     * Given: 데이터베이스 상태가 HEALTHY에서 CRITICAL로 변경
-     * When: 시스템 상태 변경 알림 발송 요청
-     * Then: 상태 변경 알림이 성공적으로 발송됨
-     */
-    @Test
-    void testSendSystemStatusChangeAlert_Success() {
-        // Given
-        String serviceName = "database";
-        String prevStatus = "HEALTHY";
-        String currStatus = "CRITICAL";
-        String tenantId = "123";
-
-        NotificationResponse mockResponse = NotificationResponse.builder()
-                .notificationId("status_change_database_123456789")
-                .status(NotificationStatus.SENT)
-                .success(true)
-                .build();
-
-        when(notificationService.sendNotification(any(NotificationRequest.class)))
-                .thenReturn(mockResponse);
-
-        // When
-        monitoringNotificationService.sendSystemStatusChangeAlert(serviceName, prevStatus, currStatus, tenantId);
-
-        // Then
-        verify(notificationService, times(1)).sendNotification(any(NotificationRequest.class));
-    }
-
-    /**
-     * 메트릭 수집 실패 알림 발송 성공 테스트
-     * 
-     * Given: 시스템 메트릭 수집기가 연결 시간 초과로 실패
-     * When: 수집 실패 알림 발송 요청
-     * Then: 수집 실패 알림이 성공적으로 발송됨
-     */
-    @Test
-    void testSendCollectionFailureAlert_Success() {
-        // Given
-        String collectorType = "SYSTEM";
-        String errorMessage = "Connection timeout";
-        String tenantId = "123";
-
-        NotificationResponse mockResponse = NotificationResponse.builder()
-                .notificationId("collection_failure_SYSTEM_123456789")
-                .status(NotificationStatus.SENT)
-                .success(true)
-                .build();
-
-        when(notificationService.sendNotification(any(NotificationRequest.class)))
-                .thenReturn(mockResponse);
-
-        // When
-        monitoringNotificationService.sendCollectionFailureAlert(collectorType, errorMessage, tenantId);
-
-        // Then
-        verify(notificationService, times(1)).sendNotification(any(NotificationRequest.class));
-    }
-
-    @Test
-    void testSendThresholdViolationAlert_Exception() {
-        // Given
-        Double thresholdValue = 80.0;
-        String operator = ">";
-
-        when(notificationService.sendNotification(any(NotificationRequest.class)))
-                .thenThrow(new RuntimeException("알림 발송 실패"));
-
-        // When & Then
-        assertDoesNotThrow(() -> {
+            // When
             monitoringNotificationService.sendThresholdViolationAlert(testMetric, thresholdValue, operator);
-        });
+
+            // Then
+            verify(notificationService, times(1)).sendNotification(argThat(request ->
+                request.getTenantId().equals("123") &&
+                request.getUserId().equals(10L) &&
+                request.getType() == NotificationType.ALERT
+            ));
+            verify(tenantRepository).findByTenantKey("123");
+            verify(userRepository).findActiveUsersByTenant(testTenant, Status.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("URGENT 우선순위 메트릭 시 URGENT 우선순위로 발송")
+        void sendThresholdViolationAlert_WhenUrgentMetric_ReturnsUrgentPriority() {
+            // Given
+            Metric urgentMetric = Metric.builder()
+                    .metricName("cpu.usage")
+                    .metricValue(95.0)
+                    .unit("%")
+                    .metricType(Metric.MetricType.SYSTEM)
+                    .collectedAt(LocalDateTime.now())
+                    .source("system-monitor")
+                    .status(Metric.Status.ACTIVE)
+                    .tenantId("123")
+                    .build();
+            Double thresholdValue = 90.0;
+            String operator = ">";
+
+            NotificationResponse mockResponse = NotificationResponse.builder()
+                    .notificationId("threshold_cpu.usage_123456789")
+                    .status(NotificationStatus.SENT)
+                    .success(true)
+                    .build();
+
+            when(notificationService.sendNotification(any(NotificationRequest.class)))
+                    .thenReturn(mockResponse);
+
+            // When
+            monitoringNotificationService.sendThresholdViolationAlert(urgentMetric, thresholdValue, operator);
+
+            // Then
+            verify(notificationService, times(1)).sendNotification(argThat(request -> 
+                request.getPriority() == NotificationPriority.URGENT
+            ));
+        }
+
+        @Test
+        @DisplayName("메모리 메트릭 시 알림 발송 성공")
+        void sendThresholdViolationAlert_WhenMemoryMetric_ReturnsSuccess() {
+            // Given
+            Metric memoryMetric = Metric.builder()
+                    .metricName("memory.usage")
+                    .metricValue(75.0)
+                    .unit("%")
+                    .metricType(Metric.MetricType.SYSTEM)
+                    .collectedAt(LocalDateTime.now())
+                    .source("system-monitor")
+                    .status(Metric.Status.ACTIVE)
+                    .tenantId("123")
+                    .build();
+
+            Double thresholdValue = 80.0;
+            String operator = ">";
+
+            NotificationResponse mockResponse = NotificationResponse.builder()
+                    .notificationId("threshold_memory.usage_123456789")
+                    .status(NotificationStatus.SENT)
+                    .success(true)
+                    .build();
+
+            when(notificationService.sendNotification(any(NotificationRequest.class)))
+                    .thenReturn(mockResponse);
+
+            // When
+            monitoringNotificationService.sendThresholdViolationAlert(memoryMetric, thresholdValue, operator);
+
+            // Then
+            verify(notificationService, times(1)).sendNotification(any(NotificationRequest.class));
+        }
+
+        @Test
+        @DisplayName("예외 발생 시 예외 처리 확인")
+        void sendThresholdViolationAlert_WhenExceptionOccurs_HandlesException() {
+            // Given
+            Double thresholdValue = 80.0;
+            String operator = ">";
+
+            when(notificationService.sendNotification(any(NotificationRequest.class)))
+                    .thenThrow(new RuntimeException("알림 발송 실패"));
+
+            // When & Then
+            assertThatCode(() -> {
+                monitoringNotificationService.sendThresholdViolationAlert(testMetric, thresholdValue, operator);
+            }).doesNotThrowAnyException();
+        }
     }
 
-    @Test
-    void testSendThresholdViolationAlert_WithMetric() {
-        // Given
-        Metric memoryMetric = Metric.builder()
-                .metricName("memory.usage")
-                .metricValue(75.0)
-                .unit("%")
-                .metricType(Metric.MetricType.SYSTEM)
-                .collectedAt(LocalDateTime.now())
-                .source("system-monitor")
-                .status(Metric.Status.ACTIVE)
-                .tenantId("123")
-                .build();
+    @Nested
+    @DisplayName("시스템 상태 변화 알림 발송 테스트")
+    class SendSystemStatusChangeAlertTest {
 
-        Double thresholdValue = 80.0;
-        String operator = ">";
+        @Test
+        @DisplayName("정상 발송 시 알림 발송 성공")
+        void sendSystemStatusChangeAlert_WhenValidStatusChange_ReturnsSuccess() {
+            // Given
+            String serviceName = "database";
+            String prevStatus = "HEALTHY";
+            String currStatus = "CRITICAL";
+            String tenantId = "123";
 
-        NotificationResponse mockResponse = NotificationResponse.builder()
-                .notificationId("threshold_memory.usage_123456789")
-                .status(NotificationStatus.SENT)
-                .success(true)
-                .build();
+            NotificationResponse mockResponse = NotificationResponse.builder()
+                    .notificationId("status_change_database_123456789")
+                    .status(NotificationStatus.SENT)
+                    .success(true)
+                    .build();
 
-        when(notificationService.sendNotification(any(NotificationRequest.class)))
-                .thenReturn(mockResponse);
+            when(notificationService.sendNotification(any(NotificationRequest.class)))
+                    .thenReturn(mockResponse);
 
-        // When
-        monitoringNotificationService.sendThresholdViolationAlert(memoryMetric, thresholdValue, operator);
+            // When
+            monitoringNotificationService.sendSystemStatusChangeAlert(serviceName, prevStatus, currStatus, tenantId);
 
-        // Then
-        verify(notificationService, times(1)).sendNotification(any(NotificationRequest.class));
+            // Then
+            verify(notificationService, times(1)).sendNotification(any(NotificationRequest.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("수집 실패 알림 발송 테스트")
+    class SendCollectionFailureAlertTest {
+
+        @Test
+        @DisplayName("정상 발송 시 알림 발송 성공")
+        void sendCollectionFailureAlert_WhenValidFailure_ReturnsSuccess() {
+            // Given
+            String collectorType = "SYSTEM";
+            String errorMessage = "Connection timeout";
+            String tenantId = "123";
+
+            NotificationResponse mockResponse = NotificationResponse.builder()
+                    .notificationId("collection_failure_SYSTEM_123456789")
+                    .status(NotificationStatus.SENT)
+                    .success(true)
+                    .build();
+
+            when(notificationService.sendNotification(any(NotificationRequest.class)))
+                    .thenReturn(mockResponse);
+
+            // When
+            monitoringNotificationService.sendCollectionFailureAlert(collectorType, errorMessage, tenantId);
+
+            // Then
+            verify(notificationService, times(1)).sendNotification(any(NotificationRequest.class));
+        }
     }
 }

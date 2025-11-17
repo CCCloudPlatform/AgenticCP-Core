@@ -75,22 +75,25 @@ public class MetricsCollectionService {
     /**
      * 1분마다 자동으로 메트릭 수집 실행
      * 테넌트별 설정에 따라 다른 수집기 사용
+     *
+     * @throws BusinessException 메트릭 수집 중 비즈니스 오류 발생 시 (내부 처리)
+     * @throws Exception 예상치 못한 오류 발생 시 (내부 처리)
      */
     @Scheduled(fixedRate = DEFAULT_TIMEOUT)
     @Transactional
     public void collectMetricsScheduled() {
         try {
-            log.info("Starting scheduled metrics collection...");
+            log.info("[MetricsCollectionService] collectMetricsScheduled - Starting scheduled metrics collection...");
             
             // 테넌트별 수집기 설정에 따른 메트릭 수집
             collectMetricsByTenantConfig();
             
-            log.info("Scheduled metrics collection completed successfully");
+            log.info("[MetricsCollectionService] collectMetricsScheduled - Scheduled metrics collection completed successfully");
         } catch (BusinessException e) {
-            log.error("Business error during scheduled metrics collection: {}", e.getMessage(), e);
+            log.error("[MetricsCollectionService] collectMetricsScheduled - Business error during scheduled metrics collection: {}", e.getMessage(), e);
             // 스케줄된 작업은 예외를 다시 던지지 않음
         } catch (Exception e) {
-            log.error("Unexpected error during scheduled metrics collection", e);
+            log.error("[MetricsCollectionService] collectMetricsScheduled - Unexpected error during scheduled metrics collection", e);
             // 스케줄된 작업은 예외를 다시 던지지 않음
         }
     }
@@ -115,7 +118,7 @@ public class MetricsCollectionService {
     @Transactional
     public void collectSystemMetrics() {
         try {
-            log.debug("시스템 메트릭 수집 시작...");
+            log.debug("[MetricsCollectionService] collectSystemMetrics - 시스템 메트릭 수집 시작...");
             
             SystemMetrics systemMetrics = systemMetricsCollector.collectSystemMetrics();
             saveSystemMetrics(systemMetrics);
@@ -123,12 +126,12 @@ public class MetricsCollectionService {
             // 캐시에 저장 (폴백용)
             metricsCache.cacheSystemMetrics(systemMetrics);
             
-            log.debug("시스템 메트릭 수집 완료");
+            log.debug("[MetricsCollectionService] collectSystemMetrics - 시스템 메트릭 수집 완료");
         } catch (BusinessException e) {
-            log.error("시스템 메트릭 수집 중 비즈니스 오류 발생: {}", e.getMessage(), e);
+            log.error("[MetricsCollectionService] collectSystemMetrics - 시스템 메트릭 수집 중 비즈니스 오류 발생: {}", e.getMessage(), e);
             throw e;
         } catch (Exception e) {
-            log.error("시스템 메트릭 수집 중 예상치 못한 오류 발생", e);
+            log.error("[MetricsCollectionService] collectSystemMetrics - 시스템 메트릭 수집 중 예상치 못한 오류 발생", e);
             throw new BusinessException(MonitoringErrorCode.SYSTEM_METRICS_UNAVAILABLE, 
                 "시스템 메트릭 수집 중 예상치 못한 오류가 발생했습니다: " + e.getMessage());
         }
@@ -149,19 +152,19 @@ public class MetricsCollectionService {
      */
     @Recover
     public void recoverFromSystemMetricsFailure(Exception e) {
-        log.error("시스템 메트릭 수집의 모든 재시도가 실패했습니다.", e);
+        log.error("[MetricsCollectionService] recoverFromSystemMetricsFailure - 시스템 메트릭 수집의 모든 재시도가 실패했습니다.", e);
         
         // 캐시된 데이터 사용
         SystemMetrics cachedMetrics = metricsCache.getLastSuccessfulSystemMetrics();
         
         if (cachedMetrics != null) {
-            log.warn("캐시된 시스템 메트릭을 사용합니다. collectedAt={}", cachedMetrics.getCollectedAt());
+            log.warn("[MetricsCollectionService] recoverFromSystemMetricsFailure - 캐시된 시스템 메트릭을 사용합니다. collectedAt={}", cachedMetrics.getCollectedAt());
             // 캐시된 데이터는 이미 저장되어 있으므로 별도 저장 불필요
             return;
         }
         
         // 캐시도 없으면 예외 발생
-        log.error("캐시된 시스템 메트릭도 없습니다. 폴백 실패.");
+        log.error("[MetricsCollectionService] recoverFromSystemMetricsFailure - 캐시된 시스템 메트릭도 없습니다. 폴백 실패.");
         throw new BusinessException(MonitoringErrorCode.RETRY_EXHAUSTED, 
             "시스템 메트릭 수집의 모든 재시도가 실패했으며, 캐시된 데이터도 없습니다.");
     }
@@ -176,6 +179,8 @@ public class MetricsCollectionService {
      *   <li>부분 실패 허용: 일부 메트릭 실패해도 나머지는 저장</li>
      *   <li>실패 시 recoverFromApplicationMetricsFailure 호출</li>
      * </ul>
+     *
+     * @throws BusinessException 메트릭 수집 실패 시
      */
     @Retryable(
         value = {BusinessException.class, RuntimeException.class},
@@ -185,7 +190,7 @@ public class MetricsCollectionService {
     @Transactional
     public void collectApplicationMetrics() {
         try {
-            log.debug("애플리케이션 메트릭 수집 시작...");
+            log.debug("[MetricsCollectionService] collectApplicationMetrics - 애플리케이션 메트릭 수집 시작...");
             
             // 애플리케이션 메트릭 수집기 생성
             MetricsCollector applicationCollector = metricsCollectorFactory.createCollector(CollectorType.APPLICATION);
@@ -200,16 +205,16 @@ public class MetricsCollectionService {
                 // 캐시에 저장 (폴백용)
                 metricsCache.cacheApplicationMetrics(applicationMetrics);
                 
-                log.debug("애플리케이션 메트릭 수집 완료: {} 메트릭", applicationMetrics.size());
+                log.debug("[MetricsCollectionService] collectApplicationMetrics - 애플리케이션 메트릭 수집 완료: {} 메트릭", applicationMetrics.size());
             } else {
-                log.debug("애플리케이션 메트릭 수집기가 비활성화되어 있거나 사용 불가능합니다.");
+                log.debug("[MetricsCollectionService] collectApplicationMetrics - 애플리케이션 메트릭 수집기가 비활성화되어 있거나 사용 불가능합니다.");
             }
             
         } catch (BusinessException e) {
-            log.error("애플리케이션 메트릭 수집 중 비즈니스 오류 발생: {}", e.getMessage(), e);
+            log.error("[MetricsCollectionService] collectApplicationMetrics - 애플리케이션 메트릭 수집 중 비즈니스 오류 발생: {}", e.getMessage(), e);
             throw e;
         } catch (Exception e) {
-            log.error("애플리케이션 메트릭 수집 중 예상치 못한 오류 발생", e);
+            log.error("[MetricsCollectionService] collectApplicationMetrics - 애플리케이션 메트릭 수집 중 예상치 못한 오류 발생", e);
             throw new BusinessException(MonitoringErrorCode.METRICS_COLLECTION_FAILED, 
                 "애플리케이션 메트릭 수집 중 예상치 못한 오류가 발생했습니다: " + e.getMessage());
         }
@@ -224,19 +229,19 @@ public class MetricsCollectionService {
      */
     @Recover
     public void recoverFromApplicationMetricsFailure(Exception e) {
-        log.error("애플리케이션 메트릭 수집의 모든 재시도가 실패했습니다.", e);
+        log.error("[MetricsCollectionService] recoverFromApplicationMetricsFailure - 애플리케이션 메트릭 수집의 모든 재시도가 실패했습니다.", e);
         
         // 캐시된 데이터 사용
         List<Metric> cachedMetrics = metricsCache.getLastSuccessfulApplicationMetrics();
         
         if (!cachedMetrics.isEmpty()) {
-            log.warn("캐시된 애플리케이션 메트릭 {}개를 사용합니다.", cachedMetrics.size());
+            log.warn("[MetricsCollectionService] recoverFromApplicationMetricsFailure - 캐시된 애플리케이션 메트릭 {}개를 사용합니다.", cachedMetrics.size());
             // 캐시된 데이터는 이미 저장되어 있으므로 별도 저장 불필요
             return;
         }
         
         // 캐시도 없으면 경고만 로그 (애플리케이션 메트릭은 선택적이므로 예외 발생하지 않음)
-        log.warn("캐시된 애플리케이션 메트릭도 없습니다. 이번 수집 주기는 건너뜁니다.");
+        log.warn("[MetricsCollectionService] recoverFromApplicationMetricsFailure - 캐시된 애플리케이션 메트릭도 없습니다. 이번 수집 주기는 건너뜁니다.");
     }
     
     /**
@@ -254,7 +259,7 @@ public class MetricsCollectionService {
      */
     private void saveMetricsWithPartialFailureHandling(List<Metric> metrics) {
         if (metrics == null || metrics.isEmpty()) {
-            log.debug("저장할 메트릭이 없습니다.");
+            log.debug("[MetricsCollectionService] saveMetricsWithPartialFailureHandling - 저장할 메트릭이 없습니다.");
             return;
         }
         
@@ -268,18 +273,18 @@ public class MetricsCollectionService {
                 metricRepository.save(metric);
                 checkThresholdViolations(metric);
                 successCount++;
-                log.debug("메트릭 저장 성공: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit());
+                log.debug("[MetricsCollectionService] saveMetricsWithPartialFailureHandling - 메트릭 저장 성공: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit());
             } catch (Exception e) {
                 failureCount++;
                 failedMetricNames.add(metric.getMetricName());
-                log.warn("메트릭 저장 실패: name={}, error={}", metric.getMetricName(), e.getMessage());
+                log.warn("[MetricsCollectionService] saveMetricsWithPartialFailureHandling - 메트릭 저장 실패: name={}, error={}", metric.getMetricName(), e.getMessage());
             }
         }
         
-        log.info("메트릭 저장 완료: 성공={}, 실패={}", successCount, failureCount);
+        log.info("[MetricsCollectionService] saveMetricsWithPartialFailureHandling - 메트릭 저장 완료: 성공={}, 실패={}", successCount, failureCount);
         
         if (failureCount > 0) {
-            log.warn("실패한 메트릭 목록: {}", failedMetricNames);
+            log.warn("[MetricsCollectionService] saveMetricsWithPartialFailureHandling - 실패한 메트릭 목록: {}", failedMetricNames);
         }
         
         // 모든 메트릭 저장 실패 시에만 예외 발생
@@ -291,18 +296,20 @@ public class MetricsCollectionService {
 
     /**
      * 수동 메트릭 수집 (API 호출용)
+     *
+     * @throws BusinessException 메트릭 수집 실패 시
      */
     @Transactional
     public void collectMetricsManually() {
-        log.info("Manual metrics collection requested");
+        log.info("[MetricsCollectionService] collectMetricsManually - Manual metrics collection requested");
         try {
             collectSystemMetrics();
             collectApplicationMetrics();
         } catch (BusinessException e) {
-            log.error("Business error during manual metrics collection: {}", e.getMessage(), e);
+            log.error("[MetricsCollectionService] collectMetricsManually - Business error during manual metrics collection: {}", e.getMessage(), e);
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error during manual metrics collection", e);
+            log.error("[MetricsCollectionService] collectMetricsManually - Unexpected error during manual metrics collection", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "수동 메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
         }
@@ -310,6 +317,8 @@ public class MetricsCollectionService {
 
     /**
      * 시스템 메트릭을 데이터베이스에 저장
+     *
+     * @param systemMetrics 저장할 시스템 메트릭
      */
     private void saveSystemMetrics(SystemMetrics systemMetrics) {
         try {
@@ -358,7 +367,7 @@ public class MetricsCollectionService {
                           Metric.MetricType.SYSTEM, collectedAt, metadata);
             }
         } catch (Exception e) {
-            log.error("Error saving system metrics to database", e);
+            log.error("[MetricsCollectionService] saveSystemMetrics - Error saving system metrics to database", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메트릭 데이터 저장 중 오류가 발생했습니다.");
         }
@@ -366,6 +375,8 @@ public class MetricsCollectionService {
 
     /**
      * 메트릭 엔티티 저장
+     *
+     * @param metric 저장할 메트릭 엔티티
      */
     private void saveMetric(Metric metric) {
         try {
@@ -374,9 +385,9 @@ public class MetricsCollectionService {
             // ✅ 임계값 위반 확인
             checkThresholdViolations(metric);
             
-            log.debug("Saved metric: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit());
+            log.debug("[MetricsCollectionService] saveMetric - Saved metric: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit());
         } catch (Exception e) {
-            log.error("Error saving metric: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit(), e);
+            log.error("[MetricsCollectionService] saveMetric - Error saving metric: {} = {} {}", metric.getMetricName(), metric.getMetricValue(), metric.getUnit(), e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메트릭 저장 중 오류가 발생했습니다.");
         }
@@ -384,6 +395,13 @@ public class MetricsCollectionService {
 
     /**
      * 개별 메트릭 저장
+     *
+     * @param metricName 메트릭 이름
+     * @param metricValue 메트릭 값
+     * @param unit 단위
+     * @param metricType 메트릭 타입
+     * @param collectedAt 수집 시간
+     * @param metadata 메타데이터
      */
     private void saveMetric(String metricName, Double metricValue, String unit, 
                            Metric.MetricType metricType, LocalDateTime collectedAt, 
@@ -404,9 +422,9 @@ public class MetricsCollectionService {
             // ✅ 임계값 위반 확인
             checkThresholdViolations(metric);
             
-            log.debug("Saved metric: {} = {} {}", metricName, metricValue, unit);
+            log.debug("[MetricsCollectionService] saveMetric - Saved metric: {} = {} {}", metricName, metricValue, unit);
         } catch (Exception e) {
-            log.error("Error saving metric: {} = {} {}", metricName, metricValue, unit, e);
+            log.error("[MetricsCollectionService] saveMetric - Error saving metric: {} = {} {}", metricName, metricValue, unit, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메트릭 저장 중 오류가 발생했습니다.");
         }
@@ -414,6 +432,9 @@ public class MetricsCollectionService {
 
     /**
      * 메타데이터를 JSON 문자열로 변환
+     *
+     * @param metadata 변환할 메타데이터 맵
+     * @return JSON 문자열 (null 가능)
      */
     private String convertMetadataToString(Map<String, Object> metadata) {
         if (metadata == null || metadata.isEmpty()) {
@@ -424,7 +445,7 @@ public class MetricsCollectionService {
             // TODO: JSON 변환 로직 구현 (Jackson 또는 Gson 사용)
             return metadata.toString();
         } catch (Exception e) {
-            log.warn("Failed to convert metadata to string", e);
+            log.warn("[MetricsCollectionService] convertMetadataToString - Failed to convert metadata to string", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메타데이터 변환에 실패했습니다.");
         }
@@ -442,7 +463,7 @@ public class MetricsCollectionService {
             
             for (MetricThreshold threshold : thresholds) {
                 if (threshold.isThresholdViolated(metric.getMetricValue())) {
-                    log.warn("🚨 Threshold violated for metric {}: {} {} {} {}", 
+                    log.warn("[MetricsCollectionService] checkThresholdViolations - 🚨 Threshold violated for metric {}: {} {} {} {}", 
                         metric.getMetricName(), 
                         metric.getMetricValue(), 
                         threshold.getOperator(), 
@@ -452,16 +473,16 @@ public class MetricsCollectionService {
                     // 이벤트 발행 (Issue #15 가이드: 이벤트 기반 알림)
                     try {
                         eventPublisher.publishEvent(new ThresholdExceededEvent(this, threshold, metric));
-                        log.debug("✅ ThresholdExceededEvent published for metric: {}", metric.getMetricName());
+                        log.debug("[MetricsCollectionService] checkThresholdViolations - ✅ ThresholdExceededEvent published for metric: {}", metric.getMetricName());
                     } catch (Exception eventException) {
-                        log.error("❌ Failed to publish ThresholdExceededEvent for metric: {}", 
+                        log.error("[MetricsCollectionService] checkThresholdViolations - ❌ Failed to publish ThresholdExceededEvent for metric: {}", 
                             metric.getMetricName(), eventException);
                         // 이벤트 발행 실패는 메트릭 저장을 중단시키지 않음
                     }
                 }
             }
         } catch (Exception e) {
-            log.error("Error checking threshold violations for metric: {}", metric.getMetricName(), e);
+            log.error("[MetricsCollectionService] checkThresholdViolations - Error checking threshold violations for metric: {}", metric.getMetricName(), e);
             // 임계값 확인 실패는 메트릭 저장을 중단시키지 않음
         }
     }
@@ -469,18 +490,18 @@ public class MetricsCollectionService {
     /**
      * 테넌트별 수집기 설정에 따른 메트릭 수집
      * 
-     * 각 테넌트의 설정에 따라 활성화된 수집기만 사용하여 메트릭을 수집합니다.
+     * <p>각 테넌트의 설정에 따라 활성화된 수집기만 사용하여 메트릭을 수집합니다.
      */
     private void collectMetricsByTenantConfig() {
         try {
             String tenantId = getCurrentTenantId();
-            log.debug("테넌트별 메트릭 수집 시작: tenantId={}", tenantId);
+            log.debug("[MetricsCollectionService] collectMetricsByTenantConfig - 테넌트별 메트릭 수집 시작: tenantId={}", tenantId);
             
             // 테넌트별 활성화된 수집기 설정 조회
             List<CollectorType> enabledCollectors = tenantCollectorConfigService.getEnabledCollectorTypesByTenant(tenantId);
             
             if (enabledCollectors.isEmpty()) {
-                log.debug("테넌트 {}에 활성화된 수집기가 없습니다. 기본 수집기 사용", tenantId);
+                log.debug("[MetricsCollectionService] collectMetricsByTenantConfig - 테넌트 {}에 활성화된 수집기가 없습니다. 기본 수집기 사용", tenantId);
                 // 기본 수집기 사용 (하위 호환성)
                 collectSystemMetrics();
                 collectApplicationMetrics();
@@ -492,13 +513,13 @@ public class MetricsCollectionService {
                 try {
                     collectMetricsByType(tenantId, collectorType);
                 } catch (Exception e) {
-                    log.warn("수집기 {} 메트릭 수집 실패: {}", collectorType, e.getMessage());
+                    log.warn("[MetricsCollectionService] collectMetricsByTenantConfig - 수집기 {} 메트릭 수집 실패: {}", collectorType, e.getMessage());
                     // 개별 수집기 실패는 전체 프로세스를 중단시키지 않음
                 }
             }
             
         } catch (Exception e) {
-            log.error("테넌트별 메트릭 수집 중 오류 발생", e);
+            log.error("[MetricsCollectionService] collectMetricsByTenantConfig - 테넌트별 메트릭 수집 중 오류 발생", e);
             // 테넌트별 수집 실패 시 기본 수집기 사용
             collectSystemMetrics();
             collectApplicationMetrics();
@@ -507,10 +528,13 @@ public class MetricsCollectionService {
 
     /**
      * 수집기 타입별 메트릭 수집
+     *
+     * @param tenantId 테넌트 ID
+     * @param collectorType 수집기 타입
      */
     private void collectMetricsByType(String tenantId, CollectorType collectorType) {
         try {
-            log.debug("수집기별 메트릭 수집: tenantId={}, collectorType={}", tenantId, collectorType);
+            log.debug("[MetricsCollectionService] collectMetricsByType - 수집기별 메트릭 수집: tenantId={}, collectorType={}", tenantId, collectorType);
             
             switch (collectorType) {
                 case SYSTEM -> {
@@ -536,21 +560,24 @@ public class MetricsCollectionService {
                 }
                 case EXTERNAL -> {
                     // 외부 메트릭 수집 (추후 구현)
-                    log.debug("외부 메트릭 수집기는 아직 구현되지 않았습니다: {}", collectorType);
+                    log.debug("[MetricsCollectionService] collectMetricsByType - 외부 메트릭 수집기는 아직 구현되지 않았습니다: {}", collectorType);
                 }
                 default -> {
-                    log.warn("지원되지 않는 수집기 타입: {}", collectorType);
+                    log.warn("[MetricsCollectionService] collectMetricsByType - 지원되지 않는 수집기 타입: {}", collectorType);
                 }
             }
             
         } catch (Exception e) {
-            log.error("수집기 {} 메트릭 수집 중 오류 발생: {}", collectorType, e.getMessage(), e);
+            log.error("[MetricsCollectionService] collectMetricsByType - 수집기 {} 메트릭 수집 중 오류 발생: {}", collectorType, e.getMessage(), e);
             throw e;
         }
     }
 
     /**
      * 테넌트 ID를 포함한 시스템 메트릭 저장
+     *
+     * @param systemMetrics 저장할 시스템 메트릭
+     * @param tenantId 테넌트 ID
      */
     private void saveSystemMetricsWithTenantId(SystemMetrics systemMetrics, String tenantId) {
         try {
@@ -599,7 +626,7 @@ public class MetricsCollectionService {
                           Metric.MetricType.SYSTEM, collectedAt, metadata, tenantId);
             }
         } catch (Exception e) {
-            log.error("Error saving system metrics to database for tenant: {}", tenantId, e);
+            log.error("[MetricsCollectionService] saveSystemMetricsWithTenantId - Error saving system metrics to database for tenant: {}", tenantId, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메트릭 데이터 저장 중 오류가 발생했습니다.");
         }
@@ -607,10 +634,13 @@ public class MetricsCollectionService {
 
     /**
      * 테넌트 ID를 포함한 메트릭 목록 저장
+     *
+     * @param metrics 저장할 메트릭 목록
+     * @param tenantId 테넌트 ID
      */
     private void saveMetricsWithTenantId(List<Metric> metrics, String tenantId) {
         if (metrics == null || metrics.isEmpty()) {
-            log.debug("저장할 메트릭이 없습니다: tenantId={}", tenantId);
+            log.debug("[MetricsCollectionService] saveMetricsWithTenantId - 저장할 메트릭이 없습니다: tenantId={}", tenantId);
             return;
         }
         
@@ -624,20 +654,28 @@ public class MetricsCollectionService {
                 metricRepository.save(metric);
                 checkThresholdViolations(metric);
                 successCount++;
-                log.debug("메트릭 저장 성공: {} = {} {} (tenantId={})", 
+                log.debug("[MetricsCollectionService] saveMetricsWithTenantId - 메트릭 저장 성공: {} = {} {} (tenantId={})", 
                     metric.getMetricName(), metric.getMetricValue(), metric.getUnit(), tenantId);
             } catch (Exception e) {
                 failureCount++;
-                log.warn("메트릭 저장 실패: name={}, tenantId={}, error={}", 
+                log.warn("[MetricsCollectionService] saveMetricsWithTenantId - 메트릭 저장 실패: name={}, tenantId={}, error={}", 
                     metric.getMetricName(), tenantId, e.getMessage());
             }
         }
         
-        log.info("메트릭 저장 완료: tenantId={}, 성공={}, 실패={}", tenantId, successCount, failureCount);
+        log.info("[MetricsCollectionService] saveMetricsWithTenantId - 메트릭 저장 완료: tenantId={}, 성공={}, 실패={}", tenantId, successCount, failureCount);
     }
 
     /**
      * 테넌트 ID를 포함한 개별 메트릭 저장
+     *
+     * @param metricName 메트릭 이름
+     * @param metricValue 메트릭 값
+     * @param unit 단위
+     * @param metricType 메트릭 타입
+     * @param collectedAt 수집 시간
+     * @param metadata 메타데이터
+     * @param tenantId 테넌트 ID
      */
     private void saveMetricWithTenantId(String metricName, Double metricValue, String unit, 
                                        Metric.MetricType metricType, LocalDateTime collectedAt, 
@@ -658,9 +696,9 @@ public class MetricsCollectionService {
             // ✅ 임계값 위반 확인
             checkThresholdViolations(metric);
             
-            log.debug("Saved metric: {} = {} {} (tenantId={})", metricName, metricValue, unit, tenantId);
+            log.debug("[MetricsCollectionService] saveMetricWithTenantId - Saved metric: {} = {} {} (tenantId={})", metricName, metricValue, unit, tenantId);
         } catch (Exception e) {
-            log.error("Error saving metric: {} = {} {} (tenantId={})", metricName, metricValue, unit, tenantId, e);
+            log.error("[MetricsCollectionService] saveMetricWithTenantId - Error saving metric: {} = {} {} (tenantId={})", metricName, metricValue, unit, tenantId, e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메트릭 저장 중 오류가 발생했습니다.");
         }
@@ -676,7 +714,7 @@ public class MetricsCollectionService {
         try {
             return TenantContextHolder.getCurrentTenantKeyOrThrow();
         } catch (Exception e) {
-            log.debug("No tenant context available, using system default tenant");
+            log.debug("[MetricsCollectionService] getCurrentTenantId - No tenant context available, using system default tenant");
             return "system"; // 시스템 메트릭용 기본 테넌트 ID
         }
     }

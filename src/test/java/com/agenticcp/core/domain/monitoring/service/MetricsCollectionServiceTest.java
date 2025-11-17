@@ -24,10 +24,16 @@ import static org.mockito.Mockito.*;
 
 /**
  * MetricsCollectionService 단위 테스트
- * 메트릭 수집 서비스의 핵심 비즈니스 로직을 검증
- * 테스트 가이드라인에 따라 @Nested 클래스로 그룹화
+ * 
+ * <p>메트릭 수집 서비스의 핵심 비즈니스 로직을 검증합니다.
+ * 테스트 가이드라인에 따라 @Nested 클래스로 그룹화합니다.
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("MetricsCollectionService 단위 테스트")
 class MetricsCollectionServiceTest {
 
     @Mock
@@ -97,7 +103,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("수동 메트릭 수집 시 모든 메트릭이 수집됨")
-        void collectMetricsManually_shouldCollectAllMetrics() {
+        void collectMetricsManually_WhenCalled_CollectsAllMetrics() {
             // Given
             SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
@@ -131,7 +137,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("CPU 사용률 메트릭이 올바르게 저장됨")
-        void collectSystemMetrics_shouldSaveCpuUsageMetric() {
+        void collectSystemMetrics_WhenValidMetrics_SavesCpuUsageMetric() {
             // Given
             SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
@@ -158,7 +164,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("메모리 관련 메트릭들이 올바르게 저장됨")
-        void collectSystemMetrics_shouldSaveMemoryMetrics() {
+        void collectSystemMetrics_WhenValidMetrics_SavesMemoryMetrics() {
             // Given
             SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
@@ -198,7 +204,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("디스크 관련 메트릭들이 올바르게 저장됨")
-        void collectSystemMetrics_shouldSaveDiskMetrics() {
+        void collectSystemMetrics_WhenValidMetrics_SavesDiskMetrics() {
             // Given
             SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
@@ -250,7 +256,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("null 값이 있는 메트릭은 저장되지 않음")
-        void collectSystemMetrics_shouldSkipNullMetrics() {
+        void collectSystemMetrics_WhenNullValues_SkipsNullMetrics() {
             // Given
             SystemMetrics metricsWithNulls = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(metricsWithNulls);
@@ -272,7 +278,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("메타데이터가 문자열로 변환되어 저장됨")
-        void collectSystemMetrics_shouldConvertMetadataToString() {
+        void collectSystemMetrics_WhenMetadataExists_ConvertsMetadataToString() {
             // Given
             SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);
@@ -297,7 +303,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("애플리케이션 메트릭 수집은 현재 TODO 상태")
-        void collectApplicationMetrics_shouldNotThrowException() {
+        void collectApplicationMetrics_WhenCalled_DoesNotThrowException() {
             // When & Then: 예외 발생하지 않음
             assertThatCode(() -> metricsCollectionService.collectApplicationMetrics())
                     .doesNotThrowAnyException();
@@ -344,7 +350,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("SystemMetricsCollector 예외 시 BusinessException 발생")
-        void collectSystemMetrics_shouldThrowBusinessExceptionWhenCollectorFails() {
+        void collectSystemMetrics_WhenCollectorFails_ThrowsBusinessException() {
             // Given
             when(systemMetricsCollector.collectSystemMetrics())
                     .thenThrow(new RuntimeException("Collection failed"));
@@ -363,7 +369,7 @@ class MetricsCollectionServiceTest {
          */
         @Test
         @DisplayName("Repository 저장 실패 시 BusinessException 발생")
-        void collectSystemMetrics_shouldThrowBusinessExceptionWhenSaveFails() {
+        void collectSystemMetrics_WhenSaveFails_ThrowsBusinessException() {
             // Given
             SystemMetrics testMetrics = TestDataBuilder.systemMetrics();
             when(systemMetricsCollector.collectSystemMetrics()).thenReturn(testMetrics);

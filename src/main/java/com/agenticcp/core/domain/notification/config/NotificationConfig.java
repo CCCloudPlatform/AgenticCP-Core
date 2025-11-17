@@ -14,6 +14,10 @@ import java.util.concurrent.Executor;
  * 알림 시스템 설정
  * 
  * <p>슬랙 웹훅 발송을 위한 RestTemplate 설정과 비동기 처리를 위한 설정을 제공합니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Configuration
 @EnableAsync
@@ -23,6 +27,9 @@ public class NotificationConfig {
      * 알림 발송용 RestTemplate 빈 설정
      * 
      * <p>슬랙, 디스코드 등 웹훅 기반 알림 발송에 사용됩니다.</p>
+     * 
+     * @param builder RestTemplate 빌더
+     * @return RestTemplate 인스턴스
      */
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
@@ -36,6 +43,8 @@ public class NotificationConfig {
      * 알림 발송을 위한 비동기 실행자 설정
      * 
      * <p>알림 발송 작업을 비동기로 처리하기 위한 ThreadPoolTaskExecutor를 설정합니다.</p>
+     * 
+     * @return 알림 발송용 비동기 실행자
      */
     @Bean("notificationExecutor")
     public Executor notificationExecutor() {

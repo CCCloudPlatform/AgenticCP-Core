@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 사용자 관리 서비스
@@ -258,5 +259,61 @@ public class UserService {
         User saved = userRepository.save(user);
         log.info("[UserService] saveUser - success username={}", maskingService.mask(saved.getUsername(), 2, 2));
         return saved;
+    }
+
+    /**
+     * 2FA 활성화
+     * 
+     * @param username 사용자명
+     * @param secretKey TOTP 시크릿 키
+     * @return 업데이트된 사용자
+     */
+    @Transactional
+    public User enableTwoFactor(String username, String secretKey) {
+        log.info("[UserService] enableTwoFactor - username={}", maskingService.mask(username, 2, 2));
+        
+        User user = getUserByUsernameOrThrow(username);
+        user.enableTwoFactor(secretKey);
+        
+        User saved = userRepository.save(user);
+        log.info("[UserService] enableTwoFactor - success username={} status={}", 
+            maskingService.mask(saved.getUsername(), 2, 2), saved.getStatus());
+        
+        return saved;
+    }
+
+    /**
+     * 2FA 비활성화
+     * 
+     * @param username 사용자명
+     * @return 업데이트된 사용자
+     */
+    @Transactional
+    public User disableTwoFactor(String username) {
+        log.info("[UserService] disableTwoFactor - username={}", maskingService.mask(username, 2, 2));
+        
+        User user = getUserByUsernameOrThrow(username);
+        user.disableTwoFactor();
+        
+        User saved = userRepository.save(user);
+        log.info("[UserService] disableTwoFactor - success username={}", 
+            maskingService.mask(saved.getUsername(), 2, 2));
+        
+        return saved;
+    }
+
+    /**
+     * 상태별 사용자 조회
+     * 
+     * @param status 사용자 상태
+     * @return 해당 상태의 사용자 목록
+     */
+    public List<User> getUsersByStatus(Status status) {
+        log.info("[UserService] getUsersByStatus - status={}", status);
+        List<User> users = userRepository.findAll().stream()
+            .filter(user -> user.getStatus() == status)
+            .collect(Collectors.toList());
+        log.info("[UserService] getUsersByStatus - found {} users", users.size());
+        return users;
     }
 }

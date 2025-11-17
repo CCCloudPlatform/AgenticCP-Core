@@ -14,6 +14,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,10 +26,15 @@ import java.util.stream.Collectors;
 /**
  * 정책 우선순위 및 충돌 해결 테스트용 컨트롤러
  * Feature 2 기능을 수동으로 테스트하기 위한 API 제공
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-08
  */
 @RestController
 @RequestMapping("/security/priority")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Policy Priority Management", description = "정책 우선순위 및 충돌 해결 테스트 API")
 public class PolicyPriorityController {
 
@@ -43,6 +49,7 @@ public class PolicyPriorityController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> validatePriority(
             @PathVariable Integer priority) {
         
+        log.info("[PolicyPriorityController] validatePriority - priority={}", priority);
         boolean isValid = policyPriorityService.isValidPriority(priority);
         
         Map<String, Object> result = new HashMap<>();
@@ -62,7 +69,8 @@ public class PolicyPriorityController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> assignAutoPriority(
             @RequestParam(required = false) String tenantId) {
         
-        Integer assignedPriority = policyPriorityService.assignAutoPriority(tenantId);
+        log.info("[PolicyPriorityController] assignAutoPriority - tenantId={}", tenantId);
+        Integer assignedPriority = policyPriorityService.assignAutoPriority(tenantId != null ? Long.valueOf(tenantId) : null);
         
         Map<String, Object> result = new HashMap<>();
         result.put("tenantId", tenantId != null ? tenantId : "GLOBAL");
@@ -81,7 +89,8 @@ public class PolicyPriorityController {
             @RequestParam(required = false) String tenantId,
             @RequestParam(required = false) Integer currentPriority) {
         
-        Integer nextPriority = policyPriorityService.findNextAvailablePriority(tenantId, currentPriority);
+        log.info("[PolicyPriorityController] findNextAvailablePriority - tenantId={}, currentPriority={}", tenantId, currentPriority);
+        Integer nextPriority = policyPriorityService.findNextAvailablePriority(tenantId != null ? Long.valueOf(tenantId) : null, currentPriority);
         
         Map<String, Object> result = new HashMap<>();
         result.put("tenantId", tenantId != null ? tenantId : "GLOBAL");
@@ -101,9 +110,10 @@ public class PolicyPriorityController {
             @RequestParam(required = false) String tenantId,
             @RequestParam(defaultValue = "false") boolean ascending) {
         
+        log.info("[PolicyPriorityController] getSortedPolicies - tenantId={}, ascending={}", tenantId, ascending);
         List<SecurityPolicy> policies;
         if (tenantId != null) {
-            policies = policyRepository.findByTenantIdAndIsEnabledTrue(tenantId);
+            policies = policyRepository.findByTenantIdAndIsEnabledTrue(Long.valueOf(tenantId));
         } else {
             policies = policyRepository.findByIsGlobalTrueAndIsEnabledTrue();
         }
@@ -139,6 +149,7 @@ public class PolicyPriorityController {
     public ResponseEntity<ApiResponse<PolicyConflictResolution>> resolveConflict(
             @RequestBody ConflictSimulationRequest request) {
         
+        log.info("[PolicyPriorityController] resolveConflict - request={}", request);
         // 정책 ID 목록으로 정책 조회
         List<SecurityPolicy> policies = request.getPolicyIds().stream()
             .map(id -> policyRepository.findById(id).orElse(null))
@@ -178,6 +189,7 @@ public class PolicyPriorityController {
     @GetMapping("/strategies")
     @Operation(summary = "충돌 해결 전략 목록", description = "사용 가능한 모든 충돌 해결 전략을 조회합니다")
     public ResponseEntity<ApiResponse<List<Map<String, String>>>> getStrategies() {
+        log.info("[PolicyPriorityController] getStrategies");
         List<Map<String, String>> strategies = java.util.Arrays.stream(ConflictResolutionStrategy.values())
             .map(s -> {
                 Map<String, String> map = new HashMap<>();

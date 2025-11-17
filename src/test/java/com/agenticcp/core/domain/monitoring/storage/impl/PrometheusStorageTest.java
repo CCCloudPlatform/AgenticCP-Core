@@ -1,11 +1,13 @@
 package com.agenticcp.core.domain.monitoring.storage.impl;
 
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import com.agenticcp.core.domain.monitoring.TestDataBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -22,7 +24,7 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @DisplayName("Prometheus 저장소 테스트")
 class PrometheusStorageTest {
@@ -36,179 +38,210 @@ class PrometheusStorageTest {
         prometheusStorage = new PrometheusStorage(config);
     }
 
-    @Test
-    @DisplayName("저장소 타입 확인")
-    void getStorageType_ReturnsPrometheus() {
-        // when
-        StorageType type = prometheusStorage.getStorageType();
+    @Nested
+    @DisplayName("저장소 타입 테스트")
+    class StorageTypeTest {
 
-        // then
-        assertThat(type).isEqualTo(StorageType.PROMETHEUS);
+        @Test
+        @DisplayName("저장소 타입 확인")
+        void getStorageType_WhenCalled_ReturnsPrometheus() {
+            // When
+            StorageType type = prometheusStorage.getStorageType();
+
+            // Then
+            assertThat(type).isEqualTo(StorageType.PROMETHEUS);
+        }
     }
 
-    @Test
-    @DisplayName("초기 활성화 상태 확인")
-    void isEnabled_InitiallyTrue() {
-        // then
-        assertThat(prometheusStorage.isEnabled()).isTrue();
+    @Nested
+    @DisplayName("활성화 상태 테스트")
+    class EnabledStateTest {
+
+        @Test
+        @DisplayName("초기 활성화 상태 확인")
+        void isEnabled_WhenCalled_ReturnsTrue() {
+            // When
+            boolean result = prometheusStorage.isEnabled();
+
+            // Then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("활성화 상태 변경")
+        void setEnabled_WhenDisabled_ChangesEnabledState() {
+            // When
+            prometheusStorage.setEnabled(false);
+
+            // Then
+            assertThat(prometheusStorage.isEnabled()).isFalse();
+
+            // When
+            prometheusStorage.setEnabled(true);
+
+            // Then
+            assertThat(prometheusStorage.isEnabled()).isTrue();
+        }
     }
 
-    @Test
-    @DisplayName("활성화 상태 변경")
-    void setEnabled_ChangesState() {
-        // when
-        prometheusStorage.setEnabled(false);
+    @Nested
+    @DisplayName("연결 관리 테스트")
+    class ConnectionTest {
 
-        // then
-        assertThat(prometheusStorage.isEnabled()).isFalse();
+        @Test
+        @DisplayName("초기 연결 상태 확인")
+        void isConnected_WhenNotConnected_ReturnsFalse() {
+            // When
+            boolean result = prometheusStorage.isConnected();
 
-        // when
-        prometheusStorage.setEnabled(true);
+            // Then
+            assertThat(result).isFalse();
+        }
 
-        // then
-        assertThat(prometheusStorage.isEnabled()).isTrue();
+        @Test
+        @DisplayName("연결 성공")
+        void connect_WhenCalled_ConnectsSuccessfully() {
+            // When
+            prometheusStorage.connect();
+
+            // Then
+            assertThat(prometheusStorage.isConnected()).isTrue();
+        }
+
+        @Test
+        @DisplayName("이미 연결된 상태에서 연결 시도")
+        void connect_WhenAlreadyConnected_DoesNothing() {
+            // Given
+            prometheusStorage.connect();
+
+            // When
+            prometheusStorage.connect();
+
+            // Then
+            assertThat(prometheusStorage.isConnected()).isTrue();
+        }
+
+        @Test
+        @DisplayName("연결 해제 성공")
+        void disconnect_WhenConnected_DisconnectsSuccessfully() {
+            // Given
+            prometheusStorage.connect();
+
+            // When
+            prometheusStorage.disconnect();
+
+            // Then
+            assertThat(prometheusStorage.isConnected()).isFalse();
+        }
+
+        @Test
+        @DisplayName("이미 연결 해제된 상태에서 해제 시도")
+        void disconnect_WhenAlreadyDisconnected_DoesNothing() {
+            // Given
+            prometheusStorage.disconnect();
+
+            // When
+            prometheusStorage.disconnect();
+
+            // Then
+            assertThat(prometheusStorage.isConnected()).isFalse();
+        }
     }
 
-    @Test
-    @DisplayName("초기 연결 상태 확인")
-    void isConnected_InitiallyFalse() {
-        // then
-        assertThat(prometheusStorage.isConnected()).isFalse();
+    @Nested
+    @DisplayName("메트릭 저장 테스트")
+    class SaveMetricsTest {
+
+        @Test
+        @DisplayName("메트릭 저장 시도 (활성화, 연결됨)")
+        void saveMetrics_WhenEnabledAndConnected_DoesNotThrowException() {
+            // Given
+            prometheusStorage.connect();
+            List<Metric> metrics = createTestMetrics();
+
+            // When & Then
+            assertThatCode(() -> prometheusStorage.saveMetrics(metrics))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("메트릭 저장 시도 (비활성화)")
+        void saveMetrics_WhenDisabled_ThrowsBusinessException() {
+            // Given
+            prometheusStorage.setEnabled(false);
+            List<Metric> metrics = createTestMetrics();
+
+            // When & Then
+            assertThatThrownBy(() -> prometheusStorage.saveMetrics(metrics))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("비활성화");
+        }
+
+        @Test
+        @DisplayName("메트릭 저장 시도 (연결 안됨)")
+        void saveMetrics_WhenNotConnected_ThrowsBusinessException() {
+            // Given
+            prometheusStorage.setEnabled(true);
+            prometheusStorage.disconnect();
+            List<Metric> metrics = createTestMetrics();
+
+            // When & Then
+            assertThatThrownBy(() -> prometheusStorage.saveMetrics(metrics))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("연결되지 않았습니다");
+        }
     }
 
-    @Test
-    @DisplayName("연결 성공")
-    void connect_Success() {
-        // when
-        prometheusStorage.connect();
+    @Nested
+    @DisplayName("메트릭 조회 테스트")
+    class GetMetricsTest {
 
-        // then
-        assertThat(prometheusStorage.isConnected()).isTrue();
-    }
+        @Test
+        @DisplayName("메트릭 조회 시도 (활성화, 연결됨)")
+        void getMetrics_WhenEnabledAndConnected_ReturnsEmptyList() {
+            // Given
+            prometheusStorage.connect();
+            String metricName = "cpu.usage";
+            LocalDateTime startTime = LocalDateTime.now().minusHours(1);
+            LocalDateTime endTime = LocalDateTime.now();
 
-    @Test
-    @DisplayName("이미 연결된 상태에서 연결 시도")
-    void connect_AlreadyConnected() {
-        // given
-        prometheusStorage.connect(); // 먼저 연결
+            // When
+            List<Metric> result = prometheusStorage.getMetrics(metricName, startTime, endTime);
 
-        // when
-        prometheusStorage.connect(); // 다시 연결 시도
+            // Then
+            assertThat(result).isEmpty();
+        }
 
-        // then
-        assertThat(prometheusStorage.isConnected()).isTrue(); // 여전히 연결 상태
-    }
+        @Test
+        @DisplayName("메트릭 조회 시도 (비활성화)")
+        void getMetrics_WhenDisabled_ThrowsBusinessException() {
+            // Given
+            prometheusStorage.setEnabled(false);
+            String metricName = "cpu.usage";
+            LocalDateTime startTime = LocalDateTime.now().minusHours(1);
+            LocalDateTime endTime = LocalDateTime.now();
 
-    @Test
-    @DisplayName("연결 해제 성공")
-    void disconnect_Success() {
-        // given
-        prometheusStorage.connect(); // 먼저 연결
+            // When & Then
+            assertThatThrownBy(() -> prometheusStorage.getMetrics(metricName, startTime, endTime))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("비활성화");
+        }
 
-        // when
-        prometheusStorage.disconnect();
+        @Test
+        @DisplayName("메트릭 조회 시도 (연결 안됨)")
+        void getMetrics_WhenNotConnected_ThrowsBusinessException() {
+            // Given
+            prometheusStorage.setEnabled(true);
+            prometheusStorage.disconnect();
+            String metricName = "cpu.usage";
+            LocalDateTime startTime = LocalDateTime.now().minusHours(1);
+            LocalDateTime endTime = LocalDateTime.now();
 
-        // then
-        assertThat(prometheusStorage.isConnected()).isFalse();
-    }
-
-    @Test
-    @DisplayName("이미 연결 해제된 상태에서 해제 시도")
-    void disconnect_AlreadyDisconnected() {
-        // given
-        prometheusStorage.disconnect(); // 먼저 해제 (초기 상태)
-
-        // when
-        prometheusStorage.disconnect(); // 다시 해제 시도
-
-        // then
-        assertThat(prometheusStorage.isConnected()).isFalse(); // 여전히 해제 상태
-    }
-
-    @Test
-    @DisplayName("메트릭 저장 시도 (활성화, 연결됨)")
-    void saveMetrics_EnabledAndConnected_Success() {
-        // given
-        prometheusStorage.connect(); // 연결
-        List<Metric> metrics = createTestMetrics();
-
-        // when
-        assertThatCode(() -> prometheusStorage.saveMetrics(metrics))
-                .doesNotThrowAnyException(); // 예외가 발생하지 않아야 함
-    }
-
-    @Test
-    @DisplayName("메트릭 저장 시도 (비활성화)")
-    void saveMetrics_Disabled_ThrowsException() {
-        // given
-        prometheusStorage.setEnabled(false); // 비활성화
-        List<Metric> metrics = createTestMetrics();
-
-        // when & then
-        assertThatThrownBy(() -> prometheusStorage.saveMetrics(metrics))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("비활성화");
-    }
-
-    @Test
-    @DisplayName("메트릭 저장 시도 (연결 안됨)")
-    void saveMetrics_NotConnected_ThrowsException() {
-        // given
-        prometheusStorage.setEnabled(true); // 활성화
-        prometheusStorage.disconnect(); // 연결 해제
-        List<Metric> metrics = createTestMetrics();
-
-        // when & then
-        assertThatThrownBy(() -> prometheusStorage.saveMetrics(metrics))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("연결되지 않았습니다");
-    }
-
-    @Test
-    @DisplayName("메트릭 조회 시도 (활성화, 연결됨)")
-    void getMetrics_EnabledAndConnected_ReturnsEmptyList() {
-        // given
-        prometheusStorage.connect(); // 연결
-        String metricName = "cpu.usage";
-        LocalDateTime startTime = LocalDateTime.now().minusHours(1);
-        LocalDateTime endTime = LocalDateTime.now();
-
-        // when
-        List<Metric> result = prometheusStorage.getMetrics(metricName, startTime, endTime);
-
-        // then
-        assertThat(result).isEmpty(); // 실제 조회 로직은 TODO이므로 빈 리스트 반환 예상
-    }
-
-    @Test
-    @DisplayName("메트릭 조회 시도 (비활성화)")
-    void getMetrics_Disabled_ThrowsException() {
-        // given
-        prometheusStorage.setEnabled(false); // 비활성화
-        String metricName = "cpu.usage";
-        LocalDateTime startTime = LocalDateTime.now().minusHours(1);
-        LocalDateTime endTime = LocalDateTime.now();
-
-        // when & then
-        assertThatThrownBy(() -> prometheusStorage.getMetrics(metricName, startTime, endTime))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("비활성화");
-    }
-
-    @Test
-    @DisplayName("메트릭 조회 시도 (연결 안됨)")
-    void getMetrics_NotConnected_ThrowsException() {
-        // given
-        prometheusStorage.setEnabled(true); // 활성화
-        prometheusStorage.disconnect(); // 연결 해제
-        String metricName = "cpu.usage";
-        LocalDateTime startTime = LocalDateTime.now().minusHours(1);
-        LocalDateTime endTime = LocalDateTime.now();
-
-        // when & then
-        assertThatThrownBy(() -> prometheusStorage.getMetrics(metricName, startTime, endTime))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("연결되지 않았습니다");
+            // When & Then
+            assertThatThrownBy(() -> prometheusStorage.getMetrics(metricName, startTime, endTime))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("연결되지 않았습니다");
+        }
     }
 
     /**

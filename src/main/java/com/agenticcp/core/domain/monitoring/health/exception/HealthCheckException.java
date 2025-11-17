@@ -14,10 +14,21 @@ import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
  */
 public class HealthCheckException extends BusinessException {
     
+    /**
+     * 헬스체크 예외 생성
+     * 
+     * @param errorCode 모니터링 에러 코드
+     */
     public HealthCheckException(MonitoringErrorCode errorCode) {
         super(errorCode);
     }
     
+    /**
+     * 헬스체크 예외 생성 (커스텀 메시지)
+     * 
+     * @param errorCode 모니터링 에러 코드
+     * @param message 예외 메시지
+     */
     public HealthCheckException(MonitoringErrorCode errorCode, String message) {
         super(errorCode, message);
     }

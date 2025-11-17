@@ -4,6 +4,7 @@ import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.organization.entity.Organization;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -21,7 +22,7 @@ import java.util.List;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-10
  */
 @Entity
 @Table(name = "users", indexes = {
@@ -68,7 +69,7 @@ public class User extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private Status status = Status.ACTIVE;
+    private Status status = Status.PENDING;
 
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
@@ -148,5 +149,25 @@ public class User extends BaseEntity {
 
     public void lockAccount(int lockoutMinutes) {
         this.lockedUntil = LocalDateTime.now().plusMinutes(lockoutMinutes);
+    }
+
+    // 2FA 관련 Helper methods
+    public boolean isTwoFactorEnabled() {
+        return twoFactorEnabled != null && twoFactorEnabled;
+    }
+
+    public void enableTwoFactor(String secret) {
+        this.twoFactorEnabled = true;
+        this.twoFactorSecret = secret;
+        this.status = Status.ACTIVE; // 2FA 활성화 시 ACTIVE로 전환
+    }
+
+    public void disableTwoFactor() {
+        this.twoFactorEnabled = false;
+        this.twoFactorSecret = null;
+    }
+
+    public boolean isPendingTwoFactorSetup() {
+        return status == Status.PENDING && !isTwoFactorEnabled();
     }
 }

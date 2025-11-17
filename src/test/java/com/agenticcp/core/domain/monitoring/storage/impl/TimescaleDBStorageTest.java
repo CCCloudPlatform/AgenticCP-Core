@@ -1,11 +1,13 @@
 package com.agenticcp.core.domain.monitoring.storage.impl;
 
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.monitoring.entity.Metric;
 import com.agenticcp.core.domain.monitoring.enums.StorageType;
 import com.agenticcp.core.domain.monitoring.storage.MetricsStorageFactory;
 import com.agenticcp.core.domain.monitoring.TestDataBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -22,7 +24,7 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @DisplayName("TimescaleDB 저장소 테스트")
 class TimescaleDBStorageTest {
@@ -36,179 +38,210 @@ class TimescaleDBStorageTest {
         timescaleDBStorage = new TimescaleDBStorage(config);
     }
 
-    @Test
-    @DisplayName("저장소 타입 확인")
-    void getStorageType_ReturnsTimescaleDB() {
-        // when
-        StorageType type = timescaleDBStorage.getStorageType();
+    @Nested
+    @DisplayName("저장소 타입 테스트")
+    class StorageTypeTest {
 
-        // then
-        assertThat(type).isEqualTo(StorageType.TIMESCALEDB);
+        @Test
+        @DisplayName("저장소 타입 확인")
+        void getStorageType_WhenCalled_ReturnsTimescaleDB() {
+            // When
+            StorageType type = timescaleDBStorage.getStorageType();
+
+            // Then
+            assertThat(type).isEqualTo(StorageType.TIMESCALEDB);
+        }
     }
 
-    @Test
-    @DisplayName("초기 활성화 상태 확인")
-    void isEnabled_InitiallyTrue() {
-        // then
-        assertThat(timescaleDBStorage.isEnabled()).isTrue();
+    @Nested
+    @DisplayName("활성화 상태 테스트")
+    class EnabledStateTest {
+
+        @Test
+        @DisplayName("초기 활성화 상태 확인")
+        void isEnabled_WhenCalled_ReturnsTrue() {
+            // When
+            boolean result = timescaleDBStorage.isEnabled();
+
+            // Then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("활성화 상태 변경")
+        void setEnabled_WhenDisabled_ChangesEnabledState() {
+            // When
+            timescaleDBStorage.setEnabled(false);
+
+            // Then
+            assertThat(timescaleDBStorage.isEnabled()).isFalse();
+
+            // When
+            timescaleDBStorage.setEnabled(true);
+
+            // Then
+            assertThat(timescaleDBStorage.isEnabled()).isTrue();
+        }
     }
 
-    @Test
-    @DisplayName("활성화 상태 변경")
-    void setEnabled_ChangesState() {
-        // when
-        timescaleDBStorage.setEnabled(false);
+    @Nested
+    @DisplayName("연결 관리 테스트")
+    class ConnectionTest {
 
-        // then
-        assertThat(timescaleDBStorage.isEnabled()).isFalse();
+        @Test
+        @DisplayName("초기 연결 상태 확인")
+        void isConnected_WhenNotConnected_ReturnsFalse() {
+            // When
+            boolean result = timescaleDBStorage.isConnected();
 
-        // when
-        timescaleDBStorage.setEnabled(true);
+            // Then
+            assertThat(result).isFalse();
+        }
 
-        // then
-        assertThat(timescaleDBStorage.isEnabled()).isTrue();
+        @Test
+        @DisplayName("연결 성공")
+        void connect_WhenCalled_ConnectsSuccessfully() {
+            // When
+            timescaleDBStorage.connect();
+
+            // Then
+            assertThat(timescaleDBStorage.isConnected()).isTrue();
+        }
+
+        @Test
+        @DisplayName("이미 연결된 상태에서 연결 시도")
+        void connect_WhenAlreadyConnected_DoesNothing() {
+            // Given
+            timescaleDBStorage.connect();
+
+            // When
+            timescaleDBStorage.connect();
+
+            // Then
+            assertThat(timescaleDBStorage.isConnected()).isTrue();
+        }
+
+        @Test
+        @DisplayName("연결 해제 성공")
+        void disconnect_WhenConnected_DisconnectsSuccessfully() {
+            // Given
+            timescaleDBStorage.connect();
+
+            // When
+            timescaleDBStorage.disconnect();
+
+            // Then
+            assertThat(timescaleDBStorage.isConnected()).isFalse();
+        }
+
+        @Test
+        @DisplayName("이미 연결 해제된 상태에서 해제 시도")
+        void disconnect_WhenAlreadyDisconnected_DoesNothing() {
+            // Given
+            timescaleDBStorage.disconnect();
+
+            // When
+            timescaleDBStorage.disconnect();
+
+            // Then
+            assertThat(timescaleDBStorage.isConnected()).isFalse();
+        }
     }
 
-    @Test
-    @DisplayName("초기 연결 상태 확인")
-    void isConnected_InitiallyFalse() {
-        // then
-        assertThat(timescaleDBStorage.isConnected()).isFalse();
+    @Nested
+    @DisplayName("메트릭 저장 테스트")
+    class SaveMetricsTest {
+
+        @Test
+        @DisplayName("메트릭 저장 시도 (활성화, 연결됨)")
+        void saveMetrics_WhenEnabledAndConnected_DoesNotThrowException() {
+            // Given
+            timescaleDBStorage.connect();
+            List<Metric> metrics = createTestMetrics();
+
+            // When & Then
+            assertThatCode(() -> timescaleDBStorage.saveMetrics(metrics))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("메트릭 저장 시도 (비활성화)")
+        void saveMetrics_WhenDisabled_ThrowsBusinessException() {
+            // Given
+            timescaleDBStorage.setEnabled(false);
+            List<Metric> metrics = createTestMetrics();
+
+            // When & Then
+            assertThatThrownBy(() -> timescaleDBStorage.saveMetrics(metrics))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("비활성화");
+        }
+
+        @Test
+        @DisplayName("메트릭 저장 시도 (연결 안됨)")
+        void saveMetrics_WhenNotConnected_ThrowsBusinessException() {
+            // Given
+            timescaleDBStorage.setEnabled(true);
+            timescaleDBStorage.disconnect();
+            List<Metric> metrics = createTestMetrics();
+
+            // When & Then
+            assertThatThrownBy(() -> timescaleDBStorage.saveMetrics(metrics))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("연결되지 않았습니다");
+        }
     }
 
-    @Test
-    @DisplayName("연결 성공")
-    void connect_Success() {
-        // when
-        timescaleDBStorage.connect();
+    @Nested
+    @DisplayName("메트릭 조회 테스트")
+    class GetMetricsTest {
 
-        // then
-        assertThat(timescaleDBStorage.isConnected()).isTrue();
-    }
+        @Test
+        @DisplayName("메트릭 조회 시도 (활성화, 연결됨)")
+        void getMetrics_WhenEnabledAndConnected_ReturnsEmptyList() {
+            // Given
+            timescaleDBStorage.connect();
+            String metricName = "cpu.usage";
+            LocalDateTime startTime = LocalDateTime.now().minusHours(1);
+            LocalDateTime endTime = LocalDateTime.now();
 
-    @Test
-    @DisplayName("이미 연결된 상태에서 연결 시도")
-    void connect_AlreadyConnected() {
-        // given
-        timescaleDBStorage.connect(); // 먼저 연결
+            // When
+            List<Metric> result = timescaleDBStorage.getMetrics(metricName, startTime, endTime);
 
-        // when
-        timescaleDBStorage.connect(); // 다시 연결 시도
+            // Then
+            assertThat(result).isEmpty();
+        }
 
-        // then
-        assertThat(timescaleDBStorage.isConnected()).isTrue(); // 여전히 연결 상태
-    }
+        @Test
+        @DisplayName("메트릭 조회 시도 (비활성화)")
+        void getMetrics_WhenDisabled_ThrowsBusinessException() {
+            // Given
+            timescaleDBStorage.setEnabled(false);
+            String metricName = "cpu.usage";
+            LocalDateTime startTime = LocalDateTime.now().minusHours(1);
+            LocalDateTime endTime = LocalDateTime.now();
 
-    @Test
-    @DisplayName("연결 해제 성공")
-    void disconnect_Success() {
-        // given
-        timescaleDBStorage.connect(); // 먼저 연결
+            // When & Then
+            assertThatThrownBy(() -> timescaleDBStorage.getMetrics(metricName, startTime, endTime))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("비활성화");
+        }
 
-        // when
-        timescaleDBStorage.disconnect();
+        @Test
+        @DisplayName("메트릭 조회 시도 (연결 안됨)")
+        void getMetrics_WhenNotConnected_ThrowsBusinessException() {
+            // Given
+            timescaleDBStorage.setEnabled(true);
+            timescaleDBStorage.disconnect();
+            String metricName = "cpu.usage";
+            LocalDateTime startTime = LocalDateTime.now().minusHours(1);
+            LocalDateTime endTime = LocalDateTime.now();
 
-        // then
-        assertThat(timescaleDBStorage.isConnected()).isFalse();
-    }
-
-    @Test
-    @DisplayName("이미 연결 해제된 상태에서 해제 시도")
-    void disconnect_AlreadyDisconnected() {
-        // given
-        timescaleDBStorage.disconnect(); // 먼저 해제 (초기 상태)
-
-        // when
-        timescaleDBStorage.disconnect(); // 다시 해제 시도
-
-        // then
-        assertThat(timescaleDBStorage.isConnected()).isFalse(); // 여전히 해제 상태
-    }
-
-    @Test
-    @DisplayName("메트릭 저장 시도 (활성화, 연결됨)")
-    void saveMetrics_EnabledAndConnected_Success() {
-        // given
-        timescaleDBStorage.connect(); // 연결
-        List<Metric> metrics = createTestMetrics();
-
-        // when
-        assertThatCode(() -> timescaleDBStorage.saveMetrics(metrics))
-                .doesNotThrowAnyException(); // 예외가 발생하지 않아야 함
-    }
-
-    @Test
-    @DisplayName("메트릭 저장 시도 (비활성화)")
-    void saveMetrics_Disabled_ThrowsException() {
-        // given
-        timescaleDBStorage.setEnabled(false); // 비활성화
-        List<Metric> metrics = createTestMetrics();
-
-        // when & then
-        assertThatThrownBy(() -> timescaleDBStorage.saveMetrics(metrics))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("비활성화");
-    }
-
-    @Test
-    @DisplayName("메트릭 저장 시도 (연결 안됨)")
-    void saveMetrics_NotConnected_ThrowsException() {
-        // given
-        timescaleDBStorage.setEnabled(true); // 활성화
-        timescaleDBStorage.disconnect(); // 연결 해제
-        List<Metric> metrics = createTestMetrics();
-
-        // when & then
-        assertThatThrownBy(() -> timescaleDBStorage.saveMetrics(metrics))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("연결되지 않았습니다");
-    }
-
-    @Test
-    @DisplayName("메트릭 조회 시도 (활성화, 연결됨)")
-    void getMetrics_EnabledAndConnected_ReturnsEmptyList() {
-        // given
-        timescaleDBStorage.connect(); // 연결
-        String metricName = "cpu.usage";
-        LocalDateTime startTime = LocalDateTime.now().minusHours(1);
-        LocalDateTime endTime = LocalDateTime.now();
-
-        // when
-        List<Metric> result = timescaleDBStorage.getMetrics(metricName, startTime, endTime);
-
-        // then
-        assertThat(result).isEmpty(); // 실제 조회 로직은 TODO이므로 빈 리스트 반환 예상
-    }
-
-    @Test
-    @DisplayName("메트릭 조회 시도 (비활성화)")
-    void getMetrics_Disabled_ThrowsException() {
-        // given
-        timescaleDBStorage.setEnabled(false); // 비활성화
-        String metricName = "cpu.usage";
-        LocalDateTime startTime = LocalDateTime.now().minusHours(1);
-        LocalDateTime endTime = LocalDateTime.now();
-
-        // when & then
-        assertThatThrownBy(() -> timescaleDBStorage.getMetrics(metricName, startTime, endTime))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("비활성화");
-    }
-
-    @Test
-    @DisplayName("메트릭 조회 시도 (연결 안됨)")
-    void getMetrics_NotConnected_ThrowsException() {
-        // given
-        timescaleDBStorage.setEnabled(true); // 활성화
-        timescaleDBStorage.disconnect(); // 연결 해제
-        String metricName = "cpu.usage";
-        LocalDateTime startTime = LocalDateTime.now().minusHours(1);
-        LocalDateTime endTime = LocalDateTime.now();
-
-        // when & then
-        assertThatThrownBy(() -> timescaleDBStorage.getMetrics(metricName, startTime, endTime))
-                .isInstanceOf(com.agenticcp.core.common.exception.BusinessException.class)
-                .hasMessageContaining("연결되지 않았습니다");
+            // When & Then
+            assertThatThrownBy(() -> timescaleDBStorage.getMetrics(metricName, startTime, endTime))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("연결되지 않았습니다");
+        }
     }
 
     /**

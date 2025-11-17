@@ -38,4 +38,26 @@ echo.
 echo 애플리케이션을 중지하려면 Ctrl+C를 누르세요.
 
 REM Spring Boot 실행
+REM 환경변수 설정
+echo 🔧 환경변수를 설정합니다...
+
+REM .env 파일이 존재하는지 확인하고 로드
+if exist .env (
+    echo 📄 .env 파일을 로드합니다...
+    for /f "tokens=1,2 delims==" %%a in (.env) do (
+        set "%%a=%%b"
+    )
+) else (
+    echo ⚠️  .env 파일이 없습니다. env.example을 참고하여 .env 파일을 생성하세요.
+    echo 📝 기본값을 사용합니다 (개발용 - 프로덕션에서는 반드시 .env 파일 사용 필수)
+    set DATABASE_URL=jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    set DATABASE_USERNAME=agenticcp
+    set DATABASE_PASSWORD=agenticcppassword
+    if not defined JWT_SECRET set JWT_SECRET=ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=
+    if not defined CONFIG_CIPHER_KEY set CONFIG_CIPHER_KEY=MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+    set SPRING_DATA_REDIS_HOST=localhost
+    set SPRING_DATA_REDIS_PORT=6379
+    set APP_REDIS_ENABLED=false
+)
+
 mvn spring-boot:run -Dspring-boot.run.profiles=local

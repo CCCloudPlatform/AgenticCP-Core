@@ -33,7 +33,7 @@ class PlatformConfigChangeListenerTest {
     void shouldEnableMaintenanceModeWhenConfigChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.maintenance_mode", "true", "true", "admin", "Emergency maintenance"
+                "test-tenant-key", "system.maintenance_mode", "true", "true", "admin", "Emergency maintenance"
         );
 
         // When
@@ -49,7 +49,7 @@ class PlatformConfigChangeListenerTest {
     void shouldDisableMaintenanceModeWhenConfigChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.maintenance_mode", "false", "false", "admin", "Maintenance completed"
+                "test-tenant-key", "system.maintenance_mode", "false", "false", "admin", "Maintenance completed"
         );
 
         // When
@@ -65,7 +65,7 @@ class PlatformConfigChangeListenerTest {
     void shouldEnableMaintenanceModeWithNumericValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.maintenance_mode", "1", "1", "admin", "Maintenance mode on"
+                "test-tenant-key", "system.maintenance_mode", "1", "1", "admin", "Maintenance mode on"
         );
 
         // When
@@ -80,7 +80,7 @@ class PlatformConfigChangeListenerTest {
     void shouldDisableMaintenanceModeWithNumericValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.maintenance_mode", "0", "0", "admin", "Maintenance mode off"
+                "test-tenant-key", "system.maintenance_mode", "0", "0", "admin", "Maintenance mode off"
         );
 
         // When
@@ -95,7 +95,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateCacheSettingsWhenCacheTtlChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.cache_ttl", "3600", "3600", "admin", "Update cache TTL"
+                "test-tenant-key", "system.cache_ttl", "3600", "3600", "admin", "Update cache TTL"
         );
 
         // When
@@ -110,7 +110,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateCacheSettingsWhenCacheMaxSizeChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.cache_max_size", "10000", "10000", "admin", "Update cache max size"
+                "test-tenant-key", "system.cache_max_size", "10000", "10000", "admin", "Update cache max size"
         );
 
         // When
@@ -125,7 +125,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateSecuritySettingsWhenSessionTimeoutChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.security_session_timeout", "1800", "1800", "admin", "Update session timeout"
+                "test-tenant-key", "system.security_session_timeout", "1800", "1800", "admin", "Update session timeout"
         );
 
         // When
@@ -140,7 +140,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateSecuritySettingsWhenMaxLoginAttemptsChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.security_max_login_attempts", "5", "5", "admin", "Update max login attempts"
+                "test-tenant-key", "system.security_max_login_attempts", "5", "5", "admin", "Update max login attempts"
         );
 
         // When
@@ -155,7 +155,7 @@ class PlatformConfigChangeListenerTest {
     void shouldUpdateLoggingSettingsWhenLoggingLevelChanged() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.logging_level", "DEBUG", "DEBUG", "admin", "Update logging level"
+                "test-tenant-key", "system.logging_level", "DEBUG", "DEBUG", "admin", "Update logging level"
         );
 
         // When
@@ -170,7 +170,7 @@ class PlatformConfigChangeListenerTest {
     void shouldNotHandleUnknownConfigKey() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "unknown_config", "some_value", "some_value", "admin", "Unknown config"
+                "test-tenant-key", "unknown_config", "some_value", "some_value", "admin", "Unknown config"
         );
 
         // When
@@ -189,7 +189,7 @@ class PlatformConfigChangeListenerTest {
     void shouldNotHandleInvalidMaintenanceModeValue() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "maintenance_mode", "invalid", "invalid", "admin", "Invalid value"
+                "test-tenant-key", "maintenance_mode", "invalid", "invalid", "admin", "Invalid value"
         );
 
         // When
@@ -205,7 +205,7 @@ class PlatformConfigChangeListenerTest {
     void shouldCallRuntimeServiceWhenConfigChangeEventReceived() {
         // Given
         ConfigChangeEvent event = ConfigChangeEvent.create(
-                "system.maintenance_mode", "true", "true", "admin", "Test maintenance mode"
+                "test-tenant-key", "system.maintenance_mode", "true", "true", "admin", "Test maintenance mode"
         );
 
         // When

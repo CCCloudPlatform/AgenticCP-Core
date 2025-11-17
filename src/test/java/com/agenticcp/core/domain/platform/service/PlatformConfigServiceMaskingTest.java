@@ -1,20 +1,25 @@
 package com.agenticcp.core.domain.platform.service;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.domain.platform.entity.PlatformConfig;
 import com.agenticcp.core.domain.platform.repository.PlatformConfigRepository;
 import com.agenticcp.core.domain.platform.validation.ConfigValidator;
+import com.agenticcp.core.domain.tenant.service.TenantService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.MockedStatic;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 /**
  * 조회 시 ENCRYPTED 타입 기본 마스킹("***")이 적용되는지 검증한다.
@@ -23,14 +28,43 @@ public class PlatformConfigServiceMaskingTest {
 
     private PlatformConfigRepository repository;
     private EncryptionService encryptionService;
+    private TenantService tenantService;
     private PlatformConfigService service;
+    private MockedStatic<TenantContextHolder> tenantContextHolderMock;
 
     @BeforeEach
     void setUp() {
+        // TenantContextHolder Mock 설정
+        tenantContextHolderMock = mockStatic(TenantContextHolder.class);
+        tenantContextHolderMock.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
+                .thenReturn("test-tenant-key");
+        
         repository = Mockito.mock(PlatformConfigRepository.class);
         encryptionService = Mockito.mock(EncryptionService.class);
+        tenantService = Mockito.mock(TenantService.class);
         List<ConfigValidator> validators = Collections.emptyList();
-        service = new PlatformConfigService(repository, validators, encryptionService, Mockito.mock(ConfigAuditService.class), Mockito.mock(org.springframework.context.ApplicationEventPublisher.class), Mockito.mock(com.agenticcp.core.common.logging.masking.MaskingService.class));
+        
+        // TenantService mock 설정: 테넌트가 존재한다고 가정
+        when(tenantService.getTenantByKey("test-tenant-key"))
+                .thenReturn(Optional.of(Mockito.mock(com.agenticcp.core.domain.tenant.entity.Tenant.class)));
+        
+        service = new PlatformConfigService(
+                repository, 
+                validators, 
+                encryptionService, 
+                Mockito.mock(ConfigAuditService.class), 
+                Mockito.mock(org.springframework.context.ApplicationEventPublisher.class), 
+                Mockito.mock(com.agenticcp.core.common.logging.masking.MaskingService.class),
+                tenantService
+        );
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (tenantContextHolderMock != null) {
+            tenantContextHolderMock.close();
+        }
+        TenantContextHolder.clear();
     }
 
     @Test
@@ -48,7 +82,7 @@ public class PlatformConfigServiceMaskingTest {
                 .isEncrypted(false)
                 .build();
 
-        when(repository.findAllActive()).thenReturn(List.of(enc, str));
+        when(repository.findAllActiveByTenantId("test-tenant-key")).thenReturn(List.of(enc, str));
 
         List<PlatformConfig> result = service.getAllConfigs();
         Assertions.assertEquals(2, result.size());
@@ -64,7 +98,7 @@ public class PlatformConfigServiceMaskingTest {
                 .configType(PlatformConfig.ConfigType.ENCRYPTED)
                 .isEncrypted(true)
                 .build();
-        when(repository.findByConfigKey(any())).thenReturn(Optional.of(enc));
+        when(repository.findByTenantIdAndConfigKey(eq("test-tenant-key"), any())).thenReturn(Optional.of(enc));
 
         PlatformConfig masked = service.getConfigByKey("encrypted.key").orElseThrow();
         Assertions.assertEquals("Encrypted", masked.getConfigValue());

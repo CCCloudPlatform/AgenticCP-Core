@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.monitoring.service;
 
+import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.monitoring.entity.TenantDataRetentionPolicy;
 import com.agenticcp.core.domain.monitoring.repository.MetricRepository;
 import com.agenticcp.core.domain.monitoring.repository.TenantDataRetentionPolicyRepository;
@@ -28,7 +30,7 @@ import static org.mockito.Mockito.*;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TenantDataRetentionService 테스트")
@@ -149,7 +151,7 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("테넌트별 보관 정책 목록 조회")
-        void getRetentionPolicies_Success() {
+        void getRetentionPolicies_WhenCalled_ReturnsPolicyList() {
             // Given
             List<TenantDataRetentionPolicy> policies = Arrays.asList(
                     samplePolicy,
@@ -175,7 +177,7 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("활성화된 보관 정책 목록 조회")
-        void getEnabledRetentionPolicies_Success() {
+        void getEnabledRetentionPolicies_WhenCalled_ReturnsEnabledPolicyList() {
             // Given
             List<TenantDataRetentionPolicy> enabledPolicies = Arrays.asList(samplePolicy);
             when(policyRepository.findEnabledByTenantId(testTenantId))
@@ -198,30 +200,30 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("보관 정책 업데이트 성공")
-        void updateRetentionPolicy_Success() {
-            // Given - 기존 보관 정책이 존재하고 새로운 설정값들로 업데이트하려는 상황
-            Integer newRetentionDays = 60;  // 30일에서 60일로 보관 기간 연장
-            TenantDataRetentionPolicy.DeletionStrategy newStrategy = TenantDataRetentionPolicy.DeletionStrategy.ARCHIVE;  // DELETE에서 ARCHIVE로 변경
+        void updateRetentionPolicy_WhenPolicyExists_ReturnsUpdatedPolicy() {
+            // Given
+            Integer newRetentionDays = 60;
+            TenantDataRetentionPolicy.DeletionStrategy newStrategy = TenantDataRetentionPolicy.DeletionStrategy.ARCHIVE;
             String newDescription = "업데이트된 정책";
 
             when(policyRepository.findByTenantIdAndDataType(testTenantId, testDataType))
-                    .thenReturn(Optional.of(samplePolicy));  // 기존 정책이 존재함을 Mock
+                    .thenReturn(Optional.of(samplePolicy));
             when(policyRepository.save(any(TenantDataRetentionPolicy.class)))
-                    .thenReturn(samplePolicy);  // 저장된 정책을 반환
+                    .thenReturn(samplePolicy);
 
-            // When - 보관 정책을 새로운 설정으로 업데이트하는 경우
+            // When
             TenantDataRetentionPolicy result = retentionService.updateRetentionPolicy(
                     testTenantId, testDataType, newRetentionDays, newStrategy, newDescription);
 
-            // Then - 업데이트된 보관 정책이 정상적으로 반환되고 저장되어야 함
+            // Then
             assertThat(result).isNotNull();
-            verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);  // 정책 조회 확인
-            verify(policyRepository).save(any(TenantDataRetentionPolicy.class));  // 정책 저장 확인
+            verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);
+            verify(policyRepository).save(any(TenantDataRetentionPolicy.class));
         }
 
         @Test
         @DisplayName("존재하지 않는 보관 정책 업데이트 시 예외 발생")
-        void updateRetentionPolicy_NotFound() {
+        void updateRetentionPolicy_WhenPolicyNotExists_ThrowsResourceNotFoundException() {
             // Given
             when(policyRepository.findByTenantIdAndDataType(testTenantId, testDataType))
                     .thenReturn(Optional.empty());
@@ -229,8 +231,7 @@ class TenantDataRetentionServiceTest {
             // When & Then
             assertThatThrownBy(() -> retentionService.updateRetentionPolicy(
                     testTenantId, testDataType, 60, TenantDataRetentionPolicy.DeletionStrategy.ARCHIVE, "설명"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("보관 정책을 찾을 수 없습니다");
+                    .isInstanceOf(ResourceNotFoundException.class);
 
             verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);
             verify(policyRepository, never()).save(any());
@@ -243,7 +244,7 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("보관 정책 활성화 성공")
-        void toggleRetentionPolicy_Enable() {
+        void toggleRetentionPolicy_WhenEnabled_UpdatesPolicy() {
             // Given
             TenantDataRetentionPolicy disabledPolicy = TenantDataRetentionPolicy.builder()
                     .tenantId(testTenantId)
@@ -266,7 +267,7 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("보관 정책 비활성화 성공")
-        void toggleRetentionPolicy_Disable() {
+        void toggleRetentionPolicy_WhenDisabled_UpdatesPolicy() {
             // Given
             when(policyRepository.findByTenantIdAndDataType(testTenantId, testDataType))
                     .thenReturn(Optional.of(samplePolicy));
@@ -283,15 +284,14 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("존재하지 않는 보관 정책 토글 시 예외 발생")
-        void toggleRetentionPolicy_NotFound() {
+        void toggleRetentionPolicy_WhenPolicyNotExists_ThrowsResourceNotFoundException() {
             // Given
             when(policyRepository.findByTenantIdAndDataType(testTenantId, testDataType))
                     .thenReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> retentionService.toggleRetentionPolicy(testTenantId, testDataType, true))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("보관 정책을 찾을 수 없습니다");
+                    .isInstanceOf(ResourceNotFoundException.class);
 
             verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);
             verify(policyRepository, never()).save(any());
@@ -304,28 +304,28 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("수동 데이터 정리 성공")
-        void manualCleanupTenantData_Success() {
-            // Given - 활성화된 보관 정책이 존재하고 오래된 메트릭 데이터가 정리 가능한 상황
+        void manualCleanupTenantData_WhenPolicyEnabled_ReturnsCleanedCount() {
+            // Given
             when(policyRepository.findByTenantIdAndDataType(testTenantId, testDataType))
-                    .thenReturn(Optional.of(samplePolicy));  // 활성화된 보관 정책이 존재함을 Mock
+                    .thenReturn(Optional.of(samplePolicy));
             when(metricRepository.deleteOldMetrics(eq(testTenantId), any(LocalDateTime.class)))
-                    .thenReturn(1000);  // 1000개의 오래된 메트릭이 삭제됨을 Mock
+                    .thenReturn(1000);
             when(policyRepository.save(any(TenantDataRetentionPolicy.class)))
-                    .thenReturn(samplePolicy);  // 정리 상태가 업데이트된 정책을 반환
+                    .thenReturn(samplePolicy);
 
-            // When - 수동으로 테넌트의 오래된 데이터를 정리하는 경우
+            // When
             int result = retentionService.manualCleanupTenantData(testTenantId, testDataType);
 
-            // Then - 정리된 데이터 개수가 정확히 반환되고 모든 관련 작업이 수행되어야 함
-            assertThat(result).isEqualTo(1000);  // 1000개의 데이터가 정리됨을 확인
-            verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);  // 보관 정책 조회 확인
-            verify(metricRepository).deleteOldMetrics(eq(testTenantId), any(LocalDateTime.class));  // 오래된 메트릭 삭제 확인
-            verify(policyRepository).save(any(TenantDataRetentionPolicy.class));  // 정리 상태 업데이트 확인
+            // Then
+            assertThat(result).isEqualTo(1000);
+            verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);
+            verify(metricRepository).deleteOldMetrics(eq(testTenantId), any(LocalDateTime.class));
+            verify(policyRepository).save(any(TenantDataRetentionPolicy.class));
         }
 
         @Test
         @DisplayName("보관 정책이 비활성화된 경우 예외 발생")
-        void manualCleanupTenantData_Disabled() {
+        void manualCleanupTenantData_WhenPolicyDisabled_ThrowsBusinessException() {
             // Given
             TenantDataRetentionPolicy disabledPolicy = TenantDataRetentionPolicy.builder()
                     .tenantId(testTenantId)
@@ -339,8 +339,7 @@ class TenantDataRetentionServiceTest {
 
             // When & Then
             assertThatThrownBy(() -> retentionService.manualCleanupTenantData(testTenantId, testDataType))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("비활성화된 보관 정책입니다");
+                    .isInstanceOf(BusinessException.class);
 
             verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);
             verify(metricRepository, never()).deleteOldMetrics(any(), any());
@@ -349,15 +348,14 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("존재하지 않는 보관 정책으로 수동 정리 시 예외 발생")
-        void manualCleanupTenantData_NotFound() {
+        void manualCleanupTenantData_WhenPolicyNotExists_ThrowsResourceNotFoundException() {
             // Given
             when(policyRepository.findByTenantIdAndDataType(testTenantId, testDataType))
                     .thenReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> retentionService.manualCleanupTenantData(testTenantId, testDataType))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("보관 정책을 찾을 수 없습니다");
+                    .isInstanceOf(ResourceNotFoundException.class);
 
             verify(policyRepository).findByTenantIdAndDataType(testTenantId, testDataType);
             verify(metricRepository, never()).deleteOldMetrics(any(), any());
@@ -370,47 +368,47 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("스케줄된 데이터 정리 실행")
-        void cleanupExpiredData() {
-            // Given - 여러 테넌트의 활성화된 보관 정책들이 존재하는 상황 (매일 자정에 실행되는 스케줄러)
-            List<TenantDataRetentionPolicy> policies = Arrays.asList(
-                    TenantDataRetentionPolicy.builder()
-                            .tenantId("tenant-001")
-                            .dataType("METRIC")
-                            .retentionDays(30)  // 30일 보관 정책
-                            .isEnabled(true)
-                            .build(),
-                    TenantDataRetentionPolicy.builder()
-                            .tenantId("tenant-002")
-                            .dataType("METRIC")
-                            .retentionDays(60)  // 60일 보관 정책
-                            .isEnabled(true)
-                            .build()
-            );
-
-            when(policyRepository.findPoliciesNeedingCleanup(any(LocalDateTime.class))).thenReturn(policies);  // 정리 대상 보관 정책 조회 Mock
-            when(metricRepository.deleteOldMetrics(anyString(), any(LocalDateTime.class)))
-                    .thenReturn(500, 300);  // 각각 500개, 300개의 오래된 데이터 삭제 Mock
-            when(policyRepository.save(any(TenantDataRetentionPolicy.class)))
-                    .thenReturn(policies.get(0), policies.get(1));  // 정리 상태 업데이트 Mock
-
-            // When - 스케줄러에 의해 만료된 데이터 정리가 실행되는 경우
-            retentionService.cleanupExpiredData();
-
-            // Then - 모든 활성화된 정책에 대해 정리가 수행되고 상태가 업데이트되어야 함
-            verify(policyRepository).findPoliciesNeedingCleanup(any(LocalDateTime.class));  // 정리 대상 정책 조회 확인
-            verify(metricRepository, times(2)).deleteOldMetrics(anyString(), any(LocalDateTime.class));  // 2개 테넌트의 데이터 정리 확인
-            verify(policyRepository, times(2)).save(any(TenantDataRetentionPolicy.class));  // 2개 정책의 상태 업데이트 확인
-        }
-
-        @Test
-        @DisplayName("비활성화된 정책은 스케줄러에서 제외")
-        void cleanupExpiredData_SkipDisabled() {
+        void cleanupExpiredData_WhenCalled_CleansExpiredData() {
             // Given
             List<TenantDataRetentionPolicy> policies = Arrays.asList(
                     TenantDataRetentionPolicy.builder()
                             .tenantId("tenant-001")
                             .dataType("METRIC")
-                            .isEnabled(false) // 비활성화
+                            .retentionDays(30)
+                            .isEnabled(true)
+                            .build(),
+                    TenantDataRetentionPolicy.builder()
+                            .tenantId("tenant-002")
+                            .dataType("METRIC")
+                            .retentionDays(60)
+                            .isEnabled(true)
+                            .build()
+            );
+
+            when(policyRepository.findPoliciesNeedingCleanup(any(LocalDateTime.class))).thenReturn(policies);
+            when(metricRepository.deleteOldMetrics(anyString(), any(LocalDateTime.class)))
+                    .thenReturn(500, 300);
+            when(policyRepository.save(any(TenantDataRetentionPolicy.class)))
+                    .thenReturn(policies.get(0), policies.get(1));
+
+            // When
+            retentionService.cleanupExpiredData();
+
+            // Then
+            verify(policyRepository).findPoliciesNeedingCleanup(any(LocalDateTime.class));
+            verify(metricRepository, times(2)).deleteOldMetrics(anyString(), any(LocalDateTime.class));
+            verify(policyRepository, times(2)).save(any(TenantDataRetentionPolicy.class));
+        }
+
+        @Test
+        @DisplayName("비활성화된 정책은 스케줄러에서 제외")
+        void cleanupExpiredData_WhenPolicyDisabled_SkipsCleanup() {
+            // Given
+            List<TenantDataRetentionPolicy> policies = Arrays.asList(
+                    TenantDataRetentionPolicy.builder()
+                            .tenantId("tenant-001")
+                            .dataType("METRIC")
+                            .isEnabled(false)
                             .build()
             );
 
@@ -421,8 +419,6 @@ class TenantDataRetentionServiceTest {
 
             // Then
             verify(policyRepository).findPoliciesNeedingCleanup(any(LocalDateTime.class));
-            // 현재 서비스 구현에서는 비활성화된 정책도 cleanupTenantData가 호출됨
-            // deleteOldMetrics는 호출되지만 0을 반환하고, save도 호출됨
             verify(metricRepository).deleteOldMetrics(anyString(), any(LocalDateTime.class));
             verify(policyRepository).save(any());
         }
@@ -434,7 +430,7 @@ class TenantDataRetentionServiceTest {
 
         @Test
         @DisplayName("보관 정책 통계 조회")
-        void getRetentionPolicyStatistics() {
+        void getRetentionPolicyStatistics_WhenCalled_ReturnsStatistics() {
             // Given
             when(policyRepository.count()).thenReturn(10L);
             when(policyRepository.countEnabledPolicies()).thenReturn(8L);

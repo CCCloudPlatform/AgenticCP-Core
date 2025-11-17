@@ -40,7 +40,17 @@ public enum AuthErrorCode implements BaseErrorCode {
     REGISTRATION_FAILED(HttpStatus.BAD_REQUEST, 1401, "회원가입에 실패했습니다."),
     USERNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, 1402, "이미 사용 중인 사용자명입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, 1403, "이미 사용 중인 이메일입니다."),
-    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 1404, "유효하지 않은 테넌트 키입니다.");
+    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 1404, "유효하지 않은 테넌트 키입니다."),
+    
+    // 2FA 관련 (1500-1599)
+    TWO_FACTOR_ALREADY_ENABLED(HttpStatus.CONFLICT, 1501, "2FA가 이미 활성화되어 있습니다."),
+    TWO_FACTOR_NOT_ENABLED(HttpStatus.BAD_REQUEST, 1502, "2FA가 활성화되지 않았습니다."),
+    INVALID_TOTP_CODE(HttpStatus.UNAUTHORIZED, 1503, "유효하지 않은 TOTP 코드입니다."),
+    TOTP_CODE_REQUIRED(HttpStatus.BAD_REQUEST, 1504, "TOTP 코드가 필요합니다."),
+    QR_CODE_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1505, "QR 코드 생성에 실패했습니다."),
+    ACCOUNT_PENDING_2FA_SETUP(HttpStatus.FORBIDDEN, 1506, "2FA 설정이 필요합니다."),
+    TWO_FACTOR_SETUP_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1507, "2FA 설정에 실패했습니다."),
+    TWO_FACTOR_DISABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1508, "2FA 비활성화에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;

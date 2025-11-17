@@ -7,6 +7,10 @@ import org.springframework.http.HttpStatus;
 /**
  * 모니터링 도메인 에러 코드
  * 범위: 8000-8999 (MONITORING 카테고리)
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 public enum MonitoringErrorCode implements BaseErrorCode {
 
@@ -19,6 +23,7 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     METRIC_NOT_FOUND(HttpStatus.NOT_FOUND, 8011, "메트릭을 찾을 수 없습니다."),
     INVALID_METRIC_NAME(HttpStatus.BAD_REQUEST, 8012, "유효하지 않은 메트릭 이름입니다."),
     INVALID_TIME_RANGE(HttpStatus.BAD_REQUEST, 8013, "유효하지 않은 시간 범위입니다."),
+    METRIC_NAMES_RETRIEVAL_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8014, "메트릭 이름 목록 조회 중 오류가 발생했습니다."),
 
     // 메트릭 타입 관련 (8021-8030)
     INVALID_METRIC_TYPE(HttpStatus.BAD_REQUEST, 8021, "유효하지 않은 메트릭 타입입니다."),
@@ -68,7 +73,11 @@ public enum MonitoringErrorCode implements BaseErrorCode {
     HEALTH_INDICATOR_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 8093, "헬스 인디케이터 오류가 발생했습니다."),
     CACHE_EVICTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8094, "캐시 제거에 실패했습니다."),
     HEALTH_SUMMARY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 8095, "헬스체크 요약 생성에 실패했습니다."),
-    COMPONENT_HEALTH_CHECK_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8096, "컴포넌트 헬스체크에 실패했습니다.");
+    COMPONENT_HEALTH_CHECK_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 8096, "컴포넌트 헬스체크에 실패했습니다."),
+    
+    // 데이터 보관 정책 관련 (8101-8110)
+    RETENTION_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, 8101, "보관 정책을 찾을 수 없습니다."),
+    RETENTION_POLICY_DISABLED(HttpStatus.BAD_REQUEST, 8102, "비활성화된 보관 정책입니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
