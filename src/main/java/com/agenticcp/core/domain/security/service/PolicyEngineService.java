@@ -37,8 +37,6 @@ public class PolicyEngineService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final PolicyJsonParser policyJsonParser;
     private final ObjectMapper objectMapper;
-    
-    @Autowired(required = false) // Feature 4: 정책 위반 이벤트 발행
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
     
     public PolicyEngineService(SecurityPolicyRepository securityPolicyRepository,
