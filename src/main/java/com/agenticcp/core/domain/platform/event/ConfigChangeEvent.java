@@ -1,6 +1,5 @@
 package com.agenticcp.core.domain.platform.event;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.context.ApplicationEvent;
@@ -21,6 +20,11 @@ import java.time.LocalDateTime;
 @Getter
 @ToString
 public class ConfigChangeEvent extends ApplicationEvent {
+    
+    /**
+     * 테넌트 식별자
+     */
+    private final String tenantId;
     
     /**
      * 변경된 설정 키
@@ -76,9 +80,10 @@ public class ConfigChangeEvent extends ApplicationEvent {
     /**
      * 생성자
      */
-    public ConfigChangeEvent(Object source, String configKey, String oldValueMasked, String newValueMasked, String newValueRaw,
+    public ConfigChangeEvent(Object source, String tenantId, String configKey, String oldValueMasked, String newValueMasked, String newValueRaw,
                            LocalDateTime changedAt, ChangeType changeType, String userId, String reason) {
         super(source);
+        this.tenantId = tenantId;
         this.configKey = configKey;
         this.oldValueMasked = oldValueMasked;
         this.newValueMasked = newValueMasked;
@@ -92,24 +97,24 @@ public class ConfigChangeEvent extends ApplicationEvent {
     /**
      * 설정 생성 이벤트 생성
      */
-    public static ConfigChangeEvent create(String configKey, String newValueMasked, String newValueRaw, String userId, String reason) {
-        return new ConfigChangeEvent("PlatformConfigService", configKey, null, newValueMasked, newValueRaw,
+    public static ConfigChangeEvent create(String tenantId, String configKey, String newValueMasked, String newValueRaw, String userId, String reason) {
+        return new ConfigChangeEvent("PlatformConfigService", tenantId, configKey, null, newValueMasked, newValueRaw,
                                    LocalDateTime.now(), ChangeType.CREATE, userId, reason);
     }
     
     /**
      * 설정 수정 이벤트 생성
      */
-    public static ConfigChangeEvent update(String configKey, String oldValueMasked, String newValueMasked, String newValueRaw, String userId, String reason) {
-        return new ConfigChangeEvent("PlatformConfigService", configKey, oldValueMasked, newValueMasked, newValueRaw,
+    public static ConfigChangeEvent update(String tenantId, String configKey, String oldValueMasked, String newValueMasked, String newValueRaw, String userId, String reason) {
+        return new ConfigChangeEvent("PlatformConfigService", tenantId, configKey, oldValueMasked, newValueMasked, newValueRaw,
                                    LocalDateTime.now(), ChangeType.UPDATE, userId, reason);
     }
     
     /**
      * 설정 삭제 이벤트 생성
      */
-    public static ConfigChangeEvent delete(String configKey, String oldValueMasked, String userId, String reason) {
-        return new ConfigChangeEvent("PlatformConfigService", configKey, oldValueMasked, null, null,
+    public static ConfigChangeEvent delete(String tenantId, String configKey, String oldValueMasked, String userId, String reason) {
+        return new ConfigChangeEvent("PlatformConfigService", tenantId, configKey, oldValueMasked, null, null,
                                    LocalDateTime.now(), ChangeType.DELETE, userId, reason);
     }
 }
