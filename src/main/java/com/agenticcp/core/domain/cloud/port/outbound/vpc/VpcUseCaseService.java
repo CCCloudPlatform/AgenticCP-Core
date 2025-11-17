@@ -3,17 +3,23 @@ package com.agenticcp.core.domain.cloud.port.outbound.vpc;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
 import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
 import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
 import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
 import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
+import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +32,8 @@ public class VpcUseCaseService {
 
     private final VpcPortRouter vpcPortRouter;
     private final CapabilityGuard capabilityGuard;
+    private final CredentialProviderPort credentialProviderPort;
+    private final CloudAccountRepository cloudAccountRepository;
 
     @Transactional
     public CloudResource createVpc(VpcCreateRequest request) {
@@ -35,6 +43,14 @@ public class VpcUseCaseService {
             VpcConstants.RESOURCE_TYPE, 
             CapabilityGuard.Operation.TAGGING
         );
+        
+        // JIT 세션 획득
+        String tenantKey = request.getTenantKey() != null 
+            ? request.getTenantKey() 
+            : TenantContextHolder.getCurrentTenantKeyOrThrow();
+        Long accountId = getAccountIdFromScope(request.getAccountScope(), request.getProviderType());
+        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, request.getProviderType());
+        
         VpcManagementPort vpcPort = vpcPortRouter.getPort(request.getProviderType());
         CreateVpcCommand command = CreateVpcCommand.builder()
             .providerType(request.getProviderType())
@@ -46,14 +62,20 @@ public class VpcUseCaseService {
             .cidrBlock(request.getCidrBlock())
             .description(request.getDescription())
             .tags(request.getTags())
-            .tenantKey(request.getTenantKey())
+            .tenantKey(tenantKey)
             .providerSpecificConfig(request.getProviderSpecificConfig())
+            .session(session)
             .build();
         return vpcPort.createVpc(command);
     }
 
     @Transactional(readOnly = true)
     public Optional<CloudResource> getVpc(ResourceIdentity vpcId) {
+        // JIT 세션 획득
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        Long accountId = getAccountIdFromScope(vpcId.getAccountScope(), vpcId.getProviderType());
+        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, vpcId.getProviderType());
+        
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         GetVpcCommand command = GetVpcCommand.builder()
             .providerType(vpcId.getProviderType())
@@ -62,12 +84,20 @@ public class VpcUseCaseService {
             .providerResourceId(vpcId.getProviderResourceId())
             .serviceKey(vpcId.getServiceKey() != null ? vpcId.getServiceKey() : VpcConstants.SERVICE_KEY)
             .resourceType(vpcId.getResourceType() != null ? vpcId.getResourceType() : VpcConstants.RESOURCE_TYPE)
+            .session(session)
             .build();
         return vpcPort.getVpc(command);
     }
 
     @Transactional(readOnly = true)
     public List<CloudResource> listVpcs(VpcQuery query) {
+        // JIT 세션 획득
+        String tenantKey = query.getTenantKey() != null 
+            ? query.getTenantKey() 
+            : TenantContextHolder.getCurrentTenantKeyOrThrow();
+        Long accountId = getAccountIdFromScope(query.getAccountScope(), query.getProviderType());
+        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, query.getProviderType());
+        
         VpcManagementPort vpcPort = vpcPortRouter.getPort(query.getProviderType());
         ListVpcsQuery command = ListVpcsQuery.builder()
             .providerType(query.getProviderType())
@@ -76,7 +106,8 @@ public class VpcUseCaseService {
             .vpcName(query.getVpcName())
             .cidrBlock(query.getCidrBlock())
             .tags(query.getTags())
-            .tenantKey(query.getTenantKey())
+            .tenantKey(tenantKey)
+            .session(session)
             .build();
         return vpcPort.listVpcs(command);
     }
@@ -89,6 +120,14 @@ public class VpcUseCaseService {
             VpcConstants.RESOURCE_TYPE, 
             CapabilityGuard.Operation.TAGGING
         );
+        
+        // JIT 세션 획득
+        String tenantKey = request.getTenantKey() != null 
+            ? request.getTenantKey() 
+            : TenantContextHolder.getCurrentTenantKeyOrThrow();
+        Long accountId = getAccountIdFromScope(vpcId.getAccountScope(), vpcId.getProviderType());
+        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, vpcId.getProviderType());
+        
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         UpdateVpcCommand command = UpdateVpcCommand.builder()
             .providerType(vpcId.getProviderType())
@@ -98,8 +137,9 @@ public class VpcUseCaseService {
             .vpcName(request.getVpcName())
             .description(request.getDescription())
             .tags(request.getTags())
-            .tenantKey(request.getTenantKey())
+            .tenantKey(tenantKey)
             .providerSpecificConfig(request.getProviderSpecificConfig())
+            .session(session)
             .build();
         return vpcPort.updateVpc(command);
     }
@@ -112,6 +152,12 @@ public class VpcUseCaseService {
             VpcConstants.RESOURCE_TYPE, 
             CapabilityGuard.Operation.TAGGING
         );
+        
+        // JIT 세션 획득
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        Long accountId = getAccountIdFromScope(vpcId.getAccountScope(), vpcId.getProviderType());
+        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, vpcId.getProviderType());
+        
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         DeleteVpcCommand command = DeleteVpcCommand.builder()
             .providerType(vpcId.getProviderType())
@@ -120,8 +166,30 @@ public class VpcUseCaseService {
             .providerResourceId(vpcId.getProviderResourceId())
             .serviceKey(vpcId.getServiceKey() != null ? vpcId.getServiceKey() : VpcConstants.SERVICE_KEY)
             .resourceType(vpcId.getResourceType() != null ? vpcId.getResourceType() : VpcConstants.RESOURCE_TYPE)
-            .tenantKey(null) // ResourceIdentity에 tenantKey가 없으므로 null 처리
+            .tenantKey(tenantKey)
+            .session(session)
             .build();
         vpcPort.deleteVpc(command);
+    }
+    
+    /**
+     * accountScope로 CloudAccount의 ID를 조회합니다.
+     * 
+     * @param accountScope 계정 범위 (AWS AccountId, Azure SubscriptionId, GCP ProjectId)
+     * @param providerType 프로바이더 타입
+     * @return CloudAccount ID
+     */
+    private Long getAccountIdFromScope(String accountScope, com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        
+        return cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType)
+                .stream()
+                .filter(account -> account.getAccountId() != null && account.getAccountId().equals(accountScope))
+                .findFirst()
+                .map(account -> account.getId())
+                .orElseThrow(() -> new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_FOUND,
+                    "계정을 찾을 수 없습니다: " + accountScope
+                ));
     }
 }
