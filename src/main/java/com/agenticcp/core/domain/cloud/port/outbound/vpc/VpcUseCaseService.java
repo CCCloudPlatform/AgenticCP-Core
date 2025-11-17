@@ -3,22 +3,22 @@ package com.agenticcp.core.domain.cloud.port.outbound.vpc;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.agenticcp.core.common.audit.AuditRequired;
-import com.agenticcp.core.common.enums.AuditResourceType;
-import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
-import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
-import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
+import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
+import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
+import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
+import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.Optional;
-
-import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +29,19 @@ public class VpcUseCaseService {
 
     @Transactional
     public CloudResource createVpc(VpcCreateRequest request) {
-        capabilityGuard.ensureSupported(request.getProviderType(), "vpc", "create", CapabilityGuard.Operation.TAGGING);
+        capabilityGuard.ensureSupported(
+            request.getProviderType(), 
+            VpcConstants.SERVICE_KEY, 
+            VpcConstants.RESOURCE_TYPE, 
+            CapabilityGuard.Operation.TAGGING
+        );
         VpcManagementPort vpcPort = vpcPortRouter.getPort(request.getProviderType());
         CreateVpcCommand command = CreateVpcCommand.builder()
             .providerType(request.getProviderType())
             .accountScope(request.getAccountScope())
             .region(request.getRegion())
+            .serviceKey(VpcConstants.SERVICE_KEY)
+            .resourceType(VpcConstants.RESOURCE_TYPE)
             .vpcName(request.getVpcName())
             .cidrBlock(request.getCidrBlock())
             .description(request.getDescription())
@@ -53,8 +60,8 @@ public class VpcUseCaseService {
             .accountScope(vpcId.getAccountScope())
             .region(vpcId.getRegion())
             .providerResourceId(vpcId.getProviderResourceId())
-            .serviceKey(vpcId.getServiceKey())
-            .resourceType(vpcId.getResourceType())
+            .serviceKey(vpcId.getServiceKey() != null ? vpcId.getServiceKey() : VpcConstants.SERVICE_KEY)
+            .resourceType(vpcId.getResourceType() != null ? vpcId.getResourceType() : VpcConstants.RESOURCE_TYPE)
             .build();
         return vpcPort.getVpc(command);
     }
@@ -76,16 +83,22 @@ public class VpcUseCaseService {
 
     @Transactional
     public CloudResource updateVpc(ResourceIdentity vpcId, VpcUpdateRequest request) {
-        capabilityGuard.ensureSupported(vpcId.getProviderType(), "vpc", "update", CapabilityGuard.Operation.TAGGING);
+        capabilityGuard.ensureSupported(
+            vpcId.getProviderType(), 
+            VpcConstants.SERVICE_KEY, 
+            VpcConstants.RESOURCE_TYPE, 
+            CapabilityGuard.Operation.TAGGING
+        );
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         UpdateVpcCommand command = UpdateVpcCommand.builder()
             .providerType(vpcId.getProviderType())
             .accountScope(vpcId.getAccountScope())
             .region(vpcId.getRegion())
-            .vpcName(vpcId.getVpcName())
+            .providerResourceId(vpcId.getProviderResourceId())
+            .vpcName(request.getVpcName())
             .description(request.getDescription())
             .tags(request.getTags())
-            .tenantKey(vpcId.getTenantKey())
+            .tenantKey(request.getTenantKey())
             .providerSpecificConfig(request.getProviderSpecificConfig())
             .build();
         return vpcPort.updateVpc(command);
@@ -93,16 +106,21 @@ public class VpcUseCaseService {
 
     @Transactional
     public void deleteVpc(ResourceIdentity vpcId) {
-        capabilityGuard.ensureSupported(vpcId.getProviderType(), "vpc", "delete", CapabilityGuard.Operation.TAGGING);
+        capabilityGuard.ensureSupported(
+            vpcId.getProviderType(), 
+            VpcConstants.SERVICE_KEY, 
+            VpcConstants.RESOURCE_TYPE, 
+            CapabilityGuard.Operation.TAGGING
+        );
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         DeleteVpcCommand command = DeleteVpcCommand.builder()
             .providerType(vpcId.getProviderType())
             .accountScope(vpcId.getAccountScope())
             .region(vpcId.getRegion())
             .providerResourceId(vpcId.getProviderResourceId())
-            .serviceKey(vpcId.getServiceKey())
-            .resourceType(vpcId.getResourceType())
-            .tenantKey(vpcId.getTenantKey())
+            .serviceKey(vpcId.getServiceKey() != null ? vpcId.getServiceKey() : VpcConstants.SERVICE_KEY)
+            .resourceType(vpcId.getResourceType() != null ? vpcId.getResourceType() : VpcConstants.RESOURCE_TYPE)
+            .tenantKey(null) // ResourceIdentity에 tenantKey가 없으므로 null 처리
             .build();
         vpcPort.deleteVpc(command);
     }

@@ -14,6 +14,7 @@ public record UpdateVpcCommand(
         CloudProvider.ProviderType providerType,
         String accountScope,
         String region,
+        String providerResourceId,
         String vpcName,
         String description,
         Map<String, String> tags,

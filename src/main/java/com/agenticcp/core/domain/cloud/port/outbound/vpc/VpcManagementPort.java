@@ -1,10 +1,11 @@
 package com.agenticcp.core.domain.cloud.port.outbound.vpc;
 
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
-import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
+import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
+import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
 
 import java.util.List;
 import java.util.Optional;

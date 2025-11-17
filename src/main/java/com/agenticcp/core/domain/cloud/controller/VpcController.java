@@ -9,6 +9,7 @@ import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcUseCaseService;
 import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcConstants;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -88,8 +89,8 @@ public class VpcController {
                 .accountScope(accountScope)
                 .region(region)
                 .providerResourceId(resourceId)
-                .serviceKey("EC2")
-                .resourceType("VPC")
+                .serviceKey(VpcConstants.SERVICE_KEY)
+                .resourceType(VpcConstants.RESOURCE_TYPE)
                 .build();
 
         Optional<CloudResource> vpc = vpcUseCaseService.getVpc(vpcId);
@@ -157,8 +158,8 @@ public class VpcController {
                 .accountScope(accountScope)
                 .region(region)
                 .providerResourceId(resourceId)
-                .serviceKey("EC2")
-                .resourceType("VPC")
+                .serviceKey(VpcConstants.SERVICE_KEY)
+                .resourceType(VpcConstants.RESOURCE_TYPE)
                 .build();
 
         CloudResource vpc = vpcUseCaseService.updateVpc(vpcId, request);
@@ -196,8 +197,8 @@ public class VpcController {
                 .accountScope(accountScope)
                 .region(region)
                 .providerResourceId(resourceId)
-                .serviceKey("EC2")
-                .resourceType("VPC")
+                .serviceKey(VpcConstants.SERVICE_KEY)
+                .resourceType(VpcConstants.RESOURCE_TYPE)
                 .build();
 
         vpcUseCaseService.deleteVpc(vpcId);

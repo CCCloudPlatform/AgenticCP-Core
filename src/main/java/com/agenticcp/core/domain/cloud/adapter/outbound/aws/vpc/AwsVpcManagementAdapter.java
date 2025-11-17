@@ -4,11 +4,12 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.common.CloudErrorTransla
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
-import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
+import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
+import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
-import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -34,24 +35,49 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
     private final AwsVpcMapper awsVpcMapper;
 
     @Override
-    public CloudResource createVpc(VpcCreateRequest request) {
+    public CloudResource createVpc(CreateVpcCommand command) {
         try {
             CreateVpcRequest createVpcRequest = CreateVpcRequest.builder()
-                .cidrBlock(request.getCidrBlock())
+                .cidrBlock(command.cidrBlock())
                 .build();
+            
             CreateVpcResponse createVpcResponse = ec2Client.createVpc(createVpcRequest);
-
-            return awsVpcMapper.toCloudResource(createVpcResponse);
+            
+            // 태그 추가 (VPC 이름 및 기타 태그)
+            if ((command.vpcName() != null && !command.vpcName().isEmpty()) || 
+                (command.tags() != null && !command.tags().isEmpty())) {
+                List<Tag> tags = new java.util.ArrayList<>();
+                
+                if (command.vpcName() != null && !command.vpcName().isEmpty()) {
+                    tags.add(Tag.builder().key("Name").value(command.vpcName()).build());
+                }
+                
+                if (command.tags() != null) {
+                    command.tags().forEach((key, value) -> 
+                        tags.add(Tag.builder().key(key).value(value).build())
+                    );
+                }
+                
+                if (!tags.isEmpty()) {
+                    CreateTagsRequest createTagsRequest = CreateTagsRequest.builder()
+                        .resources(createVpcResponse.vpc().vpcId())
+                        .tags(tags)
+                        .build();
+                    ec2Client.createTags(createTagsRequest);
+                }
+            }
+            
+            return awsVpcMapper.toCloudResource(createVpcResponse.vpc(), command);
         } catch (Throwable e) {
             throw CloudErrorTranslator.translate(e);
         }
     }
 
     @Override
-    public Optional<CloudResource> getVpc(ResourceIdentity vpcId) {
+    public Optional<CloudResource> getVpc(GetVpcCommand command) {
         try {
             DescribeVpcsRequest request = DescribeVpcsRequest.builder()
-                .vpcIds(vpcId.getProviderResourceId())
+                .vpcIds(command.providerResourceId())
                 .build();
             DescribeVpcsResponse response = ec2Client.describeVpcs(request);
             
@@ -59,36 +85,51 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
                 return Optional.empty();
             }
             
-            return Optional.of(awsVpcMapper.toCloudResource(response.vpcs().get(0)));
+            return Optional.of(awsVpcMapper.toCloudResource(response.vpcs().get(0), command));
         } catch (Throwable e) {
             throw CloudErrorTranslator.translate(e);
         }
     }
 
     @Override
-    public List<CloudResource> listVpcs(VpcQuery query) {
+    public List<CloudResource> listVpcs(ListVpcsQuery query) {
         try {
             DescribeVpcsRequest.Builder requestBuilder = DescribeVpcsRequest.builder();
+            List<Filter> filters = new java.util.ArrayList<>();
             
             // 필터 조건 추가
-            if (query.getVpcName() != null) {
-                requestBuilder.filters(Filter.builder()
+            if (query.vpcName() != null && !query.vpcName().isEmpty()) {
+                filters.add(Filter.builder()
                     .name("tag:Name")
-                    .values(query.getVpcName())
+                    .values(query.vpcName())
                     .build());
             }
             
-            if (query.getCidrBlock() != null) {
-                requestBuilder.filters(Filter.builder()
-                    .name("cidr")
-                    .values(query.getCidrBlock())
+            if (query.cidrBlock() != null && !query.cidrBlock().isEmpty()) {
+                filters.add(Filter.builder()
+                    .name("cidr-block")
+                    .values(query.cidrBlock())
                     .build());
+            }
+            
+            // 태그 필터 추가
+            if (query.tags() != null && !query.tags().isEmpty()) {
+                query.tags().forEach((key, value) -> {
+                    filters.add(Filter.builder()
+                        .name("tag:" + key)
+                        .values(value)
+                        .build());
+                });
+            }
+            
+            if (!filters.isEmpty()) {
+                requestBuilder.filters(filters);
             }
             
             DescribeVpcsResponse response = ec2Client.describeVpcs(requestBuilder.build());
             
             return response.vpcs().stream()
-                .map(awsVpcMapper::toCloudResource)
+                .map(vpc -> awsVpcMapper.toCloudResource(vpc, query))
                 .toList();
         } catch (Throwable e) {
             throw CloudErrorTranslator.translate(e);
@@ -96,35 +137,55 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
     }
 
     @Override
-    public CloudResource updateVpc(ResourceIdentity vpcId, VpcUpdateRequest request) {
+    public CloudResource updateVpc(UpdateVpcCommand command) {
         try {
             // AWS VPC는 직접적인 업데이트 API가 없으므로 태그 업데이트로 처리
-            if (request.getTags() != null && !request.getTags().isEmpty()) {
+            if (command.tags() != null && !command.tags().isEmpty()) {
+                List<Tag> tags = command.tags().entrySet().stream()
+                    .map(entry -> Tag.builder()
+                        .key(entry.getKey())
+                        .value(entry.getValue())
+                        .build())
+                    .toList();
+                
                 CreateTagsRequest createTagsRequest = CreateTagsRequest.builder()
-                    .resources(vpcId.getProviderResourceId())
-                    .tags(request.getTags().entrySet().stream()
-                        .map(entry -> Tag.builder()
-                            .key(entry.getKey())
-                            .value(entry.getValue())
-                            .build())
-                        .toList())
+                    .resources(command.providerResourceId())
+                    .tags(tags)
+                    .build();
+                ec2Client.createTags(createTagsRequest);
+            }
+            
+            // VPC 이름 업데이트 (태그로 처리)
+            if (command.vpcName() != null && !command.vpcName().isEmpty()) {
+                CreateTagsRequest createTagsRequest = CreateTagsRequest.builder()
+                    .resources(command.providerResourceId())
+                    .tags(Tag.builder().key("Name").value(command.vpcName()).build())
                     .build();
                 ec2Client.createTags(createTagsRequest);
             }
             
             // 업데이트된 VPC 정보 조회
-            return getVpc(vpcId).orElseThrow(() -> 
-                new RuntimeException("VPC not found after update"));
+            GetVpcCommand getCommand = GetVpcCommand.builder()
+                .providerType(command.providerType())
+                .accountScope(command.accountScope())
+                .region(command.region())
+                .providerResourceId(command.providerResourceId())
+                .serviceKey(null)
+                .resourceType(null)
+                .build();
+            
+            return getVpc(getCommand).orElseThrow(() -> 
+                new RuntimeException("VPC not found after update: " + command.providerResourceId()));
         } catch (Throwable e) {
             throw CloudErrorTranslator.translate(e);
         }
     }
 
     @Override
-    public void deleteVpc(ResourceIdentity vpcId) {
+    public void deleteVpc(DeleteVpcCommand command) {
         try {
             DeleteVpcRequest request = DeleteVpcRequest.builder()
-                .vpcId(vpcId.getProviderResourceId())
+                .vpcId(command.providerResourceId())
                 .build();
             ec2Client.deleteVpc(request);
         } catch (Throwable e) {
