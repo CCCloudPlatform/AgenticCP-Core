@@ -42,6 +42,33 @@ public class MockAdaptersConfig {
                          tenantKey, providerType, accountScope);
                 return "mock-credentials";
             }
+
+            @Override
+            public String storeCredentials(String tenantKey, ProviderType providerType, 
+                                          String accountScope, Map<String, String> credentials) {
+                log.debug("Mock credential storage for tenant: {}, provider: {}, account: {}",
+                         tenantKey, providerType, accountScope);
+                return "mock-credential-key";
+            }
+
+            @Override
+            public void deleteCredentials(ProviderType providerType, String credentialKey) {
+                log.debug("Mock credential deletion: providerType={}, credentialKey={}", providerType, credentialKey);
+            }
+
+            @Override
+            public com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential getSession(
+                    String tenantKey, Long accountId, ProviderType providerType) {
+                log.debug("Mock session retrieval: tenantKey={}, accountId={}, providerType={}", 
+                        tenantKey, accountId, providerType);
+                return com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential.builder()
+                        .accessKeyId("mock-access-key")
+                        .secretAccessKey("mock-secret-key")
+                        .sessionToken("mock-session-token")
+                        .region("us-east-1")
+                        .expiresAt(java.time.LocalDateTime.now().plusHours(1))
+                        .build();
+            }
         };
     }
 

@@ -9,7 +9,7 @@ import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainer
 import com.agenticcp.core.domain.cloud.port.model.storage.UpdateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.service.aws.ObjectStorageUseCaseService;
+import com.agenticcp.core.domain.cloud.service.storage.ObjectStorageUseCaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

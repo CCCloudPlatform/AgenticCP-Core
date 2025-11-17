@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.service.aws;
+package com.agenticcp.core.domain.cloud.service.storage;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;

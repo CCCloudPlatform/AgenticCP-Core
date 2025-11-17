@@ -22,6 +22,7 @@
         <java.version>17</java.version>
         <mysql.version>8.0.33</mysql.version>
         <docker.image.prefix>agenticcp</docker.image.prefix>
+        <aws.sdk.version>2.21.29</aws.sdk.version>
     </properties>
 
     <dependencyManagement>
