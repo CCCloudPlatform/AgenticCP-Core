@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.controller;
 import com.agenticcp.core.common.audit.AuditRequired;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,6 +45,7 @@ public class VpcController {
      * @return 생성된 VPC 리소스
      */
     @PostMapping
+    @PreAuthorize("hasAuthority('VPC_CREATE') or hasRole('ADMIN')")
     @AuditRequired(
         action = "CREATE_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -69,6 +72,7 @@ public class VpcController {
      * @return VPC 리소스
      */
     @GetMapping("/{providerType}/{accountScope}/{region}/{resourceId}")
+    @PreAuthorize("hasAuthority('VPC_READ') or hasRole('ADMIN')")
     @AuditRequired(
         action = "GET_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -111,6 +115,7 @@ public class VpcController {
      * @return VPC 리소스 목록
      */
     @GetMapping
+    @PreAuthorize("hasAuthority('VPC_READ') or hasRole('ADMIN')")
     @AuditRequired(
         action = "LIST_VPCS",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -137,6 +142,7 @@ public class VpcController {
      * @return 수정된 VPC 리소스
      */
     @PutMapping("/{providerType}/{accountScope}/{region}/{resourceId}")
+    @PreAuthorize("hasAuthority('VPC_UPDATE') or hasRole('ADMIN')")
     @AuditRequired(
         action = "UPDATE_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -177,6 +183,7 @@ public class VpcController {
      * @return 삭제 결과
      */
     @DeleteMapping("/{providerType}/{accountScope}/{region}/{resourceId}")
+    @PreAuthorize("hasAuthority('VPC_DELETE') or hasRole('ADMIN')")
     @AuditRequired(
         action = "DELETE_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
