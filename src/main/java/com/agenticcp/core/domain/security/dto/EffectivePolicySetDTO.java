@@ -13,12 +13,12 @@ import java.util.List;
 
 /**
  * 유효한 정책 집합 DTO
- * 
+ *
  * <p>테넌트별 유효한 정책 집합(글로벌 + 테넌트 정책)을 표현합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Schema(description = "유효한 정책 집합 DTO")
 @Data

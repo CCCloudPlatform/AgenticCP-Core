@@ -1,39 +1,50 @@
 package com.agenticcp.core.domain.monitoring.service;
 
-import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.monitoring.dto.TenantCollectorConfigDto;
 import com.agenticcp.core.domain.monitoring.entity.TenantCollectorConfig;
-import com.agenticcp.core.domain.monitoring.entity.TenantCollectorMetadata;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
-import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.enums.QuotaExceededAction;
 import com.agenticcp.core.domain.monitoring.repository.TenantCollectorConfigRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * TenantCollectorConfigService 단위 테스트
+ * 
+ * <p>테넌트별 수집기 설정 서비스의 핵심 비즈니스 로직을 검증합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TenantCollectorConfigService 단위 테스트")
 class TenantCollectorConfigServiceTest {
 
     @Mock
     private TenantCollectorConfigRepository repository;
+
+    @Mock
+    private TenantDataRetentionService retentionService;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -79,18 +90,14 @@ class TenantCollectorConfigServiceTest {
                 .build();
     }
 
-    @Test
-    @DisplayName("테넌트별 활성화된 수집기 설정 조회 - 성공")
-    void getEnabledConfigsByTenant_Success() {
-        // 테스트 케이스: 테넌트별 활성화된 수집기 설정 조회 성공
-        // 목적: 특정 테넌트의 활성화된 수집기 설정들을 정상적으로 조회하는지 확인
-        // 검증 항목: 
-        // 1. 반환된 설정 목록의 크기가 예상과 일치하는지
-        // 2. 반환된 설정의 테넌트 ID가 요청한 테넌트 ID와 일치하는지
-        // 3. 반환된 설정의 수집기 타입이 예상과 일치하는지
-        // 4. 반환된 설정이 활성화 상태인지
+    @Nested
+    @DisplayName("수집기 설정 조회")
+    class GetConfigTest {
         
-        // Given
+        @Test
+        @DisplayName("테넌트별 활성화된 수집기 설정 조회 - 성공")
+        void getEnabledConfigsByTenant_WhenCalled_ReturnsEnabledConfigs() {
+            // Given
         List<TenantCollectorConfig> configs = Arrays.asList(testConfig);
         when(repository.findEnabledByTenantId(testTenantId)).thenReturn(configs);
         // ObjectMapper 모킹 - 실제 JSON 파싱 대신 직접 값 반환
@@ -116,19 +123,12 @@ class TenantCollectorConfigServiceTest {
         assertThat(result.get(0).getTenantId()).isEqualTo(testTenantId);
         assertThat(result.get(0).getCollectorType()).isEqualTo(testCollectorType);
         assertThat(result.get(0).getIsEnabled()).isTrue();
-    }
-
-    @Test
-    @DisplayName("테넌트별 모든 수집기 설정 조회 - 성공")
-    void getAllConfigsByTenant_Success() {
-        // 테스트 케이스: 테넌트별 모든 수집기 설정 조회 성공
-        // 목적: 특정 테넌트의 모든 수집기 설정(활성화/비활성화 포함)을 정상적으로 조회하는지 확인
-        // 검증 항목:
-        // 1. 반환된 설정 목록의 크기가 예상과 일치하는지
-        // 2. 반환된 설정의 테넌트 ID가 요청한 테넌트 ID와 일치하는지
-        // 3. 활성화/비활성화 상태와 관계없이 모든 설정이 조회되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("테넌트별 모든 수집기 설정 조회 - 성공")
+        void getAllConfigsByTenant_WhenCalled_ReturnsAllConfigs() {
+            // Given
         List<TenantCollectorConfig> configs = Arrays.asList(testConfig);
         when(repository.findAllByTenantId(testTenantId)).thenReturn(configs);
         // ObjectMapper 모킹 - 실제 JSON 파싱 대신 직접 값 반환
@@ -152,19 +152,12 @@ class TenantCollectorConfigServiceTest {
         // Then
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getTenantId()).isEqualTo(testTenantId);
-    }
-
-    @Test
-    @DisplayName("특정 수집기 설정 조회 - 성공")
-    void getConfigByTenantAndType_Success() {
-        // 테스트 케이스: 특정 수집기 설정 조회 성공
-        // 목적: 특정 테넌트의 특정 수집기 타입에 대한 설정을 정상적으로 조회하는지 확인
-        // 검증 항목:
-        // 1. 반환된 설정이 null이 아닌지
-        // 2. 반환된 설정의 테넌트 ID가 요청한 테넌트 ID와 일치하는지
-        // 3. 반환된 설정의 수집기 타입이 요청한 타입과 일치하는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("특정 수집기 설정 조회 - 성공")
+        void getConfigByTenantAndType_WhenExists_ReturnsConfig() {
+            // Given
         when(repository.findByTenantIdAndCollectorType(testTenantId, testCollectorType))
                 .thenReturn(Optional.of(testConfig));
         // ObjectMapper 모킹 - 실제 JSON 파싱 대신 직접 값 반환
@@ -189,19 +182,12 @@ class TenantCollectorConfigServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getTenantId()).isEqualTo(testTenantId);
         assertThat(result.getCollectorType()).isEqualTo(testCollectorType);
-    }
-
-    @Test
-    @DisplayName("특정 수집기 설정 조회 - 설정을 찾을 수 없음")
-    void getConfigByTenantAndType_NotFound() {
-        // 테스트 케이스: 특정 수집기 설정 조회 실패 (설정을 찾을 수 없음)
-        // 목적: 존재하지 않는 수집기 설정을 조회할 때 적절한 예외가 발생하는지 확인
-        // 검증 항목:
-        // 1. ResourceNotFoundException이 발생하는지
-        // 2. 예외 메시지가 적절한지
-        // 3. 예외가 발생한 후 서비스가 정상적으로 종료되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("특정 수집기 설정 조회 - 설정을 찾을 수 없음")
+        void getConfigByTenantAndType_WhenNotExists_ThrowsResourceNotFoundException() {
+            // Given
         when(repository.findByTenantIdAndCollectorType(testTenantId, testCollectorType))
                 .thenReturn(Optional.empty());
 
@@ -209,20 +195,17 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.getConfigByTenantAndType(testTenantId, testCollectorType))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("수집기 설정을 찾을 수 없습니다");
+        }
     }
-
-    @Test
-    @DisplayName("수집기 설정 생성 - 성공")
-    void createConfig_Success() {
-        // 테스트 케이스: 수집기 설정 생성 성공
-        // 목적: 새로운 수집기 설정을 정상적으로 생성하는지 확인
-        // 검증 항목:
-        // 1. 반환된 설정이 null이 아닌지
-        // 2. 반환된 설정의 테넌트 ID가 요청한 테넌트 ID와 일치하는지
-        // 3. 반환된 설정의 수집기 타입이 요청한 타입과 일치하는지
-        // 4. repository.save()가 호출되는지
+    
+    @Nested
+    @DisplayName("수집기 설정 생성")
+    class CreateConfigTest {
         
-        // Given
+        @Test
+        @DisplayName("수집기 설정 생성 - 성공")
+        void createConfig_WhenValidRequest_ReturnsCreatedConfig() {
+            // Given
         when(repository.existsByTenantIdAndCollectorType(testTenantId, testCollectorType)).thenReturn(false);
         when(repository.save(any(TenantCollectorConfig.class))).thenReturn(testConfig);
         try {
@@ -240,24 +223,24 @@ class TenantCollectorConfigServiceTest {
         assertThat(result.getTenantId()).isEqualTo(testTenantId);
         assertThat(result.getCollectorType()).isEqualTo(testCollectorType);
         verify(repository).save(any(TenantCollectorConfig.class));
-    }
-
-    @Test
-    @DisplayName("수집기 설정 생성 - 중복 설정 존재")
-    void createConfig_DuplicateConfig() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("수집기 설정 생성 - 중복 설정 존재")
+        void createConfig_WhenDuplicateExists_ThrowsBusinessException() {
+            // Given
         when(repository.existsByTenantIdAndCollectorType(testTenantId, testCollectorType)).thenReturn(true);
 
         // When & Then
         assertThatThrownBy(() -> service.createConfig(testConfigDto))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("이미 존재하는 수집기 설정입니다");
-    }
-
-    @Test
-    @DisplayName("수집기 설정 생성 - 유효하지 않은 테넌트 ID")
-    void createConfig_InvalidTenantId() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("수집기 설정 생성 - 유효하지 않은 테넌트 ID")
+        void createConfig_WhenInvalidTenantId_ThrowsBusinessException() {
+            // Given
         TenantCollectorConfigDto invalidDto = TenantCollectorConfigDto.builder()
                 .tenantId("")
                 .collectorType(testCollectorType)
@@ -267,12 +250,12 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.createConfig(invalidDto))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("테넌트 ID가 유효하지 않습니다");
-    }
-
-    @Test
-    @DisplayName("수집기 설정 생성 - 유효하지 않은 수집 주기")
-    void createConfig_InvalidCollectionInterval() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("수집기 설정 생성 - 유효하지 않은 수집 주기")
+        void createConfig_WhenInvalidCollectionInterval_ThrowsBusinessException() {
+            // Given
         TenantCollectorConfigDto invalidDto = TenantCollectorConfigDto.builder()
                 .tenantId(testTenantId)
                 .collectorType(testCollectorType)
@@ -283,12 +266,17 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.createConfig(invalidDto))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("수집 주기가 유효하지 않습니다");
+        }
     }
-
-    @Test
-    @DisplayName("수집기 설정 수정 - 성공")
-    void updateConfig_Success() {
-        // Given
+    
+    @Nested
+    @DisplayName("수집기 설정 수정")
+    class UpdateConfigTest {
+        
+        @Test
+        @DisplayName("수집기 설정 수정 - 성공")
+        void updateConfig_WhenValidRequest_ReturnsUpdatedConfig() {
+            // Given
         Long configId = 1L;
         when(repository.findById(configId)).thenReturn(Optional.of(testConfig));
         when(repository.save(any(TenantCollectorConfig.class))).thenReturn(testConfig);
@@ -306,12 +294,12 @@ class TenantCollectorConfigServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getTenantId()).isEqualTo(testTenantId);
         verify(repository).save(any(TenantCollectorConfig.class));
-    }
-
-    @Test
-    @DisplayName("수집기 설정 수정 - 설정을 찾을 수 없음")
-    void updateConfig_NotFound() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("수집기 설정 수정 - 설정을 찾을 수 없음")
+        void updateConfig_WhenNotExists_ThrowsResourceNotFoundException() {
+            // Given
         Long configId = 1L;
         when(repository.findById(configId)).thenReturn(Optional.empty());
 
@@ -319,12 +307,17 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.updateConfig(configId, testConfigDto))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("수집기 설정을 찾을 수 없습니다");
+        }
     }
-
-    @Test
-    @DisplayName("수집기 설정 삭제 - 성공")
-    void deleteConfig_Success() {
-        // Given
+    
+    @Nested
+    @DisplayName("수집기 설정 삭제")
+    class DeleteConfigTest {
+        
+        @Test
+        @DisplayName("수집기 설정 삭제 - 성공")
+        void deleteConfig_WhenExists_DeletesConfig() {
+            // Given
         Long configId = 1L;
         when(repository.existsById(configId)).thenReturn(true);
 
@@ -333,12 +326,12 @@ class TenantCollectorConfigServiceTest {
 
         // Then
         verify(repository).deleteById(configId);
-    }
-
-    @Test
-    @DisplayName("수집기 설정 삭제 - 설정을 찾을 수 없음")
-    void deleteConfig_NotFound() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("수집기 설정 삭제 - 설정을 찾을 수 없음")
+        void deleteConfig_WhenNotExists_ThrowsResourceNotFoundException() {
+            // Given
         Long configId = 1L;
         when(repository.existsById(configId)).thenReturn(false);
 
@@ -346,12 +339,17 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.deleteConfig(configId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("수집기 설정을 찾을 수 없습니다");
+        }
     }
-
-    @Test
-    @DisplayName("수집기 활성화/비활성화 - 성공")
-    void toggleConfig_Success() {
-        // Given
+    
+    @Nested
+    @DisplayName("수집기 활성화/비활성화")
+    class ToggleConfigTest {
+        
+        @Test
+        @DisplayName("수집기 활성화/비활성화 - 성공")
+        void toggleConfig_WhenCalled_ReturnsUpdatedConfig() {
+            // Given
         Long configId = 1L;
         boolean enabled = false;
         when(repository.findById(configId)).thenReturn(Optional.of(testConfig));
@@ -378,12 +376,12 @@ class TenantCollectorConfigServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getIsEnabled()).isEqualTo(enabled);
         verify(repository).save(any(TenantCollectorConfig.class));
-    }
-
-    @Test
-    @DisplayName("수집기 활성화/비활성화 - 설정을 찾을 수 없음")
-    void toggleConfig_NotFound() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("수집기 활성화/비활성화 - 설정을 찾을 수 없음")
+        void toggleConfig_WhenNotExists_ThrowsResourceNotFoundException() {
+            // Given
         Long configId = 1L;
         boolean enabled = false;
         when(repository.findById(configId)).thenReturn(Optional.empty());
@@ -392,12 +390,17 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.toggleConfig(configId, enabled))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("수집기 설정을 찾을 수 없습니다");
+        }
     }
-
-    @Test
-    @DisplayName("테넌트별 활성화된 수집기 타입 목록 조회 - 성공")
-    void getEnabledCollectorTypesByTenant_Success() {
-        // Given
+    
+    @Nested
+    @DisplayName("수집기 타입 조회")
+    class GetCollectorTypeTest {
+        
+        @Test
+        @DisplayName("테넌트별 활성화된 수집기 타입 목록 조회 - 성공")
+        void getEnabledCollectorTypesByTenant_WhenCalled_ReturnsCollectorTypes() {
+            // Given
         List<CollectorType> types = Arrays.asList(CollectorType.SYSTEM, CollectorType.APPLICATION);
         when(repository.findEnabledCollectorTypesByTenantId(testTenantId)).thenReturn(types);
 
@@ -407,12 +410,12 @@ class TenantCollectorConfigServiceTest {
         // Then
         assertThat(result).hasSize(2);
         assertThat(result).contains(CollectorType.SYSTEM, CollectorType.APPLICATION);
-    }
-
-    @Test
-    @DisplayName("특정 수집기 타입을 사용하는 테넌트 목록 조회 - 성공")
-    void getTenantIdsByCollectorType_Success() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("특정 수집기 타입을 사용하는 테넌트 목록 조회 - 성공")
+        void getTenantIdsByCollectorType_WhenCalled_ReturnsTenantIds() {
+            // Given
         List<String> tenantIds = Arrays.asList("tenant1", "tenant2");
         when(repository.findTenantIdsByCollectorType(testCollectorType)).thenReturn(tenantIds);
 
@@ -422,12 +425,12 @@ class TenantCollectorConfigServiceTest {
         // Then
         assertThat(result).hasSize(2);
         assertThat(result).contains("tenant1", "tenant2");
-    }
-
-    @Test
-    @DisplayName("테넌트별 활성화된 수집기 수 조회 - 성공")
-    void countEnabledByTenant_Success() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("테넌트별 활성화된 수집기 수 조회 - 성공")
+        void countEnabledByTenant_WhenCalled_ReturnsCount() {
+            // Given
         long count = 3L;
         when(repository.countEnabledByTenantId(testTenantId)).thenReturn(count);
 
@@ -436,12 +439,17 @@ class TenantCollectorConfigServiceTest {
 
         // Then
         assertThat(result).isEqualTo(count);
+        }
     }
-
-    @Test
-    @DisplayName("설정 검증 - 성공")
-    void validateConfig_Success() {
-        // Given
+    
+    @Nested
+    @DisplayName("설정 검증")
+    class ValidateConfigTest {
+        
+        @Test
+        @DisplayName("설정 검증 - 성공")
+        void validateConfig_WhenValidConfig_DoesNotThrowException() {
+            // Given
         TenantCollectorConfigDto validDto = TenantCollectorConfigDto.builder()
                 .tenantId(testTenantId)
                 .collectorType(testCollectorType)
@@ -457,12 +465,12 @@ class TenantCollectorConfigServiceTest {
         // When & Then
         assertThatCode(() -> service.createConfig(validDto))
                 .doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("설정 검증 - 유효하지 않은 재시도 횟수")
-    void validateConfig_InvalidRetryCount() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("설정 검증 - 유효하지 않은 재시도 횟수")
+        void validateConfig_WhenInvalidRetryCount_ThrowsBusinessException() {
+            // Given
         TenantCollectorConfigDto invalidDto = TenantCollectorConfigDto.builder()
                 .tenantId(testTenantId)
                 .collectorType(testCollectorType)
@@ -473,12 +481,12 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.createConfig(invalidDto))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("재시도 횟수가 유효하지 않습니다");
-    }
-
-    @Test
-    @DisplayName("설정 검증 - 유효하지 않은 타임아웃")
-    void validateConfig_InvalidTimeout() {
-        // Given
+        }
+        
+        @Test
+        @DisplayName("설정 검증 - 유효하지 않은 타임아웃")
+        void validateConfig_WhenInvalidTimeout_ThrowsBusinessException() {
+            // Given
         TenantCollectorConfigDto invalidDto = TenantCollectorConfigDto.builder()
                 .tenantId(testTenantId)
                 .collectorType(testCollectorType)
@@ -489,21 +497,17 @@ class TenantCollectorConfigServiceTest {
         assertThatThrownBy(() -> service.createConfig(invalidDto))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("타임아웃이 유효하지 않습니다");
+        }
     }
-
-    // ===== 할당량 관련 테스트 =====
-
-    @Test
-    @DisplayName("테넌트별 할당량 설정 - 성공")
-    void setQuotaForTenant_Success() {
-        // 테스트 케이스: 테넌트별 할당량 설정 성공
-        // 목적: 테넌트별 할당량을 정상적으로 설정하는지 확인
-        // 검증 항목:
-        // 1. 할당량 설정이 정상적으로 저장되는지
-        // 2. 모든 설정에 할당량이 적용되는지
-        // 3. repository.save()가 호출되는지
+    
+    @Nested
+    @DisplayName("할당량 관리")
+    class QuotaManagementTest {
         
-        // Given
+        @Test
+        @DisplayName("테넌트별 할당량 설정 - 성공")
+        void setQuotaForTenant_WhenCalled_SetsQuota() {
+            // Given
         Long dailyMetricLimit = 10000L;
         Long storageQuotaMb = 1000L;
         QuotaExceededAction quotaExceededAction = QuotaExceededAction.WARN_ONLY;
@@ -521,19 +525,12 @@ class TenantCollectorConfigServiceTest {
         assertThat(testConfig.getDailyMetricLimit()).isEqualTo(dailyMetricLimit);
         assertThat(testConfig.getStorageQuotaMb()).isEqualTo(storageQuotaMb);
         assertThat(testConfig.getQuotaExceededAction()).isEqualTo(quotaExceededAction);
-    }
-
-    @Test
-    @DisplayName("테넌트별 할당량 조회 - 성공")
-    void getQuotaForTenant_Success() {
-        // 테스트 케이스: 테넌트별 할당량 조회 성공
-        // 목적: 테넌트별 할당량을 정상적으로 조회하는지 확인
-        // 검증 항목:
-        // 1. 할당량 정보가 정상적으로 반환되는지
-        // 2. DTO 변환이 정상적으로 이루어지는지
-        // 3. repository.findAllByTenantId()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("테넌트별 할당량 조회 - 성공")
+        void getQuotaForTenant_WhenExists_ReturnsQuota() {
+            // Given
         testConfig.setDailyMetricLimit(10000L);
         testConfig.setStorageQuotaMb(1000L);
         testConfig.setCurrentDailyUsage(5000L);
@@ -554,36 +551,24 @@ class TenantCollectorConfigServiceTest {
         assertThat(result.getCurrentDailyUsage()).isEqualTo(5000L);
         assertThat(result.getCurrentStorageUsageMb()).isEqualTo(500L);
         assertThat(result.getQuotaExceededAction()).isEqualTo(QuotaExceededAction.WARN_ONLY);
-    }
-
-    @Test
-    @DisplayName("테넌트별 할당량 조회 - 설정 없음")
-    void getQuotaForTenant_NoConfig() {
-        // 테스트 케이스: 테넌트별 할당량 조회 시 설정이 없는 경우
-        // 목적: 설정이 없을 때 적절한 예외가 발생하는지 확인
-        // 검증 항목:
-        // 1. BusinessException이 발생하는지
-        // 2. 적절한 에러 메시지가 포함되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("테넌트별 할당량 조회 - 설정 없음")
+        void getQuotaForTenant_WhenNoConfig_ThrowsBusinessException() {
+            // Given
         when(repository.findAllByTenantId(testTenantId)).thenReturn(Collections.emptyList());
         
         // When & Then
         assertThatThrownBy(() -> service.getQuotaForTenant(testTenantId))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("테넌트 설정을 찾을 수 없습니다");
-    }
-
-    @Test
-    @DisplayName("할당량 초과 여부 확인 - 초과")
-    void isQuotaExceeded_Exceeded() {
-        // 테스트 케이스: 할당량 초과 여부 확인 (초과)
-        // 목적: 할당량이 초과되었을 때 true를 반환하는지 확인
-        // 검증 항목:
-        // 1. 할당량 초과 시 true를 반환하는지
-        // 2. repository.findAllByTenantId()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("할당량 초과 여부 확인 - 초과")
+        void isQuotaExceeded_WhenExceeded_ReturnsTrue() {
+            // Given
         testConfig.setDailyMetricLimit(1000L);
         testConfig.setCurrentDailyUsage(1500L);
         
@@ -596,18 +581,12 @@ class TenantCollectorConfigServiceTest {
         // Then
         verify(repository, times(1)).findAllByTenantId(testTenantId);
         assertThat(result).isTrue();
-    }
-
-    @Test
-    @DisplayName("할당량 초과 여부 확인 - 미초과")
-    void isQuotaExceeded_NotExceeded() {
-        // 테스트 케이스: 할당량 초과 여부 확인 (미초과)
-        // 목적: 할당량이 초과되지 않았을 때 false를 반환하는지 확인
-        // 검증 항목:
-        // 1. 할당량 미초과 시 false를 반환하는지
-        // 2. repository.findAllByTenantId()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("할당량 초과 여부 확인 - 미초과")
+        void isQuotaExceeded_WhenNotExceeded_ReturnsFalse() {
+            // Given
         testConfig.setDailyMetricLimit(1000L);
         testConfig.setCurrentDailyUsage(500L);
         
@@ -620,18 +599,12 @@ class TenantCollectorConfigServiceTest {
         // Then
         verify(repository, times(1)).findAllByTenantId(testTenantId);
         assertThat(result).isFalse();
-    }
-
-    @Test
-    @DisplayName("일일 사용량 증가 - 성공")
-    void incrementDailyUsage_Success() {
-        // 테스트 케이스: 일일 사용량 증가 성공
-        // 목적: 일일 사용량을 정상적으로 증가시키는지 확인
-        // 검증 항목:
-        // 1. 사용량이 정상적으로 증가하는지
-        // 2. repository.save()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("일일 사용량 증가 - 성공")
+        void incrementDailyUsage_WhenCalled_IncrementsUsage() {
+            // Given
         Long amount = 100L;
         testConfig.setCurrentDailyUsage(500L);
         
@@ -646,18 +619,12 @@ class TenantCollectorConfigServiceTest {
         verify(repository, times(1)).findAllByTenantId(testTenantId);
         verify(repository, times(1)).save(testConfig);
         assertThat(testConfig.getCurrentDailyUsage()).isEqualTo(600L);
-    }
-
-    @Test
-    @DisplayName("저장 공간 사용량 증가 - 성공")
-    void incrementStorageUsage_Success() {
-        // 테스트 케이스: 저장 공간 사용량 증가 성공
-        // 목적: 저장 공간 사용량을 정상적으로 증가시키는지 확인
-        // 검증 항목:
-        // 1. 저장 공간 사용량이 정상적으로 증가하는지
-        // 2. repository.save()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("저장 공간 사용량 증가 - 성공")
+        void incrementStorageUsage_WhenCalled_IncrementsStorageUsage() {
+            // Given
         Long amountMb = 50L;
         testConfig.setCurrentStorageUsageMb(200L);
         
@@ -672,18 +639,12 @@ class TenantCollectorConfigServiceTest {
         verify(repository, times(1)).findAllByTenantId(testTenantId);
         verify(repository, times(1)).save(testConfig);
         assertThat(testConfig.getCurrentStorageUsageMb()).isEqualTo(250L);
-    }
-
-    @Test
-    @DisplayName("할당량 초과 처리 - 수집기 비활성화")
-    void handleQuotaExceeded_BlockCollection() {
-        // 테스트 케이스: 할당량 초과 처리 (수집기 비활성화)
-        // 목적: 할당량 초과 시 수집기를 비활성화하는지 확인
-        // 검증 항목:
-        // 1. 수집기가 비활성화되는지
-        // 2. repository.save()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("할당량 초과 처리 - 수집기 비활성화")
+        void handleQuotaExceeded_WhenBlockCollection_DisablesCollector() {
+            // Given
         testConfig.setDailyMetricLimit(1000L);
         testConfig.setCurrentDailyUsage(1500L);
         testConfig.setQuotaExceededAction(QuotaExceededAction.BLOCK_COLLECTION);
@@ -699,18 +660,12 @@ class TenantCollectorConfigServiceTest {
         verify(repository, times(1)).findAllByTenantId(testTenantId);
         verify(repository, times(1)).save(testConfig);
         assertThat(testConfig.getIsEnabled()).isFalse();
-    }
-
-    @Test
-    @DisplayName("할당량 초과 처리 - 수집 주기 조절")
-    void handleQuotaExceeded_ThrottleCollection() {
-        // 테스트 케이스: 할당량 초과 처리 (수집 주기 조절)
-        // 목적: 할당량 초과 시 수집 주기를 조절하는지 확인
-        // 검증 항목:
-        // 1. 수집 주기가 2배로 늘어나는지
-        // 2. repository.save()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("할당량 초과 처리 - 수집 주기 조절")
+        void handleQuotaExceeded_WhenThrottleCollection_ThrottlesCollection() {
+            // Given
         testConfig.setDailyMetricLimit(1000L);
         testConfig.setCurrentDailyUsage(1500L);
         testConfig.setQuotaExceededAction(QuotaExceededAction.THROTTLE_COLLECTION);
@@ -727,18 +682,12 @@ class TenantCollectorConfigServiceTest {
         verify(repository, times(1)).findAllByTenantId(testTenantId);
         verify(repository, times(1)).save(testConfig);
         assertThat(testConfig.getCollectionInterval()).isEqualTo(120000L);
-    }
-
-    @Test
-    @DisplayName("할당량 초과 처리 - 경고만")
-    void handleQuotaExceeded_WarnOnly() {
-        // 테스트 케이스: 할당량 초과 처리 (경고만)
-        // 목적: 할당량 초과 시 경고만 출력하는지 확인
-        // 검증 항목:
-        // 1. 설정이 변경되지 않는지
-        // 2. repository.save()가 호출되는지
+        }
         
-        // Given
+        @Test
+        @DisplayName("할당량 초과 처리 - 경고만")
+        void handleQuotaExceeded_WhenWarnOnly_DoesNotChangeConfig() {
+            // Given
         testConfig.setDailyMetricLimit(1000L);
         testConfig.setCurrentDailyUsage(1500L);
         testConfig.setQuotaExceededAction(QuotaExceededAction.WARN_ONLY);
@@ -757,5 +706,6 @@ class TenantCollectorConfigServiceTest {
         verify(repository, times(1)).save(testConfig);
         assertThat(testConfig.getIsEnabled()).isTrue();
         assertThat(testConfig.getCollectionInterval()).isEqualTo(60000L);
+        }
     }
 }

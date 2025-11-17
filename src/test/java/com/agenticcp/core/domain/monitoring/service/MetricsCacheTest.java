@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @DisplayName("MetricsCache 단위 테스트")
 class MetricsCacheTest {
@@ -38,7 +38,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("시스템 메트릭을 캐시에 저장하고 조회할 수 있다")
-        void cacheSystemMetrics_ShouldStoreAndRetrieve() {
+        void cacheSystemMetrics_WhenValidMetrics_StoresAndRetrieves() {
             // Given
             SystemMetrics systemMetrics = SystemMetrics.builder()
                     .cpuUsage(50.0)
@@ -58,7 +58,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("null 시스템 메트릭은 캐시에 저장되지 않는다")
-        void cacheSystemMetrics_WhenNull_ShouldNotStore() {
+        void cacheSystemMetrics_WhenNull_DoesNotStore() {
             // When
             metricsCache.cacheSystemMetrics(null);
             SystemMetrics cached = metricsCache.getLastSuccessfulSystemMetrics();
@@ -69,7 +69,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("5분 이상 지난 캐시는 만료되어 null을 반환한다")
-        void getSystemMetrics_WhenExpired_ShouldReturnNull() throws InterruptedException {
+        void getLastSuccessfulSystemMetrics_WhenExpired_ReturnsNull() throws InterruptedException {
             // Given
             SystemMetrics systemMetrics = SystemMetrics.builder()
                     .cpuUsage(50.0)
@@ -91,7 +91,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("시스템 메트릭 캐시를 초기화할 수 있다")
-        void clearSystemMetricsCache_ShouldClearCache() {
+        void clearSystemMetricsCache_WhenCalled_ClearsCache() {
             // Given
             SystemMetrics systemMetrics = SystemMetrics.builder()
                     .cpuUsage(50.0)
@@ -114,7 +114,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("애플리케이션 메트릭을 캐시에 저장하고 조회할 수 있다")
-        void cacheApplicationMetrics_ShouldStoreAndRetrieve() {
+        void cacheApplicationMetrics_WhenValidMetrics_StoresAndRetrieves() {
             // Given
             List<Metric> metrics = new ArrayList<>();
             metrics.add(Metric.builder()
@@ -144,7 +144,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("null 애플리케이션 메트릭은 캐시에 저장되지 않는다")
-        void cacheApplicationMetrics_WhenNull_ShouldNotStore() {
+        void cacheApplicationMetrics_WhenNull_DoesNotStore() {
             // When
             metricsCache.cacheApplicationMetrics(null);
             List<Metric> cached = metricsCache.getLastSuccessfulApplicationMetrics();
@@ -155,7 +155,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("빈 애플리케이션 메트릭 목록은 캐시에 저장되지 않는다")
-        void cacheApplicationMetrics_WhenEmpty_ShouldNotStore() {
+        void cacheApplicationMetrics_WhenEmpty_DoesNotStore() {
             // When
             metricsCache.cacheApplicationMetrics(new ArrayList<>());
             List<Metric> cached = metricsCache.getLastSuccessfulApplicationMetrics();
@@ -166,7 +166,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("애플리케이션 메트릭 캐시를 초기화할 수 있다")
-        void clearApplicationMetricsCache_ShouldClearCache() {
+        void clearApplicationMetricsCache_WhenCalled_ClearsCache() {
             // Given
             List<Metric> metrics = new ArrayList<>();
             metrics.add(Metric.builder()
@@ -192,7 +192,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("캐시에 데이터가 있으면 true를 반환한다")
-        void hasCachedData_WhenDataExists_ShouldReturnTrue() {
+        void hasCachedData_WhenDataExists_ReturnsTrue() {
             // Given
             SystemMetrics systemMetrics = SystemMetrics.builder()
                     .cpuUsage(50.0)
@@ -209,7 +209,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("캐시에 데이터가 없으면 false를 반환한다")
-        void hasCachedData_WhenNoData_ShouldReturnFalse() {
+        void hasCachedData_WhenNoData_ReturnsFalse() {
             // When
             boolean hasData = metricsCache.hasCachedData();
             
@@ -219,7 +219,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("모든 캐시를 초기화할 수 있다")
-        void clearAll_ShouldClearAllCaches() {
+        void clearAll_WhenCalled_ClearsAllCaches() {
             // Given
             SystemMetrics systemMetrics = SystemMetrics.builder()
                     .cpuUsage(50.0)
@@ -252,7 +252,7 @@ class MetricsCacheTest {
         
         @Test
         @DisplayName("여러 스레드에서 동시에 캐시에 접근해도 안전하다")
-        void cacheAccess_ShouldBeThreadSafe() throws InterruptedException {
+        void cacheApplicationMetrics_WhenConcurrentAccess_IsThreadSafe() throws InterruptedException {
             // Given
             int threadCount = 10;
             Thread[] threads = new Thread[threadCount];

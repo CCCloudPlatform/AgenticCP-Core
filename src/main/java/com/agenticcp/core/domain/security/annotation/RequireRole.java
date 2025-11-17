@@ -6,11 +6,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 역할 검증 어노테이션
- * 
+ * 특정 역할 보유 여부를 검증하는 애노테이션입니다.
+ *
  * @author AgenticCP Team
- * @version 1.0.0
- * @since 2025-11-10
+ * @version 1.0
+ * @since 2025-11-08
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)

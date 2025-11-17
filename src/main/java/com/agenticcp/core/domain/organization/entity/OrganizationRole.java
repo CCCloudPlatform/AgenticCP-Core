@@ -4,9 +4,12 @@ import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.user.entity.Role;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
@@ -15,7 +18,7 @@ import lombok.NoArgsConstructor;
  *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-28
+ * @since 2025-11-13
  */
 @Entity
 @Table(name = "organization_roles",
@@ -33,24 +36,37 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 public class OrganizationRole extends BaseEntity {
 
+    /** 조직 */
+    @NotNull(message = "조직은 필수입니다")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 
+    /** 역할 */
+    @NotNull(message = "역할은 필수입니다")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
+    /** 기본 역할 여부 */
     @Column(name = "is_default")
+    @Builder.Default
     private Boolean isDefault = false;
 
+    /** 우선순위 */
+    @Min(value = 0, message = "우선순위는 0 이상이어야 합니다")
     @Column(name = "priority")
+    @Builder.Default
     private Integer priority = 0;
 
+    /** 상태 */
+    @NotNull(message = "상태는 필수입니다")
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private Status status = Status.ACTIVE;
 }
 

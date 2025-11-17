@@ -8,6 +8,7 @@ import com.agenticcp.core.domain.monitoring.storage.impl.TimescaleDBStorage;
 import com.agenticcp.core.domain.monitoring.storage.impl.PrometheusStorage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
 
@@ -34,10 +35,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-03
+ * @since 2025-11-13
  */
 @Slf4j
 @Service
+@Transactional(readOnly = true)
 public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
 
     /**
@@ -62,6 +64,9 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
     
     /**
      * 기본 설정 초기화
+     * 
+     * <p>애플리케이션 시작 시 각 저장소 타입별 기본 설정을 초기화합니다.
+     * InfluxDB는 기본적으로 활성화되며, TimescaleDB와 Prometheus는 비활성화 상태로 설정됩니다.</p>
      */
     @PostConstruct
     public void initializeDefaultConfigs() {
@@ -103,7 +108,7 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
                 .retryCount(3)
                 .build());
                 
-        log.info("메트릭 저장소 팩토리 초기화 완료: 활성화된 저장소={}", 
+        log.info("[MetricsStorageFactoryImpl] initializeDefaultConfigs - 메트릭 저장소 팩토리 초기화 완료: 활성화된 저장소={}", 
                 storageStatus.entrySet().stream()
                         .filter(Map.Entry::getValue)
                         .map(Map.Entry::getKey)
@@ -119,7 +124,7 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
      */
     @Override
     public MetricsStorage createStorage(StorageType type) {
-        log.debug("메트릭 저장소 생성 요청: type={}", type);
+        log.debug("[MetricsStorageFactoryImpl] createStorage - 메트릭 저장소 생성 요청: type={}", type);
         
         try {
             // 저장소 타입 유효성 검증
@@ -127,23 +132,23 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
             
             // 저장소 활성화 상태 확인
             if (!isStorageEnabled(type)) {
-                log.warn("비활성화된 저장소 생성 시도: type={}", type);
+                log.warn("[MetricsStorageFactoryImpl] createStorage - 비활성화된 저장소 생성 시도: type={}", type);
                 throw new BusinessException(MonitoringErrorCode.COLLECTOR_DISABLED, 
                     "저장소가 비활성화되어 있습니다: " + type);
             }
             
             MetricsStorage storage = createStorageByType(type);
             
-            log.debug("메트릭 저장소 생성 완료: type={}, enabled={}", 
+            log.debug("[MetricsStorageFactoryImpl] createStorage - 메트릭 저장소 생성 완료: type={}, enabled={}", 
                     type, storage.isEnabled());
             
             return storage;
             
         } catch (BusinessException e) {
-            log.error("메트릭 저장소 생성 실패: type={}, error={}", type, e.getMessage());
+            log.error("[MetricsStorageFactoryImpl] createStorage - 메트릭 저장소 생성 실패: type={}, error={}", type, e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("메트릭 저장소 생성 중 예상치 못한 오류: type={}", type, e);
+            log.error("[MetricsStorageFactoryImpl] createStorage - 메트릭 저장소 생성 중 예상치 못한 오류: type={}", type, e);
             throw new BusinessException(MonitoringErrorCode.COLLECTOR_CREATION_FAILED, 
                 "메트릭 저장소 생성 중 오류가 발생했습니다: " + e.getMessage());
         }
@@ -156,7 +161,7 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
      */
     @Override
     public List<MetricsStorage> createAllStorages() {
-        log.debug("모든 활성화된 저장소 생성 요청");
+        log.debug("[MetricsStorageFactoryImpl] createAllStorages - 모든 활성화된 저장소 생성 요청");
         
         List<MetricsStorage> storages = new ArrayList<>();
         
@@ -166,21 +171,21 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
                     try {
                         MetricsStorage storage = createStorage(type);
                         storages.add(storage);
-                        log.debug("저장소 추가됨: type={}", type);
+                        log.debug("[MetricsStorageFactoryImpl] createAllStorages - 저장소 추가됨: type={}", type);
                     } catch (BusinessException e) {
-                        log.warn("저장소 생성 실패 (건너뜀): type={}, error={}", type, e.getMessage());
+                        log.warn("[MetricsStorageFactoryImpl] createAllStorages - 저장소 생성 실패 (건너뜀): type={}, error={}", type, e.getMessage());
                         // 개별 저장소 생성 실패는 전체 프로세스를 중단시키지 않음
                     }
                 } else {
-                    log.debug("비활성화된 저장소 건너뜀: type={}", type);
+                    log.debug("[MetricsStorageFactoryImpl] createAllStorages - 비활성화된 저장소 건너뜀: type={}", type);
                 }
             }
             
-            log.info("활성화된 저장소 생성 완료: 총 {}개", storages.size());
+            log.info("[MetricsStorageFactoryImpl] createAllStorages - 활성화된 저장소 생성 완료: 총 {}개", storages.size());
             return storages;
             
         } catch (Exception e) {
-            log.error("모든 저장소 생성 중 오류 발생", e);
+            log.error("[MetricsStorageFactoryImpl] createAllStorages - 모든 저장소 생성 중 오류 발생", e);
             throw new BusinessException(MonitoringErrorCode.COLLECTOR_CREATION_FAILED, 
                 "저장소 생성 중 오류가 발생했습니다: " + e.getMessage());
         }
@@ -195,14 +200,14 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
     @Override
     public boolean hasStorage(StorageType type) {
         if (type == null) {
-            log.warn("null 저장소 타입으로 존재 여부 확인 시도");
+            log.warn("[MetricsStorageFactoryImpl] hasStorage - null 저장소 타입으로 존재 여부 확인 시도");
             return false;
         }
         
         // 모든 StorageType은 지원됨 (동적 생성)
         boolean exists = true;
         
-        log.debug("저장소 존재 여부 확인: type={}, exists={}", type, exists);
+        log.debug("[MetricsStorageFactoryImpl] hasStorage - 저장소 존재 여부 확인: type={}, exists={}", type, exists);
         return exists;
     }
     
@@ -214,7 +219,7 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
      */
     @Override
     public void setStorageEnabled(StorageType type, boolean enabled) {
-        log.info("저장소 활성화 상태 변경: type={}, enabled={}", type, enabled);
+        log.info("[MetricsStorageFactoryImpl] setStorageEnabled - 저장소 활성화 상태 변경: type={}, enabled={}", type, enabled);
         
         storageStatus.put(type, enabled);
         
@@ -247,7 +252,7 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
      */
     @Override
     public void updateStorageConfig(StorageType type, StorageConfig config) {
-        log.info("저장소 설정 업데이트: type={}, config={}", type, config);
+        log.info("[MetricsStorageFactoryImpl] updateStorageConfig - 저장소 설정 업데이트: type={}, config={}", type, config);
         
         storageConfigs.put(type, config);
         storageStatus.put(type, config.isEnabled());
@@ -255,6 +260,9 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
     
     /**
      * 저장소 타입 유효성 검증
+     * 
+     * @param type 저장소 타입
+     * @throws BusinessException 저장소 타입이 null이거나 지원되지 않는 경우
      */
     private void validateStorageType(StorageType type) {
         if (type == null) {
@@ -270,6 +278,9 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
     
     /**
      * 저장소 활성화 상태 확인
+     * 
+     * @param type 저장소 타입
+     * @return 활성화 여부
      */
     private boolean isStorageEnabled(StorageType type) {
         return storageStatus.getOrDefault(type, false);
@@ -277,6 +288,9 @@ public class MetricsStorageFactoryImpl implements MetricsStorageFactory {
     
     /**
      * 저장소 타입별 생성
+     * 
+     * @param type 저장소 타입
+     * @return 생성된 메트릭 저장소
      */
     private MetricsStorage createStorageByType(StorageType type) {
         StorageConfig config = getStorageConfig(type);

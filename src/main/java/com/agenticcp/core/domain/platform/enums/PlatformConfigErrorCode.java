@@ -53,7 +53,12 @@ public enum PlatformConfigErrorCode implements BaseErrorCode {
     SYSTEM_CONFIG_TYPE_CHANGE_FORBIDDEN(HttpStatus.FORBIDDEN, 6020, "시스템 설정의 타입은 변경할 수 없습니다."),
     SYSTEM_CONFIG_NAMESPACE_MISMATCH(HttpStatus.BAD_REQUEST, 6021, "시스템 설정은 'system.' 네임스페이스를 사용해야 합니다."),
     USER_CONFIG_NAMESPACE_MISMATCH(HttpStatus.BAD_REQUEST, 6022, "사용자 설정은 'system.' 네임스페이스를 사용할 수 없습니다."),
-    INVALID_CONFIG_NAMESPACE(HttpStatus.BAD_REQUEST, 6023, "설정 키는 'system.' 또는 'user.' 네임스페이스를 사용해야 합니다.");
+    INVALID_CONFIG_NAMESPACE(HttpStatus.BAD_REQUEST, 6023, "설정 키는 'system.' 또는 'user.' 네임스페이스를 사용해야 합니다."),
+    
+    // 기능 플래그 승인 관련 에러
+    FLAG_CHANGE_REQUIRES_APPROVAL(HttpStatus.FORBIDDEN, 6024, "이 플래그 변경은 승인이 필요합니다."),
+    FLAG_APPROVAL_NOT_FOUND(HttpStatus.NOT_FOUND, 6025, "승인 요청을 찾을 수 없습니다."),
+    FLAG_APPROVAL_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, 6026, "이미 처리된 승인 요청입니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;
