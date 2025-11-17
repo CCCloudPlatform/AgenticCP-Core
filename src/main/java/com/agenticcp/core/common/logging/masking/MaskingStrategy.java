@@ -5,6 +5,7 @@ package com.agenticcp.core.common.logging.masking;
  * 
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 public interface MaskingStrategy {
     String mask(String value);

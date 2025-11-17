@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
  * 
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 @Component
 public class TokenMaskingStrategy implements MaskingStrategy {

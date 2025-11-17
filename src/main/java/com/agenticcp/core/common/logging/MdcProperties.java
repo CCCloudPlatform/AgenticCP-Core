@@ -11,6 +11,7 @@ import java.util.List;
  * 
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 @Getter
 @ConfigurationProperties(prefix = "logging.mdc")

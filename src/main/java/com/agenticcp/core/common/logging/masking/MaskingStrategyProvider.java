@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
  * 
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 @Slf4j
 @Component

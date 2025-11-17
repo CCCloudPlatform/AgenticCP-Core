@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * 
  * @author AgenticCP Team
  * @since 2025-10-01
+ * @version 1.0.0
  */
 public interface MdcContextProvider {
     void setContext(HttpServletRequest request);
