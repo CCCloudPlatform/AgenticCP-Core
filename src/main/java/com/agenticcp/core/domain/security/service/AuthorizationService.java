@@ -2,6 +2,13 @@ package com.agenticcp.core.domain.security.service;
 
 import java.util.Set;
 
+/**
+ * 권한 검증 서비스 인터페이스
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-10
+ */
 public interface AuthorizationService {
 
     boolean hasPermission(String username, String permissionKey);
