@@ -66,6 +66,10 @@ public interface MetricsStorageFactory {
     
     /**
      * 저장소 설정 정보 클래스
+     *
+     * @author AgenticCP Team
+     * @version 1.0.0
+     * @since 2025-11-13
      */
     class StorageConfig {
         private final boolean enabled;
@@ -114,6 +118,13 @@ public interface MetricsStorageFactory {
         public int getTimeout() { return timeout; }
         public int getRetryCount() { return retryCount; }
         
+        /**
+         * StorageConfig 빌더 클래스
+         *
+         * @author AgenticCP Team
+         * @version 1.0.0
+         * @since 2025-11-13
+         */
         public static class Builder {
             private boolean enabled = true;
             private String url;

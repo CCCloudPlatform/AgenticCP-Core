@@ -29,9 +29,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 조직 관리 컨트롤러
+ * 
+ * <p>조직의 생성, 조회, 수정, 삭제 및 계층 구조 관리를 제공합니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
+ */
 @Slf4j
 @RestController
-@RequestMapping("/api/organizations")
+@RequestMapping("/api/v1/organizations")
 @RequiredArgsConstructor
 @Tag(name = "Organization Management", description = "조직 관리 API")
 public class OrganizationController {
@@ -40,6 +49,9 @@ public class OrganizationController {
     
     /**
      * 조직 생성
+     * 
+     * @param request 조직 생성 요청 정보
+     * @return 생성된 조직 정보
      */
     @PostMapping
     @Operation(
@@ -69,6 +81,9 @@ public class OrganizationController {
     
     /**
      * 조직 조회 (단일)
+     * 
+     * @param id 조직 ID
+     * @return 조직 정보
      */
     @GetMapping("/{id}")
     @Operation(
@@ -92,6 +107,8 @@ public class OrganizationController {
     
     /**
      * 조직 목록 조회
+     * 
+     * @return 조직 목록
      */
     @GetMapping
     @Operation(
@@ -112,6 +129,10 @@ public class OrganizationController {
     
     /**
      * 조직 수정
+     * 
+     * @param id 조직 ID
+     * @param request 조직 수정 요청 정보
+     * @return 수정된 조직 정보
      */
     @PutMapping("/{id}")
     @Operation(
@@ -143,6 +164,8 @@ public class OrganizationController {
     
     /**
      * 조직 삭제
+     * 
+     * @param id 조직 ID
      */
     @DeleteMapping("/{id}")
     @Operation(
@@ -154,18 +177,20 @@ public class OrganizationController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "하위 조직이 존재하여 삭제할 수 없음")
     })
-    public ResponseEntity<ApiResponse<Void>> deleteOrganization(
+    public ResponseEntity<Void> deleteOrganization(
             @Parameter(description = "조직 ID", required = true, example = "1")
             @PathVariable @Positive Long id) {
         log.info("[OrganizationController] deleteOrganization - id={}", id);
         
         organizationService.deleteOrganization(id);
         
-        return ResponseEntity.ok(ApiResponse.success(null, "조직이 성공적으로 삭제되었습니다."));
+        return ResponseEntity.noContent().build();
     }
     
     /**
      * 조직 수 조회
+     * 
+     * @return 조직 수
      */
     @GetMapping("/count")
     @Operation(
@@ -183,6 +208,9 @@ public class OrganizationController {
     
     /**
      * 하위 조직 목록 조회
+     * 
+     * @param id 조직 ID
+     * @return 하위 조직 목록
      */
     @GetMapping("/{id}/children")
     @Operation(
@@ -206,6 +234,8 @@ public class OrganizationController {
     
     /**
      * 전체 조직 트리 조회
+     * 
+     * @return 조직 트리 목록
      */
     @GetMapping("/tree")
     @Operation(
@@ -226,6 +256,9 @@ public class OrganizationController {
     
     /**
      * 조직 경로 조회
+     * 
+     * @param id 조직 ID
+     * @return 조직 경로 정보
      */
     @GetMapping("/{id}/path")
     @Operation(
@@ -249,6 +282,9 @@ public class OrganizationController {
     
     /**
      * 상위 조직 목록 조회
+     * 
+     * @param id 조직 ID
+     * @return 상위 조직 목록
      */
     @GetMapping("/{id}/ancestors")
     @Operation(
@@ -272,6 +308,9 @@ public class OrganizationController {
     
     /**
      * 하위 조직 목록 조회 (모든 레벨)
+     * 
+     * @param id 조직 ID
+     * @return 하위 조직 목록
      */
     @GetMapping("/{id}/descendants")
     @Operation(
@@ -295,6 +334,10 @@ public class OrganizationController {
     
     /**
      * 조직 이동
+     * 
+     * @param id 조직 ID
+     * @param request 조직 이동 요청 정보
+     * @return 이동된 조직 정보
      */
     @PutMapping("/{id}/move")
     @Operation(
@@ -326,6 +369,8 @@ public class OrganizationController {
     
     /**
      * 조직 통계 조회
+     * 
+     * @return 조직 통계 정보
      */
     @GetMapping("/stats")
     @Operation(
@@ -346,6 +391,9 @@ public class OrganizationController {
     
     /**
      * 조직별 사용자 목록 조회
+     * 
+     * @param id 조직 ID
+     * @return 사용자 목록
      */
     @GetMapping("/{id}/users")
     @Operation(
@@ -368,6 +416,10 @@ public class OrganizationController {
     
     /**
      * 사용자를 조직에 추가
+     * 
+     * @param id 조직 ID
+     * @param request 사용자 추가 요청 정보
+     * @return 추가된 사용자 정보
      */
     @PostMapping("/{id}/users")
     @Operation(
@@ -397,6 +449,9 @@ public class OrganizationController {
     
     /**
      * 사용자를 조직에서 제거
+     * 
+     * @param id 조직 ID
+     * @param userId 사용자 ID
      */
     @DeleteMapping("/{id}/users/{userId}")
     @Operation(
@@ -423,6 +478,9 @@ public class OrganizationController {
 
     /**
      * 조직별 테넌트 목록 조회
+     * 
+     * @param id 조직 ID
+     * @return 테넌트 목록
      */
     @GetMapping("/{id}/tenants")
     @Operation(
@@ -445,6 +503,9 @@ public class OrganizationController {
 
     /**
      * 조직별 테넌트 수 조회
+     * 
+     * @param id 조직 ID
+     * @return 테넌트 수 통계
      */
     @GetMapping("/{id}/tenants/count")
     @Operation(
@@ -473,6 +534,9 @@ public class OrganizationController {
 
     /**
      * 조직별 테넌트 통계 조회
+     * 
+     * @param id 조직 ID
+     * @return 테넌트 통계 정보
      */
     @GetMapping("/{id}/tenants/stats")
     @Operation(

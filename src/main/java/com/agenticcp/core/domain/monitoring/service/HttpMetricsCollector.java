@@ -53,7 +53,7 @@ public class HttpMetricsCollector implements CustomMetricsCollector {
      */
     public HttpMetricsCollector(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
-        log.info("HTTP 메트릭 수집기가 초기화되었습니다.");
+        log.info("[HttpMetricsCollector] HttpMetricsCollector - HTTP 메트릭 수집기가 초기화되었습니다.");
     }
     
     @Override
@@ -82,15 +82,20 @@ public class HttpMetricsCollector implements CustomMetricsCollector {
         return null;
     }
     
+    /**
+     * HTTP 애플리케이션 메트릭 수집
+     * 
+     * @return 수집된 HTTP 메트릭 목록
+     */
     @Override
     public List<Metric> collectApplicationMetrics() {
         if (!enabled) {
-            log.debug("HTTP 메트릭 수집기가 비활성화되어 있습니다.");
+            log.debug("[HttpMetricsCollector] collectApplicationMetrics - HTTP 메트릭 수집기가 비활성화되어 있습니다.");
             return new ArrayList<>();
         }
         
         try {
-            log.debug("HTTP 메트릭 수집 시작...");
+            log.debug("[HttpMetricsCollector] collectApplicationMetrics - HTTP 메트릭 수집 시작...");
             
             List<Metric> metrics = new ArrayList<>();
             LocalDateTime collectedAt = LocalDateTime.now();
@@ -107,11 +112,11 @@ public class HttpMetricsCollector implements CustomMetricsCollector {
             // 4. 상태 코드별 통계
             collectStatusCodeMetrics(metrics, collectedAt);
             
-            log.info("HTTP 메트릭 수집 완료: {}개 메트릭", metrics.size());
+            log.info("[HttpMetricsCollector] collectApplicationMetrics - HTTP 메트릭 수집 완료: {}개 메트릭", metrics.size());
             return metrics;
             
         } catch (Exception e) {
-            log.error("HTTP 메트릭 수집 실패", e);
+            log.error("[HttpMetricsCollector] collectApplicationMetrics - HTTP 메트릭 수집 실패", e);
             return new ArrayList<>();
         }
     }
@@ -138,11 +143,11 @@ public class HttpMetricsCollector implements CustomMetricsCollector {
                     collectedAt
                 ));
                 
-                log.debug("총 요청 수: {}", totalRequests);
+                log.debug("[HttpMetricsCollector] collectRequestCountMetrics - 총 요청 수: {}", totalRequests);
             }
             
         } catch (Exception e) {
-            log.warn("요청 횟수 메트릭 수집 실패", e);
+            log.warn("[HttpMetricsCollector] collectRequestCountMetrics - 요청 횟수 메트릭 수집 실패", e);
         }
     }
     
@@ -185,11 +190,11 @@ public class HttpMetricsCollector implements CustomMetricsCollector {
                     collectedAt
                 ));
                 
-                log.debug("평균 응답 시간: {}ms, 최대: {}ms", avgResponseTime, maxResponseTime);
+                log.debug("[HttpMetricsCollector] collectResponseTimeMetrics - 평균 응답 시간: {}ms, 최대: {}ms", avgResponseTime, maxResponseTime);
             }
             
         } catch (Exception e) {
-            log.warn("응답 시간 메트릭 수집 실패", e);
+            log.warn("[HttpMetricsCollector] collectResponseTimeMetrics - 응답 시간 메트릭 수집 실패", e);
         }
     }
     
@@ -246,11 +251,11 @@ public class HttpMetricsCollector implements CustomMetricsCollector {
                     collectedAt
                 ));
                 
-                log.debug("에러율: {:.2f}%", errorRate);
+                log.debug("[HttpMetricsCollector] collectErrorRateMetrics - 에러율: {:.2f}%", errorRate);
             }
             
         } catch (Exception e) {
-            log.warn("에러율 메트릭 수집 실패", e);
+            log.warn("[HttpMetricsCollector] collectErrorRateMetrics - 에러율 메트릭 수집 실패", e);
         }
     }
     
@@ -279,7 +284,7 @@ public class HttpMetricsCollector implements CustomMetricsCollector {
             }
             
         } catch (Exception e) {
-            log.warn("상태 코드 메트릭 수집 실패", e);
+            log.warn("[HttpMetricsCollector] collectStatusCodeMetrics - 상태 코드 메트릭 수집 실패", e);
         }
     }
     

@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.notification.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -18,9 +19,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-13
  */
 @Service
 @Slf4j
+@Transactional(readOnly = true)
 public class NotificationDeDuplicationService {
 
     /**
@@ -57,7 +60,7 @@ public class NotificationDeDuplicationService {
         
         if (history == null) {
             // 최초 발송 시도
-            log.debug("알림 최초 발송: {}", notificationKey);
+            log.debug("[NotificationDeDuplicationService] canSendNotification - 알림 최초 발송: {}", notificationKey);
             return true;
         }
         
@@ -66,12 +69,12 @@ public class NotificationDeDuplicationService {
         
         if (timeSinceLastSent.compareTo(cooldownPeriod) >= 0) {
             // 쿨다운 기간이 지남 - 발송 가능
-            log.debug("알림 쿨다운 기간 경과 ({} 경과): {}", timeSinceLastSent, notificationKey);
+            log.debug("[NotificationDeDuplicationService] canSendNotification - 알림 쿨다운 기간 경과 ({} 경과): {}", timeSinceLastSent, notificationKey);
             return true;
         }
         
         // 쿨다운 기간 내 - 발송 불가
-        log.info("⏸️ 알림 중복 방지: {} (마지막 발송 후 {} 경과, 쿨다운: {})", 
+        log.info("[NotificationDeDuplicationService] canSendNotification - 알림 중복 방지: {} (마지막 발송 후 {} 경과, 쿨다운: {})", 
             notificationKey, timeSinceLastSent, cooldownPeriod);
         
         // 중복 시도 횟수 증가
@@ -87,18 +90,19 @@ public class NotificationDeDuplicationService {
      * 
      * @param notificationKey 알림 고유 키
      */
+    @Transactional
     public void recordNotificationSent(String notificationKey) {
         LocalDateTime now = LocalDateTime.now();
         
         NotificationHistory history = notificationHistory.get(notificationKey);
         if (history != null) {
             history.updateLastSentAt(now);
-            log.debug("알림 발송 기록 업데이트: {} (억제된 알림: {})", 
+            log.debug("[NotificationDeDuplicationService] recordNotificationSent - 알림 발송 기록 업데이트: {} (억제된 알림: {})", 
                 notificationKey, history.getSuppressedCount());
             
             // 억제된 알림이 있으면 로그 남기기
             if (history.getSuppressedCount() > 0) {
-                log.info("📊 알림 통계: {} - 총 {}회 억제됨", 
+                log.info("[NotificationDeDuplicationService] recordNotificationSent - 알림 통계: {} - 총 {}회 억제됨", 
                     notificationKey, history.getSuppressedCount());
             }
             
@@ -106,7 +110,7 @@ public class NotificationDeDuplicationService {
             history.resetSuppressedCount();
         } else {
             notificationHistory.put(notificationKey, new NotificationHistory(now));
-            log.debug("알림 발송 기록 생성: {}", notificationKey);
+            log.debug("[NotificationDeDuplicationService] recordNotificationSent - 알림 발송 기록 생성: {}", notificationKey);
         }
     }
 
@@ -138,18 +142,19 @@ public class NotificationDeDuplicationService {
      * <p>오래된 알림 이력을 정리하여 메모리 사용량을 관리합니다.</p>
      * <p>1시간 이상 발송되지 않은 알림 이력을 삭제합니다.</p>
      */
+    @Transactional
     public void cleanupOldHistory() {
         LocalDateTime oneHourAgo = LocalDateTime.now().minus(Duration.ofHours(1));
         
         notificationHistory.entrySet().removeIf(entry -> {
             boolean isOld = entry.getValue().getLastSentAt().isBefore(oneHourAgo);
             if (isOld) {
-                log.debug("오래된 알림 이력 제거: {}", entry.getKey());
+                log.debug("[NotificationDeDuplicationService] cleanupOldHistory - 오래된 알림 이력 제거: {}", entry.getKey());
             }
             return isOld;
         });
         
-        log.info("알림 이력 정리 완료 (현재 이력 수: {})", notificationHistory.size());
+        log.info("[NotificationDeDuplicationService] cleanupOldHistory - 알림 이력 정리 완료 (현재 이력 수: {})", notificationHistory.size());
     }
 
     /**

@@ -6,6 +6,7 @@ import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
 
@@ -37,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
 
     private final SystemMetricsCollector systemMetricsCollector;
@@ -56,6 +58,8 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
     
     /**
      * 기본 설정 초기화
+     *
+     * <p>애플리케이션 시작 시 모든 수집기를 활성화하고 기본 설정을 초기화합니다.
      */
     @PostConstruct
     public void initializeDefaultConfigs() {
@@ -78,7 +82,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
                 .timeout(30000L) // 30초
                 .build());
                 
-        log.info("메트릭 수집기 팩토리 초기화 완료: 활성화된 수집기={}", 
+        log.info("[MetricsCollectorFactoryImpl] initializeDefaultConfigs - 메트릭 수집기 팩토리 초기화 완료: 활성화된 수집기={}", 
                 collectorStatus.entrySet().stream()
                         .filter(Map.Entry::getValue)
                         .map(Map.Entry::getKey)
@@ -94,7 +98,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
      */
     @Override
     public MetricsCollector createCollector(CollectorType type) {
-        log.debug("메트릭 수집기 생성 요청: type={}", type);
+        log.debug("[MetricsCollectorFactoryImpl] createCollector - 메트릭 수집기 생성 요청: type={}", type);
         
         try {
             // 수집기 타입 유효성 검증
@@ -102,23 +106,23 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
             
             // 수집기 활성화 상태 확인
             if (!isCollectorEnabled(type)) {
-                log.warn("비활성화된 수집기 생성 시도: type={}", type);
+                log.warn("[MetricsCollectorFactoryImpl] createCollector - 비활성화된 수집기 생성 시도: type={}", type);
                 throw new BusinessException(MonitoringErrorCode.COLLECTOR_DISABLED, 
                     "수집기가 비활성화되어 있습니다: " + type);
             }
             
             MetricsCollector collector = createCollectorByType(type);
             
-            log.debug("메트릭 수집기 생성 완료: type={}, enabled={}", 
+            log.debug("[MetricsCollectorFactoryImpl] createCollector - 메트릭 수집기 생성 완료: type={}, enabled={}", 
                     type, collector.isEnabled());
             
             return collector;
             
         } catch (BusinessException e) {
-            log.error("메트릭 수집기 생성 실패: type={}, error={}", type, e.getMessage());
+            log.error("[MetricsCollectorFactoryImpl] createCollector - 메트릭 수집기 생성 실패: type={}, error={}", type, e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("메트릭 수집기 생성 중 예상치 못한 오류: type={}", type, e);
+            log.error("[MetricsCollectorFactoryImpl] createCollector - 메트릭 수집기 생성 중 예상치 못한 오류: type={}", type, e);
             throw new BusinessException(MonitoringErrorCode.COLLECTOR_CREATION_FAILED, 
                 "메트릭 수집기 생성 중 오류가 발생했습니다: " + e.getMessage());
         }
@@ -131,7 +135,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
      */
     @Override
     public List<MetricsCollector> createAllCollectors() {
-        log.debug("모든 활성화된 수집기 생성 요청");
+        log.debug("[MetricsCollectorFactoryImpl] createAllCollectors - 모든 활성화된 수집기 생성 요청");
         
         List<MetricsCollector> collectors = new ArrayList<>();
         
@@ -141,21 +145,21 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
                     try {
                         MetricsCollector collector = createCollector(type);
                         collectors.add(collector);
-                        log.debug("수집기 추가됨: type={}", type);
+                        log.debug("[MetricsCollectorFactoryImpl] createAllCollectors - 수집기 추가됨: type={}", type);
                     } catch (BusinessException e) {
-                        log.warn("수집기 생성 실패 (건너뜀): type={}, error={}", type, e.getMessage());
+                        log.warn("[MetricsCollectorFactoryImpl] createAllCollectors - 수집기 생성 실패 (건너뜀): type={}, error={}", type, e.getMessage());
                         // 개별 수집기 생성 실패는 전체 프로세스를 중단시키지 않음
                     }
                 } else {
-                    log.debug("비활성화된 수집기 건너뜀: type={}", type);
+                    log.debug("[MetricsCollectorFactoryImpl] createAllCollectors - 비활성화된 수집기 건너뜀: type={}", type);
                 }
             }
             
-            log.info("활성화된 수집기 생성 완료: 총 {}개", collectors.size());
+            log.info("[MetricsCollectorFactoryImpl] createAllCollectors - 활성화된 수집기 생성 완료: 총 {}개", collectors.size());
             return collectors;
             
         } catch (Exception e) {
-            log.error("모든 수집기 생성 중 오류 발생", e);
+            log.error("[MetricsCollectorFactoryImpl] createAllCollectors - 모든 수집기 생성 중 오류 발생", e);
             throw new BusinessException(MonitoringErrorCode.COLLECTOR_CREATION_FAILED, 
                 "수집기 생성 중 오류가 발생했습니다: " + e.getMessage());
         }
@@ -170,7 +174,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
     @Override
     public boolean hasCollector(CollectorType type) {
         if (type == null) {
-            log.warn("null 수집기 타입으로 존재 여부 확인 시도");
+            log.warn("[MetricsCollectorFactoryImpl] hasCollector - null 수집기 타입으로 존재 여부 확인 시도");
             return false;
         }
         
@@ -180,7 +184,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
             case CUSTOM, EXTERNAL -> false; // 아직 구현되지 않음
         };
         
-        log.debug("수집기 존재 여부 확인: type={}, exists={}", type, exists);
+        log.debug("[MetricsCollectorFactoryImpl] hasCollector - 수집기 존재 여부 확인: type={}, exists={}", type, exists);
         return exists;
     }
     
@@ -191,7 +195,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
      * @param enabled 활성화 여부
      */
     public void setCollectorEnabled(CollectorType type, boolean enabled) {
-        log.info("수집기 활성화 상태 변경: type={}, enabled={}", type, enabled);
+        log.info("[MetricsCollectorFactoryImpl] setCollectorEnabled - 수집기 활성화 상태 변경: type={}, enabled={}", type, enabled);
         
         collectorStatus.put(type, enabled);
         
@@ -222,7 +226,7 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
      * @param config 새로운 설정 정보
      */
     public void updateCollectorConfig(CollectorType type, CollectorConfig config) {
-        log.info("수집기 설정 업데이트: type={}, config={}", type, config);
+        log.info("[MetricsCollectorFactoryImpl] updateCollectorConfig - 수집기 설정 업데이트: type={}, config={}", type, config);
         
         collectorConfigs.put(type, config);
         collectorStatus.put(type, config.isEnabled());
@@ -230,6 +234,9 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
     
     /**
      * 수집기 타입 유효성 검증
+     *
+     * @param type 검증할 수집기 타입
+     * @throws BusinessException 수집기 타입이 null이거나 지원되지 않는 경우
      */
     private void validateCollectorType(CollectorType type) {
         if (type == null) {
@@ -245,6 +252,9 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
     
     /**
      * 수집기 활성화 상태 확인
+     *
+     * @param type 확인할 수집기 타입
+     * @return 활성화 여부
      */
     private boolean isCollectorEnabled(CollectorType type) {
         return collectorStatus.getOrDefault(type, false);
@@ -253,6 +263,10 @@ public class MetricsCollectorFactoryImpl implements MetricsCollectorFactory {
     
     /**
      * 수집기 타입별 생성
+     *
+     * @param type 생성할 수집기 타입
+     * @return 생성된 수집기
+     * @throws BusinessException 지원되지 않는 수집기 타입인 경우
      */
     private MetricsCollector createCollectorByType(CollectorType type) {
         return switch (type) {
