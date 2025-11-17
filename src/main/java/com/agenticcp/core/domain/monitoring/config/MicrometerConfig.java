@@ -10,7 +10,8 @@ import org.springframework.context.annotation.Configuration;
  * Micrometer 설정 클래스
  * 
  * @author AgenticCP
- * @since 1.0.0
+ * @version 1.0.0
+ * @since 2025.11.13
  */
 @Slf4j
 @Configuration

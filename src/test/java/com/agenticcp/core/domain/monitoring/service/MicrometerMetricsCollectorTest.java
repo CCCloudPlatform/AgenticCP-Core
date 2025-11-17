@@ -16,13 +16,15 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * MicrometerMetricsCollector 단위 테스트
  * 
- * @author AgenticCP
- * @since 1.0.0
+ * <p>Micrometer 기반 메트릭 수집기의 핵심 비즈니스 로직을 검증합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MicrometerMetricsCollector 테스트")
@@ -44,7 +46,7 @@ class MicrometerMetricsCollectorTest {
 
         @Test
         @DisplayName("수집기 타입이 APPLICATION을 반환함")
-        void getCollectorType_ReturnsApplication() {
+        void getCollectorType_WhenCalled_ReturnsApplication() {
             // When
             CollectorType type = micrometerMetricsCollector.getCollectorType();
 
@@ -54,7 +56,7 @@ class MicrometerMetricsCollectorTest {
 
         @Test
         @DisplayName("수집기가 활성화되어 있음")
-        void isEnabled_ReturnsTrue() {
+        void isEnabled_WhenEnabled_ReturnsTrue() {
             // When
             boolean enabled = micrometerMetricsCollector.isEnabled();
 
@@ -82,7 +84,7 @@ class MicrometerMetricsCollectorTest {
 
         @Test
         @DisplayName("시스템 메트릭 수집 성공")
-        void collectSystemMetrics_Success() {
+        void collectSystemMetrics_WhenCalled_ReturnsSystemMetrics() {
             // When
             SystemMetrics metrics = micrometerMetricsCollector.collectSystemMetrics();
 
@@ -118,7 +120,7 @@ class MicrometerMetricsCollectorTest {
 
         @Test
         @DisplayName("애플리케이션 메트릭 수집 성공")
-        void collectApplicationMetrics_Success() {
+        void collectApplicationMetrics_WhenCalled_ReturnsMetrics() {
             // When
             List<Metric> metrics = micrometerMetricsCollector.collectApplicationMetrics();
 
@@ -157,7 +159,7 @@ class MicrometerMetricsCollectorTest {
 
         @Test
         @DisplayName("메트릭 값이 유효함")
-        void collectApplicationMetrics_ValuesAreValid() {
+        void collectApplicationMetrics_WhenCalled_ReturnsValidMetrics() {
             // When
             List<Metric> metrics = micrometerMetricsCollector.collectApplicationMetrics();
 
@@ -178,7 +180,7 @@ class MicrometerMetricsCollectorTest {
 
         @Test
         @DisplayName("MeterRegistry에 메트릭이 등록됨")
-        void collectApplicationMetrics_RegistersMetricsToMeterRegistry() {
+        void collectApplicationMetrics_WhenCalled_RegistersMetricsToMeterRegistry() {
             // Given
             int initialMeterCount = meterRegistry.getMeters().size();
 
@@ -197,7 +199,7 @@ class MicrometerMetricsCollectorTest {
 
         @Test
         @DisplayName("메트릭 값이 MeterRegistry에서 조회 가능함")
-        void collectApplicationMetrics_MetricsAreAccessibleFromMeterRegistry() {
+        void collectApplicationMetrics_WhenCalled_MetricsAreAccessibleFromMeterRegistry() {
             // When
             micrometerMetricsCollector.collectApplicationMetrics();
 

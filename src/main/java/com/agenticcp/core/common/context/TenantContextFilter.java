@@ -118,11 +118,11 @@ public class TenantContextFilter extends OncePerRequestFilter {
     
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // 특정 경로는 테넌트 컨텍스트 필터를 적용하지 않음
+        // 특정 경로는 테넌트 컨텍스트 필터를 적용하지 않음 (context path 제외)
         String requestURI = request.getRequestURI();
-        return requestURI.startsWith("/api/health") || 
-               requestURI.startsWith("/api/auth") ||
-               requestURI.startsWith("/api/swagger") ||
-               requestURI.startsWith("/api/v3/api-docs");
+        return requestURI.startsWith("/health") || 
+               requestURI.startsWith("/auth") ||
+               requestURI.startsWith("/swagger") ||
+               requestURI.startsWith("/v3/api-docs");
     }
 }

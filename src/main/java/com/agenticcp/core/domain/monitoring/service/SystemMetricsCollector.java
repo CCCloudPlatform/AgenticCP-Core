@@ -20,7 +20,12 @@ import java.util.Map;
 
 /**
  * 시스템 리소스 메트릭을 수집하는 컴포넌트
- * CPU, 메모리, 디스크 사용량을 실시간으로 수집
+ * 
+ * <p>CPU, 메모리, 디스크 사용량을 실시간으로 수집합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Slf4j
 @Component
@@ -32,6 +37,8 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 수집기 활성화 상태 확인
+     *
+     * @return 활성화 여부
      */
     public boolean isEnabled() {
         return enabled;
@@ -39,6 +46,8 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 수집기 활성화/비활성화 설정
+     *
+     * @param enabled 활성화 여부
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
@@ -46,6 +55,8 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 수집기 타입 반환
+     *
+     * @return 수집기 타입
      */
     @Override
     public CollectorType getCollectorType() {
@@ -54,11 +65,13 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 애플리케이션 메트릭 수집 (시스템 수집기는 빈 리스트 반환)
+     *
+     * @return 빈 메트릭 목록 (시스템 수집기는 애플리케이션 메트릭을 수집하지 않음)
      */
     @Override
     public List<Metric> collectApplicationMetrics() {
         if (!enabled) {
-            log.debug("SystemMetricsCollector is disabled. Skipping application metrics collection.");
+            log.debug("[SystemMetricsCollector] collectApplicationMetrics - SystemMetricsCollector is disabled. Skipping application metrics collection.");
             return new ArrayList<>();
         }
         
@@ -68,11 +81,14 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 시스템 메트릭 수집
+     *
+     * @return 수집된 시스템 메트릭
+     * @throws BusinessException 메트릭 수집 중 오류 발생 시
      */
     @Override
     public SystemMetrics collectSystemMetrics() {
         try {
-            log.debug("Collecting system metrics...");
+            log.debug("[SystemMetricsCollector] collectSystemMetrics - Collecting system metrics...");
             
             // CPU 사용률 수집
             Double cpuUsage = getCpuUsage();
@@ -107,7 +123,7 @@ public class SystemMetricsCollector implements MetricsCollector {
                     .build();
                     
         } catch (Exception e) {
-            log.error("Failed to collect system metrics", e);
+            log.error("[SystemMetricsCollector] collectSystemMetrics - Failed to collect system metrics", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "시스템 메트릭 수집 중 오류가 발생했습니다.");
         }
@@ -115,6 +131,9 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * CPU 사용률 수집
+     *
+     * @return CPU 사용률 (퍼센트)
+     * @throws BusinessException CPU 메트릭 수집 실패 시
      */
     private Double getCpuUsage() {
         try {
@@ -125,7 +144,7 @@ public class SystemMetricsCollector implements MetricsCollector {
             }
             return osBean.getSystemLoadAverage();
         } catch (Exception e) {
-            log.warn("Failed to get CPU usage", e);
+            log.warn("[SystemMetricsCollector] getCpuUsage - Failed to get CPU usage", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "CPU 메트릭을 사용할 수 없습니다.");
         }
@@ -133,6 +152,9 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 메모리 사용량 수집 (MB)
+     *
+     * @return 메모리 사용량 (MB)
+     * @throws BusinessException 메모리 메트릭 수집 실패 시
      */
     private Long getMemoryUsedMB() {
         try {
@@ -140,7 +162,7 @@ public class SystemMetricsCollector implements MetricsCollector {
                              memoryBean.getNonHeapMemoryUsage().getUsed();
             return usedMemory / (1024 * 1024);
         } catch (Exception e) {
-            log.warn("Failed to get memory usage", e);
+            log.warn("[SystemMetricsCollector] getMemoryUsedMB - Failed to get memory usage", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메모리 메트릭을 사용할 수 없습니다.");
         }
@@ -148,6 +170,9 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 메모리 총량 수집 (MB)
+     *
+     * @return 메모리 총량 (MB)
+     * @throws BusinessException 메모리 총량 수집 실패 시
      */
     private Long getMemoryTotalMB() {
         try {
@@ -155,7 +180,7 @@ public class SystemMetricsCollector implements MetricsCollector {
                               memoryBean.getNonHeapMemoryUsage().getMax();
             return totalMemory / (1024 * 1024);
         } catch (Exception e) {
-            log.warn("Failed to get total memory", e);
+            log.warn("[SystemMetricsCollector] getMemoryTotalMB - Failed to get total memory", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "메모리 총량을 사용할 수 없습니다.");
         }
@@ -163,6 +188,10 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 메모리 사용률 계산
+     *
+     * @param usedMB 사용된 메모리 (MB)
+     * @param totalMB 전체 메모리 (MB)
+     * @return 메모리 사용률 (퍼센트), 계산 불가 시 null
      */
     private Double calculateMemoryUsage(Long usedMB, Long totalMB) {
         if (usedMB == null || totalMB == null || totalMB == 0) {
@@ -173,6 +202,9 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 디스크 사용량 수집 (GB)
+     *
+     * @return 디스크 사용량 (GB)
+     * @throws BusinessException 디스크 메트릭 수집 실패 시
      */
     private Long getDiskUsedGB() {
         try {
@@ -182,7 +214,7 @@ public class SystemMetricsCollector implements MetricsCollector {
             long usedSpace = totalSpace - freeSpace;
             return usedSpace / (1024 * 1024 * 1024);
         } catch (Exception e) {
-            log.warn("Failed to get disk usage", e);
+            log.warn("[SystemMetricsCollector] getDiskUsedGB - Failed to get disk usage", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "디스크 메트릭을 사용할 수 없습니다.");
         }
@@ -190,6 +222,9 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 디스크 총량 수집 (GB)
+     *
+     * @return 디스크 총량 (GB)
+     * @throws BusinessException 디스크 총량 수집 실패 시
      */
     private Long getDiskTotalGB() {
         try {
@@ -197,7 +232,7 @@ public class SystemMetricsCollector implements MetricsCollector {
             long totalSpace = root.getTotalSpace();
             return totalSpace / (1024 * 1024 * 1024);
         } catch (Exception e) {
-            log.warn("Failed to get total disk space", e);
+            log.warn("[SystemMetricsCollector] getDiskTotalGB - Failed to get total disk space", e);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR, 
                 "디스크 총량을 사용할 수 없습니다.");
         }
@@ -205,6 +240,10 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 디스크 사용률 계산
+     *
+     * @param usedGB 사용된 디스크 공간 (GB)
+     * @param totalGB 전체 디스크 공간 (GB)
+     * @return 디스크 사용률 (퍼센트), 계산 불가 시 null
      */
     private Double calculateDiskUsage(Long usedGB, Long totalGB) {
         if (usedGB == null || totalGB == null || totalGB == 0) {
@@ -215,6 +254,8 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 시스템 정보 수집
+     *
+     * @return 시스템 정보
      */
     private SystemMetrics.SystemInfo getSystemInfo() {
         try {
@@ -226,13 +267,15 @@ public class SystemMetricsCollector implements MetricsCollector {
                     .availableProcessors(osBean.getAvailableProcessors())
                     .build();
         } catch (Exception e) {
-            log.warn("Failed to get system info", e);
+            log.warn("[SystemMetricsCollector] getSystemInfo - Failed to get system info", e);
             return SystemMetrics.SystemInfo.builder().build();
         }
     }
 
     /**
      * 호스트명 수집
+     *
+     * @return 호스트명, 수집 실패 시 "unknown"
      */
     private String getHostname() {
         try {
@@ -244,6 +287,9 @@ public class SystemMetricsCollector implements MetricsCollector {
 
     /**
      * 메타데이터 구성
+     *
+     * @param systemInfo 시스템 정보
+     * @return 메타데이터 맵
      */
     private Map<String, Object> buildMetadata(SystemMetrics.SystemInfo systemInfo) {
         Map<String, Object> metadata = new HashMap<>();

@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -25,8 +26,13 @@ import java.util.Map;
  * 상태 변화 시 알림을 발송합니다.</p>
  * 
  * <p>Issue #15: 실시간 알림 시스템 - 시나리오 2 (서비스 장애 알림)</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
 public class HealthCheckService {
@@ -91,7 +97,7 @@ public class HealthCheckService {
         String previousStatus = previousStatuses.get(componentName);
         
         if (previousStatus != null && !previousStatus.equals(currentStatus)) {
-            log.warn("🔄 {} 상태 변화 감지: {} -> {}", componentName, previousStatus, currentStatus);
+            log.warn("[HealthCheckService] checkComponentHealth - {} 상태 변화 감지: {} -> {}", componentName, previousStatus, currentStatus);
             
             // 시스템 레벨 알림 발송
             sendSystemLevelAlert(componentName, previousStatus, currentStatus);
@@ -109,14 +115,14 @@ public class HealthCheckService {
     private String performDatabaseHealthCheck() {
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(2)) { // 2초 타임아웃
-                log.debug("✅ 데이터베이스 연결 정상");
+                log.debug("[HealthCheckService] performDatabaseHealthCheck - 데이터베이스 연결 정상");
                 return "HEALTHY";
             } else {
-                log.warn("⚠️ 데이터베이스 연결 불안정");
+                log.warn("[HealthCheckService] performDatabaseHealthCheck - 데이터베이스 연결 불안정");
                 return "WARNING";
             }
         } catch (Exception e) {
-            log.error("❌ 데이터베이스 연결 실패: {}", e.getMessage(), e);
+            log.error("[HealthCheckService] performDatabaseHealthCheck - 데이터베이스 연결 실패: {}", e.getMessage(), e);
             return "CRITICAL";
         }
     }
@@ -131,14 +137,14 @@ public class HealthCheckService {
             boolean isMaintenanceMode = maintenanceModeService.isMaintenanceModeEnabled();
             
             if (isMaintenanceMode) {
-                log.debug("🔧 유지보수 모드 활성화됨");
+                log.debug("[HealthCheckService] performMaintenanceModeHealthCheck - 유지보수 모드 활성화됨");
                 return "WARNING";
             } else {
-                log.debug("✅ 유지보수 모드 비활성화됨");
+                log.debug("[HealthCheckService] performMaintenanceModeHealthCheck - 유지보수 모드 비활성화됨");
                 return "HEALTHY";
             }
         } catch (Exception e) {
-            log.error("❌ 유지보수 모드 상태 확인 실패: {}", e.getMessage(), e);
+            log.error("[HealthCheckService] performMaintenanceModeHealthCheck - 유지보수 모드 상태 확인 실패: {}", e.getMessage(), e);
             return "CRITICAL";
         }
     }
@@ -152,6 +158,10 @@ public class HealthCheckService {
      * <p>시나리오 2 요구사항: 데이터베이스 연결 실패 시 긴급 알림</p>
      * 
      * <p>Issue #15 가이드: HealthStatusChangedEvent를 발행하여 MonitoringAlertService에서 처리합니다.</p>
+     * 
+     * @param serviceName 서비스 이름
+     * @param previousStatus 이전 상태
+     * @param currentStatus 현재 상태
      */
     private void sendSystemLevelAlert(String serviceName, String previousStatus, String currentStatus) {
         try {
@@ -160,7 +170,7 @@ public class HealthCheckService {
                 .findActiveUsersByRole(UserRole.SUPER_ADMIN, Status.ACTIVE);
             
             if (systemAdmins.isEmpty()) {
-                log.error("❌ 시스템 관리자(SUPER_ADMIN)를 찾을 수 없습니다! 시스템 알림 발송 실패");
+                log.error("[HealthCheckService] sendSystemLevelAlert - 시스템 관리자(SUPER_ADMIN)를 찾을 수 없습니다! 시스템 알림 발송 실패");
                 return;
             }
             
@@ -168,7 +178,7 @@ public class HealthCheckService {
             User systemAdmin = systemAdmins.get(0);
             String tenantId = systemAdmin.getTenant().getTenantKey();
             
-            log.info("🚨 시스템 장애 이벤트 발행: serviceName={}, status={}->{}, admin={}", 
+            log.info("[HealthCheckService] sendSystemLevelAlert - 시스템 장애 이벤트 발행: serviceName={}, status={}->{}, admin={}", 
                 serviceName, previousStatus, currentStatus, systemAdmin.getName());
             
             // 이벤트 발행 (Issue #15 가이드: 이벤트 기반 알림)
@@ -176,10 +186,10 @@ public class HealthCheckService {
                 new HealthStatusChangedEvent(this, serviceName, previousStatus, currentStatus, tenantId)
             );
             
-            log.debug("✅ HealthStatusChangedEvent published for service: {}", serviceName);
+            log.debug("[HealthCheckService] sendSystemLevelAlert - HealthStatusChangedEvent published for service: {}", serviceName);
             
         } catch (Exception e) {
-            log.error("❌ 시스템 레벨 이벤트 발행 중 오류 발생", e);
+            log.error("[HealthCheckService] sendSystemLevelAlert - 시스템 레벨 이벤트 발행 중 오류 발생", e);
         }
     }
 
@@ -228,7 +238,7 @@ public class HealthCheckService {
      * @return 현재 데이터베이스 상태
      */
     public String triggerHealthCheck() {
-        log.info("수동 헬스체크 트리거");
+        log.info("[HealthCheckService] triggerHealthCheck - 수동 헬스체크 트리거");
         checkDatabaseHealth();
         return previousStatuses.getOrDefault("database", "UNKNOWN");
     }

@@ -7,8 +7,8 @@ import com.agenticcp.core.domain.security.enums.PolicyDecision;
 import com.agenticcp.core.domain.security.enums.SecurityErrorCode;
 import com.agenticcp.core.domain.security.repository.SecurityPolicyRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.ObjectProvider;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Service
 @Slf4j
@@ -34,20 +34,19 @@ import java.util.stream.Collectors;
 public class PolicyEngineService {
     
     private final SecurityPolicyRepository securityPolicyRepository;
-    
-    @Autowired(required = false) // RedisTemplate이 필수가 아님을 명시
-    private RedisTemplate<String, Object> redisTemplate;
-    
+    private final RedisTemplate<String, Object> redisTemplate;
     private final PolicyJsonParser policyJsonParser;
     private final ObjectMapper objectMapper;
     
     @Autowired(required = false) // Feature 4: 정책 위반 이벤트 발행
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
     
-    public PolicyEngineService(SecurityPolicyRepository securityPolicyRepository, 
-                              PolicyJsonParser policyJsonParser, 
+    public PolicyEngineService(SecurityPolicyRepository securityPolicyRepository,
+                              ObjectProvider<RedisTemplate<String, Object>> redisTemplateProvider,
+                              PolicyJsonParser policyJsonParser,
                               ObjectMapper objectMapper) {
         this.securityPolicyRepository = securityPolicyRepository;
+        this.redisTemplate = redisTemplateProvider.getIfAvailable();
         this.policyJsonParser = policyJsonParser;
         this.objectMapper = objectMapper;
     }

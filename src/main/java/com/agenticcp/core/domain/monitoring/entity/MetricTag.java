@@ -2,7 +2,10 @@ package com.agenticcp.core.domain.monitoring.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +18,7 @@ import lombok.NoArgsConstructor;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Entity
 @Table(name = "metric_tags", indexes = {
@@ -25,7 +28,9 @@ import lombok.NoArgsConstructor;
     @Index(name = "idx_metric_tags_category", columnList = "category")
 })
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class MetricTag extends BaseEntity {
 
     /**
@@ -33,17 +38,22 @@ public class MetricTag extends BaseEntity {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "metric_id", nullable = false)
+    @NotNull(message = "메트릭은 필수입니다")
     private Metric metric;
 
     /**
      * 태그 이름 (예: environment, service, team)
      */
+    @NotBlank(message = "태그 이름은 필수입니다")
+    @Size(max = 100, message = "태그 이름은 100자를 초과할 수 없습니다")
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     /**
      * 태그 값
      */
+    @NotBlank(message = "태그 값은 필수입니다")
+    @Size(max = 255, message = "태그 값은 255자를 초과할 수 없습니다")
     @Column(name = "value", nullable = false, length = 255)
     private String value;
 
@@ -57,6 +67,7 @@ public class MetricTag extends BaseEntity {
      * 태그 우선순위 (낮을수록 높은 우선순위)
      */
     @Column(name = "priority")
+    @Builder.Default
     private Integer priority = 0;
 
     /**
@@ -64,16 +75,6 @@ public class MetricTag extends BaseEntity {
      */
     @Column(name = "description", length = 500)
     private String description;
-
-    @Builder
-    public MetricTag(Metric metric, String name, String value, String category, Integer priority, String description) {
-        this.metric = metric;
-        this.name = name;
-        this.value = value;
-        this.category = category;
-        this.priority = priority;
-        this.description = description;
-    }
 
     /**
      * 태그 값 업데이트
