@@ -178,7 +178,9 @@ public enum PlatformConfigErrorCode implements BaseErrorCode {
      * 테넌트가 DB에 존재하지 않거나 유효하지 않은 경우 발생합니다.
      * </p>
      */
-    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 6027 "유효하지 않은 테넌트 키입니다. 테넌트가 존재하지 않습니다.");
+    INVALID_TENANT_KEY(HttpStatus.BAD_REQUEST, 6027, "유효하지 않은 테넌트 키입니다. 테넌트가 존재하지 않습니다.");
+
+
     private final HttpStatus httpStatus;
     private final int codeNumber;
     private final String message;
