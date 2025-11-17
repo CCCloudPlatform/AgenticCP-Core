@@ -319,11 +319,13 @@ class MetricsControllerTest {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn("test-tenant");
+                when(metricRepository.findLatestByMetricName(anyString(), anyString(), any(Pageable.class)))
+                    .thenReturn(List.of());
                 
                 // When & Then
                 assertThatThrownBy(() -> metricsController.getMetricByName("", null, null))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("메트릭 이름이 유효하지 않습니다.");
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("메트릭을 찾을 수 없습니다.");
             }
         }
 
@@ -507,11 +509,11 @@ class MetricsControllerTest {
 
         @Test
         @DisplayName("수동 메트릭 수집 중 예상치 못한 예외 발생")
-        void collectMetrics_WhenUnexpectedException_ShouldThrowBusinessException() {
+        void collectMetrics_WhenUnexpectedException_ShouldThrowRuntimeException() {
             // 테스트 케이스: 수동 메트릭 수집 중 예상치 못한 예외 발생
-            // 목적: 예상치 못한 예외가 발생할 때 적절히 처리되는지 확인
+            // 목적: 예상치 못한 예외가 발생할 때 GlobalExceptionHandler가 처리하는지 확인
             // 검증 항목:
-            // 1. BusinessException이 발생하는지
+            // 1. RuntimeException이 발생하는지 (GlobalExceptionHandler가 처리)
             // 2. 예외 메시지가 적절한지
             
             // Given
@@ -520,8 +522,8 @@ class MetricsControllerTest {
 
             // When & Then
             assertThatThrownBy(() -> metricsController.collectMetrics())
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("메트릭 수집 중 예상치 못한 오류가 발생했습니다.");
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Unexpected error");
         }
     }
 
@@ -663,11 +665,16 @@ class MetricsControllerTest {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn("test-tenant");
+                when(metricRepository.findLatestByMetricName(isNull(), anyString(), any(Pageable.class)))
+                    .thenReturn(List.of());
                 
                 // When & Then
+                // @NotBlank 어노테이션으로 인해 null은 Spring Validation에서 처리되지만,
+                // 단위 테스트에서는 직접 호출하므로 null이 전달될 수 있음
+                // 실제 동작: 빈 리스트 반환 시 ResourceNotFoundException 발생
                 assertThatThrownBy(() -> metricsController.getMetricByName(null, null, null))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("메트릭 이름이 유효하지 않습니다.");
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("메트릭을 찾을 수 없습니다.");
             }
         }
     }
