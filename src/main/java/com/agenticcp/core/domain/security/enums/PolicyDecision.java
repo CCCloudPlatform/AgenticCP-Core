@@ -2,12 +2,12 @@ package com.agenticcp.core.domain.security.enums;
 
 /**
  * 정책 평가 결과를 나타내는 열거형
- * 
+ *
  * <p>정책 엔진이 요청을 평가한 후 내리는 결정을 정의합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 public enum PolicyDecision {
     
