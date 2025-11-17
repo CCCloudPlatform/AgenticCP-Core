@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vpc;
 
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.CloudErrorTranslator;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
@@ -14,7 +15,14 @@ import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.ec2.Ec2Client;
-import software.amazon.awssdk.services.ec2.model.*;
+import software.amazon.awssdk.services.ec2.model.CreateTagsRequest;
+import software.amazon.awssdk.services.ec2.model.CreateVpcRequest;
+import software.amazon.awssdk.services.ec2.model.CreateVpcResponse;
+import software.amazon.awssdk.services.ec2.model.DeleteVpcRequest;
+import software.amazon.awssdk.services.ec2.model.DescribeVpcsRequest;
+import software.amazon.awssdk.services.ec2.model.DescribeVpcsResponse;
+import software.amazon.awssdk.services.ec2.model.Filter;
+import software.amazon.awssdk.services.ec2.model.Tag;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +31,7 @@ import java.util.Optional;
  * AWS VPC 관리 어댑터
  * 
  * AWS SDK를 사용하여 VPC 관리 기능을 제공하는 어댑터
+ * Usecase에서 전달받은 세션 자격증명만을 사용하여 AWS SDK를 호출합니다.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
@@ -31,12 +40,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScoped {
 
-    private final Ec2Client ec2Client;
+    private final AwsClientConfig awsClientConfig;
     private final AwsVpcMapper awsVpcMapper;
 
     @Override
     public CloudResource createVpc(CreateVpcCommand command) {
-        try {
+        try (Ec2Client ec2Client = awsClientConfig.createEc2Client(command.session(), command.region())) {
             CreateVpcRequest createVpcRequest = CreateVpcRequest.builder()
                 .cidrBlock(command.cidrBlock())
                 .build();
@@ -75,7 +84,7 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
 
     @Override
     public Optional<CloudResource> getVpc(GetVpcCommand command) {
-        try {
+        try (Ec2Client ec2Client = awsClientConfig.createEc2Client(command.session(), command.region())) {
             DescribeVpcsRequest request = DescribeVpcsRequest.builder()
                 .vpcIds(command.providerResourceId())
                 .build();
@@ -93,7 +102,7 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
 
     @Override
     public List<CloudResource> listVpcs(ListVpcsQuery query) {
-        try {
+        try (Ec2Client ec2Client = awsClientConfig.createEc2Client(query.session(), query.region())) {
             DescribeVpcsRequest.Builder requestBuilder = DescribeVpcsRequest.builder();
             List<Filter> filters = new java.util.ArrayList<>();
             
@@ -138,7 +147,7 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
 
     @Override
     public CloudResource updateVpc(UpdateVpcCommand command) {
-        try {
+        try (Ec2Client ec2Client = awsClientConfig.createEc2Client(command.session(), command.region())) {
             // AWS VPC는 직접적인 업데이트 API가 없으므로 태그 업데이트로 처리
             if (command.tags() != null && !command.tags().isEmpty()) {
                 List<Tag> tags = command.tags().entrySet().stream()
@@ -172,6 +181,7 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
                 .providerResourceId(command.providerResourceId())
                 .serviceKey(null)
                 .resourceType(null)
+                .session(command.session())
                 .build();
             
             return getVpc(getCommand).orElseThrow(() -> 
@@ -183,7 +193,7 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
 
     @Override
     public void deleteVpc(DeleteVpcCommand command) {
-        try {
+        try (Ec2Client ec2Client = awsClientConfig.createEc2Client(command.session(), command.region())) {
             DeleteVpcRequest request = DeleteVpcRequest.builder()
                 .vpcId(command.providerResourceId())
                 .build();
