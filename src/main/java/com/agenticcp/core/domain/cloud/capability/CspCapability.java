@@ -6,8 +6,6 @@ import lombok.Value;
 @Value
 @Builder
 public class CspCapability {
-    boolean supportsCreate;
-    boolean supportsUpdate;
     boolean supportsStart;
     boolean supportsStop;
     boolean supportsTerminate;
