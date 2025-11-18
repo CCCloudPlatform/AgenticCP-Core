@@ -22,8 +22,11 @@ public enum AuditResourceType {
     CONFIG("시스템설정"),
     FEATURE_FLAG("기능플래그"),
     CLOUD_PROVIDER("클라우드프로바이더"),
+    CLOUD_ACCOUNT("클라우드계정"),
     TARGETING_RULE("타겟팅규칙"),
     PLATFORM_CONFIG("플랫폼설정"),
+    S3_BUCKET("S3버킷"),
+    OBJECT_STORAGE_CONTAINER("오브젝트스토리지컨테이너"),
     UI("사용자인터페이스");
     
     private final String description;

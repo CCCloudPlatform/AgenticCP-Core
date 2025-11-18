@@ -49,14 +49,24 @@ echo "애플리케이션을 중지하려면 Ctrl+C를 누르세요."
 
 # Spring Boot 실행
 echo "🔧 환경변수를 설정합니다..."
-export DATABASE_URL="jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
-export DATABASE_USERNAME="agenticcp"
-export DATABASE_PASSWORD="agenticcppassword"
-export JWT_SECRET="ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU="
-export CONFIG_CIPHER_KEY="MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
-export SPRING_DATA_REDIS_HOST="localhost"
-export SPRING_DATA_REDIS_PORT="6379"
-export APP_REDIS_ENABLED="false"
-export AWS_ENABLED="true"
+
+# .env 파일이 존재하는지 확인하고 로드
+if [ -f .env ]; then
+    echo "📄 .env 파일을 로드합니다..."
+    set -a
+    source .env
+    set +a
+else
+    echo "⚠️  .env 파일이 없습니다. env.example을 참고하여 .env 파일을 생성하세요."
+    echo "📝 기본값을 사용합니다 (개발용 - 프로덕션에서는 반드시 .env 파일 사용 필수)"
+    export DATABASE_URL="jdbc:mysql://localhost:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+    export DATABASE_USERNAME="agenticcp"
+    export DATABASE_PASSWORD="agenticcppassword"
+    export JWT_SECRET="${JWT_SECRET:-ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=}"
+    export CONFIG_CIPHER_KEY="${CONFIG_CIPHER_KEY:-MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}"
+    export SPRING_DATA_REDIS_HOST="localhost"
+    export SPRING_DATA_REDIS_PORT="6379"
+    export APP_REDIS_ENABLED="false"
+fi
 
 mvn spring-boot:run -Dspring-boot.run.profiles=local

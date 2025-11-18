@@ -31,8 +31,8 @@ logging:
   level:
     root: INFO
     com.agenticcp.core: DEBUG
-    org.springframework.web: INFO
-    org.springframework.security: WARN
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
 
 # 로컬 개발용 암호화 키 (개발 전용, 운영/형상 반출 금지)
 config:

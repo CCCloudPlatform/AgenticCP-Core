@@ -31,16 +31,11 @@ app:
   redis:
     enabled: false
 
-# AWS 설정
+# AWS S3 설정
 aws:
-  enabled: ${AWS_ENABLED:false}
-  region: ${AWS_REGION:us-east-1}
-  access-key-id: ${AWS_ACCESS_KEY_ID:}
-  secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
-  session-token: ${AWS_SESSION_TOKEN:}
-  endpoint-override: ${AWS_ENDPOINT_OVERRIDE:}
-  connection-timeout: ${AWS_CONNECTION_TIMEOUT:30000}
-  read-timeout: ${AWS_READ_TIMEOUT:30000}
+  s3:
+    region: ${AWS_REGION:us-east-1}
+    endpoint: ${AWS_S3_ENDPOINT:}
 
 
 security:
@@ -104,6 +99,10 @@ spring:
     url: jdbc:mysql://mysql:3306/agenticcp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: agenticcp
     password: agenticcppassword
+
+cloud:
+  stub:
+    enabled: true  # Docker 개발 환경용 Stub 활성화
 
 ---
 spring:

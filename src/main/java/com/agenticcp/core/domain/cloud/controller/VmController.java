@@ -1,6 +1,8 @@
-package com.agenticcp.core.controller;
+package com.agenticcp.core.domain.cloud.controller;
 
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
@@ -8,7 +10,6 @@ import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
 import com.agenticcp.core.domain.cloud.service.aws.VmUseCaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -48,11 +49,11 @@ public class VmController {
     @GetMapping("/instances")
     @Operation(summary = "VM 인스턴스 목록 조회", description = "조건에 맞는 VM 인스턴스 목록을 페이징하여 조회합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "조회 성공"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Page<CloudResource>> listInstances(
+    public ResponseEntity<ApiResponse<Page<CloudResource>>> listInstances(
             @Parameter(description = "페이지 번호") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "인스턴스 ID") @RequestParam(required = false) String instanceId,
@@ -77,7 +78,7 @@ public class VmController {
         try {
             Page<CloudResource> result = vmUseCaseService.listInstances(query);
             log.info("[VmController] listInstances - success count={}", result.getTotalElements());
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(ApiResponse.success(result, "VM 인스턴스 목록 조회에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] listInstances - failed", e);
@@ -94,12 +95,12 @@ public class VmController {
     @GetMapping("/instances/{instanceId}")
     @Operation(summary = "VM 인스턴스 상세 조회", description = "특정 VM 인스턴스의 상세 정보를 조회합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "조회 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<CloudResource> getInstance(
+    public ResponseEntity<ApiResponse<CloudResource>> getInstance(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId) {
         
         log.info("[VmController] getInstance - instanceId={}", instanceId);
@@ -109,10 +110,11 @@ public class VmController {
             
             if (result.isPresent()) {
                 log.info("[VmController] getInstance - success instanceId={}", instanceId);
-                return ResponseEntity.ok(result.get());
+                return ResponseEntity.ok(ApiResponse.success(result.get(), "VM 인스턴스 조회에 성공했습니다."));
             } else {
                 log.info("[VmController] getInstance - not found instanceId={}", instanceId);
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(CloudErrorCode.CLOUD_RESOURCE_NOT_FOUND));
             }
             
         } catch (Exception e) {
@@ -132,11 +134,11 @@ public class VmController {
     @PostMapping("/instances")
     @Operation(summary = "VM 인스턴스 생성", description = "새로운 VM 인스턴스를 생성합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "생성 성공"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "생성 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<String> createInstance(
+    public ResponseEntity<ApiResponse<String>> createInstance(
             @Parameter(description = "생성 요청 정보") @Valid @RequestBody VmCreateRequest request) {
         
         log.info("[VmController] createInstance - imageId={}, instanceType={}", 
@@ -145,7 +147,8 @@ public class VmController {
         try {
             String instanceId = vmUseCaseService.createInstance(request);
             log.info("[VmController] createInstance - success instanceId={}", instanceId);
-            return ResponseEntity.ok(instanceId);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success(instanceId, "VM 인스턴스 생성에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] createInstance - failed", e);
@@ -164,12 +167,12 @@ public class VmController {
     @PostMapping("/instances/{instanceId}/start")
     @Operation(summary = "VM 인스턴스 시작", description = "중지된 VM 인스턴스를 시작합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "시작 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "시작 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> startInstance(
+    public ResponseEntity<ApiResponse<Void>> startInstance(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId) {
         
         log.info("[VmController] startInstance - instanceId={}", instanceId);
@@ -177,7 +180,7 @@ public class VmController {
         try {
             vmUseCaseService.startInstance(instanceId);
             log.info("[VmController] startInstance - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 시작에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] startInstance - failed instanceId={}", instanceId, e);
@@ -194,12 +197,12 @@ public class VmController {
     @PostMapping("/instances/{instanceId}/stop")
     @Operation(summary = "VM 인스턴스 중지", description = "실행 중인 VM 인스턴스를 중지합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "중지 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "중지 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> stopInstance(
+    public ResponseEntity<ApiResponse<Void>> stopInstance(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId) {
         
         log.info("[VmController] stopInstance - instanceId={}", instanceId);
@@ -207,7 +210,7 @@ public class VmController {
         try {
             vmUseCaseService.stopInstance(instanceId);
             log.info("[VmController] stopInstance - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 중지에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] stopInstance - failed instanceId={}", instanceId, e);
@@ -224,12 +227,12 @@ public class VmController {
     @PostMapping("/instances/{instanceId}/reboot")
     @Operation(summary = "VM 인스턴스 재부팅", description = "실행 중인 VM 인스턴스를 재부팅합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "재부팅 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재부팅 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> rebootInstance(
+    public ResponseEntity<ApiResponse<Void>> rebootInstance(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId) {
         
         log.info("[VmController] rebootInstance - instanceId={}", instanceId);
@@ -237,7 +240,7 @@ public class VmController {
         try {
             vmUseCaseService.rebootInstance(instanceId);
             log.info("[VmController] rebootInstance - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 재부팅에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] rebootInstance - failed instanceId={}", instanceId, e);
@@ -254,12 +257,12 @@ public class VmController {
     @PostMapping("/instances/{instanceId}/terminate")
     @Operation(summary = "VM 인스턴스 종료", description = "VM 인스턴스를 종료합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "종료 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "종료 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> terminateInstance(
+    public ResponseEntity<ApiResponse<Void>> terminateInstance(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId) {
         
         log.info("[VmController] terminateInstance - instanceId={}", instanceId);
@@ -267,7 +270,7 @@ public class VmController {
         try {
             vmUseCaseService.terminateInstance(instanceId);
             log.info("[VmController] terminateInstance - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 종료에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] terminateInstance - failed instanceId={}", instanceId, e);
@@ -285,12 +288,12 @@ public class VmController {
     @DeleteMapping("/instances/{instanceId}")
     @Operation(summary = "VM 인스턴스 삭제", description = "VM 인스턴스를 삭제합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "삭제 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "삭제 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> deleteInstance(
+    public ResponseEntity<ApiResponse<Void>> deleteInstance(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId,
             @Parameter(description = "삭제 요청 정보") @RequestBody(required = false) VmDeleteRequest request) {
         
@@ -304,7 +307,7 @@ public class VmController {
             
             vmUseCaseService.deleteInstance(request);
             log.info("[VmController] deleteInstance - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 삭제에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] deleteInstance - failed instanceId={}", instanceId, e);
@@ -324,12 +327,12 @@ public class VmController {
     @PutMapping("/instances/{instanceId}")
     @Operation(summary = "VM 인스턴스 수정", description = "VM 인스턴스의 정보를 수정합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "수정 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "수정 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> updateInstance(
+    public ResponseEntity<ApiResponse<Void>> updateInstance(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId,
             @Parameter(description = "수정 요청 정보") @RequestBody VmUpdateRequest request) {
         
@@ -338,7 +341,7 @@ public class VmController {
         try {
             vmUseCaseService.updateInstance(request);
             log.info("[VmController] updateInstance - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 수정에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] updateInstance - failed instanceId={}", instanceId, e);
@@ -358,12 +361,12 @@ public class VmController {
     @PostMapping("/instances/{instanceId}/tags")
     @Operation(summary = "VM 인스턴스 태그 추가", description = "VM 인스턴스에 태그를 추가합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "태그 추가 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "태그 추가 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> addTags(
+    public ResponseEntity<ApiResponse<Void>> addTags(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId,
             @Parameter(description = "추가할 태그") @RequestBody Map<String, String> tags) {
         
@@ -372,7 +375,7 @@ public class VmController {
         try {
             vmUseCaseService.addTags(instanceId, tags);
             log.info("[VmController] addTags - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 태그 추가에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] addTags - failed instanceId={}", instanceId, e);
@@ -390,12 +393,12 @@ public class VmController {
     @DeleteMapping("/instances/{instanceId}/tags")
     @Operation(summary = "VM 인스턴스 태그 제거", description = "VM 인스턴스에서 태그를 제거합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "태그 제거 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "태그 제거 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Void> removeTags(
+    public ResponseEntity<ApiResponse<Void>> removeTags(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId,
             @Parameter(description = "제거할 태그 키들") @RequestBody Map<String, String> tagKeys) {
         
@@ -404,7 +407,7 @@ public class VmController {
         try {
             vmUseCaseService.removeTags(instanceId, tagKeys);
             log.info("[VmController] removeTags - success instanceId={}", instanceId);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(ApiResponse.success(null, "VM 인스턴스 태그 제거에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] removeTags - failed instanceId={}", instanceId, e);
@@ -421,12 +424,12 @@ public class VmController {
     @GetMapping("/instances/{instanceId}/tags")
     @Operation(summary = "VM 인스턴스 태그 조회", description = "VM 인스턴스의 모든 태그를 조회합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "조회 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Map<String, String>> getTags(
+    public ResponseEntity<ApiResponse<Map<String, String>>> getTags(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId) {
         
         log.info("[VmController] getTags - instanceId={}", instanceId);
@@ -434,7 +437,7 @@ public class VmController {
         try {
             Map<String, String> tags = vmUseCaseService.getTags(instanceId);
             log.info("[VmController] getTags - success instanceId={}, tagCount={}", instanceId, tags.size());
-            return ResponseEntity.ok(tags);
+            return ResponseEntity.ok(ApiResponse.success(tags, "VM 인스턴스 태그 조회에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] getTags - failed instanceId={}", instanceId, e);
@@ -453,12 +456,12 @@ public class VmController {
     @GetMapping("/instances/{instanceId}/status")
     @Operation(summary = "VM 인스턴스 상태 확인", description = "VM 인스턴스의 현재 상태를 확인합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "조회 성공"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<String> getInstanceStatus(
+    public ResponseEntity<ApiResponse<String>> getInstanceStatus(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId) {
         
         log.info("[VmController] getInstanceStatus - instanceId={}", instanceId);
@@ -466,7 +469,7 @@ public class VmController {
         try {
             String status = vmUseCaseService.getInstanceStatus(instanceId);
             log.info("[VmController] getInstanceStatus - success instanceId={}, status={}", instanceId, status);
-            return ResponseEntity.ok(status);
+            return ResponseEntity.ok(ApiResponse.success(status, "VM 인스턴스 상태 조회에 성공했습니다."));
             
         } catch (Exception e) {
             log.error("[VmController] getInstanceStatus - failed instanceId={}", instanceId, e);
@@ -485,12 +488,12 @@ public class VmController {
     @PostMapping("/instances/{instanceId}/wait")
     @Operation(summary = "VM 인스턴스 상태 대기", description = "VM 인스턴스가 특정 상태에 도달할 때까지 대기합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "대기 완료"),
-        @ApiResponse(responseCode = "404", description = "인스턴스 없음"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-        @ApiResponse(responseCode = "500", description = "서버 오류")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "대기 완료"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인스턴스 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<Boolean> waitForInstanceStatus(
+    public ResponseEntity<ApiResponse<Boolean>> waitForInstanceStatus(
             @Parameter(description = "인스턴스 ID") @PathVariable String instanceId,
             @Parameter(description = "목표 상태") @RequestParam String targetStatus,
             @Parameter(description = "타임아웃 (초)") @RequestParam(defaultValue = "300") int timeoutSeconds) {
@@ -501,7 +504,7 @@ public class VmController {
         try {
             boolean success = vmUseCaseService.waitForInstanceStatus(instanceId, targetStatus, timeoutSeconds);
             log.info("[VmController] waitForInstanceStatus - success={} instanceId={}", success, instanceId);
-            return ResponseEntity.ok(success);
+            return ResponseEntity.ok(ApiResponse.success(success, "VM 인스턴스 상태 대기 결과입니다."));
             
         } catch (Exception e) {
             log.error("[VmController] waitForInstanceStatus - failed instanceId={}", instanceId, e);
