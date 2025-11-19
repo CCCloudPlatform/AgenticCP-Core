@@ -2,9 +2,7 @@ package com.agenticcp.core.domain.cloud.service;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential;
-import com.agenticcp.core.domain.cloud.port.model.AzureSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.port.model.GcpSessionCredential;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -174,10 +172,6 @@ public class SessionCacheService {
             switch (providerType) {
                 case AWS:
                     return objectMapper.readValue(sessionJson, AwsSessionCredential.class);
-                case AZURE:
-                    return objectMapper.readValue(sessionJson, AzureSessionCredential.class);
-                case GCP:
-                    return objectMapper.readValue(sessionJson, GcpSessionCredential.class);
                 default:
                     log.warn("[SessionCacheService] Unknown provider type for deserialization: {}", providerType);
                     return null;
