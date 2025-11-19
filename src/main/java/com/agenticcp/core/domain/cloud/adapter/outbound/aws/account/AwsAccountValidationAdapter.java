@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.aws;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;

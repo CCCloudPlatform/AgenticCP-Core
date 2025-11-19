@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.aws;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
