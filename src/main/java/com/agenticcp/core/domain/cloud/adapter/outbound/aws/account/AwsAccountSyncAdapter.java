@@ -2,7 +2,10 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
+import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
@@ -23,7 +26,12 @@ import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AwsAccountSyncAdapter implements AccountSyncPort {
+public class AwsAccountSyncAdapter implements AccountSyncPort, ProviderScoped {
+    @Override
+    public ProviderType getProviderType() {
+        return CloudProvider.ProviderType.AWS;
+    }
+
 
     private final CloudAccountRepository cloudAccountRepository;
     private final AwsCredentialManager awsCredentialManager;

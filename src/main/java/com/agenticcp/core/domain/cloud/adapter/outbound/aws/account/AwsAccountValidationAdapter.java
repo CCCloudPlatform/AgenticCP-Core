@@ -1,6 +1,9 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
+import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
 import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;
@@ -27,7 +30,11 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AwsAccountValidationAdapter implements AccountValidationPort {
+public class AwsAccountValidationAdapter implements AccountValidationPort, ProviderScoped {
+    @Override
+    public ProviderType getProviderType() {
+        return CloudProvider.ProviderType.AWS;
+    }
 
     private final AwsClientConfig awsClientConfig;
 
