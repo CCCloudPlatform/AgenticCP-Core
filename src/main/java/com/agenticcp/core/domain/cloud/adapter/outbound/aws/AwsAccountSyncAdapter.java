@@ -6,7 +6,6 @@ import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
-import com.agenticcp.core.domain.cloud.service.AwsCredentialManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

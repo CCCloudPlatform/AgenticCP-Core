@@ -3,7 +3,6 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential;
-import com.agenticcp.core.domain.cloud.service.AwsCredentialManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -4,7 +4,6 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential;
-import com.agenticcp.core.domain.cloud.service.AwsCredentialManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

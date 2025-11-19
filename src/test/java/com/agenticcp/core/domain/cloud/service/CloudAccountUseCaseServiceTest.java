@@ -2,16 +2,14 @@ package com.agenticcp.core.domain.cloud.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.domain.cloud.dto.*;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.AwsCredentialManager;
+import com.agenticcp.core.domain.cloud.port.model.account.*;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
-import com.agenticcp.core.domain.cloud.command.DeleteCredentialCommand;
-import com.agenticcp.core.domain.cloud.command.ResolveCredentialCommand;
-import com.agenticcp.core.domain.cloud.command.StoreCredentialCommand;
 import com.agenticcp.core.domain.cloud.mapper.CredentialCommandMapper;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AccountValidationPort;

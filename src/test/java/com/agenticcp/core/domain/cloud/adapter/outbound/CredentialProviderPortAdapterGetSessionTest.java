@@ -9,7 +9,7 @@ import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
-import com.agenticcp.core.domain.cloud.service.AwsCredentialManager;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.AwsCredentialManager;
 import com.agenticcp.core.domain.cloud.service.SessionCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
