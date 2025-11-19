@@ -33,45 +33,44 @@ import static org.mockito.Mockito.*;
 @Slf4j
 public class MockAdaptersConfig {
 
-    @Bean
-    @Primary
-    public AccountCredentialManagementPort mockCredentialProviderPort() {
-        return new AccountCredentialManagementPort() {
-            @Override
-            public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
-                log.debug("Mock credential resolution for tenant: {}, provider: {}, account: {}", 
-                         tenantKey, providerType, accountScope);
-                return "mock-credentials";
-            }
+    // @Bean
+    // public AccountCredentialManagementPort mockCredentialProviderPort() {
+    //     return new AccountCredentialManagementPort() {
+    //         @Override
+    //         public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
+    //             log.debug("Mock credential resolution for tenant: {}, provider: {}, account: {}", 
+    //                      tenantKey, providerType, accountScope);
+    //             return "mock-credentials";
+    //         }
 
-            @Override
-            public String storeCredentials(String tenantKey, ProviderType providerType, 
-                                          String accountScope, Map<String, String> credentials) {
-                log.debug("Mock credential storage for tenant: {}, provider: {}, account: {}",
-                         tenantKey, providerType, accountScope);
-                return "mock-credential-key";
-            }
+    //         @Override
+    //         public String storeCredentials(String tenantKey, ProviderType providerType, 
+    //                                       String accountScope, Map<String, String> credentials) {
+    //             log.debug("Mock credential storage for tenant: {}, provider: {}, account: {}",
+    //                      tenantKey, providerType, accountScope);
+    //             return "mock-credential-key";
+    //         }
 
-            @Override
-            public void deleteCredentials(ProviderType providerType, String credentialKey) {
-                log.debug("Mock credential deletion: providerType={}, credentialKey={}", providerType, credentialKey);
-            }
+    //         @Override
+    //         public void deleteCredentials(ProviderType providerType, String credentialKey) {
+    //             log.debug("Mock credential deletion: providerType={}, credentialKey={}", providerType, credentialKey);
+    //         }
 
-            @Override
-            public CloudSessionCredential getSession(
-                    String tenantKey, String accountScope, ProviderType providerType) {
-                log.debug("Mock session retrieval: tenantKey={}, accountScope={}, providerType={}",
-                        tenantKey, accountScope, providerType);
-                return com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential.builder()
-                        .accessKeyId("mock-access-key")
-                        .secretAccessKey("mock-secret-key")
-                        .sessionToken("mock-session-token")
-                        .region("us-east-1")
-                        .expiresAt(java.time.LocalDateTime.now().plusHours(1))
-                        .build();
-            }
-        };
-    }
+    //         @Override
+    //         public CloudSessionCredential getSession(
+    //                 String tenantKey, String accountScope, ProviderType providerType) {
+    //             log.debug("Mock session retrieval: tenantKey={}, accountScope={}, providerType={}",
+    //                     tenantKey, accountScope, providerType);
+    //             return com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential.builder()
+    //                     .accessKeyId("mock-access-key")
+    //                     .secretAccessKey("mock-secret-key")
+    //                     .sessionToken("mock-session-token")
+    //                     .region("us-east-1")
+    //                     .expiresAt(java.time.LocalDateTime.now().plusHours(1))
+    //                     .build();
+    //         }
+    //     };
+    // }
 
     @Bean
     @Primary
