@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.dto;
+package com.agenticcp.core.domain.cloud.port.model.account;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

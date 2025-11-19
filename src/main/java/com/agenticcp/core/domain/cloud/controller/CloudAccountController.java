@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.controller;
 
-import com.agenticcp.core.domain.cloud.dto.*;
+import com.agenticcp.core.domain.cloud.port.model.account.*;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.service.CloudAccountUseCaseService;
 import io.swagger.v3.oas.annotations.Operation;

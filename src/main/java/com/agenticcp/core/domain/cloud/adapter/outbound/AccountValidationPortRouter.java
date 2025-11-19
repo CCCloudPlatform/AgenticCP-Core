@@ -2,9 +2,9 @@ package com.agenticcp.core.domain.cloud.adapter.outbound;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.AwsAccountValidationAdapter;
-import com.agenticcp.core.domain.cloud.dto.AccountValidationRequest;
-import com.agenticcp.core.domain.cloud.dto.AccountValidationResult;
-import com.agenticcp.core.domain.cloud.dto.ConnectionTestResult;
+import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
+import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
+import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
