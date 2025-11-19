@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model;
+package com.agenticcp.core.domain.cloud.port.model.account;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import org.junit.jupiter.api.DisplayName;
