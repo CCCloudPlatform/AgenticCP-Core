@@ -157,11 +157,6 @@ class AwsAccountCredentialManagementAdapterTest {
             String accountScope = "123456789012";
             ProviderType providerType = ProviderType.AZURE;
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
-                    .thenReturn(Optional.empty());
-            when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
-                    .thenReturn(java.util.List.of());
-
             // when & then
             assertThatThrownBy(() -> adapter.getSession(tenantKey, accountScope, providerType))
                     .isInstanceOf(BusinessException.class)
