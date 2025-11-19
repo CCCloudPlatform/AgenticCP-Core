@@ -5,7 +5,7 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
-import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
 import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;

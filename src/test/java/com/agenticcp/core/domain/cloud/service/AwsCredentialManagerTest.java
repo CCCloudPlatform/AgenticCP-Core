@@ -2,7 +2,7 @@ package com.agenticcp.core.domain.cloud.service;
 
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.AwsCredentialManager;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsCredentialManager;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;

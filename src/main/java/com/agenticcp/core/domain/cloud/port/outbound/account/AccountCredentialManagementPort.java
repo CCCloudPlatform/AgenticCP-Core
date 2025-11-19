@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.outbound.account;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 
 import java.util.Map;
 

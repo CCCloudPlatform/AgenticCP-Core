@@ -1,8 +1,8 @@
 package com.agenticcp.core.domain.cloud.service;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential;
-import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,8 +56,7 @@ public class SessionCacheService {
      * @param session 세션 자격증명
      * @param ttlMinutes TTL (분)
      */
-    public void cacheSession(String tenantKey, String accountScope, 
-                             com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType,
+    public void cacheSession(String tenantKey, String accountScope, ProviderType providerType,
                              CloudSessionCredential session, int ttlMinutes) {
         if (redisTemplate == null) {
             log.debug("[SessionCacheService] Redis not configured, skipping cache");
@@ -84,8 +83,7 @@ public class SessionCacheService {
      * @param providerType 프로바이더 타입
      * @return Optional<CloudSessionCredential>
      */
-    public Optional<CloudSessionCredential> getCachedSession(String tenantKey, String accountScope,
-                                                             com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
+    public Optional<CloudSessionCredential> getCachedSession(String tenantKey, String accountScope, ProviderType providerType) {
         if (redisTemplate == null) {
             log.debug("[SessionCacheService] Redis not configured, returning empty");
             return Optional.empty();
@@ -127,8 +125,7 @@ public class SessionCacheService {
      * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @param providerType 프로바이더 타입
      */
-    public void evictSession(String tenantKey, String accountScope,
-                            com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
+    public void evictSession(String tenantKey, String accountScope, ProviderType providerType) {
         if (redisTemplate == null) {
             return;
         }
@@ -146,8 +143,7 @@ public class SessionCacheService {
      * @param providerType 프로바이더 타입
      * @return 캐시 키
      */
-    private String buildCacheKey(String tenantKey, String accountScope,
-                                com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
+    private String buildCacheKey(String tenantKey, String accountScope, ProviderType providerType) {
         return String.format("%s%s:%s:%s", CACHE_KEY_PREFIX, tenantKey, providerType.name(), accountScope);
     }
     

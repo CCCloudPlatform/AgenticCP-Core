@@ -2,7 +2,8 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
-import com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredentialMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,11 +38,14 @@ class AwsSessionProviderTest {
     @Mock
     private StsClient stsClient;
 
+    @Mock
+    private AwsSessionCredentialMapper awsSessionCredentialMapper;
+
     private AwsSessionProvider awsSessionProvider;
 
     @BeforeEach
     void setUp() {
-        awsSessionProvider = new AwsSessionProvider(awsCredentialManager);
+        awsSessionProvider = new AwsSessionProvider(awsCredentialManager, awsSessionCredentialMapper);
     }
 
     // Note: AWS STS 세션 발급은 실제 AWS STS API를 호출해야 하므로

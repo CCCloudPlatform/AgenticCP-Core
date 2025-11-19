@@ -1,9 +1,8 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
-import com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -11,7 +10,6 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.GetSessionTokenRequest;
 import software.amazon.awssdk.services.sts.model.GetSessionTokenResponse;
 
-import java.time.LocalDateTime;
 
 /**
  * AWS STS 세션 발급 어댑터
@@ -27,15 +25,16 @@ import java.time.LocalDateTime;
 public class AwsSessionProvider {
     
     private final AwsCredentialManager awsCredentialManager;
+    private final AwsSessionCredentialMapper awsSessionCredentialMapper;
     
     /**
      * AWS STS 세션을 발급합니다.
      * 
      * @param credentialKey 자격증명 키
      * @param durationSeconds 세션 지속 시간 (초, 최대 43200초 = 12시간)
-     * @return AwsSessionCredential
+     * @return CloudSessionCredential
      */
-    public AwsSessionCredential getSession(String credentialKey, int durationSeconds) {
+    public CloudSessionCredential getSession(String credentialKey, int durationSeconds) {
         log.debug("[AwsSessionProvider] getSession - credentialKey={}, durationSeconds={}", 
                 credentialKey, durationSeconds);
         
@@ -63,22 +62,19 @@ public class AwsSessionProvider {
                 
                 GetSessionTokenResponse response = stsClient.getSessionToken(request);
                 
-                // 세션 만료 시간 계산 (Instant를 LocalDateTime으로 변환)
-                LocalDateTime expiresAt = java.time.LocalDateTime.ofInstant(
-                        response.credentials().expiration(),
-                        java.time.ZoneId.systemDefault()
+                CloudSessionCredential session = awsSessionCredentialMapper.toCloudSessionCredential(
+                        response,
+                        longTermCredentials.getRegion()
                 );
-                
-                // 세션 자격증명 생성
-                AwsSessionCredential session = AwsSessionCredential.builder()
-                        .accessKeyId(response.credentials().accessKeyId())
-                        .secretAccessKey(response.credentials().secretAccessKey())
-                        .sessionToken(response.credentials().sessionToken())
-                        .region(longTermCredentials.getRegion())
-                        .expiresAt(expiresAt)
-                        .build();
-                
-                log.info("[AwsSessionProvider] getSession - success, expiresAt={}", expiresAt);
+
+                if (session == null) {
+                    throw new BusinessException(
+                            CredentialErrorCode.SESSION_ISSUANCE_FAILED,
+                            "AWS 세션 매핑에 실패했습니다"
+                    );
+                }
+
+                log.info("[AwsSessionProvider] getSession - success, expiresAt={}", session.getExpiresAt());
                 return session;
                 
             } finally {

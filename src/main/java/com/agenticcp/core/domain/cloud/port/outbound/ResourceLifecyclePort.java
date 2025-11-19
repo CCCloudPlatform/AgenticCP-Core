@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.port.outbound;
 
-import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 
 /**
