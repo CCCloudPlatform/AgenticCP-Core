@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.model.account;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

@@ -58,7 +58,7 @@ class SessionCacheServiceTest {
             // given
             when(redisTemplate.opsForValue()).thenReturn(valueOperations);
             String tenantKey = "tenant-1";
-            Long accountId = 1L;
+            String accountScope = "123456789012";
             ProviderType providerType = ProviderType.AWS;
             AwsSessionCredential session = AwsSessionCredential.builder()
                     .accessKeyId("test-access-key")
@@ -70,7 +70,7 @@ class SessionCacheServiceTest {
             int ttlMinutes = 55;
 
             // when
-            sessionCacheService.cacheSession(tenantKey, accountId, providerType, session, ttlMinutes);
+            sessionCacheService.cacheSession(tenantKey, accountScope, providerType, session, ttlMinutes);
 
             // then
             verify(valueOperations).set(anyString(), anyString(), eq((long) ttlMinutes), eq(TimeUnit.MINUTES));
@@ -87,7 +87,7 @@ class SessionCacheServiceTest {
                     .build();
 
             // when & then - 예외 없이 종료
-            serviceWithoutRedis.cacheSession("tenant-1", 1L, ProviderType.AWS, session, 55);
+            serviceWithoutRedis.cacheSession("tenant-1", "123456789012", ProviderType.AWS, session, 55);
         }
     }
 
@@ -101,7 +101,7 @@ class SessionCacheServiceTest {
             // given
             when(redisTemplate.opsForValue()).thenReturn(valueOperations);
             String tenantKey = "tenant-1";
-            Long accountId = 1L;
+            String accountScope = "123456789012";
             ProviderType providerType = ProviderType.AWS;
             AwsSessionCredential session = AwsSessionCredential.builder()
                     .accessKeyId("test-access-key")
@@ -116,7 +116,7 @@ class SessionCacheServiceTest {
 
             // when
             Optional<CloudSessionCredential> result = sessionCacheService.getCachedSession(
-                    tenantKey, accountId, providerType);
+                    tenantKey, accountScope, providerType);
 
             // then
             assertThat(result).isPresent();
@@ -135,7 +135,7 @@ class SessionCacheServiceTest {
 
             // when
             Optional<CloudSessionCredential> result = sessionCacheService.getCachedSession(
-                    "tenant-1", 1L, ProviderType.AWS);
+                    "tenant-1", "123456789012", ProviderType.AWS);
 
             // then
             assertThat(result).isEmpty();
@@ -155,7 +155,7 @@ class SessionCacheServiceTest {
 
             // when
             Optional<CloudSessionCredential> result = sessionCacheService.getCachedSession(
-                    "tenant-1", 1L, ProviderType.AWS);
+                    "tenant-1", "123456789012", ProviderType.AWS);
 
             // then
             assertThat(result).isEmpty();
@@ -170,7 +170,7 @@ class SessionCacheServiceTest {
 
             // when
             Optional<CloudSessionCredential> result = serviceWithoutRedis.getCachedSession(
-                    "tenant-1", 1L, ProviderType.AWS);
+                    "tenant-1", "123456789012", ProviderType.AWS);
 
             // then
             assertThat(result).isEmpty();
@@ -186,11 +186,11 @@ class SessionCacheServiceTest {
         void evictSession_Success() {
             // given
             String tenantKey = "tenant-1";
-            Long accountId = 1L;
+            String accountScope = "123456789012";
             ProviderType providerType = ProviderType.AWS;
 
             // when
-            sessionCacheService.evictSession(tenantKey, accountId, providerType);
+            sessionCacheService.evictSession(tenantKey, accountScope, providerType);
 
             // then
             verify(redisTemplate).delete(anyString());
@@ -203,7 +203,7 @@ class SessionCacheServiceTest {
             SessionCacheService serviceWithoutRedis = new SessionCacheService(objectMapper, null);
 
             // when & then - 예외 없이 종료
-            serviceWithoutRedis.evictSession("tenant-1", 1L, ProviderType.AWS);
+            serviceWithoutRedis.evictSession("tenant-1", "123456789012", ProviderType.AWS);
         }
     }
 

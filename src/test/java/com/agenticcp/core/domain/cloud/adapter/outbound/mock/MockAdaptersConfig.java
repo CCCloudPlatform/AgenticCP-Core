@@ -5,6 +5,7 @@ import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -57,11 +58,11 @@ public class MockAdaptersConfig {
             }
 
             @Override
-            public com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential getSession(
-                    String tenantKey, Long accountId, ProviderType providerType) {
-                log.debug("Mock session retrieval: tenantKey={}, accountId={}, providerType={}", 
-                        tenantKey, accountId, providerType);
-                return com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential.builder()
+            public CloudSessionCredential getSession(
+                    String tenantKey, String accountScope, ProviderType providerType) {
+                log.debug("Mock session retrieval: tenantKey={}, accountScope={}, providerType={}",
+                        tenantKey, accountScope, providerType);
+                return com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential.builder()
                         .accessKeyId("mock-access-key")
                         .secretAccessKey("mock-secret-key")
                         .sessionToken("mock-session-token")
