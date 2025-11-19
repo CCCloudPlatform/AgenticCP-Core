@@ -2,7 +2,7 @@ package com.agenticcp.core.domain.cloud.controller;
 
 import com.agenticcp.core.domain.cloud.port.model.account.*;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.service.CloudAccountUseCaseService;
+import com.agenticcp.core.domain.cloud.service.account.CloudAccountUseCaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

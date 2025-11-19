@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.service;
+package com.agenticcp.core.domain.cloud.service.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
