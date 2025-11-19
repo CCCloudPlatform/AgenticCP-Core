@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.config;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -36,6 +38,35 @@ public class CloudStubConfiguration {
                 log.debug("Stub: Credential resolution - tenant={}, provider={}, account={}", 
                          tenantKey, providerType, accountScope);
                 return "stub-credentials";
+            }
+
+            @Override
+            public String storeCredentials(String tenantKey, ProviderType providerType, String accountScope, Map<String, String> credentials) {
+                log.debug("Stub: Store credentials - tenant={}, provider={}, accountScope={}",
+                        tenantKey, providerType, accountScope);
+                return "stub-credential-key";
+            }
+
+            @Override
+            public void deleteCredentials(ProviderType providerType, String credentialKey) {
+                log.debug("Stub: Delete credentials - provider={}, credentialKey={}", providerType, credentialKey);
+            }
+
+            @Override
+            public CloudSessionCredential getSession(String tenantKey, Long accountId, ProviderType providerType) {
+                log.debug("Stub: Session retrieval - tenant={}, accountId={}, provider={}",
+                        tenantKey, accountId, providerType);
+                return new CloudSessionCredential() {
+                    @Override
+                    public ProviderType getProviderType() {
+                        return providerType;
+                    }
+
+                    @Override
+                    public LocalDateTime getExpiresAt() {
+                        return LocalDateTime.now().plusMinutes(5);
+                    }
+                };
             }
         };
     }
