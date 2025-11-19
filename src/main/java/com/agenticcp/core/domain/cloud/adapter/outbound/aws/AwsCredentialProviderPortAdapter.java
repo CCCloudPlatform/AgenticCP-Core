@@ -4,9 +4,11 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.TenantCloudCredentials;
 import com.agenticcp.core.domain.cloud.exception.AwsErrorCode;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.repository.TenantCloudCredentialsRepository;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ThreadLocalCredentialCache;
+import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,7 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 import software.amazon.awssdk.services.sts.model.StsException;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * AWS 자격증명 제공자 포트 어댑터
@@ -160,5 +163,36 @@ public class AwsCredentialProviderPortAdapter implements CredentialProviderPort 
             case "RegionDisabledException" -> new BusinessException(AwsErrorCode.AWS_STS_REGION_MISMATCH, errorMessage);
             default -> new BusinessException(AwsErrorCode.AWS_STS_ASSUME_ROLE_FAILED, errorMessage);
         };
+    }
+
+    @Override
+    public String storeCredentials(String tenantKey, CloudProvider.ProviderType providerType,
+                                   String accountScope, Map<String, String> credentials) {
+        log.warn("AwsCredentialProviderPortAdapter.storeCredentials는 지원되지 않습니다. tenantKey={}, providerType={}, accountScope={}",
+                tenantKey, providerType, accountScope);
+        throw new BusinessException(
+                CloudErrorCode.UNSUPPORTED_OPERATION,
+                "AwsCredentialProviderPortAdapter에서는 자격증명 저장 기능을 지원하지 않습니다. CredentialProviderPortAdapter를 사용하세요."
+        );
+    }
+
+    @Override
+    public void deleteCredentials(CloudProvider.ProviderType providerType, String credentialKey) {
+        log.warn("AwsCredentialProviderPortAdapter.deleteCredentials는 지원되지 않습니다. providerType={}, credentialKey={}",
+                providerType, credentialKey);
+        throw new BusinessException(
+                CloudErrorCode.UNSUPPORTED_OPERATION,
+                "AwsCredentialProviderPortAdapter에서는 자격증명 삭제 기능을 지원하지 않습니다. CredentialProviderPortAdapter를 사용하세요."
+        );
+    }
+
+    @Override
+    public CloudSessionCredential getSession(String tenantKey, Long accountId, CloudProvider.ProviderType providerType) {
+        log.warn("AwsCredentialProviderPortAdapter.getSession은 지원되지 않습니다. tenantKey={}, accountId={}, providerType={}",
+                tenantKey, accountId, providerType);
+        throw new BusinessException(
+                CloudErrorCode.UNSUPPORTED_OPERATION,
+                "AwsCredentialProviderPortAdapter에서는 세션 발급 기능을 지원하지 않습니다. CredentialProviderPortAdapter를 사용하세요."
+        );
     }
 }
