@@ -38,9 +38,28 @@ public class CredentialProviderPortAdapter implements CredentialProviderPort {
         log.debug("[CredentialProviderPortAdapter] resolveCredentials - tenantKey={}, providerType={}, accountScope={}",
                 tenantKey, providerType, accountScope);
 
+        // accountScope(AccountId)로 CloudAccount를 찾아서 credentialKey 획득
+        String credentialKey = cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType)
+                .stream()
+                .filter(account -> account.getAccountId() != null && account.getAccountId().equals(accountScope))
+                .findFirst()
+                .map(account -> {
+                    if (account.getCredential() == null) {
+                        throw new BusinessException(
+                            CloudErrorCode.ACCOUNT_NOT_FOUND,
+                            "계정에 자격증명이 없습니다: " + accountScope
+                        );
+                    }
+                    return account.getCredential().getCredentialKey();
+                })
+                .orElseThrow(() -> new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_FOUND,
+                    "계정을 찾을 수 없습니다: tenantKey=" + tenantKey + ", providerType=" + providerType + ", accountScope=" + accountScope
+                ));
+
         switch (providerType) {
             case AWS:
-                return awsCredentialManager.getCredentials(accountScope);
+                return awsCredentialManager.getCredentials(credentialKey);
             case AZURE:
             case GCP:
                 throw new BusinessException(

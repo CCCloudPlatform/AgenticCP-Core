@@ -317,7 +317,7 @@ public class CloudAccountUseCaseService {
         ResolveCredentialCommand resolveCommand = credentialCommandMapper.toResolveCommand(
                 tenant.getTenantKey(),
                 account.getProvider().getProviderType(),
-                account.getCredential().getCredentialKey()
+                account.getAccountId() != null ? account.getAccountId() : account.getId().toString()
         );
         
         Object credentials = credentialProviderPort.resolveCredentials(
