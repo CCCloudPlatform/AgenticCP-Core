@@ -53,9 +53,9 @@ public class CloudStubConfiguration {
             }
 
             @Override
-            public CloudSessionCredential getSession(String tenantKey, Long accountId, ProviderType providerType) {
-                log.debug("Stub: Session retrieval - tenant={}, accountId={}, provider={}",
-                        tenantKey, accountId, providerType);
+            public CloudSessionCredential getSession(String tenantKey, String accountScope, ProviderType providerType) {
+                log.debug("Stub: Session retrieval - tenant={}, accountScope={}, provider={}",
+                        tenantKey, accountScope, providerType);
                 return new CloudSessionCredential() {
                     @Override
                     public ProviderType getProviderType() {

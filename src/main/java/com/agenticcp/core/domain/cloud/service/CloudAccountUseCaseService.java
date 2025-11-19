@@ -88,7 +88,7 @@ public class CloudAccountUseCaseService {
         
         // 2. 계정 중복 검증 (Domain Service 위임)
         cloudAccountDomainService.validateAccountUniqueness(
-            tenant.getId(), request.getAccountId(), request.getProviderType());
+            tenant.getId(), request.getAccountScope(), request.getProviderType());
         
         // 3. AWS 자격증명으로 계정 검증 (동기 검증)
         AccountValidationRequest validationRequest = AccountValidationRequest.builder()
@@ -113,7 +113,7 @@ public class CloudAccountUseCaseService {
         StoreCredentialCommand storeCommand = credentialCommandMapper.toStoreCommand(
                 tenant.getTenantKey(),
                 request.getProviderType(),
-                request.getAccountId() != null ? request.getAccountId() : validationResult.getAccountId(),
+                request.getAccountScope() != null ? request.getAccountScope() : validationResult.getAccountScope(),
                 request.getAccessKey(),
                 request.getSecretKey(),
                 request.getRegion() != null ? request.getRegion() : validationResult.getRegion()
@@ -133,12 +133,12 @@ public class CloudAccountUseCaseService {
                     "저장된 자격증명을 찾을 수 없습니다: " + credentialKey
                 ));
         
-        // 5. 검증 결과(AccountId 등)와 함께 CloudAccount 엔티티 생성 및 저장
+        // 5. 검증 결과(AccountScope 등)와 함께 CloudAccount 엔티티 생성 및 저장
         CloudAccount cloudAccount = CloudAccount.builder()
                 .tenant(tenant)
                 .provider(provider)
                 .accountName(request.getAccountName())
-                .accountId(validationResult.getAccountId() != null ? validationResult.getAccountId() : request.getAccountId())
+                .accountScope(validationResult.getAccountScope() != null ? validationResult.getAccountScope() : request.getAccountScope())
                 .credential(savedCredential)
                 .accountStatus(AccountStatus.VERIFIED)
                 .isDefault(request.getIsDefault() != null && request.getIsDefault())
@@ -317,7 +317,7 @@ public class CloudAccountUseCaseService {
         ResolveCredentialCommand resolveCommand = credentialCommandMapper.toResolveCommand(
                 tenant.getTenantKey(),
                 account.getProvider().getProviderType(),
-                account.getAccountId() != null ? account.getAccountId() : account.getId().toString()
+                account.getAccountScope() != null ? account.getAccountScope() : account.getId().toString()
         );
         
         Object credentials = credentialProviderPort.resolveCredentials(

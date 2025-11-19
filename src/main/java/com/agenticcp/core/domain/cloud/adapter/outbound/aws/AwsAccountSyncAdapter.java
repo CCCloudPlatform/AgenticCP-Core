@@ -69,11 +69,11 @@ public class AwsAccountSyncAdapter implements AccountSyncPort {
             GetCallerIdentityResponse response = stsClient.getCallerIdentity(request);
             
             // 계정 정보 업데이트
-            // AccountId가 변경되었을 수 있으므로 확인 후 업데이트
-            if (response.account() != null && !response.account().equals(account.getAccountId())) {
-                log.warn("[AwsAccountSyncAdapter] syncAccountInfo - accountId changed: {} -> {}", 
-                         account.getAccountId(), response.account());
-                account.setAccountId(response.account());
+            // AccountScope가 변경되었을 수 있으므로 확인 후 업데이트
+            if (response.account() != null && !response.account().equals(account.getAccountScope())) {
+                log.warn("[AwsAccountSyncAdapter] syncAccountInfo - accountScope changed: {} -> {}", 
+                         account.getAccountScope(), response.account());
+                account.setAccountScope(response.account());
             }
             
             // 동기화 시간 업데이트

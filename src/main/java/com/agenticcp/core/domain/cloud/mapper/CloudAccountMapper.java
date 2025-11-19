@@ -43,7 +43,7 @@ public class CloudAccountMapper {
                 .providerType(entity.getProvider() != null ? entity.getProvider().getProviderType() : null)
                 .providerName(entity.getProvider() != null ? entity.getProvider().getProviderName() : null)
                 .accountName(entity.getAccountName())
-                .accountId(entity.getAccountId())
+                .accountScope(entity.getAccountScope())
                 .accountStatus(entity.getAccountStatus())
                 .isDefault(entity.getIsDefault())
                 .region(region)

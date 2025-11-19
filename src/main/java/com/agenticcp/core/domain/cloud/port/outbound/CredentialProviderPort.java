@@ -61,10 +61,10 @@ public interface CredentialProviderPort {
      * 세션 발급 및 캐싱 로직은 프로바이더별 어댑터에서 구현됩니다.
      * 
      * @param tenantKey 테넌트 키
-     * @param accountId 계정 ID
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @param providerType 프로바이더 타입
      * @return CloudSessionCredential 세션/토큰 자격증명
      * @throws com.agenticcp.core.common.exception.BusinessException 세션 발급 실패 시
      */
-    CloudSessionCredential getSession(String tenantKey, Long accountId, ProviderType providerType);
+    CloudSessionCredential getSession(String tenantKey, String accountScope, ProviderType providerType);
 }

@@ -67,7 +67,7 @@ class CredentialProviderPortAdapterGetSessionTest {
         void getSession_CachedSession_ReturnsCached() {
             // given
             String tenantKey = "tenant-1";
-            Long accountId = 1L;
+            String accountScope = "123456789012";
             ProviderType providerType = ProviderType.AWS;
 
             AwsSessionCredential cachedSession = AwsSessionCredential.builder()
@@ -78,16 +78,16 @@ class CredentialProviderPortAdapterGetSessionTest {
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountId, providerType))
+            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.of(cachedSession));
 
             // when
-            CloudSessionCredential result = adapter.getSession(tenantKey, accountId, providerType);
+            CloudSessionCredential result = adapter.getSession(tenantKey, accountScope, providerType);
 
             // then
             assertThat(result).isEqualTo(cachedSession);
             verify(awsSessionProvider, never()).getSession(anyString(), anyInt());
-            verify(sessionCacheService, never()).cacheSession(anyString(), anyLong(), any(), any(), anyInt());
+            verify(sessionCacheService, never()).cacheSession(anyString(), anyString(), any(), any(), anyInt());
         }
 
         @Test
@@ -95,21 +95,21 @@ class CredentialProviderPortAdapterGetSessionTest {
         void getSession_NoCache_IssuesAndCaches() {
             // given
             String tenantKey = "tenant-1";
-            Long accountId = 1L;
+            String accountScope = "123456789012";
             ProviderType providerType = ProviderType.AWS;
             String credentialKey = "credential-key-123";
 
             CloudAccount account = CloudAccount.builder()
+                    .accountScope(accountScope)
                     .credential(CloudAccountCredential.builder()
                             .credentialKey(credentialKey)
                             .build())
                     .build();
-            account.setId(accountId);
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountId, providerType))
+            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.empty());
-            when(cloudAccountRepository.findById(accountId))
-                    .thenReturn(Optional.of(account));
+            when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
+                    .thenReturn(java.util.List.of(account));
 
             AwsSessionCredential newSession = AwsSessionCredential.builder()
                     .accessKeyId("new-access-key")
@@ -123,12 +123,12 @@ class CredentialProviderPortAdapterGetSessionTest {
                     .thenReturn(newSession);
 
             // when
-            CloudSessionCredential result = adapter.getSession(tenantKey, accountId, providerType);
+            CloudSessionCredential result = adapter.getSession(tenantKey, accountScope, providerType);
 
             // then
             assertThat(result).isEqualTo(newSession);
             verify(awsSessionProvider).getSession(credentialKey, 3600);
-            verify(sessionCacheService).cacheSession(eq(tenantKey), eq(accountId), eq(providerType), 
+            verify(sessionCacheService).cacheSession(eq(tenantKey), eq(accountScope), eq(providerType), 
                     eq(newSession), anyInt());
         }
 
@@ -137,16 +137,16 @@ class CredentialProviderPortAdapterGetSessionTest {
         void getSession_AccountNotFound_ThrowsException() {
             // given
             String tenantKey = "tenant-1";
-            Long accountId = 999L;
+            String accountScope = "999999999999";
             ProviderType providerType = ProviderType.AWS;
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountId, providerType))
+            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.empty());
-            when(cloudAccountRepository.findById(accountId))
-                    .thenReturn(Optional.empty());
+            when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
+                    .thenReturn(java.util.List.of());
 
             // when & then
-            assertThatThrownBy(() -> adapter.getSession(tenantKey, accountId, providerType))
+            assertThatThrownBy(() -> adapter.getSession(tenantKey, accountScope, providerType))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> {
                         BusinessException be = (BusinessException) ex;
@@ -159,14 +159,16 @@ class CredentialProviderPortAdapterGetSessionTest {
         void getSession_UnsupportedProvider_ThrowsException() {
             // given
             String tenantKey = "tenant-1";
-            Long accountId = 1L;
+            String accountScope = "123456789012";
             ProviderType providerType = ProviderType.AZURE;
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountId, providerType))
+            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.empty());
+            when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
+                    .thenReturn(java.util.List.of());
 
             // when & then
-            assertThatThrownBy(() -> adapter.getSession(tenantKey, accountId, providerType))
+            assertThatThrownBy(() -> adapter.getSession(tenantKey, accountScope, providerType))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> {
                         BusinessException be = (BusinessException) ex;

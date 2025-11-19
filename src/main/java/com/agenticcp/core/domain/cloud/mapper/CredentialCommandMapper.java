@@ -34,7 +34,7 @@ public class CredentialCommandMapper {
         return StoreCredentialCommand.builder()
                 .tenantKey(tenantKey)
                 .providerType(request.getProviderType())
-                .accountScope(request.getAccountId())
+                .accountScope(request.getAccountScope())
                 .credentials(credentials)
                 .build();
     }

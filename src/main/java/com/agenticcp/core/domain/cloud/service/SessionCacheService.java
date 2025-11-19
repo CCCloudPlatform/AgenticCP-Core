@@ -51,12 +51,12 @@ public class SessionCacheService {
      * 세션을 Redis에 캐싱합니다.
      * 
      * @param tenantKey 테넌트 키
-     * @param accountId 계정 ID
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @param providerType 프로바이더 타입
      * @param session 세션 자격증명
      * @param ttlMinutes TTL (분)
      */
-    public void cacheSession(String tenantKey, Long accountId, 
+    public void cacheSession(String tenantKey, String accountScope, 
                              com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType,
                              CloudSessionCredential session, int ttlMinutes) {
         if (redisTemplate == null) {
@@ -65,7 +65,7 @@ public class SessionCacheService {
         }
         
         try {
-            String cacheKey = buildCacheKey(tenantKey, accountId, providerType);
+            String cacheKey = buildCacheKey(tenantKey, accountScope, providerType);
             String sessionJson = objectMapper.writeValueAsString(session);
             
             redisTemplate.opsForValue().set(cacheKey, sessionJson, ttlMinutes, TimeUnit.MINUTES);
@@ -80,11 +80,11 @@ public class SessionCacheService {
      * 세션을 Redis에서 조회합니다.
      * 
      * @param tenantKey 테넌트 키
-     * @param accountId 계정 ID
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @param providerType 프로바이더 타입
      * @return Optional<CloudSessionCredential>
      */
-    public Optional<CloudSessionCredential> getCachedSession(String tenantKey, Long accountId,
+    public Optional<CloudSessionCredential> getCachedSession(String tenantKey, String accountScope,
                                                              com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
         if (redisTemplate == null) {
             log.debug("[SessionCacheService] Redis not configured, returning empty");
@@ -92,7 +92,7 @@ public class SessionCacheService {
         }
         
         try {
-            String cacheKey = buildCacheKey(tenantKey, accountId, providerType);
+            String cacheKey = buildCacheKey(tenantKey, accountScope, providerType);
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             
             if (cached == null) {
@@ -124,16 +124,16 @@ public class SessionCacheService {
      * 세션을 Redis에서 삭제합니다.
      * 
      * @param tenantKey 테넌트 키
-     * @param accountId 계정 ID
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @param providerType 프로바이더 타입
      */
-    public void evictSession(String tenantKey, Long accountId,
+    public void evictSession(String tenantKey, String accountScope,
                             com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
         if (redisTemplate == null) {
             return;
         }
         
-        String cacheKey = buildCacheKey(tenantKey, accountId, providerType);
+        String cacheKey = buildCacheKey(tenantKey, accountScope, providerType);
         redisTemplate.delete(cacheKey);
         log.debug("[SessionCacheService] Session evicted - key={}", cacheKey);
     }
@@ -142,13 +142,13 @@ public class SessionCacheService {
      * 캐시 키를 생성합니다.
      * 
      * @param tenantKey 테넌트 키
-     * @param accountId 계정 ID
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @param providerType 프로바이더 타입
      * @return 캐시 키
      */
-    private String buildCacheKey(String tenantKey, Long accountId,
+    private String buildCacheKey(String tenantKey, String accountScope,
                                 com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
-        return String.format("%s%s:%s:%s", CACHE_KEY_PREFIX, tenantKey, providerType.name(), accountId);
+        return String.format("%s%s:%s:%s", CACHE_KEY_PREFIX, tenantKey, providerType.name(), accountScope);
     }
     
     /**

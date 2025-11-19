@@ -38,10 +38,10 @@ public class CredentialProviderPortAdapter implements CredentialProviderPort {
         log.debug("[CredentialProviderPortAdapter] resolveCredentials - tenantKey={}, providerType={}, accountScope={}",
                 tenantKey, providerType, accountScope);
 
-        // accountScope(AccountId)로 CloudAccount를 찾아서 credentialKey 획득
+        // accountScope로 CloudAccount를 찾아서 credentialKey 획득
         String credentialKey = cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType)
                 .stream()
-                .filter(account -> account.getAccountId() != null && account.getAccountId().equals(accountScope))
+                .filter(account -> account.getAccountScope() != null && account.getAccountScope().equals(accountScope))
                 .findFirst()
                 .map(account -> {
                     if (account.getCredential() == null) {
@@ -126,13 +126,13 @@ public class CredentialProviderPortAdapter implements CredentialProviderPort {
     }
     
     @Override
-    public CloudSessionCredential getSession(String tenantKey, Long accountId, ProviderType providerType) {
-        log.debug("[CredentialProviderPortAdapter] getSession - tenantKey={}, accountId={}, providerType={}",
-                tenantKey, accountId, providerType);
+    public CloudSessionCredential getSession(String tenantKey, String accountScope, ProviderType providerType) {
+        log.debug("[CredentialProviderPortAdapter] getSession - tenantKey={}, accountScope={}, providerType={}",
+                tenantKey, accountScope, providerType);
         
         // 1. Redis 캐시에서 세션 조회
         Optional<CloudSessionCredential> cachedSession = sessionCacheService.getCachedSession(
-                tenantKey, accountId, providerType);
+                tenantKey, accountScope, providerType);
         
         if (cachedSession.isPresent() && cachedSession.get().isValid()) {
             log.debug("[CredentialProviderPortAdapter] getSession - using cached session");
@@ -140,18 +140,28 @@ public class CredentialProviderPortAdapter implements CredentialProviderPort {
         }
         
         // 2. 캐시에 없거나 만료된 경우 새로 발급
+        // accountScope로 CloudAccount를 찾아서 credentialKey 획득
+        String credentialKey = cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType)
+                .stream()
+                .filter(account -> account.getAccountScope() != null && account.getAccountScope().equals(accountScope))
+                .findFirst()
+                .map(account -> {
+                    if (account.getCredential() == null) {
+                        throw new BusinessException(
+                            CloudErrorCode.ACCOUNT_NOT_FOUND,
+                            "계정에 자격증명이 없습니다: " + accountScope
+                        );
+                    }
+                    return account.getCredential().getCredentialKey();
+                })
+                .orElseThrow(() -> new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_FOUND,
+                    "계정을 찾을 수 없습니다: tenantKey=" + tenantKey + ", providerType=" + providerType + ", accountScope=" + accountScope
+                ));
+        
         CloudSessionCredential session;
         switch (providerType) {
             case AWS:
-                // 계정 조회하여 credentialKey 획득
-                String credentialKey = cloudAccountRepository.findById(accountId)
-                        .orElseThrow(() -> new BusinessException(
-                            CloudErrorCode.ACCOUNT_NOT_FOUND,
-                            "계정을 찾을 수 없습니다: " + accountId
-                        ))
-                        .getCredential()
-                        .getCredentialKey();
-                
                 // AWS STS 세션 발급 (1시간 유효)
                 session = awsSessionProvider.getSession(credentialKey, 3600);
                 break;
@@ -172,7 +182,7 @@ public class CredentialProviderPortAdapter implements CredentialProviderPort {
         
         // 3. Redis에 캐싱 (TTL: 세션 만료 5분 전까지)
         int ttlMinutes = calculateTtlMinutes(session);
-        sessionCacheService.cacheSession(tenantKey, accountId, providerType, session, ttlMinutes);
+        sessionCacheService.cacheSession(tenantKey, accountScope, providerType, session, ttlMinutes);
         
         log.info("[CredentialProviderPortAdapter] getSession - session issued and cached, expiresAt={}",
                 session.getExpiresAt());

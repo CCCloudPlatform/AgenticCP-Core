@@ -31,10 +31,10 @@ public class AccountValidationResult {
     private String message;
     
     /**
-     * 계정 ID
+     * 계정 범위 (Account Scope)
      * AWS: Account ID, Azure: Subscription ID, GCP: Project ID
      */
-    private String accountId;
+    private String accountScope;
     
     /**
      * 기본 리전 정보

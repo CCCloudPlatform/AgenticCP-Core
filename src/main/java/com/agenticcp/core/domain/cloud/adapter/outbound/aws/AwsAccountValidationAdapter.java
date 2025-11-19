@@ -64,14 +64,14 @@ public class AwsAccountValidationAdapter implements AccountValidationPort {
             metadata.put("userId", response.userId());
             metadata.put("accountId", response.account());
             
-            log.info("[AwsAccountValidationAdapter] validateAccount - success, accountId={}", 
+            log.info("[AwsAccountValidationAdapter] validateAccount - success, accountScope={}", 
                      response.account());
             
             // 검증 성공 결과 반환
             return AccountValidationResult.builder()
                     .valid(true)
                     .message("AWS 계정 검증 성공")
-                    .accountId(response.account())
+                    .accountScope(response.account())
                     .region(region)
                     .metadata(metadata)
                     .build();

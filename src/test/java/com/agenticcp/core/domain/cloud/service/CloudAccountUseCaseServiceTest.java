@@ -113,7 +113,7 @@ class CloudAccountUseCaseServiceTest {
         registerRequest = RegisterCloudAccountRequest.builder()
                 .providerType(ProviderType.AWS)
                 .accountName("Test AWS Account")
-                .accountId("123456789012")
+                .accountScope("123456789012")
                 .accessKey("AKIAIOSFODNN7EXAMPLE")
                 .secretKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
                 .region("us-east-1")
@@ -123,7 +123,7 @@ class CloudAccountUseCaseServiceTest {
         validationResult = AccountValidationResult.builder()
                 .valid(true)
                 .message("Validation successful")
-                .accountId("123456789012")
+                .accountScope("123456789012")
                 .region("us-east-1")
                 .metadata(Map.of("arn", "arn:aws:iam::123456789012:root"))
                 .build();
@@ -140,7 +140,7 @@ class CloudAccountUseCaseServiceTest {
                 .tenant(tenant)
                 .provider(provider)
                 .accountName("Test AWS Account")
-                .accountId("123456789012")
+                .accountScope("123456789012")
                 .credential(credential)
                 .accountStatus(AccountStatus.VERIFIED)
                 .isDefault(false)
@@ -189,14 +189,14 @@ class CloudAccountUseCaseServiceTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.getAccountName()).isEqualTo("Test AWS Account");
-            assertThat(result.getAccountId()).isEqualTo("123456789012");
+            assertThat(result.getAccountScope()).isEqualTo("123456789012");
             assertThat(result.getAccountStatus()).isEqualTo(AccountStatus.VERIFIED);
 
             // verify
             then(tenantRepository).should(times(1)).findByTenantKey(tenantKey);
             then(cloudProviderRepository).should(times(1)).findByProviderType(ProviderType.AWS);
             then(cloudAccountDomainService).should(times(1))
-                    .validateAccountUniqueness(tenant.getId(), registerRequest.getAccountId(), ProviderType.AWS);
+                    .validateAccountUniqueness(tenant.getId(), registerRequest.getAccountScope(), ProviderType.AWS);
             then(accountValidationPort).should(times(1)).validateAccount(any(AccountValidationRequest.class));
             then(credentialCommandMapper).should(times(1)).toStoreCommand(anyString(), any(ProviderType.class), anyString(), anyString(), anyString(), anyString());
             then(credentialProviderPort).should(times(1)).storeCredentials(anyString(), any(ProviderType.class), anyString(), anyMap());
@@ -478,7 +478,7 @@ class CloudAccountUseCaseServiceTest {
                     .tenant(tenant)
                     .provider(provider)
                     .accountName("Synced Account")
-                    .accountId("123456789012")
+                    .accountScope("123456789012")
                     .credential(credential)
                     .accountStatus(AccountStatus.ACTIVE)
                     .lastSyncAt(LocalDateTime.now())
@@ -525,7 +525,7 @@ class CloudAccountUseCaseServiceTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.getValid()).isTrue();
-            assertThat(result.getAccountId()).isEqualTo("123456789012");
+            assertThat(result.getAccountScope()).isEqualTo("123456789012");
         }
     }
 }

@@ -58,10 +58,10 @@ public class CloudAccountDto {
     private String accountName;
     
     /**
-     * 계정 ID
+     * 계정 범위 (Account Scope)
      * AWS: Account ID, Azure: Subscription ID, GCP: Project ID
      */
-    private String accountId;
+    private String accountScope;
     
     /**
      * 계정 상태

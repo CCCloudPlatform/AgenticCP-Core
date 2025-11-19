@@ -91,7 +91,7 @@ class AwsAccountValidationAdapterTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.getValid()).isTrue();
-            assertThat(result.getAccountId()).isEqualTo("123456789012");
+            assertThat(result.getAccountScope()).isEqualTo("123456789012");
             assertThat(result.getRegion()).isEqualTo("us-east-1");
             assertThat(result.getMessage()).contains("AWS 계정 검증 성공");
             assertThat(result.getMetadata()).containsEntry("arn", "arn:aws:iam::123456789012:user/test-user");

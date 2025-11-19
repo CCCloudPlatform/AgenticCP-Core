@@ -38,11 +38,11 @@ public class RegisterCloudAccountRequest {
     private String accountName;
     
     /**
-     * 계정 ID
+     * 계정 범위 (Account Scope)
      * AWS: Account ID, Azure: Subscription ID, GCP: Project ID
      * 검증 시 자동으로 채워질 수 있으므로 선택 사항
      */
-    private String accountId;
+    private String accountScope;
     
     /**
      * Access Key

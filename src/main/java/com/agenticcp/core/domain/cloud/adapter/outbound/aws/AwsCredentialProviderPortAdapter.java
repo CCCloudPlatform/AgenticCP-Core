@@ -187,9 +187,9 @@ public class AwsCredentialProviderPortAdapter implements CredentialProviderPort 
     }
 
     @Override
-    public CloudSessionCredential getSession(String tenantKey, Long accountId, CloudProvider.ProviderType providerType) {
-        log.warn("AwsCredentialProviderPortAdapter.getSession은 지원되지 않습니다. tenantKey={}, accountId={}, providerType={}",
-                tenantKey, accountId, providerType);
+    public CloudSessionCredential getSession(String tenantKey, String accountScope, CloudProvider.ProviderType providerType) {
+        log.warn("AwsCredentialProviderPortAdapter.getSession은 지원되지 않습니다. tenantKey={}, accountScope={}, providerType={}",
+                tenantKey, accountScope, providerType);
         throw new BusinessException(
                 CloudErrorCode.UNSUPPORTED_OPERATION,
                 "AwsCredentialProviderPortAdapter에서는 세션 발급 기능을 지원하지 않습니다. CredentialProviderPortAdapter를 사용하세요."

@@ -29,26 +29,26 @@ public class CloudAccountDomainService {
 
     /**
      * 계정 고유성을 검증합니다.
-     * 동일한 테넌트 내에서 같은 accountId가 이미 등록되어 있는지 확인합니다.
+     * 동일한 테넌트 내에서 같은 accountScope가 이미 등록되어 있는지 확인합니다.
      * 
      * @param tenantId 테넌트 ID
-     * @param accountId 계정 ID (AWS AccountId, Azure SubscriptionId 등)
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @param providerType 프로바이더 타입
      * @throws BusinessException 중복된 계정이 존재하는 경우
      */
-    public void validateAccountUniqueness(Long tenantId, String accountId, ProviderType providerType) {
-        if (accountId == null || accountId.trim().isEmpty()) {
-            // accountId가 없으면 검증하지 않음 (검증 후 자동 설정될 수 있음)
+    public void validateAccountUniqueness(Long tenantId, String accountScope, ProviderType providerType) {
+        if (accountScope == null || accountScope.trim().isEmpty()) {
+            // accountScope가 없으면 검증하지 않음 (검증 후 자동 설정될 수 있음)
             return;
         }
         
-        boolean exists = cloudAccountRepository.existsByTenantIdAndAccountId(tenantId, accountId);
+        boolean exists = cloudAccountRepository.existsByTenantIdAndAccountScope(tenantId, accountScope);
         if (exists) {
-            log.warn("[CloudAccountDomainService] validateAccountUniqueness - duplicate accountId found: tenantId={}, accountId={}, providerType={}", 
-                     tenantId, accountId, providerType);
+            log.warn("[CloudAccountDomainService] validateAccountUniqueness - duplicate accountScope found: tenantId={}, accountScope={}, providerType={}", 
+                     tenantId, accountScope, providerType);
             throw new BusinessException(
                 CloudErrorCode.DUPLICATE_ACCOUNT,
-                String.format("이미 등록된 계정입니다. Account ID: %s", accountId)
+                String.format("이미 등록된 계정입니다. Account Scope: %s", accountScope)
             );
         }
     }
