@@ -7,7 +7,7 @@ import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.ResourceQuery;
 import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,7 +23,7 @@ public class CloudResourceUseCaseService {
 
     private final ResourcePortRouter router;
     private final CapabilityGuard capabilityGuard;
-    private final CredentialProviderPort credentialProviderPort;
+    private final AccountCredentialManagementPort accountCredentialManagementPort;
     private final AuditEventPort auditEventPort;
     private final TracingPort tracingPort;
 
@@ -51,7 +51,7 @@ public class CloudResourceUseCaseService {
         
         // JIT 세션 획득
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
+        CloudSessionCredential session = accountCredentialManagementPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
         
         // 세션을 Adapter에 전달
         router.lifecycle(id.getProviderType()).start(id, session);
@@ -64,7 +64,7 @@ public class CloudResourceUseCaseService {
         
         // JIT 세션 획득
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
+        CloudSessionCredential session = accountCredentialManagementPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
         
         // 세션을 Adapter에 전달
         router.lifecycle(id.getProviderType()).stop(id, session);
@@ -77,7 +77,7 @@ public class CloudResourceUseCaseService {
         
         // JIT 세션 획득
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
+        CloudSessionCredential session = accountCredentialManagementPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
         
         // 세션을 Adapter에 전달
         router.lifecycle(id.getProviderType()).terminate(id, session);

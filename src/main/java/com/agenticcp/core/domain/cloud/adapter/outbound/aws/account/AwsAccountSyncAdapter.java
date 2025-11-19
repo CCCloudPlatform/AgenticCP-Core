@@ -7,7 +7,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
-import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -12,12 +12,12 @@ import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.mapper.CloudAccountMapper;
 import com.agenticcp.core.domain.cloud.mapper.CredentialCommandMapper;
-import com.agenticcp.core.domain.cloud.port.outbound.AccountSyncPort;
-import com.agenticcp.core.domain.cloud.port.outbound.AccountValidationPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountSyncPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountValidationPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.AwsCredentialManager;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsCredentialManager;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
@@ -52,7 +52,7 @@ public class CloudAccountUseCaseService {
     private final CloudAccountCredentialRepository cloudAccountCredentialRepository;
     private final CloudAccountDomainService cloudAccountDomainService;
     private final AccountValidationPort accountValidationPort;
-    private final CredentialProviderPort credentialProviderPort;
+    private final AccountCredentialManagementPort accountCredentialManagementPort;
     private final CredentialCommandMapper credentialCommandMapper;
     private final AuditEventPort auditEventPort;
     private final AccountSyncPort accountSyncPort;
@@ -109,7 +109,7 @@ public class CloudAccountUseCaseService {
             );
         }
         
-        // 4. 자격증명 암호화 저장 (CredentialProviderPort 사용)
+        // 4. 자격증명 암호화 저장 (AccountCredentialManagementPort 사용)
         StoreCredentialCommand storeCommand = credentialCommandMapper.toStoreCommand(
                 tenant.getTenantKey(),
                 request.getProviderType(),
@@ -119,7 +119,7 @@ public class CloudAccountUseCaseService {
                 request.getRegion() != null ? request.getRegion() : validationResult.getRegion()
         );
         
-        String credentialKey = credentialProviderPort.storeCredentials(
+        String credentialKey = accountCredentialManagementPort.storeCredentials(
                 storeCommand.getTenantKey(),
                 storeCommand.getProviderType(),
                 storeCommand.getAccountScope(),
@@ -257,13 +257,13 @@ public class CloudAccountUseCaseService {
         // 삭제 전 검증
         cloudAccountDomainService.validateAccountDeletion(account);
         
-        // 자격증명 삭제 (CredentialProviderPort 사용)
+        // 자격증명 삭제 (AccountCredentialManagementPort 사용)
         if (account.getCredential() != null) {
             DeleteCredentialCommand deleteCommand = credentialCommandMapper.toDeleteCommand(
                     account.getProvider().getProviderType(),
                     account.getCredential().getCredentialKey()
             );
-            credentialProviderPort.deleteCredentials(
+            accountCredentialManagementPort.deleteCredentials(
                     deleteCommand.getProviderType(),
                     deleteCommand.getCredentialKey()
             );
@@ -306,7 +306,7 @@ public class CloudAccountUseCaseService {
                     "계정을 찾을 수 없습니다: " + accountId
                 ));
         
-        // 자격증명 조회 (CredentialProviderPort 사용)
+        // 자격증명 조회 (AccountCredentialManagementPort 사용)
         if (account.getCredential() == null) {
             throw new BusinessException(
                 CredentialErrorCode.CREDENTIAL_NOT_FOUND,
@@ -320,7 +320,7 @@ public class CloudAccountUseCaseService {
                 account.getAccountScope() != null ? account.getAccountScope() : account.getId().toString()
         );
         
-        Object credentials = credentialProviderPort.resolveCredentials(
+        Object credentials = accountCredentialManagementPort.resolveCredentials(
                 resolveCommand.getTenantKey(),
                 resolveCommand.getProviderType(),
                 resolveCommand.getAccountScope()

@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.outbound;
+package com.agenticcp.core.domain.cloud.port.outbound.account;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
@@ -15,7 +15,7 @@ import java.util.Map;
  * @author AgenticCP Team
  * @version 1.0.0
  */
-public interface CredentialProviderPort {
+public interface AccountCredentialManagementPort {
     
     /**
      * 자격증명을 해결하고 반환합니다.

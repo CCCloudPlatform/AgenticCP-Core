@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.outbound;
+package com.agenticcp.core.domain.cloud.port.outbound.account;
 
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 

@@ -7,7 +7,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
 import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;
-import com.agenticcp.core.domain.cloud.port.outbound.AccountValidationPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountValidationPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

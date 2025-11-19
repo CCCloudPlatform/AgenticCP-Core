@@ -2,7 +2,7 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.mock;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
 import lombok.extern.slf4j.Slf4j;
@@ -34,8 +34,8 @@ public class MockAdaptersConfig {
 
     @Bean
     @Primary
-    public CredentialProviderPort mockCredentialProviderPort() {
-        return new CredentialProviderPort() {
+    public AccountCredentialManagementPort mockCredentialProviderPort() {
+        return new AccountCredentialManagementPort() {
             @Override
             public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
                 log.debug("Mock credential resolution for tenant: {}, provider: {}, account: {}", 
