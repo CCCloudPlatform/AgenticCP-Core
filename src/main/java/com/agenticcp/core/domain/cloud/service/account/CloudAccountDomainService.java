@@ -28,6 +28,7 @@ public class CloudAccountDomainService {
 
     private final CloudAccountRepository cloudAccountRepository;
     private final MaskingService maskingService;
+    private final SessionCacheService sessionCacheService;
 
     /**
      * 계정 고유성을 검증합니다.
@@ -123,6 +124,7 @@ public class CloudAccountDomainService {
                 );
         }
         cloudAccountRepository.save(account);
+        evictCachedSession(account);
         log.info("[CloudAccountDomainService] changeAccountStatus - success accountId={}, newStatus={}", account.getId(), newStatus);
     }
 
@@ -136,6 +138,24 @@ public class CloudAccountDomainService {
         // 필요시 추가 검증 로직 구현
         // 예: 연결된 리소스가 있는지 확인 등
         log.info("[CloudAccountDomainService] validateAccountDeletion - accountId={}", account.getId());
+    }
+
+    private void evictCachedSession(CloudAccount account) {
+        if (account == null || account.getTenant() == null || account.getProvider() == null) {
+            return;
+        }
+
+        String tenantKey = account.getTenant().getTenantKey();
+        String accountScope = account.getAccountScope();
+        ProviderType providerType = account.getProvider().getProviderType();
+
+        if (tenantKey == null || accountScope == null || providerType == null) {
+            return;
+        }
+
+        sessionCacheService.evictSession(tenantKey, accountScope, providerType);
+        log.debug("[CloudAccountDomainService] evicted cached session - tenantKey={}, providerType={}, accountScope={}",
+                tenantKey, providerType, maskingService.maskAccountScope(accountScope));
     }
 }
 
