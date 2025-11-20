@@ -22,8 +22,6 @@ public class VmCapabilityConfig {
             "VM",
             "INSTANCE",
             CspCapability.builder()
-                .supportsCreate(true)
-                .supportsUpdate(true)
                 .supportsStart(true)
                 .supportsStop(true)
                 .supportsTerminate(true)
