@@ -1,7 +1,7 @@
-package com.agenticcp.core.domain.cloud.service.account;
+package com.agenticcp.core.domain.cloud.adapter.outbound.redis.account;
 
-import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -25,11 +25,11 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * SessionCacheService 단위 테스트
+ * RedisSessionCacheAdapter 단위 테스트
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("SessionCacheService 테스트")
-class SessionCacheServiceTest {
+@DisplayName("RedisSessionCacheAdapter 테스트")
+class RedisSessionCacheAdapterTest {
 
     @Mock
     private RedisTemplate<String, Object> redisTemplate;
@@ -37,7 +37,7 @@ class SessionCacheServiceTest {
     @Mock
     private ValueOperations<String, Object> valueOperations;
 
-    private SessionCacheService sessionCacheService;
+    private RedisSessionCacheAdapter sessionCacheAdapter;
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -45,7 +45,7 @@ class SessionCacheServiceTest {
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        sessionCacheService = new SessionCacheService(objectMapper, redisTemplate);
+        sessionCacheAdapter = new RedisSessionCacheAdapter(objectMapper, redisTemplate);
     }
 
     @Nested
@@ -70,7 +70,7 @@ class SessionCacheServiceTest {
             int ttlMinutes = 55;
 
             // when
-            sessionCacheService.cacheSession(tenantKey, accountScope, providerType, session, ttlMinutes);
+            sessionCacheAdapter.cacheSession(tenantKey, accountScope, providerType, session, ttlMinutes);
 
             // then
             verify(valueOperations).set(anyString(), anyString(), eq((long) ttlMinutes), eq(TimeUnit.MINUTES));
@@ -80,14 +80,14 @@ class SessionCacheServiceTest {
         @DisplayName("Redis가 null이면 캐싱하지 않음")
         void cacheSession_RedisNull_Skip() {
             // given
-            SessionCacheService serviceWithoutRedis = new SessionCacheService(objectMapper, null);
+            RedisSessionCacheAdapter adapterWithoutRedis = new RedisSessionCacheAdapter(objectMapper, null);
             AwsSessionCredential session = AwsSessionCredential.builder()
                     .accessKeyId("test-key")
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
 
             // when & then - 예외 없이 종료
-            serviceWithoutRedis.cacheSession("tenant-1", "123456789012", ProviderType.AWS, session, 55);
+            adapterWithoutRedis.cacheSession("tenant-1", "123456789012", ProviderType.AWS, session, 55);
         }
     }
 
@@ -115,7 +115,7 @@ class SessionCacheServiceTest {
             when(valueOperations.get(anyString())).thenReturn(sessionJson);
 
             // when
-            Optional<CloudSessionCredential> result = sessionCacheService.getCachedSession(
+            Optional<CloudSessionCredential> result = sessionCacheAdapter.getCachedSession(
                     tenantKey, accountScope, providerType);
 
             // then
@@ -134,7 +134,7 @@ class SessionCacheServiceTest {
             when(valueOperations.get(anyString())).thenReturn(null);
 
             // when
-            Optional<CloudSessionCredential> result = sessionCacheService.getCachedSession(
+            Optional<CloudSessionCredential> result = sessionCacheAdapter.getCachedSession(
                     "tenant-1", "123456789012", ProviderType.AWS);
 
             // then
@@ -154,7 +154,7 @@ class SessionCacheServiceTest {
             when(valueOperations.get(anyString())).thenReturn(sessionJson);
 
             // when
-            Optional<CloudSessionCredential> result = sessionCacheService.getCachedSession(
+            Optional<CloudSessionCredential> result = sessionCacheAdapter.getCachedSession(
                     "tenant-1", "123456789012", ProviderType.AWS);
 
             // then
@@ -166,10 +166,10 @@ class SessionCacheServiceTest {
         @DisplayName("Redis가 null이면 empty 반환")
         void getCachedSession_RedisNull_ReturnsEmpty() {
             // given
-            SessionCacheService serviceWithoutRedis = new SessionCacheService(objectMapper, null);
+            RedisSessionCacheAdapter adapterWithoutRedis = new RedisSessionCacheAdapter(objectMapper, null);
 
             // when
-            Optional<CloudSessionCredential> result = serviceWithoutRedis.getCachedSession(
+            Optional<CloudSessionCredential> result = adapterWithoutRedis.getCachedSession(
                     "tenant-1", "123456789012", ProviderType.AWS);
 
             // then
@@ -190,7 +190,7 @@ class SessionCacheServiceTest {
             ProviderType providerType = ProviderType.AWS;
 
             // when
-            sessionCacheService.evictSession(tenantKey, accountScope, providerType);
+            sessionCacheAdapter.evictSession(tenantKey, accountScope, providerType);
 
             // then
             verify(redisTemplate).delete(anyString());
@@ -200,10 +200,10 @@ class SessionCacheServiceTest {
         @DisplayName("Redis가 null이면 삭제하지 않음")
         void evictSession_RedisNull_Skip() {
             // given
-            SessionCacheService serviceWithoutRedis = new SessionCacheService(objectMapper, null);
+            RedisSessionCacheAdapter adapterWithoutRedis = new RedisSessionCacheAdapter(objectMapper, null);
 
             // when & then - 예외 없이 종료
-            serviceWithoutRedis.evictSession("tenant-1", "123456789012", ProviderType.AWS);
+            adapterWithoutRedis.evictSession("tenant-1", "123456789012", ProviderType.AWS);
         }
     }
 
@@ -211,7 +211,7 @@ class SessionCacheServiceTest {
     @DisplayName("기본 TTL 반환")
     void getDefaultTtlMinutes_ReturnsDefault() {
         // when
-        int ttl = sessionCacheService.getDefaultTtlMinutes();
+        int ttl = sessionCacheAdapter.getDefaultTtlMinutes();
 
         // then
         assertThat(ttl).isEqualTo(55);
