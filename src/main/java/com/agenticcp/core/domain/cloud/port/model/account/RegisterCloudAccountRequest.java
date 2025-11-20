@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.model.account;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -42,6 +44,7 @@ public class RegisterCloudAccountRequest {
      * AWS: Account ID, Azure: Subscription ID, GCP: Project ID
      * 검증 시 자동으로 채워질 수 있으므로 선택 사항
      */
+    @Masked(type = MaskingType.ACCOUNT_SCOPE)
     private String accountScope;
     
     /**
@@ -49,6 +52,7 @@ public class RegisterCloudAccountRequest {
      * AWS: Access Key ID, Azure: Client ID, GCP: Service Account Key
      */
     @NotBlank(message = "Access Key는 필수입니다")
+    @Masked(type = MaskingType.ACCESS_KEY)
     private String accessKey;
     
     /**
@@ -56,6 +60,7 @@ public class RegisterCloudAccountRequest {
      * AWS: Secret Access Key, Azure: Client Secret, GCP: Service Account Secret
      */
     @NotBlank(message = "Secret Key는 필수입니다")
+    @Masked(type = MaskingType.SECRET_KEY)
     private String secretKey;
     
     /**

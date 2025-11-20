@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.model.account;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import lombok.AllArgsConstructor;
@@ -35,6 +37,7 @@ public class CloudAccountDto {
     /**
      * 테넌트 키
      */
+    @Masked(type = MaskingType.TENANT_KEY)
     private String tenantKey;
     
     /**
@@ -61,6 +64,7 @@ public class CloudAccountDto {
      * 계정 범위 (Account Scope)
      * AWS: Account ID, Azure: Subscription ID, GCP: Project ID
      */
+    @Masked(type = MaskingType.ACCOUNT_SCOPE)
     private String accountScope;
     
     /**

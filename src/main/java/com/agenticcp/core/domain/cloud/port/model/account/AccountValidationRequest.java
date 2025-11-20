@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.model.account;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,6 +34,7 @@ public class AccountValidationRequest {
      * AWS: Access Key ID, Azure: Client ID, GCP: Service Account Key
      */
     @NotBlank(message = "Access Key ID는 필수입니다")
+    @Masked(type = MaskingType.ACCESS_KEY)
     private String accessKeyId;
     
     /**
@@ -39,6 +42,7 @@ public class AccountValidationRequest {
      * AWS: Secret Access Key, Azure: Client Secret, GCP: Service Account Secret
      */
     @NotBlank(message = "Secret Access Key는 필수입니다")
+    @Masked(type = MaskingType.SECRET_KEY)
     private String secretAccessKey;
     
     /**

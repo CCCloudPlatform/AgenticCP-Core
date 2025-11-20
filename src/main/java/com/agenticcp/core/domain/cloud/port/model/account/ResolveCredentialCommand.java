@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.model.account;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import lombok.Builder;
 import lombok.Value;
@@ -17,6 +19,7 @@ public class ResolveCredentialCommand {
     /**
      * 테넌트 키
      */
+    @Masked(type = MaskingType.TENANT_KEY)
     String tenantKey;
     
     /**
@@ -27,6 +30,7 @@ public class ResolveCredentialCommand {
     /**
      * 계정 범위 (AccountId, SubscriptionId, ProjectId)
      */
+    @Masked(type = MaskingType.ACCOUNT_SCOPE)
     String accountScope;
 }
 
