@@ -8,8 +8,8 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.SessionCachePort;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
-import com.agenticcp.core.domain.cloud.service.account.SessionCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,7 +24,7 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
 
     private final AwsCredentialManager awsCredentialManager;
     private final AwsSessionProvider awsSessionProvider;
-    private final SessionCacheService sessionCacheService;
+    private final SessionCachePort sessionCachePort;
     private final CloudAccountRepository cloudAccountRepository;
     private final MaskingService maskingService;
 
@@ -74,7 +74,7 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
         String maskedAccountScope = maskingService.maskAccountScope(accountScope);
         log.debug("[AwsAccountCredentialManagementAdapter] getSession - tenantKey={}, accountScope={}", maskedTenantKey, maskedAccountScope);
 
-        Optional<CloudSessionCredential> cachedSession = sessionCacheService.getCachedSession(
+        Optional<CloudSessionCredential> cachedSession = sessionCachePort.getCachedSession(
                 tenantKey, accountScope, providerType);
 
         if (cachedSession.isPresent() && cachedSession.get().isValid()) {
@@ -86,7 +86,7 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
         CloudSessionCredential session = awsSessionProvider.getSession(credentialKey, DEFAULT_SESSION_DURATION_SECONDS);
 
         int ttlMinutes = calculateTtlMinutes(session);
-        sessionCacheService.cacheSession(tenantKey, accountScope, providerType, session, ttlMinutes);
+        sessionCachePort.cacheSession(tenantKey, accountScope, providerType, session, ttlMinutes);
 
         log.info("[AwsAccountCredentialManagementAdapter] getSession - session issued and cached, expiresAt={}",
                 session.getExpiresAt());
@@ -105,7 +105,7 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
 
     private int calculateTtlMinutes(CloudSessionCredential session) {
         if (session.getExpiresAt() == null) {
-            return sessionCacheService.getDefaultTtlMinutes();
+            return sessionCachePort.getDefaultTtlMinutes();
         }
 
         long minutesUntilExpiry = java.time.Duration.between(

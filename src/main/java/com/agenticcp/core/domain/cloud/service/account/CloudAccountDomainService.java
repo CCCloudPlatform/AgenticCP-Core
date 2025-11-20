@@ -6,6 +6,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.port.outbound.account.SessionCachePort;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ public class CloudAccountDomainService {
 
     private final CloudAccountRepository cloudAccountRepository;
     private final MaskingService maskingService;
-    private final SessionCacheService sessionCacheService;
+    private final SessionCachePort sessionCachePort;
 
     /**
      * 계정 고유성을 검증합니다.
@@ -153,7 +154,7 @@ public class CloudAccountDomainService {
             return;
         }
 
-        sessionCacheService.evictSession(tenantKey, accountScope, providerType);
+        sessionCachePort.evictSession(tenantKey, accountScope, providerType);
         log.debug("[CloudAccountDomainService] evicted cached session - tenantKey={}, providerType={}, accountScope={}",
                 tenantKey, providerType, maskingService.maskAccountScope(accountScope));
     }

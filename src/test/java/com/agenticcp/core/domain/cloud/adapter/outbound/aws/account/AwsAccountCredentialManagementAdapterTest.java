@@ -7,8 +7,8 @@ import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.outbound.account.SessionCachePort;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
-import com.agenticcp.core.domain.cloud.service.account.SessionCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +37,7 @@ class AwsAccountCredentialManagementAdapterTest {
     private AwsSessionProvider awsSessionProvider;
 
     @Mock
-    private SessionCacheService sessionCacheService;
+    private SessionCachePort sessionCachePort;
 
     @Mock
     private CloudAccountRepository cloudAccountRepository;
@@ -58,7 +58,7 @@ class AwsAccountCredentialManagementAdapterTest {
         adapter = new AwsAccountCredentialManagementAdapter(
                 awsCredentialManager,
                 awsSessionProvider,
-                sessionCacheService,
+                sessionCachePort,
                 cloudAccountRepository,
                 maskingService
         );
@@ -84,7 +84,7 @@ class AwsAccountCredentialManagementAdapterTest {
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
+            when(sessionCachePort.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.of(cachedSession));
 
             // when
@@ -93,7 +93,7 @@ class AwsAccountCredentialManagementAdapterTest {
             // then
             assertThat(result).isEqualTo(cachedSession);
             verify(awsSessionProvider, never()).getSession(anyString(), anyInt());
-            verify(sessionCacheService, never()).cacheSession(anyString(), anyString(), any(), any(), anyInt());
+            verify(sessionCachePort, never()).cacheSession(anyString(), anyString(), any(), any(), anyInt());
         }
 
         @Test
@@ -112,7 +112,7 @@ class AwsAccountCredentialManagementAdapterTest {
                             .build())
                     .build();
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
+            when(sessionCachePort.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.empty());
             when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
                     .thenReturn(java.util.List.of(account));
@@ -134,7 +134,7 @@ class AwsAccountCredentialManagementAdapterTest {
             // then
             assertThat(result).isEqualTo(newSession);
             verify(awsSessionProvider).getSession(credentialKey, 3600);
-            verify(sessionCacheService).cacheSession(eq(tenantKey), eq(accountScope), eq(providerType), 
+            verify(sessionCachePort).cacheSession(eq(tenantKey), eq(accountScope), eq(providerType),
                     eq(newSession), anyInt());
         }
 
@@ -146,7 +146,7 @@ class AwsAccountCredentialManagementAdapterTest {
             String accountScope = "999999999999";
             ProviderType providerType = ProviderType.AWS;
 
-            when(sessionCacheService.getCachedSession(tenantKey, accountScope, providerType))
+            when(sessionCachePort.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.empty());
             when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
                     .thenReturn(java.util.List.of());
