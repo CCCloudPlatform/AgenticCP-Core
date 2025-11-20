@@ -281,7 +281,7 @@ public CloudAccountCredential storeCredentials(String tenantKey, String accessKe
 ```
 1. getSession() 호출
    ↓
-2. 캐시된 세션 확인 (SessionCacheService)
+2. 캐시된 세션 확인 (SessionCachePort)
    ↓
 3-1. 캐시된 세션이 있고 유효하면 → 캐시된 세션 반환
    ↓
@@ -293,7 +293,7 @@ public CloudAccountCredential storeCredentials(String tenantKey, String accessKe
    ↓
 6. STS 세션 발급 (AwsSessionProvider)
    ↓
-7. 세션 캐싱 (SessionCacheService)
+7. 세션 캐싱 (SessionCachePort)
    ↓
 8. 세션 반환
 ```
@@ -369,7 +369,7 @@ public CloudSessionCredential getSession(String credentialKey, int durationSecon
 
 - **캐시 키**: `tenantKey:accountScope:providerType`
 - **TTL 계산**: 세션 만료 시간에서 5분을 뺀 값 (안전 마진)
-- **캐시 저장소**: Redis (SessionCacheService에서 관리)
+- **캐시 저장소**: Redis (`SessionCachePort`의 Redis 어댑터에서 관리)
 
 ### CloudSessionCredential 인터페이스
 
@@ -441,45 +441,7 @@ public class CloudResourceUseCaseService {
 - 리소스 시작/중지/종료
 - 리소스 설정 변경
 
-### 패턴 2: 장기 자격증명 직접 해결 (비권장)
-
-특수한 경우에만 장기 자격증명을 직접 해결합니다. 일반적으로는 사용하지 않습니다.
-
-```java
-@Service
-@RequiredArgsConstructor
-public class ObjectStorageUseCaseService {
-    
-    private final AccountCredentialManagementPort accountCredentialManagementPort;
-    
-    private void setupTenantContextAndCredentials(
-            CloudProvider.ProviderType providerType, String accountScope) {
-        String tenantKey = TenantContextHolder.getCurrentTenantKey();
-        // 장기 자격증명 해결 (내부적으로 암호화 해제)
-        accountCredentialManagementPort.resolveCredentials(
-                tenantKey, providerType, accountScope);
-    }
-    
-    @Transactional
-    public CloudResource createContainer(
-            CloudProvider.ProviderType providerType, 
-            CreateObjectStorageContainerRequest request) {
-        
-        // 자격증명 해결
-        setupTenantContextAndCredentials(providerType, request.getRegion());
-        
-        // 리소스 작업 수행
-        CreateObjectStorageContainerCommand command = ...;
-        return router.management(providerType).createContainer(command);
-    }
-}
-```
-
-**주의사항:**
-- 이 패턴은 레거시 코드에서 사용되며, 신규 개발 시에는 패턴 1을 사용해야 합니다.
-- 장기 자격증명은 보안상 위험하므로 가능한 한 단기 세션을 사용해야 합니다.
-
-### 패턴 3: Discovery 작업에서의 자격증명 해결
+### 패턴 2: Discovery 작업에서의 자격증명 해결
 
 리소스 조회(Discovery) 작업에서는 Adapter 내부에서 단기 세션을 획득합니다. 
 
@@ -539,8 +501,7 @@ private S3Client createS3Client(CloudSessionCredential session, String region) {
 - 작업 완료 후 Client를 `close()`하여 리소스를 정리합니다.
 
 **참고:**
-- 레거시 코드에서는 `resolveCredentials()`를 사용할 수 있으나, 신규 개발 시에는 `getSession()`을 사용해야 합니다.
-- `resolveCredentials()`는 장기 자격증명을 반환하므로 보안상 위험할 수 있습니다.
+- `resolveCredentials()`는 장기 자격증명을 반환하므로 보안상 위험할 수 있으니 사용하지 않습니다.
 
 ### AccountCredentialPortRouter 사용
 
@@ -579,7 +540,7 @@ CloudSessionCredential session = accountCredentialManagementPort.getSession(
         tenantKey, accountScope, providerType);
 router.lifecycle(providerType).start(id, session);
 
-// ❌ 비권장
+// ❌ 사용하지 않음
 Object credentials = accountCredentialManagementPort.resolveCredentials(
         tenantKey, providerType, accountScope);
 // 장기 자격증명 직접 사용
