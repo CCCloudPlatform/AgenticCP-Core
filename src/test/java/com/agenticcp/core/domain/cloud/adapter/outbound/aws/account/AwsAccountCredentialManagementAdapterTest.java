@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
@@ -17,13 +18,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AwsAccountCredentialManagementAdapter 테스트")
@@ -41,15 +42,25 @@ class AwsAccountCredentialManagementAdapterTest {
     @Mock
     private CloudAccountRepository cloudAccountRepository;
 
+    @Mock
+    private MaskingService maskingService;
+
     private AwsAccountCredentialManagementAdapter adapter;
 
     @BeforeEach
     void setUp() {
+        // MaskingService는 외부 의존성이므로 Mock으로 처리
+        // 실제 마스킹 로직 검증은 MaskingService 및 MaskingStrategy의 단위 테스트에서 수행
+        // lenient로 설정하여 일부 테스트에서 사용하지 않는 stubbing 경고 방지
+        lenient().when(maskingService.maskTenantKey(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(maskingService.maskAccountScope(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        
         adapter = new AwsAccountCredentialManagementAdapter(
                 awsCredentialManager,
                 awsSessionProvider,
                 sessionCacheService,
-                cloudAccountRepository
+                cloudAccountRepository,
+                maskingService
         );
     }
 

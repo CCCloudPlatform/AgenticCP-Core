@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
 import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
@@ -31,8 +32,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 /**
  * AwsAccountValidationAdapter 단위 테스트
@@ -47,6 +50,9 @@ class AwsAccountValidationAdapterTest {
     @Mock
     private AwsClientConfig awsClientConfig;
 
+    @Mock
+    private MaskingService maskingService;
+
     @InjectMocks
     private AwsAccountValidationAdapter adapter;
 
@@ -60,6 +66,10 @@ class AwsAccountValidationAdapterTest {
                 .secretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
                 .region("us-east-1")
                 .build();
+        
+        // MaskingService는 외부 의존성이므로 Mock으로 처리
+        // 실제 마스킹 로직 검증은 MaskingService 및 MaskingStrategy의 단위 테스트에서 수행
+        lenient().when(maskingService.maskAccountScope(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Nested

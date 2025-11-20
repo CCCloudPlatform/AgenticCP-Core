@@ -1,13 +1,13 @@
 package com.agenticcp.core.domain.cloud.service.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
-import com.agenticcp.core.domain.cloud.service.account.CloudAccountDomainService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,10 +23,13 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 /**
  * CloudAccountDomainService 단위 테스트
@@ -41,6 +44,9 @@ class CloudAccountDomainServiceTest {
     @Mock
     private CloudAccountRepository cloudAccountRepository;
 
+    @Mock
+    private MaskingService maskingService;
+
     @InjectMocks
     private CloudAccountDomainService cloudAccountDomainService;
 
@@ -53,6 +59,12 @@ class CloudAccountDomainServiceTest {
         tenantId = 1L;
         accountId = "123456789012";
         providerType = ProviderType.AWS;
+        
+        // MaskingService는 외부 의존성이므로 Mock으로 처리
+        // 실제 마스킹 로직 검증은 MaskingService 및 MaskingStrategy의 단위 테스트에서 수행
+        // lenient()를 사용하여 일부 테스트에서 사용하지 않는 stubbing 경고 방지
+        lenient().when(maskingService.maskTenantKey(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(maskingService.maskAccountScope(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Nested

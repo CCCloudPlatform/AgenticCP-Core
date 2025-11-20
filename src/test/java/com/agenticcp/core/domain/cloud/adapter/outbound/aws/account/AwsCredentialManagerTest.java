@@ -2,7 +2,7 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsCredentialManager;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;
@@ -24,7 +24,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 /**
  * AwsCredentialManager 단위 테스트
@@ -41,6 +43,9 @@ class AwsCredentialManagerTest {
 
     @Mock
     private CloudAccountCredentialRepository credentialRepository;
+
+    @Mock
+    private MaskingService maskingService;
 
     @InjectMocks
     private AwsCredentialManager awsCredentialManager;
@@ -60,6 +65,12 @@ class AwsCredentialManagerTest {
         region = "us-east-1";
         encryptedAccessKeyId = "encrypted-access-key-id";
         encryptedSecretAccessKey = "encrypted-secret-access-key";
+        
+        // MaskingService는 외부 의존성이므로 Mock으로 처리
+        // 실제 마스킹 로직 검증은 MaskingService 및 MaskingStrategy의 단위 테스트에서 수행
+        // lenient()를 사용하여 일부 테스트에서 사용하지 않는 stubbing 경고 방지
+        lenient().when(maskingService.maskTenantKey(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(maskingService.maskAccountScope(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Nested

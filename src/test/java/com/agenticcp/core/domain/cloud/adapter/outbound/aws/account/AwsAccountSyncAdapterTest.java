@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
@@ -9,6 +10,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,8 +46,20 @@ class AwsAccountSyncAdapterTest {
     @Mock
     private StsClient stsClient;
 
+    @Mock
+    private MaskingService maskingService;
+
     @InjectMocks
     private AwsAccountSyncAdapter adapter;
+
+    @BeforeEach
+    void setUp() {
+        // MaskingService는 외부 의존성이므로 Mock으로 처리
+        // 실제 마스킹 로직 검증은 MaskingService 및 MaskingStrategy의 단위 테스트에서 수행
+        // lenient()를 사용하여 일부 테스트에서 사용하지 않는 stubbing 경고 방지
+        lenient().when(maskingService.maskTenantKey(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(maskingService.maskAccountScope(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     @Nested
     @DisplayName("syncAccountInfo")
