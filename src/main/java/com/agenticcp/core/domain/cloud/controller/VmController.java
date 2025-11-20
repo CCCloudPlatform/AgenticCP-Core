@@ -7,7 +7,7 @@ import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
-import com.agenticcp.core.domain.cloud.service.aws.VmUseCaseService;
+import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

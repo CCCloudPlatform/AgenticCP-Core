@@ -1,22 +1,22 @@
-package com.agenticcp.core.domain.cloud.service.aws;
+package com.agenticcp.core.domain.cloud.service.vm;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
-import org.springframework.beans.factory.annotation.Autowired;
 import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
+import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * 가상머신(VM) 유스케이스 서비스
@@ -36,10 +36,13 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class VmUseCaseService {
 
+    private static final ProviderType DEFAULT_PROVIDER_TYPE = ProviderType.AWS;
+    private static final String DEFAULT_ACCOUNT_SCOPE = "default";
+
     private final VmPortRouter vmPortRouter;
     private final AuditEventPort auditEventPort;
-    @Autowired(required = false)
-    private CapabilityGuard capabilityGuard;
+    private final CapabilityGuard capabilityGuard;
+    private final CredentialProviderPort credentialProviderPort;
 
     private static final String SERVICE_KEY = "VM";
     private static final String RESOURCE_TYPE = "INSTANCE";
@@ -56,7 +59,9 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] listInstances - query={}", query);
 
         try {
-            Page<CloudResource> result = vmPortRouter.vm(ProviderType.AWS)
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
+            Page<CloudResource> result = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
                 .listInstances(query);
 
             auditEventPort.record("LIST_INSTANCES", "VM", "SUCCESS",
@@ -83,7 +88,9 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] getInstance - instanceId={}", instanceId);
 
         try {
-            Optional<CloudResource> result = vmPortRouter.vm(ProviderType.AWS)
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
+            Optional<CloudResource> result = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
                 .getInstance(instanceId);
 
             auditEventPort.record("GET_INSTANCE", "VM", "SUCCESS",
@@ -113,10 +120,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] createInstance - request={}", request);
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.CREATE);
-            }
-            String instanceId = vmPortRouter.vm(ProviderType.AWS)
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.CREATE);
+
+            String instanceId = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
                 .createInstance(request);
 
             auditEventPort.record("CREATE_INSTANCE", "VM", "SUCCESS",
@@ -145,10 +152,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] startInstance - instanceId={}", instanceId);
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
-            }
-            vmPortRouter.vm(ProviderType.AWS).startInstance(instanceId);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).startInstance(instanceId);
 
             auditEventPort.record("START_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -173,10 +180,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] stopInstance - instanceId={}", instanceId);
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
-            }
-            vmPortRouter.vm(ProviderType.AWS).stopInstance(instanceId);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).stopInstance(instanceId);
 
             auditEventPort.record("STOP_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -201,12 +208,11 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] rebootInstance - instanceId={}", instanceId);
 
         try {
-            // 재부팅은 STOP/START 조합에 준해 둘 다 지원되는지 확인
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
-            }
-            vmPortRouter.vm(ProviderType.AWS).rebootInstance(instanceId);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).rebootInstance(instanceId);
 
             auditEventPort.record("REBOOT_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -231,10 +237,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] terminateInstance - instanceId={}", instanceId);
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
-            }
-            vmPortRouter.vm(ProviderType.AWS).terminateInstance(instanceId);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).terminateInstance(instanceId);
 
             auditEventPort.record("TERMINATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -259,10 +265,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] deleteInstance - request={}", request);
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
-            }
-            vmPortRouter.vm(ProviderType.AWS).deleteInstance(request);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).deleteInstance(request);
 
             auditEventPort.record("DELETE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", request.getInstanceId(), "request", request));
@@ -289,10 +295,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] updateInstance - request={}", request);
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.UPDATE);
-            }
-            vmPortRouter.vm(ProviderType.AWS).updateInstance(request);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.UPDATE);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).updateInstance(request);
 
             auditEventPort.record("UPDATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", request.getInstanceId(), "request", request));
@@ -320,10 +326,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] addTags - instanceId={}, tags={}", instanceId, tags);
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
-            }
-            vmPortRouter.vm(ProviderType.AWS).addTags(instanceId, tags);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).addTags(instanceId, tags);
 
             auditEventPort.record("ADD_TAGS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "tags", tags));
@@ -349,10 +355,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] removeTags - instanceId={}, tagKeys={}", instanceId, tagKeys.keySet());
 
         try {
-            if (capabilityGuard != null) {
-                capabilityGuard.ensureSupported(ProviderType.AWS, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
-            }
-            vmPortRouter.vm(ProviderType.AWS).removeTags(instanceId, tagKeys);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
+
+            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).removeTags(instanceId, tagKeys);
 
             auditEventPort.record("REMOVE_TAGS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "tagKeys", tagKeys.keySet()));
@@ -377,7 +383,9 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] getTags - instanceId={}", instanceId);
 
         try {
-            Map<String, String> tags = vmPortRouter.vm(ProviderType.AWS).getTags(instanceId);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
+            Map<String, String> tags = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).getTags(instanceId);
 
             auditEventPort.record("GET_TAGS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "tagCount", tags.size()));
@@ -405,7 +413,9 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] getInstanceStatus - instanceId={}", instanceId);
 
         try {
-            String status = vmPortRouter.vm(ProviderType.AWS).getInstanceStatus(instanceId);
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
+            String status = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).getInstanceStatus(instanceId);
 
             auditEventPort.record("GET_INSTANCE_STATUS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "status", status));
@@ -434,7 +444,9 @@ public class VmUseCaseService {
             instanceId, targetStatus, timeoutSeconds);
 
         try {
-            boolean success = vmPortRouter.vm(ProviderType.AWS)
+            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
+            boolean success = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
                 .waitForInstanceStatus(instanceId, targetStatus, timeoutSeconds);
 
             auditEventPort.record("WAIT_FOR_INSTANCE_STATUS", "VM", success ? "SUCCESS" : "TIMEOUT",
@@ -451,5 +463,14 @@ public class VmUseCaseService {
                       "timeoutSeconds", timeoutSeconds, "error", e.getMessage()));
             throw e;
         }
+    }
+
+    private void setupTenantContextAndCredentials(ProviderType providerType, String accountScope) {
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        String effectiveAccountScope = (accountScope == null || accountScope.isBlank())
+                ? DEFAULT_ACCOUNT_SCOPE
+                : accountScope;
+
+        credentialProviderPort.resolveCredentials(tenantKey, providerType, effectiveAccountScope);
     }
 }
