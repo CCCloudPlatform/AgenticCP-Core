@@ -1,5 +1,9 @@
 package com.agenticcp.core.domain.cloud.controller;
 
+import com.agenticcp.core.common.audit.AuditController;
+import com.agenticcp.core.common.audit.AuditRequired;
+import com.agenticcp.core.common.enums.AuditResourceType;
+import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.port.model.account.*;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.service.account.CloudAccountUseCaseService;
@@ -24,9 +28,16 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/cloud/accounts")
+@RequestMapping("/api/v1/cloud/accounts")
 @RequiredArgsConstructor
 @Tag(name = "Cloud Account", description = "클라우드 계정 관리 API")
+@AuditController(
+        resourceType = AuditResourceType.CLOUD_ACCOUNT,
+        defaultSeverity = AuditSeverity.HIGH,
+        defaultIncludeRequestData = true,
+        defaultIncludeResponseData = true,
+        targetHttpMethods = {"POST", "PUT", "PATCH", "DELETE"}
+)
 public class CloudAccountController {
 
     private final CloudAccountUseCaseService cloudAccountUseCaseService;
@@ -58,6 +69,14 @@ public class CloudAccountController {
      */
     @GetMapping
     @Operation(summary = "전체 계정 목록 조회", description = "현재 테넌트의 모든 클라우드 계정을 조회합니다.")
+    @AuditRequired(
+            action = "LIST_CLOUD_ACCOUNTS",
+            resourceType = AuditResourceType.CLOUD_ACCOUNT,
+            severity = AuditSeverity.LOW,
+            includeRequestData = false,
+            includeResponseData = false,
+            description = "테넌트의 모든 클라우드 계정 목록 조회"
+    )
     public ResponseEntity<List<CloudAccountDto>> getAllCloudAccounts() {
         log.info("[CloudAccountController] getAllCloudAccounts");
         
@@ -76,6 +95,14 @@ public class CloudAccountController {
      */
     @GetMapping("/{accountId}")
     @Operation(summary = "특정 계정 조회", description = "계정 ID로 특정 클라우드 계정을 조회합니다.")
+    @AuditRequired(
+            action = "GET_CLOUD_ACCOUNT",
+            resourceType = AuditResourceType.CLOUD_ACCOUNT,
+            severity = AuditSeverity.MEDIUM,
+            includeRequestData = true,
+            includeResponseData = false,
+            description = "계정 ID 기준 단건 계정 조회"
+    )
     public ResponseEntity<CloudAccountDto> getCloudAccountById(
             @Parameter(description = "계정 ID", required = true)
             @PathVariable Long accountId) {
@@ -195,6 +222,14 @@ public class CloudAccountController {
      */
     @GetMapping("/provider/{providerType}")
     @Operation(summary = "프로바이더별 계정 조회", description = "특정 프로바이더 타입의 계정들을 조회합니다.")
+    @AuditRequired(
+            action = "LIST_PROVIDER_ACCOUNTS",
+            resourceType = AuditResourceType.CLOUD_ACCOUNT,
+            severity = AuditSeverity.LOW,
+            includeRequestData = true,
+            includeResponseData = false,
+            description = "클라우드 프로바이더 타입별 계정 목록 조회"
+    )
     public ResponseEntity<List<CloudAccountDto>> getAccountsByProvider(
             @Parameter(description = "프로바이더 타입 (AWS, AZURE, GCP)", required = true)
             @PathVariable ProviderType providerType) {
@@ -237,6 +272,14 @@ public class CloudAccountController {
     @GetMapping("/default/{providerType}")
     @Operation(summary = "프로바이더 타입별 기본 계정 조회", 
                description = "특정 프로바이더 타입의 기본 계정을 조회합니다.")
+    @AuditRequired(
+            action = "GET_DEFAULT_CLOUD_ACCOUNT",
+            resourceType = AuditResourceType.CLOUD_ACCOUNT,
+            severity = AuditSeverity.LOW,
+            includeRequestData = true,
+            includeResponseData = false,
+            description = "프로바이더 타입별 기본 계정 조회"
+    )
     public ResponseEntity<CloudAccountDto> getDefaultAccountByProvider(
             @Parameter(description = "프로바이더 타입 (AWS, AZURE, GCP)", required = true)
             @PathVariable ProviderType providerType) {
