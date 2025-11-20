@@ -1,5 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.model.account;
 
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,6 +36,7 @@ public class AccountValidationResult {
      * 계정 범위 (Account Scope)
      * AWS: Account ID, Azure: Subscription ID, GCP: Project ID
      */
+    @Masked(type = MaskingType.ACCOUNT_SCOPE)
     private String accountScope;
     
     /**
