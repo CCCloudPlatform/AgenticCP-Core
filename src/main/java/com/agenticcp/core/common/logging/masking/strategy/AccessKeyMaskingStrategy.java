@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 /**
  * Access Key 마스킹 전략
  * 
- * AWS Access Key ID와 같은 Access Key는 앞 4자리만 표시하고 나머지는 마스킹 처리합니다.
- * 예: AKIAIOSFODNN7EXAMPLE -> AKIA-****-****-****-EXAMPLE
+ * AWS Access Key ID, Azure Client ID, GCP Service Account Key 등을 마스킹합니다.
+ * 예: AKIAIOSFODNN7EXAMPLE -> AKIA************MPLE
  * 
  * @author AgenticCP Team
  * @version 1.0.0
@@ -22,31 +22,20 @@ public class AccessKeyMaskingStrategy implements MaskingStrategy {
             return value;
         }
         
-        // 너무 짧은 경우 전체 마스킹
-        if (value.length() < 8) {
+        // 길이가 12 미만인 경우 전체 마스킹
+        if (value.length() < 12) {
             return "****";
         }
         
-        // AWS Access Key ID는 보통 20자리이므로 앞 4자리만 노출
-        // 일반적으로 앞 4자리만 노출하는 것이 안전
-        if (value.length() <= 4) {
-            return "****";
-        }
-        
-        // 앞 4자리만 노출하고 나머지는 마스킹
+        // 앞 4자리와 뒤 4자리만 노출하고 나머지는 마스킹
         String firstFour = value.substring(0, 4);
-        int remainingLength = value.length() - 4;
-        
-        // 나머지 길이에 따라 마스킹 패턴 조정
-        if (remainingLength <= 4) {
-            return firstFour + "-****";
-        } else if (remainingLength <= 8) {
-            return firstFour + "-****-****";
-        } else if (remainingLength <= 12) {
-            return firstFour + "-****-****-****";
-        } else {
-            return firstFour + "-****-****-****-****";
+        String lastFour = value.substring(value.length() - 4);
+        int maskedLength = value.length() - 8;
+        StringBuilder masked = new StringBuilder();
+        for (int i = 0; i < maskedLength; i++) {
+            masked.append('*');
         }
+        return firstFour + masked + lastFour;
     }
     
     @Override
