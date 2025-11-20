@@ -1,11 +1,13 @@
 package com.agenticcp.core.domain.cloud.config;
 
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -26,7 +28,10 @@ import java.util.Map;
 @Profile("docker")
 @ConditionalOnProperty(name = "cloud.stub.enabled", havingValue = "true", matchIfMissing = true)
 @Slf4j
+@RequiredArgsConstructor
 public class CloudStubConfiguration {
+
+    private final MaskingService maskingService;
 
     @Bean
     @Primary
@@ -35,15 +40,19 @@ public class CloudStubConfiguration {
         return new AccountCredentialManagementPort() {
             @Override
             public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
+                String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
+                String maskedAccountScope = maskingService.maskAccountScope(accountScope);
                 log.debug("Stub: Credential resolution - tenant={}, provider={}, account={}", 
-                         tenantKey, providerType, accountScope);
+                         maskedTenantKey, providerType, maskedAccountScope);
                 return "stub-credentials";
             }
 
             @Override
             public String storeCredentials(String tenantKey, ProviderType providerType, String accountScope, Map<String, String> credentials) {
+                String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
+                String maskedAccountScope = maskingService.maskAccountScope(accountScope);
                 log.debug("Stub: Store credentials - tenant={}, provider={}, accountScope={}",
-                        tenantKey, providerType, accountScope);
+                        maskedTenantKey, providerType, maskedAccountScope);
                 return "stub-credential-key";
             }
 
@@ -54,8 +63,10 @@ public class CloudStubConfiguration {
 
             @Override
             public CloudSessionCredential getSession(String tenantKey, String accountScope, ProviderType providerType) {
+                String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
+                String maskedAccountScope = maskingService.maskAccountScope(accountScope);
                 log.debug("Stub: Session retrieval - tenant={}, accountScope={}, provider={}",
-                        tenantKey, accountScope, providerType);
+                        maskedTenantKey, maskedAccountScope, providerType);
                 return new CloudSessionCredential() {
                     @Override
                     public ProviderType getProviderType() {

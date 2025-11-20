@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
@@ -37,6 +38,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
     }
 
     private final AwsClientConfig awsClientConfig;
+    private final MaskingService maskingService;
 
     /**
      * AWS 계정 자격증명의 유효성을 검증합니다.
@@ -71,8 +73,9 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
             metadata.put("userId", response.userId());
             metadata.put("accountId", response.account());
             
+            String maskedAccountScope = maskingService.maskAccountScope(response.account());
             log.info("[AwsAccountValidationAdapter] validateAccount - success, accountScope={}", 
-                     response.account());
+                     maskedAccountScope);
             
             // 검증 성공 결과 반환
             return AccountValidationResult.builder()

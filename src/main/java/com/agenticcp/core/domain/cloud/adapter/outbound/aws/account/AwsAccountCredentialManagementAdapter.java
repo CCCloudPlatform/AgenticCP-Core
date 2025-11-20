@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
@@ -25,6 +26,7 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
     private final AwsSessionProvider awsSessionProvider;
     private final SessionCacheService sessionCacheService;
     private final CloudAccountRepository cloudAccountRepository;
+    private final MaskingService maskingService;
 
     private static final int DEFAULT_SESSION_DURATION_SECONDS = 3600;
 
@@ -36,7 +38,9 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
     @Override
     public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
         validateProvider(providerType);
-        log.debug("[AwsAccountCredentialManagementAdapter] resolveCredentials - tenantKey={}, accountScope={}", tenantKey, accountScope);
+        String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
+        String maskedAccountScope = maskingService.maskAccountScope(accountScope);
+        log.debug("[AwsAccountCredentialManagementAdapter] resolveCredentials - tenantKey={}, accountScope={}", maskedTenantKey, maskedAccountScope);
         String credentialKey = findCredentialKey(tenantKey, providerType, accountScope);
         return awsCredentialManager.getCredentials(credentialKey);
     }
@@ -44,7 +48,9 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
     @Override
     public String storeCredentials(String tenantKey, ProviderType providerType, String accountScope, Map<String, String> credentials) {
         validateProvider(providerType);
-        log.debug("[AwsAccountCredentialManagementAdapter] storeCredentials - tenantKey={}, accountScope={}", tenantKey, accountScope);
+        String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
+        String maskedAccountScope = maskingService.maskAccountScope(accountScope);
+        log.debug("[AwsAccountCredentialManagementAdapter] storeCredentials - tenantKey={}, accountScope={}", maskedTenantKey, maskedAccountScope);
 
         String accessKey = credentials.get("accessKeyId");
         String secretKey = credentials.get("secretAccessKey");
@@ -64,7 +70,9 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
     @Override
     public CloudSessionCredential getSession(String tenantKey, String accountScope, ProviderType providerType) {
         validateProvider(providerType);
-        log.debug("[AwsAccountCredentialManagementAdapter] getSession - tenantKey={}, accountScope={}", tenantKey, accountScope);
+        String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
+        String maskedAccountScope = maskingService.maskAccountScope(accountScope);
+        log.debug("[AwsAccountCredentialManagementAdapter] getSession - tenantKey={}, accountScope={}", maskedTenantKey, maskedAccountScope);
 
         Optional<CloudSessionCredential> cachedSession = sessionCacheService.getCachedSession(
                 tenantKey, accountScope, providerType);

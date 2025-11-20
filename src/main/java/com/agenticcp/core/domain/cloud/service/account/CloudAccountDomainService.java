@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.service.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
@@ -26,6 +27,7 @@ import java.util.List;
 public class CloudAccountDomainService {
 
     private final CloudAccountRepository cloudAccountRepository;
+    private final MaskingService maskingService;
 
     /**
      * 계정 고유성을 검증합니다.
@@ -44,8 +46,9 @@ public class CloudAccountDomainService {
         
         boolean exists = cloudAccountRepository.existsByTenantIdAndAccountScope(tenantId, accountScope);
         if (exists) {
+            String maskedAccountScope = maskingService.maskAccountScope(accountScope);
             log.warn("[CloudAccountDomainService] validateAccountUniqueness - duplicate accountScope found: tenantId={}, accountScope={}, providerType={}", 
-                     tenantId, accountScope, providerType);
+                     tenantId, maskedAccountScope, providerType);
             throw new BusinessException(
                 CloudErrorCode.DUPLICATE_ACCOUNT,
                 String.format("이미 등록된 계정입니다. Account Scope: %s", accountScope)

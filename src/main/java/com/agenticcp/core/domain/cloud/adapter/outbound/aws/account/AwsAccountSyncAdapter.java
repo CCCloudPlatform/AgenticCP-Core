@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
@@ -36,6 +37,7 @@ public class AwsAccountSyncAdapter implements AccountSyncPort, ProviderScoped {
     private final CloudAccountRepository cloudAccountRepository;
     private final AwsCredentialManager awsCredentialManager;
     private final AwsClientConfig awsClientConfig;
+    private final MaskingService maskingService;
 
     /**
      * 클라우드 계정 정보를 동기화합니다.
@@ -79,8 +81,10 @@ public class AwsAccountSyncAdapter implements AccountSyncPort, ProviderScoped {
             // 계정 정보 업데이트
             // AccountScope가 변경되었을 수 있으므로 확인 후 업데이트
             if (response.account() != null && !response.account().equals(account.getAccountScope())) {
+                String maskedOldAccountScope = maskingService.maskAccountScope(account.getAccountScope());
+                String maskedNewAccountScope = maskingService.maskAccountScope(response.account());
                 log.warn("[AwsAccountSyncAdapter] syncAccountInfo - accountScope changed: {} -> {}", 
-                         account.getAccountScope(), response.account());
+                         maskedOldAccountScope, maskedNewAccountScope);
                 account.setAccountScope(response.account());
             }
             

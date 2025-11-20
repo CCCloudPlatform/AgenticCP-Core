@@ -2,6 +2,9 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.logging.masking.Masked;
+import com.agenticcp.core.common.logging.masking.MaskingType;
+import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountCredentialRepository;
@@ -26,6 +29,7 @@ public class AwsCredentialManager {
 
     private final EncryptionService encryptionService;
     private final CloudAccountCredentialRepository credentialRepository;
+    private final MaskingService maskingService;
 
     /**
      * AWS 자격증명을 암호화하여 저장합니다.
@@ -40,7 +44,8 @@ public class AwsCredentialManager {
     @Transactional
     public CloudAccountCredential storeCredentials(String tenantKey, String accessKeyId,
                                                    String secretAccessKey, String region) {
-        log.info("[AwsCredentialManager] storeCredentials - tenantKey={}, region={}", tenantKey, region);
+        String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
+        log.info("[AwsCredentialManager] storeCredentials - tenantKey={}, region={}", maskedTenantKey, region);
 
         try {
             // 자격증명 암호화
@@ -139,8 +144,12 @@ public class AwsCredentialManager {
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
     public static class AwsCredentials {
+        @Masked(type = MaskingType.ACCESS_KEY)
         private String accessKeyId;
+        
+        @Masked(type = MaskingType.SECRET_KEY)
         private String secretAccessKey;
+        
         private String region;
     }
 }
