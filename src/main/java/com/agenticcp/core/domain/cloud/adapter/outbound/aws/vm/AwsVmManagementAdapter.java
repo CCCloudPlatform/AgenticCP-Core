@@ -4,11 +4,13 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.common.CloudErrorTransla
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
-import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -37,7 +39,7 @@ import java.util.stream.Collectors;
 @Component
 @ConditionalOnProperty(name = "aws.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
-public class AwsVmManagementAdapter implements VmManagementPort, ProviderScoped {
+public class AwsVmManagementAdapter implements VmDiscoveryPort, VmLifecyclePort, VmTaggingPort, ProviderScoped {
 
     private final Ec2Client ec2Client;
     private final AwsVmMapper mapper;
@@ -101,11 +103,11 @@ public class AwsVmManagementAdapter implements VmManagementPort, ProviderScoped 
     // ==================== 인스턴스 생성 ====================
 
     @Override
-    public String createInstance(VmCreateRequest request) {
+    public String createInstance(VmCreateCommand command) {
         try {
-            log.debug("[AwsVmManagementAdapter] Creating VM instance with request: {}", request);
+            log.debug("[AwsVmManagementAdapter] Creating VM instance with command: {}", command);
             
-            RunInstancesRequest awsRequest = mapper.toRunInstancesRequest(request);
+            RunInstancesRequest awsRequest = mapper.toRunInstancesRequest(command);
             RunInstancesResponse response = ec2Client.runInstances(awsRequest);
             
             String instanceId = response.instances().get(0).instanceId();
@@ -194,17 +196,17 @@ public class AwsVmManagementAdapter implements VmManagementPort, ProviderScoped 
     }
 
     @Override
-    public void deleteInstance(VmDeleteRequest request) {
+    public void deleteInstance(VmDeleteCommand command) {
         try {
-            log.debug("[AwsVmManagementAdapter] Deleting VM instance: {}", request.getInstanceId());
+            log.debug("[AwsVmManagementAdapter] Deleting VM instance: {}", command.getInstanceId());
             
-            TerminateInstancesRequest awsRequest = mapper.toTerminateInstancesRequest(request);
+            TerminateInstancesRequest awsRequest = mapper.toTerminateInstancesRequest(command);
             ec2Client.terminateInstances(awsRequest);
             
-            log.info("[AwsVmManagementAdapter] Successfully deleted VM instance: {}", request.getInstanceId());
+            log.info("[AwsVmManagementAdapter] Successfully deleted VM instance: {}", command.getInstanceId());
 
         } catch (Throwable t) {
-            log.error("[AwsVmManagementAdapter] Failed to delete VM instance: {}", request.getInstanceId(), t);
+            log.error("[AwsVmManagementAdapter] Failed to delete VM instance: {}", command.getInstanceId(), t);
             throw CloudErrorTranslator.translate(t);
         }
     }
@@ -212,17 +214,17 @@ public class AwsVmManagementAdapter implements VmManagementPort, ProviderScoped 
     // ==================== 인스턴스 수정 ====================
 
     @Override
-    public void updateInstance(VmUpdateRequest request) {
+    public void updateInstance(VmUpdateCommand command) {
         try {
-            log.debug("[AwsVmManagementAdapter] Updating VM instance: {}", request.getInstanceId());
+            log.debug("[AwsVmManagementAdapter] Updating VM instance: {}", command.getInstanceId());
             
-            ModifyInstanceAttributeRequest awsRequest = mapper.toModifyInstanceAttributeRequest(request);
+            ModifyInstanceAttributeRequest awsRequest = mapper.toModifyInstanceAttributeRequest(command);
             ec2Client.modifyInstanceAttribute(awsRequest);
             
-            log.info("[AwsVmManagementAdapter] Successfully updated VM instance: {}", request.getInstanceId());
+            log.info("[AwsVmManagementAdapter] Successfully updated VM instance: {}", command.getInstanceId());
 
         } catch (Throwable t) {
-            log.error("[AwsVmManagementAdapter] Failed to update VM instance: {}", request.getInstanceId(), t);
+            log.error("[AwsVmManagementAdapter] Failed to update VM instance: {}", command.getInstanceId(), t);
             throw CloudErrorTranslator.translate(t);
         }
     }

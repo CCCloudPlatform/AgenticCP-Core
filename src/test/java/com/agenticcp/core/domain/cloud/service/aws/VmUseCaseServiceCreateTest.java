@@ -1,21 +1,32 @@
 package com.agenticcp.core.domain.cloud.service.aws;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
+import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
+import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
+import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * VM 유스케이스 서비스 생성 기능 테스트
@@ -30,16 +41,37 @@ class VmUseCaseServiceCreateTest {
     private AuditEventPort auditEventPort;
 
     @Mock
-    private VmManagementPort vmManagementPort;
+    private VmLifecyclePort vmLifecyclePort;
+
+    @Mock
+    private VmDiscoveryPort vmDiscoveryPort;
+
+    @Mock
+    private VmTaggingPort vmTaggingPort;
+
+    @Mock
+    private CapabilityGuard capabilityGuard;
+
+    @Mock
+    private CredentialProviderPort credentialProviderPort;
 
     private VmUseCaseService vmUseCaseService;
 
     @BeforeEach
     void setUp() {
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, auditEventPort);
-        
-        // VmPortRouter가 AWS 포트를 반환하도록 설정
-        when(vmPortRouter.vm(ProviderType.AWS)).thenReturn(vmManagementPort);
+        TenantContextHolder.setTenantKey("tenant-test");
+        vmUseCaseService = new VmUseCaseService(vmPortRouter, auditEventPort, capabilityGuard, credentialProviderPort);
+
+        when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);
+        when(vmPortRouter.discovery(ProviderType.AWS)).thenReturn(vmDiscoveryPort);
+        when(vmPortRouter.tagging(ProviderType.AWS)).thenReturn(vmTaggingPort);
+        when(credentialProviderPort.resolveCredentials(anyString(), any(), anyString())).thenReturn(new Object());
+        doNothing().when(capabilityGuard).ensureSupported(any(), anyString(), anyString(), any());
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContextHolder.clear();
     }
 
     @Test
@@ -56,7 +88,7 @@ class VmUseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-1234567890abcdef0";
-        when(vmManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
+        when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
 
         // When
         String result = vmUseCaseService.createInstance(request);
@@ -65,7 +97,7 @@ class VmUseCaseServiceCreateTest {
         assertThat(result).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
-        verify(vmManagementPort).createInstance(request);
+        verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
@@ -87,7 +119,7 @@ class VmUseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-abcdef1234567890";
-        when(vmManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
+        when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
 
         // When
         String result = vmUseCaseService.createInstance(request);
@@ -96,7 +128,7 @@ class VmUseCaseServiceCreateTest {
         assertThat(result).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
-        verify(vmManagementPort).createInstance(request);
+        verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
@@ -118,7 +150,7 @@ class VmUseCaseServiceCreateTest {
             .build();
 
         RuntimeException exception = new RuntimeException("AWS API Error");
-        when(vmManagementPort.createInstance(request)).thenThrow(exception);
+        when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenThrow(exception);
 
         // When & Then
         try {
@@ -156,7 +188,7 @@ class VmUseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-tagged1234567890";
-        when(vmManagementPort.createInstance(request)).thenReturn(expectedInstanceId);
+        when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
 
         // When
         String result = vmUseCaseService.createInstance(request);
@@ -165,7 +197,7 @@ class VmUseCaseServiceCreateTest {
         assertThat(result).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
-        verify(vmManagementPort).createInstance(request);
+        verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(

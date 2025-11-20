@@ -2,13 +2,14 @@ package com.agenticcp.core.domain.cloud.service.vm;
 
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * VM 포트 라우터
@@ -22,77 +23,56 @@ import java.util.Map;
 @Component
 public class VmPortRouter {
 
-    private final Map<ProviderType, VmManagementPort> vmPorts = new EnumMap<>(ProviderType.class);
+    private final Map<ProviderType, VmDiscoveryPort> discoveryPorts;
+    private final Map<ProviderType, VmLifecyclePort> lifecyclePorts;
+    private final Map<ProviderType, VmTaggingPort> taggingPorts;
 
-    /**
-     * VM 포트 라우터 생성자
-     *
-     * @param ports 등록된 모든 VmManagementPort 구현체들
-     */
-    public VmPortRouter(List<VmManagementPort> ports) {
-        log.info("[VmPortRouter] Initializing VM port router with {} ports", ports.size());
-        
-        ports.stream()
-            .filter(p -> p instanceof ProviderScoped)
-            .forEach(p -> {
-                ProviderType providerType = ((ProviderScoped) p).getProviderType();
-                vmPorts.put(providerType, p);
-                log.debug("[VmPortRouter] Registered VM port for provider: {} -> {}", 
-                    providerType, p.getClass().getSimpleName());
-            });
-        
-        log.info("[VmPortRouter] VM port router initialized with {} providers: {}", 
-            vmPorts.size(), vmPorts.keySet());
+    public VmPortRouter(
+            List<VmDiscoveryPort> discoveryPortList,
+            List<VmLifecyclePort> lifecyclePortList,
+            List<VmTaggingPort> taggingPortList
+    ) {
+        this.discoveryPorts = buildPortMap(discoveryPortList);
+        this.lifecyclePorts = buildPortMap(lifecyclePortList);
+        this.taggingPorts = buildPortMap(taggingPortList);
+
+        log.info("[VmPortRouter] VM router initialized: discovery={}, lifecycle={}, tagging={}",
+                discoveryPorts.keySet(), lifecyclePorts.keySet(), taggingPorts.keySet());
     }
 
-    /**
-     * 지정된 제공업체 타입에 해당하는 VM 관리 포트를 반환합니다.
-     *
-     * @param type 클라우드 제공업체 타입
-     * @return 해당 제공업체의 VmManagementPort 구현체
-     * @throws IllegalArgumentException 지원되지 않는 제공업체 타입인 경우
-     */
-    public VmManagementPort vm(ProviderType type) {
-        log.debug("[VmPortRouter] Requesting VM port for provider: {}", type);
-        
-        VmManagementPort port = vmPorts.get(type);
+    private <T> Map<ProviderType, T> buildPortMap(List<T> ports) {
+        Map<ProviderType, T> map = new EnumMap<>(ProviderType.class);
+        ports.stream()
+                .filter(port -> port instanceof ProviderScoped)
+                .forEach(port -> {
+                    ProviderType providerType = ((ProviderScoped) port).getProviderType();
+                    map.put(providerType, port);
+                    log.debug("[VmPortRouter] Registered {} port for provider {}", port.getClass().getSimpleName(), providerType);
+                });
+        return map;
+    }
+
+    public VmDiscoveryPort discovery(ProviderType providerType) {
+        VmDiscoveryPort port = discoveryPorts.get(providerType);
         if (port == null) {
-            log.error("[VmPortRouter] Unsupported provider type: {}. Available providers: {}", 
-                type, vmPorts.keySet());
-            throw new IllegalArgumentException("Unsupported provider: " + type + 
-                ". Available providers: " + vmPorts.keySet());
+            throw new IllegalArgumentException("지원하지 않는 프로바이더입니다: " + providerType);
         }
-        
-        log.debug("[VmPortRouter] Returning VM port: {} for provider: {}", 
-            port.getClass().getSimpleName(), type);
         return port;
     }
 
-    /**
-     * 현재 등록된 모든 제공업체 타입을 반환합니다.
-     * 
-     * @return 등록된 제공업체 타입들의 Set
-     */
-    public java.util.Set<ProviderType> getSupportedProviders() {
-        return vmPorts.keySet();
+    public VmLifecyclePort lifecycle(ProviderType providerType) {
+        VmLifecyclePort port = lifecyclePorts.get(providerType);
+        if (port == null) {
+            throw new IllegalArgumentException("지원하지 않는 프로바이더입니다: " + providerType);
+        }
+        return port;
     }
 
-    /**
-     * 지정된 제공업체가 지원되는지 확인합니다.
-     * 
-     * @param type 확인할 제공업체 타입
-     * @return 지원 여부
-     */
-    public boolean isProviderSupported(ProviderType type) {
-        return vmPorts.containsKey(type);
-    }
-
-    /**
-     * 등록된 VM 포트의 개수를 반환합니다.
-     *
-     * @return 등록된 포트 개수
-     */
-    public int getPortCount() {
-        return vmPorts.size();
+    public VmTaggingPort tagging(ProviderType providerType) {
+        VmTaggingPort port = taggingPorts.get(providerType);
+        if (port == null) {
+            throw new IllegalArgumentException("태그 관리를 지원하지 않는 프로바이더입니다: " + providerType);
+        }
+        return port;
     }
 }

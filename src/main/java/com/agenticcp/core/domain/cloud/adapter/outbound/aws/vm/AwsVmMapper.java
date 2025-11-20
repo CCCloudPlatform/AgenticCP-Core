@@ -1,10 +1,10 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm;
 
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
-import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -135,41 +135,40 @@ public class AwsVmMapper {
         return filters;
     }
     
-    // ==================== VmCreateRequest → AWS 요청 변환 ====================
+    // ==================== VmCreateCommand → AWS 요청 변환 ====================
     
     /**
-     * VmCreateRequest를 AWS RunInstancesRequest로 변환합니다.
-     * 
-     * @param request 도메인 생성 요청 객체
-     * @return AWS RunInstancesRequest 객체
+     * VmCreateCommand를 AWS RunInstancesRequest로 변환합니다.
+     *
+     * @param command 도메인 생성 커맨드
      */
-    public RunInstancesRequest toRunInstancesRequest(VmCreateRequest request) {
-        log.debug("[AwsVmMapper] Converting VmCreateRequest to RunInstancesRequest");
+    public RunInstancesRequest toRunInstancesRequest(VmCreateCommand command) {
+        log.debug("[AwsVmMapper] Converting VmCreateCommand to RunInstancesRequest");
         
         RunInstancesRequest.Builder builder = RunInstancesRequest.builder()
-            .imageId(request.getImageId())
-            .instanceType(InstanceType.fromValue(request.getInstanceType()))
-            .minCount(request.getMinCount())
-            .maxCount(request.getMaxCount());
+            .imageId(command.getImageId())
+            .instanceType(InstanceType.fromValue(command.getInstanceType()))
+            .minCount(command.getMinCount())
+            .maxCount(command.getMaxCount());
         
-        if (request.getKeyName() != null) {
-            builder.keyName(request.getKeyName());
+        if (command.getKeyName() != null) {
+            builder.keyName(command.getKeyName());
         }
         
-        if (request.getSecurityGroupId() != null) {
-            builder.securityGroupIds(request.getSecurityGroupId());
+        if (command.getSecurityGroupId() != null) {
+            builder.securityGroupIds(command.getSecurityGroupId());
         }
         
-        if (request.getSubnetId() != null) {
-            builder.subnetId(request.getSubnetId());
+        if (command.getSubnetId() != null) {
+            builder.subnetId(command.getSubnetId());
         }
         
-        if (request.getUserData() != null) {
-            builder.userData(request.getUserData());
+        if (command.getUserData() != null) {
+            builder.userData(command.getUserData());
         }
         
-        if (request.getTags() != null && !request.getTags().isEmpty()) {
-            builder.tagSpecifications(buildTagSpecifications(request.getTags()));
+        if (command.getTags() != null && !command.getTags().isEmpty()) {
+            builder.tagSpecifications(buildTagSpecifications(command.getTags()));
         }
         
         return builder.build();
@@ -192,48 +191,42 @@ public class AwsVmMapper {
             .build());
     }
     
-    // ==================== VmUpdateRequest → AWS 요청 변환 ====================
+    // ==================== VmUpdateCommand → AWS 요청 변환 ====================
     
     /**
-     * VmUpdateRequest를 AWS ModifyInstanceAttributeRequest로 변환합니다.
-     * 
-     * @param request 도메인 수정 요청 객체
-     * @return AWS ModifyInstanceAttributeRequest 객체
+     * VmUpdateCommand를 AWS ModifyInstanceAttributeRequest로 변환합니다.
      */
-    public ModifyInstanceAttributeRequest toModifyInstanceAttributeRequest(VmUpdateRequest request) {
-        log.debug("[AwsVmMapper] Converting VmUpdateRequest to ModifyInstanceAttributeRequest");
-        
+    public ModifyInstanceAttributeRequest toModifyInstanceAttributeRequest(VmUpdateCommand command) {
+        log.debug("[AwsVmMapper] Converting VmUpdateCommand to ModifyInstanceAttributeRequest");
+
         ModifyInstanceAttributeRequest.Builder builder = ModifyInstanceAttributeRequest.builder()
-            .instanceId(request.getInstanceId());
-        
-        if (request.getInstanceType() != null) {
+            .instanceId(command.getInstanceId());
+
+        if (command.getInstanceType() != null) {
             builder.instanceType(AttributeValue.builder()
-                .value(request.getInstanceType())
+                .value(command.getInstanceType())
                 .build());
         }
         
-        if (request.getUserData() != null) {
+        if (command.getUserData() != null) {
             builder.userData(BlobAttributeValue.builder()
-                .value(software.amazon.awssdk.core.SdkBytes.fromUtf8String(request.getUserData()))
+                .value(software.amazon.awssdk.core.SdkBytes.fromUtf8String(command.getUserData()))
                 .build());
         }
         
         return builder.build();
     }
     
-    // ==================== VmDeleteRequest → AWS 요청 변환 ====================
+    // ==================== VmDeleteCommand → AWS 요청 변환 ====================
     
     /**
-     * VmDeleteRequest를 AWS TerminateInstancesRequest로 변환합니다.
-     * 
-     * @param request 도메인 삭제 요청 객체
-     * @return AWS TerminateInstancesRequest 객체
+     * VmDeleteCommand를 AWS TerminateInstancesRequest로 변환합니다.
      */
-    public TerminateInstancesRequest toTerminateInstancesRequest(VmDeleteRequest request) {
-        log.debug("[AwsVmMapper] Converting VmDeleteRequest to TerminateInstancesRequest");
-        
+    public TerminateInstancesRequest toTerminateInstancesRequest(VmDeleteCommand command) {
+        log.debug("[AwsVmMapper] Converting VmDeleteCommand to TerminateInstancesRequest");
+
         return TerminateInstancesRequest.builder()
-            .instanceIds(request.getInstanceId())
+            .instanceIds(command.getInstanceId())
             .build();
     }
     

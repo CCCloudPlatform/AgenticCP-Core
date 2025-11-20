@@ -10,6 +10,9 @@ import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +64,7 @@ public class VmUseCaseService {
         try {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
-            Page<CloudResource> result = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
+            Page<CloudResource> result = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE)
                 .listInstances(query);
 
             auditEventPort.record("LIST_INSTANCES", "VM", "SUCCESS",
@@ -90,7 +93,7 @@ public class VmUseCaseService {
         try {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
-            Optional<CloudResource> result = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
+            Optional<CloudResource> result = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE)
                 .getInstance(instanceId);
 
             auditEventPort.record("GET_INSTANCE", "VM", "SUCCESS",
@@ -123,8 +126,8 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.CREATE);
 
-            String instanceId = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
-                .createInstance(request);
+            String instanceId = vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE)
+                .createInstance(toCreateCommand(request));
 
             auditEventPort.record("CREATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "request", request));
@@ -155,7 +158,7 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).startInstance(instanceId);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).startInstance(instanceId);
 
             auditEventPort.record("START_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -183,7 +186,7 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).stopInstance(instanceId);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).stopInstance(instanceId);
 
             auditEventPort.record("STOP_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -212,7 +215,7 @@ public class VmUseCaseService {
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).rebootInstance(instanceId);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).rebootInstance(instanceId);
 
             auditEventPort.record("REBOOT_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -240,7 +243,7 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).terminateInstance(instanceId);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).terminateInstance(instanceId);
 
             auditEventPort.record("TERMINATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -268,7 +271,7 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).deleteInstance(request);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).deleteInstance(toDeleteCommand(request));
 
             auditEventPort.record("DELETE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", request.getInstanceId(), "request", request));
@@ -298,7 +301,7 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.UPDATE);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).updateInstance(request);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).updateInstance(toUpdateCommand(request));
 
             auditEventPort.record("UPDATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", request.getInstanceId(), "request", request));
@@ -329,7 +332,7 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).addTags(instanceId, tags);
+            vmPortRouter.tagging(DEFAULT_PROVIDER_TYPE).addTags(instanceId, tags);
 
             auditEventPort.record("ADD_TAGS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "tags", tags));
@@ -358,7 +361,7 @@ public class VmUseCaseService {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
-            vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).removeTags(instanceId, tagKeys);
+            vmPortRouter.tagging(DEFAULT_PROVIDER_TYPE).removeTags(instanceId, tagKeys);
 
             auditEventPort.record("REMOVE_TAGS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "tagKeys", tagKeys.keySet()));
@@ -385,7 +388,7 @@ public class VmUseCaseService {
         try {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
-            Map<String, String> tags = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).getTags(instanceId);
+            Map<String, String> tags = vmPortRouter.tagging(DEFAULT_PROVIDER_TYPE).getTags(instanceId);
 
             auditEventPort.record("GET_TAGS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "tagCount", tags.size()));
@@ -415,7 +418,7 @@ public class VmUseCaseService {
         try {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
-            String status = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE).getInstanceStatus(instanceId);
+            String status = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE).getInstanceStatus(instanceId);
 
             auditEventPort.record("GET_INSTANCE_STATUS", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "status", status));
@@ -446,7 +449,7 @@ public class VmUseCaseService {
         try {
             setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
-            boolean success = vmPortRouter.vm(DEFAULT_PROVIDER_TYPE)
+            boolean success = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE)
                 .waitForInstanceStatus(instanceId, targetStatus, timeoutSeconds);
 
             auditEventPort.record("WAIT_FOR_INSTANCE_STATUS", "VM", success ? "SUCCESS" : "TIMEOUT",
@@ -472,5 +475,38 @@ public class VmUseCaseService {
                 : accountScope;
 
         credentialProviderPort.resolveCredentials(tenantKey, providerType, effectiveAccountScope);
+    }
+
+    private VmCreateCommand toCreateCommand(VmCreateRequest request) {
+        return VmCreateCommand.builder()
+                .imageId(request.getImageId())
+                .instanceType(request.getInstanceType())
+                .keyName(request.getKeyName())
+                .securityGroupId(request.getSecurityGroupId())
+                .subnetId(request.getSubnetId())
+                .userData(request.getUserData())
+                .tags(request.getTags())
+                .minCount(request.getMinCount())
+                .maxCount(request.getMaxCount())
+                .build();
+    }
+
+    private VmUpdateCommand toUpdateCommand(VmUpdateRequest request) {
+        return VmUpdateCommand.builder()
+                .instanceId(request.getInstanceId())
+                .instanceType(request.getInstanceType())
+                .userData(request.getUserData())
+                .tagsToAdd(request.getTagsToAdd())
+                .tagsToRemove(request.getTagsToRemove())
+                .build();
+    }
+
+    private VmDeleteCommand toDeleteCommand(VmDeleteRequest request) {
+        return VmDeleteCommand.builder()
+                .instanceId(request.getInstanceId())
+                .force(request.isForce())
+                .reason(request.getReason())
+                .createSnapshot(request.isCreateSnapshot())
+                .build();
     }
 }

@@ -1,10 +1,21 @@
 package com.agenticcp.core.domain.cloud.service.aws;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
+import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
+import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
+import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,14 +25,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * VM 유스케이스 서비스 테스트
@@ -36,16 +46,37 @@ class VmUseCaseServiceTest {
     private AuditEventPort auditEventPort;
 
     @Mock
-    private VmManagementPort vmManagementPort;
+    private VmDiscoveryPort vmDiscoveryPort;
+
+    @Mock
+    private VmLifecyclePort vmLifecyclePort;
+
+    @Mock
+    private VmTaggingPort vmTaggingPort;
+
+    @Mock
+    private CapabilityGuard capabilityGuard;
+
+    @Mock
+    private CredentialProviderPort credentialProviderPort;
 
     private VmUseCaseService vmUseCaseService;
 
     @BeforeEach
     void setUp() {
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, auditEventPort);
-        
-        // VmPortRouter가 AWS 포트를 반환하도록 설정
-        when(vmPortRouter.vm(ProviderType.AWS)).thenReturn(vmManagementPort);
+        TenantContextHolder.setTenantKey("tenant-test");
+        vmUseCaseService = new VmUseCaseService(vmPortRouter, auditEventPort, capabilityGuard, credentialProviderPort);
+
+        when(vmPortRouter.discovery(ProviderType.AWS)).thenReturn(vmDiscoveryPort);
+        when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);
+        when(vmPortRouter.tagging(ProviderType.AWS)).thenReturn(vmTaggingPort);
+        when(credentialProviderPort.resolveCredentials(anyString(), any(), anyString())).thenReturn(new Object());
+        doNothing().when(capabilityGuard).ensureSupported(any(), anyString(), anyString(), any());
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContextHolder.clear();
     }
 
     @Test
@@ -67,7 +98,7 @@ class VmUseCaseServiceTest {
             1
         );
 
-        when(vmManagementPort.listInstances(query)).thenReturn(expectedPage);
+        when(vmDiscoveryPort.listInstances(query)).thenReturn(expectedPage);
 
         // When
         Page<CloudResource> result = vmUseCaseService.listInstances(query);
@@ -97,7 +128,7 @@ class VmUseCaseServiceTest {
             .resourceName("test-instance")
             .build();
 
-        when(vmManagementPort.getInstance(instanceId)).thenReturn(Optional.of(resource));
+        when(vmDiscoveryPort.getInstance(instanceId)).thenReturn(Optional.of(resource));
 
         // When
         Optional<CloudResource> result = vmUseCaseService.getInstance(instanceId);
@@ -120,7 +151,7 @@ class VmUseCaseServiceTest {
         // Given
         String instanceId = "i-nonexistent";
         
-        when(vmManagementPort.getInstance(instanceId)).thenReturn(Optional.empty());
+        when(vmDiscoveryPort.getInstance(instanceId)).thenReturn(Optional.empty());
 
         // When
         Optional<CloudResource> result = vmUseCaseService.getInstance(instanceId);
@@ -146,7 +177,7 @@ class VmUseCaseServiceTest {
             .build();
 
         RuntimeException exception = new RuntimeException("AWS API Error");
-        when(vmManagementPort.listInstances(query)).thenThrow(exception);
+        when(vmDiscoveryPort.listInstances(query)).thenThrow(exception);
 
         // When & Then
         try {

@@ -2,12 +2,14 @@ package com.agenticcp.core.domain.cloud.port;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
-import com.agenticcp.core.domain.cloud.port.model.VmQuery;
-import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
-import com.agenticcp.core.domain.cloud.port.outbound.aws.VmManagementPort;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
+import com.agenticcp.core.domain.cloud.port.model.VmQuery;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
+import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +25,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * VM 관리 포트 계약 테스트
@@ -35,13 +41,13 @@ import static org.mockito.Mockito.*;
 class VmManagementContractTest {
 
     @Mock
-    private VmManagementPort vmManagementPort;
+    private VmCompositePort vmManagementPort;
 
     private CloudResource testInstance;
     private VmQuery testQuery;
-    private VmCreateRequest testCreateRequest;
-    private VmUpdateRequest testUpdateRequest;
-    private VmDeleteRequest testDeleteRequest;
+    private VmCreateCommand testCreateCommand;
+    private VmUpdateCommand testUpdateCommand;
+    private VmDeleteCommand testDeleteCommand;
 
     @BeforeEach
     void setUp() {
@@ -56,19 +62,22 @@ class VmManagementContractTest {
             .size(10)
             .build();
 
-        testCreateRequest = VmCreateRequest.builder()
+        testCreateCommand = VmCreateCommand.builder()
             .imageId("ami-12345678")
             .instanceType("t3.micro")
             .minCount(1)
             .maxCount(1)
             .build();
 
-        testUpdateRequest = VmUpdateRequest.builder()
+        testUpdateCommand = VmUpdateCommand.builder()
             .instanceId("i-1234567890abcdef0")
             .instanceType("t3.small")
             .build();
 
-        testDeleteRequest = VmDeleteRequest.basic("i-1234567890abcdef0");
+        testDeleteCommand = VmDeleteCommand.builder()
+            .instanceId("i-1234567890abcdef0")
+            .force(false)
+            .build();
     }
 
     @Test
@@ -124,15 +133,15 @@ class VmManagementContractTest {
     void createInstance_계약_테스트() {
         // Given
         String expectedInstanceId = "i-1234567890abcdef0";
-        when(vmManagementPort.createInstance(any(VmCreateRequest.class)))
+        when(vmManagementPort.createInstance(any(VmCreateCommand.class)))
             .thenReturn(expectedInstanceId);
 
         // When
-        String result = vmManagementPort.createInstance(testCreateRequest);
+        String result = vmManagementPort.createInstance(testCreateCommand);
 
         // Then
         assertThat(result).isEqualTo(expectedInstanceId);
-        verify(vmManagementPort).createInstance(testCreateRequest);
+        verify(vmManagementPort).createInstance(testCreateCommand);
     }
 
     @Test
@@ -186,25 +195,25 @@ class VmManagementContractTest {
     @Test
     void deleteInstance_계약_테스트() {
         // Given
-        doNothing().when(vmManagementPort).deleteInstance(any(VmDeleteRequest.class));
+        doNothing().when(vmManagementPort).deleteInstance(any(VmDeleteCommand.class));
 
         // When
-        vmManagementPort.deleteInstance(testDeleteRequest);
+        vmManagementPort.deleteInstance(testDeleteCommand);
 
         // Then
-        verify(vmManagementPort).deleteInstance(testDeleteRequest);
+        verify(vmManagementPort).deleteInstance(testDeleteCommand);
     }
 
     @Test
     void updateInstance_계약_테스트() {
         // Given
-        doNothing().when(vmManagementPort).updateInstance(any(VmUpdateRequest.class));
+        doNothing().when(vmManagementPort).updateInstance(any(VmUpdateCommand.class));
 
         // When
-        vmManagementPort.updateInstance(testUpdateRequest);
+        vmManagementPort.updateInstance(testUpdateCommand);
 
         // Then
-        verify(vmManagementPort).updateInstance(testUpdateRequest);
+        verify(vmManagementPort).updateInstance(testUpdateCommand);
     }
 
     @Test
@@ -317,6 +326,9 @@ class VmManagementContractTest {
     /**
      * ProviderScoped를 구현하는 테스트용 인터페이스
      */
-    private interface VmManagementPortWithProvider extends VmManagementPort, ProviderScoped {
+    private interface VmManagementPortWithProvider extends VmCompositePort, ProviderScoped {
+    }
+
+    private interface VmCompositePort extends VmDiscoveryPort, VmLifecyclePort, VmTaggingPort {
     }
 }
