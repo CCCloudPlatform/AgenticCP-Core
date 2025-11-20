@@ -33,9 +33,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * VM 관리 포트 계약 테스트
- * 
- * VmManagementPort 인터페이스의 모든 메서드가 올바르게 동작하는지 검증합니다.
- * 이 테스트는 포트 인터페이스의 계약(contract)을 정의하고 검증합니다.
+ *
+ * VmDiscoveryPort / VmLifecyclePort / VmTaggingPort 조합이 기대하는 계약을 검증합니다.
  */
 @ExtendWith(MockitoExtension.class)
 class VmManagementContractTest {
