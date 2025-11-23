@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.mapper;
 
-import com.agenticcp.core.domain.cloud.dto.CloudAccountDto;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudAccountDto;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -43,7 +43,7 @@ public class CloudAccountMapper {
                 .providerType(entity.getProvider() != null ? entity.getProvider().getProviderType() : null)
                 .providerName(entity.getProvider() != null ? entity.getProvider().getProviderName() : null)
                 .accountName(entity.getAccountName())
-                .accountId(entity.getAccountId())
+                .accountScope(entity.getAccountScope())
                 .accountStatus(entity.getAccountStatus())
                 .isDefault(entity.getIsDefault())
                 .region(region)

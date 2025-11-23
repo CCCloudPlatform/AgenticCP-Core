@@ -28,7 +28,7 @@ import java.time.LocalDateTime;
     @Index(name = "idx_cloud_accounts_provider", columnList = "provider_id"),
     @Index(name = "idx_cloud_accounts_status", columnList = "account_status"),
     @Index(name = "idx_cloud_accounts_tenant_provider", columnList = "tenant_id, provider_id"),
-    @Index(name = "idx_cloud_accounts_account_id", columnList = "account_id")
+    @Index(name = "idx_cloud_accounts_account_scope", columnList = "account_scope")
 })
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -62,11 +62,11 @@ public class CloudAccount extends BaseEntity {
     private String accountName;
 
     /**
-     * 계정 ID
+     * 계정 범위 (Account Scope)
      * AWS: Account ID, Azure: Subscription ID, GCP: Project ID
      */
-    @Column(name = "account_id", length = 100)
-    private String accountId;
+    @Column(name = "account_scope", length = 100)
+    private String accountScope;
 
     /**
      * 자격증명 참조

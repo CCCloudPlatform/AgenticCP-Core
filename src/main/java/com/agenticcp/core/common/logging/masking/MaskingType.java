@@ -17,6 +17,8 @@ public enum MaskingType {
     PHONE_NUMBER,
     SSN,
     SECRET_KEY,
+    ACCESS_KEY,
+    ACCOUNT_SCOPE,
     TOKEN,
     TENANT_KEY,
     USERNAME,
