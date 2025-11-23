@@ -181,7 +181,8 @@ public class MaskingService {
             MaskingType.PHONE_NUMBER, new String[]{"phone", "tel"},
             MaskingType.SSN, new String[]{"ssn", "resident"},
             MaskingType.SECRET_KEY, new String[]{"secretkey", "secret_key", "secret-key"},
-            MaskingType.TOKEN, new String[]{"token", "jwt"}
+            MaskingType.TOKEN, new String[]{"token", "jwt"},
+            MaskingType.ACCOUNT_SCOPE, new String[]{"accountscope", "account_scope", "account-scope"}
         );
         
         return keywordMap.entrySet().stream()
@@ -229,6 +230,16 @@ public class MaskingService {
      */
     public String maskTenantKey(String tenantKey) {
         return mask(tenantKey, 2, 2);
+    }
+
+    /**
+     * 계정 범위(Account Scope) 마스킹 (앞 4자리, 뒤 4자리 노출)
+     * AWS Account ID, Azure Subscription ID, GCP Project ID 등을 마스킹합니다.
+     * 
+     * 내부적으로 AccountScopeMaskingStrategy를 사용합니다.
+     */
+    public String maskAccountScope(String accountScope) {
+        return applyMaskingStrategy(accountScope, MaskingType.ACCOUNT_SCOPE);
     }
 
     public String maskIpAddress(String ip) {
