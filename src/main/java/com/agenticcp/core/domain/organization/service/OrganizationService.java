@@ -3,7 +3,6 @@ package com.agenticcp.core.domain.organization.service;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
@@ -18,7 +17,6 @@ import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.repository.UserRepository;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,21 +27,34 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 조직 관리 서비스
+ * 
+ * <p>조직의 생성, 조회, 수정, 삭제 및 계층 구조 관리를 제공합니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
+@Transactional(readOnly = true)
 public class OrganizationService {
     
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
-    private final TenantRepository tenantRepository;
     
     /**
      * 조직 생성
+     * 
+     * @param request 조직 생성 요청 정보
+     * @return 생성된 조직 정보
+     * @throws BusinessException 조직명이 중복되거나 상위 조직을 찾을 수 없는 경우
      */
+    @Transactional
     public OrganizationResponse createOrganization(CreateOrganizationRequest request) {
-        log.info("조직 생성 요청: orgName={}", request.getOrgName());
+        log.info("[OrganizationService] createOrganization - orgName={}", request.getOrgName());
         
         // 조직명 중복 검사
         validateOrgNameUnique(request.getOrgName());
@@ -70,52 +81,66 @@ public class OrganizationService {
         // 상위 조직 설정
         if (request.getParentOrganizationId() != null) {
             Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
+                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
             organization.setParentOrganization(parentOrg);
         }
         
         Organization savedOrganization = organizationRepository.save(organization);
-        log.info("조직 생성 완료: id={}, orgName={}", savedOrganization.getId(), savedOrganization.getOrgName());
+        log.info("[OrganizationService] createOrganization - success id={}, orgName={}", 
+                savedOrganization.getId(), savedOrganization.getOrgName());
         
         return OrganizationResponse.from(savedOrganization);
     }
     
     /**
      * 조직 조회 (단일)
+     * 
+     * @param id 조직 ID
+     * @return 조직 정보
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
-    @Transactional(readOnly = true)
     public OrganizationResponse getOrganization(Long id) {
-        log.info("조직 조회 요청: id={}", id);
+        log.info("[OrganizationService] getOrganization - id={}", id);
         
         Organization organization = organizationRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + id));
         
+        log.info("[OrganizationService] getOrganization - success id={}", id);
         return OrganizationResponse.from(organization);
     }
     
     /**
      * 조직 목록 조회
+     * 
+     * @return 조직 목록
      */
-    @Transactional(readOnly = true)
     public List<OrganizationResponse> getOrganizations() {
-        log.info("조직 목록 조회 요청");
+        log.info("[OrganizationService] getOrganizations");
         
         List<Organization> organizations = organizationRepository.findAll();
-        
-        return organizations.stream()
+        List<OrganizationResponse> result = organizations.stream()
                 .map(OrganizationResponse::from)
                 .collect(Collectors.toList());
+        
+        log.info("[OrganizationService] getOrganizations - success count={}", result.size());
+        return result;
     }
     
     /**
      * 조직 수정
+     * 
+     * @param id 조직 ID
+     * @param request 조직 수정 요청 정보
+     * @return 수정된 조직 정보
+     * @throws BusinessException 조직을 찾을 수 없거나 조직명이 중복되거나 상위 조직을 찾을 수 없는 경우
      */
+    @Transactional
     public OrganizationResponse updateOrganization(Long id, UpdateOrganizationRequest request) {
-        log.info("조직 수정 요청: id={}, orgName={}", id, request.getOrgName());
+        log.info("[OrganizationService] updateOrganization - id={}, orgName={}", id, request.getOrgName());
         
         // 조직 존재 여부 확인
         Organization organization = organizationRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + id));
         
         // 조직명 중복 검사 (자신 제외)
         if (!organization.getOrgName().equals(request.getOrgName())) {
@@ -137,44 +162,53 @@ public class OrganizationService {
         // 상위 조직 변경
         if (request.getParentOrganizationId() != null) {
             Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
+                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
             organization.setParentOrganization(parentOrg);
         } else {
             organization.setParentOrganization(null);
         }
         
         Organization updatedOrganization = organizationRepository.save(organization);
-        log.info("조직 수정 완료: id={}, orgName={}", updatedOrganization.getId(), updatedOrganization.getOrgName());
+        log.info("[OrganizationService] updateOrganization - success id={}, orgName={}", 
+                updatedOrganization.getId(), updatedOrganization.getOrgName());
         
         return OrganizationResponse.from(updatedOrganization);
     }
     
     /**
      * 조직 삭제
+     * 
+     * @param id 조직 ID
+     * @throws BusinessException 조직을 찾을 수 없거나 하위 조직이 존재하는 경우
      */
+    @Transactional
     public void deleteOrganization(Long id) {
-        log.info("조직 삭제 요청: id={}", id);
+        log.info("[OrganizationService] deleteOrganization - id={}", id);
         
         // 조직 존재 여부 확인
         Organization organization = organizationRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + id));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + id));
         
         // 하위 조직 존재 여부 확인
         if (organizationRepository.existsByParentOrganizationId(id)) {
-            throw new IllegalStateException("하위 조직이 존재하는 조직은 삭제할 수 없습니다: " + id);
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "하위 조직이 존재하는 조직은 삭제할 수 없습니다: " + id);
         }
         
         // 조직 삭제
         organizationRepository.delete(organization);
-        log.info("조직 삭제 완료: id={}, orgName={}", id, organization.getOrgName());
+        log.info("[OrganizationService] deleteOrganization - success id={}, orgName={}", 
+                id, organization.getOrgName());
     }
     
     /**
      * 조직명 중복 검증
+     * 
+     * @param orgName 조직명
+     * @throws BusinessException 조직명이 중복되는 경우
      */
     private void validateOrgNameUnique(String orgName) {
         if (organizationRepository.existsByOrgName(orgName)) {
-            throw new IllegalArgumentException("이미 존재하는 조직명입니다: " + orgName);
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "이미 존재하는 조직명입니다: " + orgName);
         }
     }
     
@@ -200,35 +234,47 @@ public class OrganizationService {
     
     /**
      * 조직 수 조회
+     * 
+     * @return 조직 수
      */
-    @Transactional(readOnly = true)
     public long getOrganizationCount() {
-        return organizationRepository.count();
+        log.info("[OrganizationService] getOrganizationCount");
+        long count = organizationRepository.count();
+        log.info("[OrganizationService] getOrganizationCount - success count={}", count);
+        return count;
     }
     
     /**
      * 특정 조직의 하위 조직 목록 조회
+     * 
+     * @param parentOrgId 상위 조직 ID
+     * @return 하위 조직 목록
+     * @throws BusinessException 상위 조직을 찾을 수 없는 경우
      */
-    @Transactional(readOnly = true)
     public List<OrganizationResponse> getChildOrganizations(Long parentOrgId) {
-        log.info("하위 조직 목록 조회 요청: parentOrgId={}", parentOrgId);
+        log.info("[OrganizationService] getChildOrganizations - parentOrgId={}", parentOrgId);
         
         // 상위 조직 존재 여부 확인
         organizationRepository.findById(parentOrgId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + parentOrgId));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + parentOrgId));
         
         List<Organization> childOrganizations = organizationRepository.findByParentOrganizationId(parentOrgId);
-        
-        return childOrganizations.stream()
+        List<OrganizationResponse> result = childOrganizations.stream()
                 .map(OrganizationResponse::from)
                 .collect(Collectors.toList());
+        
+        log.info("[OrganizationService] getChildOrganizations - success parentOrgId={}, count={}", 
+                parentOrgId, result.size());
+        return result;
     }
     
     /**
      * 전체 조직 트리 조회
+     * 
+     * @return 조직 계층 구조 목록
      */
     public List<OrganizationHierarchyResponse> getOrganizationTree() {
-        log.info("[OrganizationService] 전체 조직 트리 조회 요청");
+        log.info("[OrganizationService] getOrganizationTree");
         
         List<Organization> organizations = organizationRepository.findAll();
         Map<Long, List<Organization>> childrenMap = organizations.stream()
@@ -241,18 +287,22 @@ public class OrganizationService {
                 .map(org -> buildHierarchyResponse(org, childrenMap, 0, org.getOrgName()))
                 .collect(Collectors.toList());
         
-        log.info("[OrganizationService] 전체 조직 트리 조회 완료: count={}", result.size());
+        log.info("[OrganizationService] getOrganizationTree - success count={}", result.size());
         return result;
     }
     
     /**
      * 조직 경로 조회
+     * 
+     * @param orgId 조직 ID
+     * @return 조직 경로 정보
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public OrganizationPathResponse getOrganizationPath(Long orgId) {
-        log.info("[OrganizationService] 조직 경로 조회 요청: orgId={}", orgId);
+        log.info("[OrganizationService] getOrganizationPath - orgId={}", orgId);
         
         Organization organization = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
         
         List<OrganizationResponse> path = new ArrayList<>();
         Organization current = organization;
@@ -263,18 +313,23 @@ public class OrganizationService {
         }
         
         OrganizationPathResponse result = OrganizationPathResponse.from(path);
-        log.info("[OrganizationService] 조직 경로 조회 완료: path={}", result.getFullPath());
+        log.info("[OrganizationService] getOrganizationPath - success orgId={}, path={}", 
+                orgId, result.getFullPath());
         return result;
     }
     
     /**
      * 상위 조직 목록 조회
+     * 
+     * @param orgId 조직 ID
+     * @return 상위 조직 목록
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public List<OrganizationResponse> getAncestors(Long orgId) {
-        log.info("[OrganizationService] 상위 조직 목록 조회 요청: orgId={}", orgId);
+        log.info("[OrganizationService] getAncestors - orgId={}", orgId);
         
         Organization organization = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
         
         List<OrganizationResponse> ancestors = new ArrayList<>();
         Organization current = organization.getParentOrganization();
@@ -284,42 +339,53 @@ public class OrganizationService {
             current = current.getParentOrganization();
         }
         
-        log.info("[OrganizationService] 상위 조직 목록 조회 완료: count={}", ancestors.size());
+        log.info("[OrganizationService] getAncestors - success orgId={}, count={}", 
+                orgId, ancestors.size());
         return ancestors;
     }
     
     /**
      * 하위 조직 목록 조회 (모든 레벨)
+     * 
+     * @param orgId 조직 ID
+     * @return 하위 조직 목록
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public List<OrganizationResponse> getDescendants(Long orgId) {
-        log.info("[OrganizationService] 하위 조직 목록 조회 요청: orgId={}", orgId);
+        log.info("[OrganizationService] getDescendants - orgId={}", orgId);
         
         Organization organization = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
         
         List<OrganizationResponse> descendants = new ArrayList<>();
         collectDescendants(organization, descendants);
         
-        log.info("[OrganizationService] 하위 조직 목록 조회 완료: count={}", descendants.size());
+        log.info("[OrganizationService] getDescendants - success orgId={}, count={}", 
+                orgId, descendants.size());
         return descendants;
     }
     
     /**
      * 조직 이동
+     * 
+     * @param orgId 조직 ID
+     * @param request 조직 이동 요청 정보
+     * @return 이동된 조직 정보
+     * @throws BusinessException 조직을 찾을 수 없거나 순환 참조가 발생하는 경우
      */
     @Transactional
     public OrganizationResponse moveOrganization(Long orgId, MoveOrganizationRequest request) {
-        log.info("[OrganizationService] 조직 이동 요청: orgId={}, newParentId={}", 
+        log.info("[OrganizationService] moveOrganization - orgId={}, newParentId={}", 
                 orgId, request.getNewParentId());
         
         Organization organization = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 조직입니다: " + orgId));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
         
         // 새로운 상위 조직 검증
         Organization newParent = null;
         if (request.getNewParentId() != null) {
             newParent = organizationRepository.findById(request.getNewParentId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상위 조직입니다: " + request.getNewParentId()));
+                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + request.getNewParentId()));
             
             // 순환 참조 방지
             validateNoCircularReference(organization, newParent);
@@ -328,16 +394,18 @@ public class OrganizationService {
         organization.setParentOrganization(newParent);
         Organization savedOrganization = organizationRepository.save(organization);
         
-        log.info("[OrganizationService] 조직 이동 완료: orgId={}, newParentId={}", 
+        log.info("[OrganizationService] moveOrganization - success orgId={}, newParentId={}", 
                 savedOrganization.getId(), newParent != null ? newParent.getId() : null);
         return OrganizationResponse.from(savedOrganization);
     }
     
     /**
      * 조직 통계 조회
+     * 
+     * @return 조직 통계 정보
      */
     public OrganizationStatsResponse getOrganizationStats() {
-        log.info("[OrganizationService] 조직 통계 조회 요청");
+        log.info("[OrganizationService] getOrganizationStats");
         
         List<Organization> organizations = organizationRepository.findAll();
         
@@ -374,7 +442,7 @@ public class OrganizationService {
                 .levelStats(levelStatsList)
                 .build();
         
-        log.info("[OrganizationService] 조직 통계 조회 완료: total={}, active={}, maxDepth={}", 
+        log.info("[OrganizationService] getOrganizationStats - success total={}, active={}, maxDepth={}", 
                 totalOrganizations, activeOrganizations, maxDepth);
         return result;
     }
@@ -409,7 +477,7 @@ public class OrganizationService {
         Organization current = newParent;
         while (current != null) {
             if (current.getId().equals(org.getId())) {
-                throw new IllegalArgumentException("순환 참조가 발생합니다: " + org.getOrgName());
+                throw new BusinessException(CommonErrorCode.BAD_REQUEST, "순환 참조가 발생합니다: " + org.getOrgName());
             }
             current = current.getParentOrganization();
         }
@@ -427,36 +495,49 @@ public class OrganizationService {
     
     /**
      * 조직별 사용자 목록 조회
+     * 
+     * @param organizationId 조직 ID
+     * @return 조직에 속한 사용자 목록
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public List<UserResponse> getOrganizationUsers(Long organizationId) {
         log.info("[OrganizationService] getOrganizationUsers - organizationId={}", organizationId);
         
         // 조직 존재 확인
-        Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
         
         // 조직의 사용자 목록 조회
         List<User> users = userRepository.findByOrganizationId(organizationId);
-        
-        return users.stream()
+        List<UserResponse> result = users.stream()
             .map(this::convertToUserResponse)
             .collect(Collectors.toList());
+        
+        log.info("[OrganizationService] getOrganizationUsers - success organizationId={}, count={}", 
+                organizationId, result.size());
+        return result;
     }
     
     /**
      * 사용자를 조직에 추가
+     * 
+     * @param organizationId 조직 ID
+     * @param request 사용자 추가 요청 정보
+     * @return 추가된 사용자 정보
+     * @throws BusinessException 조직 또는 사용자를 찾을 수 없거나 이미 해당 조직에 속한 사용자인 경우
      */
+    @Transactional
     public UserResponse addUserToOrganization(Long organizationId, AddUserToOrganizationRequest request) {
         log.info("[OrganizationService] addUserToOrganization - organizationId={}, userId={}", 
                 organizationId, request.getUserId());
         
         // 조직 존재 확인
         Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
         
         // 사용자 존재 확인
         User user = userRepository.findById(request.getUserId())
-            .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 사용자입니다: " + request.getUserId()));
         
         // 이미 조직에 속한 사용자인지 확인
         if (user.getOrganization() != null && user.getOrganization().getId().equals(organizationId)) {
@@ -467,7 +548,7 @@ public class OrganizationService {
         user.setOrganization(organization);
         User savedUser = userRepository.save(user);
         
-        log.info("[OrganizationService] addUserToOrganization - 사용자가 조직에 추가됨: userId={}, organizationId={}", 
+        log.info("[OrganizationService] addUserToOrganization - success userId={}, organizationId={}", 
                 savedUser.getId(), organizationId);
         
         return convertToUserResponse(savedUser);
@@ -475,29 +556,34 @@ public class OrganizationService {
     
     /**
      * 사용자를 조직에서 제거
+     * 
+     * @param organizationId 조직 ID
+     * @param userId 사용자 ID
+     * @throws BusinessException 조직 또는 사용자를 찾을 수 없거나 사용자가 해당 조직에 속하지 않는 경우
      */
+    @Transactional
     public void removeUserFromOrganization(Long organizationId, Long userId) {
         log.info("[OrganizationService] removeUserFromOrganization - organizationId={}, userId={}", 
                 organizationId, userId);
         
         // 조직 존재 확인
-        Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
         
         // 사용자 존재 확인
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 사용자입니다: " + userId));
         
         // 사용자가 해당 조직에 속하는지 확인
         if (user.getOrganization() == null || !user.getOrganization().getId().equals(organizationId)) {
-            throw new ResourceNotFoundException("User", "organization", organizationId);
+            throw new BusinessException(CommonErrorCode.NOT_FOUND, "사용자가 해당 조직에 속하지 않습니다: userId=" + userId + ", organizationId=" + organizationId);
         }
         
         // 사용자를 조직에서 제거
         user.setOrganization(null);
         userRepository.save(user);
         
-        log.info("[OrganizationService] removeUserFromOrganization - 사용자가 조직에서 제거됨: userId={}, organizationId={}", 
+        log.info("[OrganizationService] removeUserFromOrganization - success userId={}, organizationId={}", 
                 userId, organizationId);
     }
     
@@ -525,61 +611,87 @@ public class OrganizationService {
 
     /**
      * 조직별 테넌트 목록 조회
+     * 
+     * @param organizationId 조직 ID
+     * @return 조직에 속한 테넌트 목록
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public List<Tenant> getOrganizationTenants(Long organizationId) {
         log.info("[OrganizationService] getOrganizationTenants - organizationId={}", organizationId);
 
         // 조직 존재 확인
-        Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
         // 조직의 테넌트 목록 조회
         List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
 
+        log.info("[OrganizationService] getOrganizationTenants - success organizationId={}, count={}", 
+                organizationId, tenants.size());
         return tenants;
     }
 
     /**
      * 조직별 테넌트 수 조회
+     * 
+     * @param organizationId 조직 ID
+     * @return 조직에 속한 테넌트 수
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public long getOrganizationTenantCount(Long organizationId) {
         log.info("[OrganizationService] getOrganizationTenantCount - organizationId={}", organizationId);
 
         // 조직 존재 확인
-        Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
         // 조직의 테넌트 수 조회
         List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
-        return tenants.size();
+        long count = tenants.size();
+        
+        log.info("[OrganizationService] getOrganizationTenantCount - success organizationId={}, count={}", 
+                organizationId, count);
+        return count;
     }
 
     /**
      * 조직별 활성 테넌트 수 조회
+     * 
+     * @param organizationId 조직 ID
+     * @return 조직에 속한 활성 테넌트 수
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public long getActiveTenantCount(Long organizationId) {
         log.info("[OrganizationService] getActiveTenantCount - organizationId={}", organizationId);
 
         // 조직 존재 확인
-        Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
         // 조직의 활성 테넌트 수 조회
         List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
-        return tenants.stream()
+        long count = tenants.stream()
             .filter(tenant -> tenant.getStatus() == Status.ACTIVE)
             .count();
+        
+        log.info("[OrganizationService] getActiveTenantCount - success organizationId={}, count={}", 
+                organizationId, count);
+        return count;
     }
 
     /**
      * 조직별 테넌트 통계 조회
+     * 
+     * @param organizationId 조직 ID
+     * @return 조직의 테넌트 통계 정보
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
     public Map<String, Object> getOrganizationTenantStats(Long organizationId) {
         log.info("[OrganizationService] getOrganizationTenantStats - organizationId={}", organizationId);
 
         // 조직 존재 확인
         Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
         // 조직의 테넌트 목록 조회
         List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
@@ -603,6 +715,8 @@ public class OrganizationService {
         stats.put("organizationId", organizationId);
         stats.put("organizationName", organization.getOrgName());
 
+        log.info("[OrganizationService] getOrganizationTenantStats - success organizationId={}, totalTenants={}, activeTenants={}", 
+                organizationId, totalTenants, activeTenants);
         return stats;
     }
 }

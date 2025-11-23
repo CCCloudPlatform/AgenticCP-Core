@@ -2,6 +2,10 @@ package com.agenticcp.core.domain.monitoring.enums;
 
 /**
  * 알림 타입 열거형
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 public enum AlertType {
     THRESHOLD("임계값"),

@@ -8,13 +8,13 @@ import java.util.stream.Collectors;
 
 /**
  * SecurityPolicy Entity <-> DTO 변환 유틸리티
- * 
+ *
  * <p>SecurityPolicy 엔티티와 SecurityPolicyDTO 간의 변환을 담당합니다.</p>
  * <p>Lazy Loading 문제 해결을 위해 tenant는 tenantId만 포함합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 public class SecurityPolicyMapper {
     

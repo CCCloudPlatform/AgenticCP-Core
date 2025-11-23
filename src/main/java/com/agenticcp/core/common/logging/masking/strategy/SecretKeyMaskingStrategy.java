@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 시크릿 키 마스킹 전략
- * 
- * 시크릿 키는 앞 4자리와 뒤 4자리만 표시하고 중간은 마스킹 처리합니다.
- * 예: abc123def456ghi789jkl -> abc1-****-****-****-89jkl
+ * 시크릿 키 마스킹 전략입니다. 앞/뒤 일부만 노출합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component

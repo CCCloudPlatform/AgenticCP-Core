@@ -13,11 +13,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * RetryMetricsTracker 단위 테스트
  * 
+ * <p>재시도 메트릭 추적 서비스의 핵심 비즈니스 로직을 검증합니다.
+ * 
  * <p>Issue #39: Task 8 - 재시도 로직 및 오류 처리 구현
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @DisplayName("RetryMetricsTracker 단위 테스트")
 class RetryMetricsTrackerTest {
@@ -37,7 +39,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("재시도 시도를 기록하면 카운터가 증가한다")
-        void recordRetryAttempt_ShouldIncrementCounter() {
+        void recordRetryAttempt_WhenCalled_IncrementsCounter() {
             // When
             retryMetricsTracker.recordRetryAttempt();
             retryMetricsTracker.recordRetryAttempt();
@@ -56,7 +58,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("재시도 성공을 기록하면 성공 카운터가 증가한다")
-        void recordRetrySuccess_ShouldIncrementSuccessCounter() {
+        void recordRetrySuccess_WhenCalled_IncrementsSuccessCounter() {
             // When
             retryMetricsTracker.recordRetrySuccess();
             retryMetricsTracker.recordRetrySuccess();
@@ -74,7 +76,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("재시도 실패를 기록하면 실패 카운터가 증가한다")
-        void recordRetryFailure_ShouldIncrementFailureCounter() {
+        void recordRetryFailure_WhenCalled_IncrementsFailureCounter() {
             // When
             retryMetricsTracker.recordRetryFailure();
             
@@ -91,7 +93,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("재시도 통계를 정확하게 조회한다")
-        void getRetryStats_ShouldReturnCorrectStats() {
+        void getRetryStats_WhenCalled_ReturnsCorrectStats() {
             // Given
             retryMetricsTracker.recordRetryAttempt();
             retryMetricsTracker.recordRetryAttempt();
@@ -111,7 +113,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("성공률을 정확하게 계산한다")
-        void getRetryStats_ShouldCalculateSuccessRateCorrectly() {
+        void getRetryStats_WhenCalled_CalculatesSuccessRateCorrectly() {
             // Given
             retryMetricsTracker.recordRetryAttempt();
             retryMetricsTracker.recordRetryAttempt();
@@ -130,7 +132,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("실패율을 정확하게 계산한다")
-        void getRetryStats_ShouldCalculateFailureRateCorrectly() {
+        void getRetryStats_WhenCalled_CalculatesFailureRateCorrectly() {
             // Given
             retryMetricsTracker.recordRetryAttempt();
             retryMetricsTracker.recordRetryAttempt();
@@ -147,7 +149,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("시도 횟수가 0일 때 성공률은 0%이다")
-        void getRetryStats_WhenNoAttempts_ShouldReturnZeroSuccessRate() {
+        void getRetryStats_WhenNoAttempts_ReturnsZeroSuccessRate() {
             // When
             RetryMetricsTracker.RetryStats stats = retryMetricsTracker.getRetryStats();
             
@@ -164,7 +166,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("재시도 시도 메트릭이 올바른 태그와 함께 등록된다")
-        void metricsRegistration_ShouldHaveCorrectTags() {
+        void metricsRegistration_WhenCalled_HasCorrectTags() {
             // When
             retryMetricsTracker.recordRetryAttempt();
             
@@ -177,7 +179,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("재시도 성공 메트릭이 올바른 태그와 함께 등록된다")
-        void successMetricRegistration_ShouldHaveCorrectTags() {
+        void successMetricRegistration_WhenCalled_HasCorrectTags() {
             // When
             retryMetricsTracker.recordRetrySuccess();
             
@@ -190,7 +192,7 @@ class RetryMetricsTrackerTest {
         
         @Test
         @DisplayName("재시도 실패 메트릭이 올바른 태그와 함께 등록된다")
-        void failureMetricRegistration_ShouldHaveCorrectTags() {
+        void failureMetricRegistration_WhenCalled_HasCorrectTags() {
             // When
             retryMetricsTracker.recordRetryFailure();
             

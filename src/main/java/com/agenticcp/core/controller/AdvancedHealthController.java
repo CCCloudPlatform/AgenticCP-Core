@@ -1,12 +1,12 @@
 package com.agenticcp.core.controller;
 
 import com.agenticcp.core.common.dto.exception.ApiResponse;
-import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
 import com.agenticcp.core.domain.monitoring.health.dto.*;
 import com.agenticcp.core.domain.monitoring.health.service.AdvancedHealthCheckService;
 import com.agenticcp.core.domain.platform.service.MaintenanceModeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,10 +23,10 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-09
+ * @since 2025-11-13
  */
 @RestController
-@RequestMapping("/api/health")
+@RequestMapping("/api/v1/health")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Advanced Health", description = "고급 헬스체크 API")
@@ -44,20 +44,18 @@ public class AdvancedHealthController {
      * @return 전체 헬스체크 결과
      */
     @Operation(summary = "전체 헬스체크", description = "모든 컴포넌트의 상태를 종합하여 반환합니다")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @GetMapping("/advanced")
     public ResponseEntity<ApiResponse<HealthStatusResponse>> getOverallHealth() {
-        log.info("Advanced health check requested");
+        log.info("[AdvancedHealthController] getOverallHealth - requested");
         
-        try {
-            HealthStatusResponse response = advancedHealthCheckService.getOverallHealth();
-            log.info("Advanced health check completed with status: {}", response.getOverallStatus());
-            
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (Exception e) {
-            log.error("Error performing advanced health check", e);
-            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
-                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
-        }
+        HealthStatusResponse response = advancedHealthCheckService.getOverallHealth();
+        log.info("[AdvancedHealthController] getOverallHealth - completed with status: {}", response.getOverallStatus());
+        
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
     
     /**
@@ -69,23 +67,21 @@ public class AdvancedHealthController {
      * @return 컴포넌트 헬스체크 결과
      */
     @Operation(summary = "컴포넌트 헬스체크", description = "지정한 컴포넌트의 상태를 확인합니다")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @GetMapping("/component/{name}")
     public ResponseEntity<ApiResponse<ComponentHealthStatus>> getComponentHealth(
             @Parameter(description = "컴포넌트 이름", required = true)
             @PathVariable String name) {
-        log.info("Component health check requested for: {}", name);
+        log.info("[AdvancedHealthController] getComponentHealth - requested for: {}", name);
         
-        try {
-            ComponentHealthStatus response = advancedHealthCheckService.getComponentHealth(name);
-            log.info("Component health check completed for {} with status: {}", 
-                    name, response.getStatus());
-            
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (Exception e) {
-            log.error("Error performing component health check for: {}", name, e);
-            return ResponseEntity.status(MonitoringErrorCode.COMPONENT_HEALTH_CHECK_FAILED.getHttpStatus())
-                    .body(ApiResponse.error(MonitoringErrorCode.COMPONENT_HEALTH_CHECK_FAILED, e.getMessage()));
-        }
+        ComponentHealthStatus response = advancedHealthCheckService.getComponentHealth(name);
+        log.info("[AdvancedHealthController] getComponentHealth - completed for {} with status: {}", 
+                name, response.getStatus());
+        
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
     
     /**
@@ -96,20 +92,18 @@ public class AdvancedHealthController {
      * @return 헬스체크 요약 정보
      */
     @Operation(summary = "헬스체크 요약", description = "전체 서비스 상태에 대한 요약 통계를 제공합니다")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<HealthCheckSummary>> getHealthSummary() {
-        log.info("Health check summary requested");
+        log.info("[AdvancedHealthController] getHealthSummary - requested");
         
-        try {
-            HealthCheckSummary summary = advancedHealthCheckService.getHealthSummary();
-            log.info("Health check summary generated: {} total services", summary.getTotalServices());
-            
-            return ResponseEntity.ok(ApiResponse.success(summary));
-        } catch (Exception e) {
-            log.error("Error generating health check summary", e);
-            return ResponseEntity.status(MonitoringErrorCode.HEALTH_SUMMARY_FAILED.getHttpStatus())
-                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_SUMMARY_FAILED, e.getMessage()));
-        }
+        HealthCheckSummary summary = advancedHealthCheckService.getHealthSummary();
+        log.info("[AdvancedHealthController] getHealthSummary - generated: {} total services", summary.getTotalServices());
+        
+        return ResponseEntity.ok(ApiResponse.success(summary));
     }
     
     /**
@@ -120,23 +114,21 @@ public class AdvancedHealthController {
      * @return 컴포넌트 목록
      */
     @Operation(summary = "헬스체크 가능 컴포넌트 목록", description = "헬스체크 대상 컴포넌트 리스트를 반환합니다")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @GetMapping("/components")
     public ResponseEntity<ApiResponse<Map<String, String>>> getAvailableComponents() {
-        log.info("Available components requested");
+        log.info("[AdvancedHealthController] getAvailableComponents - requested");
         
-        try {
-            Map<String, String> components = Map.of(
-                "database", "Database connection health check",
-                "system", "System resource health check", 
-                "application", "Application memory and thread health check"
-            );
-            
-            return ResponseEntity.ok(ApiResponse.success(components));
-        } catch (Exception e) {
-            log.error("Error getting available components", e);
-            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
-                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
-        }
+        Map<String, String> components = Map.of(
+            "database", "Database connection health check",
+            "system", "System resource health check", 
+            "application", "Application memory and thread health check"
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(components));
     }
     
     /**
@@ -147,25 +139,23 @@ public class AdvancedHealthController {
      * @return 유지보수 모드 상태
      */
     @Operation(summary = "유지보수 모드 상태 조회", description = "현재 유지보수 모드 활성화 여부를 반환합니다")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @GetMapping("/maintenance-mode")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMaintenanceModeStatus() {
-        log.info("Maintenance mode status requested");
+        log.info("[AdvancedHealthController] getMaintenanceModeStatus - requested");
         
-        try {
-            boolean isEnabled = maintenanceModeService.isMaintenanceModeEnabled();
-            
-            Map<String, Object> status = Map.of(
-                "enabled", isEnabled,
-                "status", isEnabled ? "WARNING" : "HEALTHY",
-                "timestamp", System.currentTimeMillis()
-            );
-            
-            return ResponseEntity.ok(ApiResponse.success(status));
-        } catch (Exception e) {
-            log.error("Error getting maintenance mode status", e);
-            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
-                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
-        }
+        boolean isEnabled = maintenanceModeService.isMaintenanceModeEnabled();
+        
+        Map<String, Object> status = Map.of(
+            "enabled", isEnabled,
+            "status", isEnabled ? "WARNING" : "HEALTHY",
+            "timestamp", System.currentTimeMillis()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(status));
     }
     
     /**
@@ -177,27 +167,25 @@ public class AdvancedHealthController {
      * @return 활성화 결과
      */
     @Operation(summary = "유지보수 모드 활성화", description = "유지보수 모드를 활성화합니다")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "활성화 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @PostMapping("/maintenance-mode/enable")
     public ResponseEntity<ApiResponse<Map<String, Object>>> enableMaintenanceMode(
             @Parameter(description = "유지보수 모드 활성화 사유")
             @RequestParam(defaultValue = "Manual activation") String reason) {
-        log.info("Maintenance mode enable requested - reason: {}", reason);
+        log.info("[AdvancedHealthController] enableMaintenanceMode - requested - reason: {}", reason);
         
-        try {
-            maintenanceModeService.enable(reason);
-            
-            Map<String, Object> result = Map.of(
-                "enabled", true,
-                "reason", reason,
-                "timestamp", System.currentTimeMillis()
-            );
-            
-            return ResponseEntity.ok(ApiResponse.success(result));
-        } catch (Exception e) {
-            log.error("Error enabling maintenance mode", e);
-            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
-                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
-        }
+        maintenanceModeService.enable(reason);
+        
+        Map<String, Object> result = Map.of(
+            "enabled", true,
+            "reason", reason,
+            "timestamp", System.currentTimeMillis()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
     
     /**
@@ -208,24 +196,22 @@ public class AdvancedHealthController {
      * @return 비활성화 결과
      */
     @Operation(summary = "유지보수 모드 비활성화", description = "유지보수 모드를 비활성화합니다")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "비활성화 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @PostMapping("/maintenance-mode/disable")
     public ResponseEntity<ApiResponse<Map<String, Object>>> disableMaintenanceMode() {
-        log.info("Maintenance mode disable requested");
+        log.info("[AdvancedHealthController] disableMaintenanceMode - requested");
         
-        try {
-            maintenanceModeService.disable();
-            
-            Map<String, Object> result = Map.of(
-                "enabled", false,
-                "reason", "Maintenance completed",
-                "timestamp", System.currentTimeMillis()
-            );
-            
-            return ResponseEntity.ok(ApiResponse.success(result));
-        } catch (Exception e) {
-            log.error("Error disabling maintenance mode", e);
-            return ResponseEntity.status(MonitoringErrorCode.HEALTH_CHECK_FAILED.getHttpStatus())
-                    .body(ApiResponse.error(MonitoringErrorCode.HEALTH_CHECK_FAILED, e.getMessage()));
-        }
+        maintenanceModeService.disable();
+        
+        Map<String, Object> result = Map.of(
+            "enabled", false,
+            "reason", "Maintenance completed",
+            "timestamp", System.currentTimeMillis()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

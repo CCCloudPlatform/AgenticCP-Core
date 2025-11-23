@@ -1,5 +1,13 @@
 package com.agenticcp.core.common.logging;
 
+/**
+ * 로깅 MDC에서 사용하는 키 및 관련 헤더 상수 정의입니다.
+ * 인스턴스화를 방지하기 위한 유틸리티 클래스입니다.
+ * 
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ * @version 1.0.0
+ */
 public final class MdcKeys {
     
     // 공통 키

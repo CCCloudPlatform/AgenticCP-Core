@@ -6,6 +6,7 @@ import com.agenticcp.core.domain.monitoring.enums.QuotaExceededAction;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -23,7 +24,7 @@ import java.util.List;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Entity
 @Table(name = "tenant_collector_configs", indexes = {
@@ -32,7 +33,9 @@ import java.util.List;
     @Index(name = "idx_tenant_collector_enabled", columnList = "is_enabled")
 })
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false, exclude = {"id", "createdAt", "updatedAt", "metadataList"})
 @ToString(callSuper = true)
 public class TenantCollectorConfig extends BaseEntity {
@@ -58,6 +61,7 @@ public class TenantCollectorConfig extends BaseEntity {
      */
     @NotNull(message = "활성화 여부는 필수입니다")
     @Column(name = "is_enabled", nullable = false)
+    @Builder.Default
     private Boolean isEnabled = true;
 
     /**
@@ -66,6 +70,7 @@ public class TenantCollectorConfig extends BaseEntity {
     @Min(value = 1000, message = "수집 주기는 최소 1초(1000ms) 이상이어야 합니다")
     @Max(value = 60000, message = "메트릭 수집 주기는 1분(60000ms) 이하여야 합니다")
     @Column(name = "collection_interval")
+    @Builder.Default
     private Long collectionInterval = 60000L; // 기본 1분
 
     /**
@@ -74,6 +79,7 @@ public class TenantCollectorConfig extends BaseEntity {
     @Min(value = 0, message = "재시도 횟수는 0 이상이어야 합니다")
     @Max(value = 10, message = "재시도 횟수는 10 이하여야 합니다")
     @Column(name = "retry_count")
+    @Builder.Default
     private Integer retryCount = 3;
 
     /**
@@ -82,6 +88,7 @@ public class TenantCollectorConfig extends BaseEntity {
     @Min(value = 1000, message = "타임아웃은 최소 1초(1000ms) 이상이어야 합니다")
     @Max(value = 300000, message = "타임아웃은 최대 5분(300000ms) 이하여야 합니다")
     @Column(name = "timeout")
+    @Builder.Default
     private Long timeout = 30000L; // 기본 30초
 
     /**
@@ -104,12 +111,14 @@ public class TenantCollectorConfig extends BaseEntity {
     @Min(value = 1, message = "우선순위는 1 이상이어야 합니다")
     @Max(value = 1000, message = "우선순위는 1000 이하여야 합니다")
     @Column(name = "priority")
+    @Builder.Default
     private Integer priority = 100;
 
     /**
      * 수집기 설정 메타데이터 목록
      */
     @OneToMany(mappedBy = "tenantCollectorConfig", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<TenantCollectorMetadata> metadataList = new ArrayList<>();
 
     // ===== 할당량 관련 필드들 =====
@@ -135,6 +144,7 @@ public class TenantCollectorConfig extends BaseEntity {
      */
     @Min(value = 0, message = "현재 일일 사용량은 0 이상이어야 합니다")
     @Column(name = "current_daily_usage")
+    @Builder.Default
     private Long currentDailyUsage = 0L;
     
     /**
@@ -142,6 +152,7 @@ public class TenantCollectorConfig extends BaseEntity {
      */
     @Min(value = 0, message = "현재 저장 공간 사용량은 0 이상이어야 합니다")
     @Column(name = "current_storage_usage_mb")
+    @Builder.Default
     private Long currentStorageUsageMb = 0L;
     
     /**
@@ -149,6 +160,7 @@ public class TenantCollectorConfig extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "quota_exceeded_action")
+    @Builder.Default
     private QuotaExceededAction quotaExceededAction = QuotaExceededAction.WARN_ONLY;
     
     /**
@@ -156,21 +168,6 @@ public class TenantCollectorConfig extends BaseEntity {
      */
     @Column(name = "last_reset_at")
     private LocalDateTime lastResetAt;
-
-    @Builder
-    public TenantCollectorConfig(String tenantId, CollectorType collectorType, Boolean isEnabled,
-                                Long collectionInterval, Integer retryCount, Long timeout,
-                                String targetMetrics, String collectorSettings, Integer priority) {
-        this.tenantId = tenantId;
-        this.collectorType = collectorType;
-        this.isEnabled = isEnabled;
-        this.collectionInterval = collectionInterval;
-        this.retryCount = retryCount;
-        this.timeout = timeout;
-        this.targetMetrics = targetMetrics;
-        this.collectorSettings = collectorSettings;
-        this.priority = priority;
-    }
 
     /**
      * 수집기 활성화/비활성화

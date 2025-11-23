@@ -11,6 +11,7 @@ import org.springframework.context.ApplicationEvent;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-13
  */
 @Getter
 public class HealthStatusChangedEvent extends ApplicationEvent {

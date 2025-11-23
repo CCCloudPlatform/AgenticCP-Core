@@ -41,6 +41,21 @@ public class FeatureFlagService {
     private final Optional<FeatureFlagSyncService> syncService;
 
     /**
+     * 감사 로깅 서비스
+     */
+    private final FeatureFlagAuditService auditService;
+
+    /**
+     * 정책 검증기
+     */
+    private final FeatureFlagPolicyValidator policyValidator;
+
+    /**
+     * 승인 서비스
+     */
+    private final FeatureFlagApprovalService approvalService;
+
+    /**
      * 생성자 주입
      * <p>
      * FeatureFlagSyncService는 Optional로 주입받습니다.
@@ -53,7 +68,13 @@ public class FeatureFlagService {
     public FeatureFlagService(
             FeatureFlagRepository featureFlagRepository,
             Optional<FeatureFlagSyncService> syncService) {
+            FeatureFlagAuditService auditService,
+            FeatureFlagPolicyValidator policyValidator,
+            FeatureFlagApprovalService approvalService) {
         this.featureFlagRepository = featureFlagRepository;
+        this.auditService = auditService;
+        this.policyValidator = policyValidator;
+        this.approvalService = approvalService;
         this.syncService = syncService;
     }
 
@@ -143,11 +164,14 @@ public class FeatureFlagService {
      * @return 저장된 기능 플래그
      */
     @Transactional
-    public FeatureFlag createFlag(FeatureFlag featureFlag) {
-        log.info("[FeatureFlagService] createFlag - flagKey={} name={}", 
-                LogMaskingUtils.mask(featureFlag.getFlagKey(), 2, 2), featureFlag.getFlagName());
+    public FeatureFlag createFlag(FeatureFlag featureFlag, String userId) {
+        log.info("[FeatureFlagService] createFlag - flagKey={} name={} userId={}", 
+                LogMaskingUtils.mask(featureFlag.getFlagKey(), 2, 2), featureFlag.getFlagName(), userId);
         
         FeatureFlag saved = featureFlagRepository.save(featureFlag);
+        
+        // 감사 로깅
+        auditService.logFlagChange(null, saved, "CREATE", userId);
         
         // Redis 활성화 시 이벤트 발행
         publishCreatedEvent(saved.getFlagKey());
@@ -155,6 +179,14 @@ public class FeatureFlagService {
         log.info("[FeatureFlagService] createFlag - success flagKey={}", 
                 LogMaskingUtils.mask(saved.getFlagKey(), 2, 2));
         return saved;
+    }
+
+    /**
+     * 플래그 생성 (사용자 ID 없이 - 하위 호환성)
+     */
+    @Transactional
+    public FeatureFlag createFlag(FeatureFlag featureFlag) {
+        return createFlag(featureFlag, "system");
     }
 
     /**
@@ -166,10 +198,27 @@ public class FeatureFlagService {
      * @throws ResourceNotFoundException 기능 플래그를 찾을 수 없는 경우
      */
     @Transactional
-    public FeatureFlag updateFlag(String flagKey, FeatureFlag updatedFlag) {
-        log.info("[FeatureFlagService] updateFlag - flagKey={}", LogMaskingUtils.mask(flagKey, 2, 2));
+    public FeatureFlag updateFlag(String flagKey, FeatureFlag updatedFlag, String userId) {
+        log.info("[FeatureFlagService] updateFlag - flagKey={} userId={}", 
+                LogMaskingUtils.mask(flagKey, 2, 2), userId);
+        
         FeatureFlag existingFlag = getFlagByKeyOrThrow(flagKey);
         
+        // 변경 전 상태 저장 (감사 로깅용)
+        FeatureFlag oldFlag = createSnapshot(existingFlag);
+        
+        // 승인 상태 확인
+        boolean hasApproval = approvalService.hasApproval(existingFlag);
+        
+        // 업데이트할 플래그의 심각도 설정 (updatedFlag에 severity가 있으면 사용, 없으면 기존 값 유지)
+        if (updatedFlag.getSeverity() != null) {
+            existingFlag.setSeverity(updatedFlag.getSeverity());
+        }
+        
+        // 정책 검증 (승인이 필요한데 승인이 없으면 예외 발생)
+        policyValidator.validateFlagChange(existingFlag, hasApproval);
+        
+        // 플래그 업데이트
         existingFlag.setFlagName(updatedFlag.getFlagName());
         existingFlag.setDescription(updatedFlag.getDescription());
         existingFlag.setIsEnabled(updatedFlag.getIsEnabled());
@@ -183,6 +232,9 @@ public class FeatureFlagService {
         
         FeatureFlag saved = featureFlagRepository.save(existingFlag);
         
+        // 감사 로깅
+        auditService.logFlagChange(oldFlag, saved, "UPDATE", userId);
+        
         // Redis 활성화 시 이벤트 발행
         publishUpdatedEvent(flagKey);
         
@@ -191,21 +243,35 @@ public class FeatureFlagService {
     }
 
     /**
-     * 기능 플래그의 활성화 상태를 토글합니다.
-     *
-     * @param flagKey 토글할 기능 플래그 키
-     * @param enabled 활성화 여부
-     * @return 토글된 기능 플래그
-     * @throws ResourceNotFoundException 기능 플래그를 찾을 수 없는 경우
+     * 플래그 업데이트 (사용자 ID 없이 - 하위 호환성)
      */
     @Transactional
-    public FeatureFlag toggleFlag(String flagKey, boolean enabled) {
-        log.info("[FeatureFlagService] toggleFlag - flagKey={} enabled={}", 
-                LogMaskingUtils.mask(flagKey, 2, 2), enabled);
+    public FeatureFlag updateFlag(String flagKey, FeatureFlag updatedFlag) {
+        return updateFlag(flagKey, updatedFlag, "system");
+    }
+
+    @Transactional
+    public FeatureFlag toggleFlag(String flagKey, boolean enabled, String userId) {
+        log.info("[FeatureFlagService] toggleFlag - flagKey={} enabled={} userId={}", 
+                LogMaskingUtils.mask(flagKey, 2, 2), enabled, userId);
         
         FeatureFlag flag = getFlagByKeyOrThrow(flagKey);
+        
+        // 변경 전 상태 저장 (감사 로깅용)
+        FeatureFlag oldFlag = createSnapshot(flag);
+        
+        // 승인 상태 확인
+        boolean hasApproval = approvalService.hasApproval(flag);
+        
+        // 정책 검증 (승인이 필요한데 승인이 없으면 예외 발생)
+        policyValidator.validateFlagChange(flag, hasApproval);
+        
+        // 플래그 토글
         flag.setIsEnabled(enabled);
         FeatureFlag saved = featureFlagRepository.save(flag);
+        
+        // 감사 로깅
+        auditService.logFlagChange(oldFlag, saved, "TOGGLE", userId);
         
         // Redis 활성화 시 이벤트 발행
         publishToggledEvent(flagKey);
@@ -216,22 +282,48 @@ public class FeatureFlagService {
     }
 
     /**
-     * 기능 플래그를 삭제합니다 (소프트 삭제).
-     *
-     * @param flagKey 삭제할 기능 플래그 키
-     * @throws ResourceNotFoundException 기능 플래그를 찾을 수 없는 경우
+     * 플래그 토글 (사용자 ID 없이 - 하위 호환성)
      */
     @Transactional
-    public void deleteFlag(String flagKey) {
-        log.info("[FeatureFlagService] deleteFlag - flagKey={}", LogMaskingUtils.mask(flagKey, 2, 2));
+    public FeatureFlag toggleFlag(String flagKey, boolean enabled) {
+        return toggleFlag(flagKey, enabled, "system");
+    }
+
+    @Transactional
+    public void deleteFlag(String flagKey, String userId) {
+        log.info("[FeatureFlagService] deleteFlag - flagKey={} userId={}", 
+                LogMaskingUtils.mask(flagKey, 2, 2), userId);
+        
         FeatureFlag flag = getFlagByKeyOrThrow(flagKey);
+        
+        // 변경 전 상태 저장 (감사 로깅용)
+        FeatureFlag oldFlag = createSnapshot(flag);
+        
+        // 승인 상태 확인
+        boolean hasApproval = approvalService.hasApproval(flag);
+        
+        // 정책 검증 (승인이 필요한데 승인이 없으면 예외 발생)
+        policyValidator.validateFlagChange(flag, hasApproval);
+        
+        // 플래그 삭제 (Soft Delete)
         flag.setIsDeleted(true);
         featureFlagRepository.save(flag);
+        
+        // 감사 로깅
+        auditService.logFlagChange(oldFlag, null, "DELETE", userId);
         
         // Redis 활성화 시 이벤트 발행
         publishDeletedEvent(flagKey);
         
         log.info("[FeatureFlagService] deleteFlag - success flagKey={}", LogMaskingUtils.mask(flagKey, 2, 2));
+    }
+
+    /**
+     * 플래그 삭제 (사용자 ID 없이 - 하위 호환성)
+     */
+    @Transactional
+    public void deleteFlag(String flagKey) {
+        deleteFlag(flagKey, "system");
     }
 
     /**
@@ -312,5 +404,34 @@ public class FeatureFlagService {
                         flagKey, e.getMessage());
             }
         });
+    }
+
+    /**
+     * 플래그 스냅샷 생성 (감사 로깅용)
+     * 변경 전 상태를 저장하기 위해 새로운 객체를 생성합니다.
+     * 
+     * @param flag 원본 플래그
+     * @return 스냅샷 플래그
+     */
+    private FeatureFlag createSnapshot(FeatureFlag flag) {
+        if (flag == null) {
+            return null;
+        }
+        
+        return FeatureFlag.builder()
+                .flagKey(flag.getFlagKey())
+                .flagName(flag.getFlagName())
+                .description(flag.getDescription())
+                .isEnabled(flag.getIsEnabled())
+                .status(flag.getStatus())
+                .severity(flag.getSeverity())
+                .targetTenants(flag.getTargetTenants())
+                .targetUsers(flag.getTargetUsers())
+                .rolloutPercentage(flag.getRolloutPercentage())
+                .startDate(flag.getStartDate())
+                .endDate(flag.getEndDate())
+                .metadata(flag.getMetadata())
+                .cacheTtlSeconds(flag.getCacheTtlSeconds())
+                .build();
     }
 }

@@ -5,13 +5,15 @@ import com.agenticcp.core.domain.notification.dto.NotificationRequest;
 import com.agenticcp.core.domain.notification.dto.NotificationResponse;
 import com.agenticcp.core.domain.notification.enums.ChannelType;
 import com.agenticcp.core.domain.notification.enums.NotificationPriority;
+import com.agenticcp.core.domain.notification.enums.NotificationStatus;
 import com.agenticcp.core.domain.notification.enums.NotificationType;
 import com.agenticcp.core.domain.notification.entity.NotificationChannelEntity;
 import com.agenticcp.core.domain.notification.repository.NotificationChannelRepository;
 import com.agenticcp.core.domain.notification.repository.NotificationRepository;
-import com.agenticcp.core.domain.notification.service.NotificationChannelFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,17 +21,23 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * 알림 서비스 테스트
+ * NotificationService 단위 테스트
+ * 
+ * <p>알림 발송 및 채널 관리 로직을 테스트합니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("NotificationService 단위 테스트")
 class NotificationServiceTest {
 
     @Mock
@@ -85,88 +93,72 @@ class NotificationServiceTest {
         }
     }
 
-    /**
-     * 알림 발송 성공 테스트
-     * 
-     * Given: 유효한 알림 요청과 활성화된 이메일 채널
-     * When: 알림 발송 요청
-     * Then: 알림이 성공적으로 발송되고 SENT 상태로 반환됨
-     */
-    @Test
-    void sendNotification_Success() {
-        // Given
-        NotificationResponse mockResponse = NotificationResponse.builder()
-                .notificationId(testRequest.getNotificationId())
-                .status(com.agenticcp.core.domain.notification.enums.NotificationStatus.SENT)
-                .message("알림이 성공적으로 발송되었습니다.")
-                .success(true)
-                .build();
+    @Nested
+    @DisplayName("알림 발송 테스트")
+    class SendNotificationTest {
 
-        // Mock NotificationChannelEntity 설정
-        when(mockChannelEntity.getChannelType()).thenReturn(ChannelType.EMAIL);
-        
-        when(channelRepository.findById(any())).thenReturn(java.util.Optional.of(mockChannelEntity));
-        when(channelFactory.getChannel(any())).thenReturn(notificationChannel);
-        when(notificationChannel.send(any())).thenReturn(mockResponse);
+        @Test
+        @DisplayName("정상 발송 시 SENT 상태 반환")
+        void sendNotification_WhenValidRequest_ReturnsSentStatus() {
+            // Given
+            NotificationResponse mockResponse = NotificationResponse.builder()
+                    .notificationId(testRequest.getNotificationId())
+                    .status(NotificationStatus.SENT)
+                    .message("알림이 성공적으로 발송되었습니다.")
+                    .success(true)
+                    .build();
 
-        // When
-        NotificationResponse response = notificationService.sendNotification(testRequest);
+            when(mockChannelEntity.getChannelType()).thenReturn(ChannelType.EMAIL);
+            when(channelRepository.findById(any())).thenReturn(java.util.Optional.of(mockChannelEntity));
+            when(channelFactory.getChannel(any())).thenReturn(notificationChannel);
+            when(notificationChannel.send(any())).thenReturn(mockResponse);
 
-        // Then
-        assertNotNull(response);
-        assertTrue(response.isSuccess());
-        assertEquals(testRequest.getNotificationId(), response.getNotificationId());
-        
-               verify(notificationRepository, times(2)).save(any()); // 생성 + 상태 업데이트
-               verify(notificationChannel, times(1)).send(any());
-    }
+            // When
+            NotificationResponse response = notificationService.sendNotification(testRequest);
 
-    /**
-     * 채널을 찾을 수 없는 경우 테스트
-     * 
-     * Given: 존재하지 않는 채널 ID로 알림 요청
-     * When: 알림 발송 요청
-     * Then: FAILED 상태와 "채널을 찾을 수 없습니다" 에러 메시지 반환
-     */
-    @Test
-    void sendNotification_ChannelNotFound() {
-        // Given
-        when(channelRepository.findById(any())).thenReturn(java.util.Optional.empty());
+            // Then
+            assertThat(response).isNotNull();
+            assertThat(response.isSuccess()).isTrue();
+            assertThat(response.getNotificationId()).isEqualTo(testRequest.getNotificationId());
+            assertThat(response.getStatus()).isEqualTo(NotificationStatus.SENT);
+            
+            verify(notificationRepository, times(2)).save(any());
+            verify(notificationChannel, times(1)).send(any());
+        }
 
-        // When
-        NotificationResponse response = notificationService.sendNotification(testRequest);
+        @Test
+        @DisplayName("채널 없음 시 FAILED 상태 반환")
+        void sendNotification_WhenChannelNotFound_ReturnsFailedStatus() {
+            // Given
+            when(channelRepository.findById(any())).thenReturn(java.util.Optional.empty());
 
-        // Then
-        assertNotNull(response);
-        assertFalse(response.isSuccess());
-        assertEquals(com.agenticcp.core.domain.notification.enums.NotificationStatus.FAILED, response.getStatus());
-        assertTrue(response.getErrorMessage().contains("채널을 찾을 수 없습니다"));
-    }
+            // When
+            NotificationResponse response = notificationService.sendNotification(testRequest);
 
-    /**
-     * 채널 발송 실패 테스트
-     * 
-     * Given: 유효한 채널이지만 발송 중 예외 발생
-     * When: 알림 발송 요청
-     * Then: FAILED 상태와 채널 발송 실패 에러 메시지 반환
-     */
-    @Test
-    void sendNotification_ChannelSendFailure() {
-        // Given
-        // Mock NotificationChannelEntity 설정
-        when(mockChannelEntity.getChannelType()).thenReturn(ChannelType.EMAIL);
-        
-        when(channelRepository.findById(any())).thenReturn(java.util.Optional.of(mockChannelEntity));
-        when(channelFactory.getChannel(any())).thenReturn(notificationChannel);
-        when(notificationChannel.send(any())).thenThrow(new RuntimeException("채널 발송 실패"));
+            // Then
+            assertThat(response).isNotNull();
+            assertThat(response.isSuccess()).isFalse();
+            assertThat(response.getStatus()).isEqualTo(NotificationStatus.FAILED);
+            assertThat(response.getErrorMessage()).contains("채널을 찾을 수 없습니다");
+        }
 
-        // When
-        NotificationResponse response = notificationService.sendNotification(testRequest);
+        @Test
+        @DisplayName("채널 발송 실패 시 FAILED 상태 반환")
+        void sendNotification_WhenChannelSendFailure_ReturnsFailedStatus() {
+            // Given
+            when(mockChannelEntity.getChannelType()).thenReturn(ChannelType.EMAIL);
+            when(channelRepository.findById(any())).thenReturn(java.util.Optional.of(mockChannelEntity));
+            when(channelFactory.getChannel(any())).thenReturn(notificationChannel);
+            when(notificationChannel.send(any())).thenThrow(new RuntimeException("채널 발송 실패"));
 
-        // Then
-        assertNotNull(response);
-        assertFalse(response.isSuccess());
-        assertEquals(com.agenticcp.core.domain.notification.enums.NotificationStatus.FAILED, response.getStatus());
-        assertTrue(response.getErrorMessage().contains("채널 발송 실패"));
+            // When
+            NotificationResponse response = notificationService.sendNotification(testRequest);
+
+            // Then
+            assertThat(response).isNotNull();
+            assertThat(response.isSuccess()).isFalse();
+            assertThat(response.getStatus()).isEqualTo(NotificationStatus.FAILED);
+            assertThat(response.getErrorMessage()).contains("채널 발송 실패");
+        }
     }
 }

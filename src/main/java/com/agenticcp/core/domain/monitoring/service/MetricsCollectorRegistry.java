@@ -1,9 +1,11 @@
 package com.agenticcp.core.domain.monitoring.service;
 
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import jakarta.annotation.PostConstruct;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +40,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class MetricsCollectorRegistry {
     
     /**
@@ -47,22 +50,26 @@ public class MetricsCollectorRegistry {
     private final ConcurrentHashMap<String, MetricsCollector> collectors = new ConcurrentHashMap<>();
     
     /**
+     * Spring이 찾은 모든 MetricsCollector Bean 목록
+     * 생성자 주입으로 받아서 @PostConstruct에서 등록
+     */
+    private final List<MetricsCollector> collectorBeans;
+    
+    /**
      * Spring이 찾은 모든 MetricsCollector Bean을 자동 등록
      * 
      * <p>애플리케이션 시작 시 자동으로 호출되어 모든 수집기를 등록합니다.
-     * 
-     * @param collectorBeans Spring이 찾은 모든 MetricsCollector 구현체
      */
-    @Autowired
-    public void autoRegisterCollectors(List<MetricsCollector> collectorBeans) {
-        log.info("메트릭 수집기 자동 등록 시작: {}개 발견", collectorBeans.size());
+    @PostConstruct
+    public void autoRegisterCollectors() {
+        log.info("[MetricsCollectorRegistry] autoRegisterCollectors - 메트릭 수집기 자동 등록 시작: {}개 발견", collectorBeans.size());
         
         for (MetricsCollector collector : collectorBeans) {
             String name = generateCollectorName(collector);
             registerCollector(name, collector);
         }
         
-        log.info("메트릭 수집기 자동 등록 완료: 총 {}개, 활성화 {}개", 
+        log.info("[MetricsCollectorRegistry] autoRegisterCollectors - 메트릭 수집기 자동 등록 완료: 총 {}개, 활성화 {}개", 
                 collectors.size(), 
                 getEnabledCollectors().size());
     }
@@ -86,7 +93,7 @@ public class MetricsCollectorRegistry {
         }
         
         collectors.put(name, collector);
-        log.info("수집기 등록 완료: name={}, type={}, enabled={}", 
+        log.info("[MetricsCollectorRegistry] registerCollector - 수집기 등록 완료: name={}, type={}, enabled={}", 
                 name, collector.getCollectorType(), collector.isEnabled());
     }
     
@@ -102,11 +109,11 @@ public class MetricsCollectorRegistry {
         MetricsCollector removed = collectors.remove(name);
         
         if (removed != null) {
-            log.info("수집기 해제 완료: name={}, type={}", name, removed.getCollectorType());
+            log.info("[MetricsCollectorRegistry] unregisterCollector - 수집기 해제 완료: name={}, type={}", name, removed.getCollectorType());
             return true;
         }
         
-        log.warn("수집기를 찾을 수 없습니다: name={}", name);
+        log.warn("[MetricsCollectorRegistry] unregisterCollector - 수집기를 찾을 수 없습니다: name={}", name);
         return false;
     }
     
@@ -196,7 +203,7 @@ public class MetricsCollectorRegistry {
     public void clearAll() {
         int count = collectors.size();
         collectors.clear();
-        log.info("모든 수집기 초기화 완료: {}개 수집기 제거됨", count);
+        log.info("[MetricsCollectorRegistry] clearAll - 모든 수집기 초기화 완료: {}개 수집기 제거됨", count);
     }
     
     /**
@@ -215,7 +222,7 @@ public class MetricsCollectorRegistry {
      * 수집기 이름 자동 생성
      * 
      * <p>수집기 타입에 따라 고유한 이름을 생성합니다.
-     * 
+     *
      * @param collector 수집기 인스턴스
      * @return 생성된 수집기 이름
      */
@@ -250,6 +257,12 @@ public class MetricsCollectorRegistry {
     
     /**
      * 수집기 정보 DTO
+     *
+     * <p>수집기의 이름, 타입, 활성화 상태를 담는 정보 클래스입니다.
+     *
+     * @author AgenticCP Team
+     * @version 1.0.0
+     * @since 2025-11-13
      */
     public static class CollectorInfo {
         private final String name;

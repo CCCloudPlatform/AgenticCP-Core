@@ -359,21 +359,16 @@ class AuditLogControllerTest {
         }
 
         @Test
-        @DisplayName("잘못된 날짜 형식으로 요청 시 400 에러")
-        void getAuditLogSummary_InvalidDateFormat_Returns400() {
+        @DisplayName("잘못된 날짜 형식으로 요청 시 BusinessException 발생")
+        void getAuditLogSummary_InvalidDateFormat_ThrowsBusinessException() {
             // Given
             String invalidStartDate = "invalid-date";
             String endDate = "2024-01-31T23:59:59.999Z";
 
-            // When
-            ResponseEntity<ApiResponse<AuditLogSummaryResponse>> response = 
-                    auditLogController.getAuditLogSummary(invalidStartDate, endDate);
-
-            // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-            assertThat(response.getBody()).isNotNull();
-            assertThat(response.getBody().isSuccess()).isFalse();
-            assertThat(response.getBody().getMessage()).isEqualTo("잘못된 날짜 형식입니다. ISO 8601 형식을 사용해주세요.");
+            // When & Then
+            assertThatThrownBy(() -> auditLogController.getAuditLogSummary(invalidStartDate, endDate))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("startDate는 ISO 8601 형식이어야 합니다.");
         }
 
         @Test

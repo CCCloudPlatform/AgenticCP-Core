@@ -6,12 +6,12 @@ import org.springframework.http.HttpStatus;
 
 /**
  * 보안 도메인 에러 코드
- * 
+ *
  * <p>보안 정책, 정책 엔진, 위협 탐지 등 보안 관련 비즈니스 예외를 정의합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 public enum SecurityErrorCode implements BaseErrorCode {
     

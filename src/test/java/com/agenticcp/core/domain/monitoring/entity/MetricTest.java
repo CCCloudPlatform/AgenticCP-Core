@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -124,8 +123,8 @@ class MetricTest {
             assertThat(metric.getMetricName()).isEqualTo("test.metric");
             assertThat(metric.getMetricValue()).isEqualTo(100.0);
             assertThat(metric.getUnit()).isNull();
-            assertThat(metric.getSource()).isNull();
-            assertThat(metric.getStatus()).isNull();
+            assertThat(metric.getSource()).isEqualTo("system"); // @Builder.Default로 기본값 설정
+            assertThat(metric.getStatus()).isEqualTo(Metric.Status.ACTIVE); // @Builder.Default로 기본값 설정
         }
 
         @Test
@@ -284,7 +283,7 @@ class MetricTest {
             assertThat(toString).contains("metricName=test.metric");
             assertThat(toString).contains("metricValue=100.0");
             assertThat(toString).contains("unit=null");
-            assertThat(toString).contains("source=null");
+            assertThat(toString).contains("source=system"); // @Builder.Default로 기본값 설정
         }
     }
 

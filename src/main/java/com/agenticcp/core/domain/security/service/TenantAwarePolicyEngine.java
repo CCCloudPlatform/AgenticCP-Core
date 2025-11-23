@@ -1,15 +1,17 @@
 package com.agenticcp.core.domain.security.service;
 
-import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.domain.security.dto.PolicyViolationEvent;
+import com.agenticcp.core.domain.security.entity.PolicyViolation;
 import com.agenticcp.core.domain.security.entity.SecurityPolicy;
-import com.agenticcp.core.domain.security.enums.SecurityErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 테넌트 인식 정책 평가 엔진
@@ -26,6 +28,7 @@ import java.util.List;
 public class TenantAwarePolicyEngine {
     
     private final TenantPolicyService tenantPolicyService;
+    private final ApplicationEventPublisher eventPublisher;
     
     /**
      * 테넌트 컨텍스트 기반 정책 평가
@@ -73,6 +76,11 @@ public class TenantAwarePolicyEngine {
         
         // 3. 정책 평가 (우선순위 순으로)
         PolicyEvaluationResult result = evaluatePolicies(applicablePolicies, context);
+        
+        // 4. 위반 감지 시 이벤트 발행 (Feature 4 통합)
+        if (result.getDecision() == PolicyDecision.DENY) {
+            publishViolationEvent(tenantId, applicablePolicies, resourceType, action, context, result);
+        }
         
         log.info("[TenantAwarePolicyEngine] evaluateWithTenantContext - success decision={}, appliedCount={}", 
                 result.getDecision(), result.getAppliedPolicyCount());
@@ -271,6 +279,91 @@ public class TenantAwarePolicyEngine {
         }
         
         return PolicyDecision.DENY;
+    }
+    
+    /**
+     * 정책 위반 이벤트 발행 (Feature 4 통합)
+     */
+    private void publishViolationEvent(
+            Long tenantId,
+            List<SecurityPolicy> policies,
+            String resourceType,
+            String action,
+            java.util.Map<String, Object> context,
+            PolicyEvaluationResult result) {
+        
+        if (policies.isEmpty()) {
+            return;
+        }
+        
+        // 첫 번째 적용된 정책 정보 사용
+        SecurityPolicy violatedPolicy = policies.get(0);
+        
+        // 컨텍스트에서 사용자 정보 추출
+        Long userId = context.get("userId") != null ? 
+                Long.valueOf(context.get("userId").toString()) : null;
+        String username = context.get("username") != null ? 
+                context.get("username").toString() : null;
+        String ipAddress = context.get("ipAddress") != null ? 
+                context.get("ipAddress").toString() : null;
+        String userAgent = context.get("userAgent") != null ? 
+                context.get("userAgent").toString() : null;
+        
+        // 위반 타입 결정
+        PolicyViolation.ViolationType violationType = determineViolationType(action, resourceType);
+        
+        // 위반 이벤트 생성
+        PolicyViolationEvent event = PolicyViolationEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .tenantId(tenantId)
+                .policyId(violatedPolicy.getId())
+                .policyName(violatedPolicy.getPolicyName())
+                .userId(userId)
+                .username(username)
+                .ipAddress(ipAddress)
+                .userAgent(userAgent)
+                .violationType(violationType)
+                .severity(violatedPolicy.getSeverity())
+                .description(String.format("정책 위반: %s - %s", action, result.getReason()))
+                .detectedAt(LocalDateTime.now())
+                .resourceType(resourceType)
+                .resourceId(context.get("resourceId") != null ? 
+                        context.get("resourceId").toString() : null)
+                .actionAttempted(action)
+                .requiresAutoResponse(violatedPolicy.getSeverity() == SecurityPolicy.Severity.HIGH || 
+                                     violatedPolicy.getSeverity() == SecurityPolicy.Severity.CRITICAL)
+                .requiresNotification(true)
+                .build();
+        
+        // 이벤트 발행
+        log.warn("🚨 [정책 위반 감지] 이벤트 발행 - tenantId={}, policyId={}, violationType={}, severity={}", 
+                tenantId, violatedPolicy.getId(), violationType, violatedPolicy.getSeverity());
+        
+        eventPublisher.publishEvent(event);
+    }
+    
+    /**
+     * 액션과 리소스 타입으로 위반 타입 결정
+     */
+    private PolicyViolation.ViolationType determineViolationType(String action, String resourceType) {
+        if (action == null) {
+            return PolicyViolation.ViolationType.POLICY_RULE_VIOLATION;
+        }
+        
+        String actionLower = action.toLowerCase();
+        
+        // 액션 기반 위반 타입 매핑
+        if (actionLower.contains("login") || actionLower.contains("auth")) {
+            return PolicyViolation.ViolationType.AUTHENTICATION_FAILURE;
+        } else if (actionLower.contains("access") || actionLower.contains("read") || actionLower.contains("view")) {
+            return PolicyViolation.ViolationType.ACCESS_DENIED;
+        } else if (actionLower.contains("create") || actionLower.contains("update") || actionLower.contains("delete")) {
+            return PolicyViolation.ViolationType.AUTHORIZATION_FAILURE;
+        } else if (actionLower.contains("rate") || actionLower.contains("limit")) {
+            return PolicyViolation.ViolationType.RATE_LIMIT_EXCEEDED;
+        } else {
+            return PolicyViolation.ViolationType.POLICY_RULE_VIOLATION;
+        }
     }
     
     // ==================== 내부 클래스 ====================

@@ -1,8 +1,10 @@
 package com.agenticcp.core.domain.monitoring.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
@@ -14,10 +16,12 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Getter
 @Builder
+@NoArgsConstructor(force = true)
+@AllArgsConstructor
 @EqualsAndHashCode
 @ToString
 public class SystemMetrics {
@@ -74,6 +78,8 @@ public class SystemMetrics {
     
     @Getter
     @Builder
+    @NoArgsConstructor(force = true)
+    @AllArgsConstructor
     @EqualsAndHashCode
     @ToString
     public static class SystemInfo {

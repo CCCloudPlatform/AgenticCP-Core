@@ -54,20 +54,20 @@ public class PrometheusStorage implements MetricsStorage {
     @Override
     public void saveMetrics(List<Metric> metrics) {
         if (!enabled) {
-            log.warn("PrometheusStorage가 비활성화되어 메트릭 저장을 건너뜁니다.");
+            log.warn("[PrometheusStorage] saveMetrics - PrometheusStorage가 비활성화되어 메트릭 저장을 건너뜁니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_DISABLED, "Prometheus 저장소가 비활성화되어 있습니다.");
         }
         if (!connected) {
-            log.error("PrometheusStorage가 연결되지 않아 메트릭 저장을 실패했습니다.");
+            log.error("[PrometheusStorage] saveMetrics - PrometheusStorage가 연결되지 않아 메트릭 저장을 실패했습니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_CONNECTION_FAILED, "Prometheus 저장소에 연결되지 않았습니다.");
         }
 
-        log.info("Prometheus에 {}개의 메트릭 저장 시도. Pushgateway: {}", metrics.size(), config.getPushgateway());
+        log.info("[PrometheusStorage] saveMetrics - Prometheus에 {}개의 메트릭 저장 시도. Pushgateway: {}", metrics.size(), config.getPushgateway());
         // TODO: 실제 Prometheus Pushgateway를 사용한 저장 로직 구현
         for (Metric metric : metrics) {
-            log.debug("메트릭 저장: name={}, value={}", metric.getMetricName(), metric.getMetricValue());
+            log.debug("[PrometheusStorage] saveMetrics - 메트릭 저장: name={}, value={}", metric.getMetricName(), metric.getMetricValue());
         }
-        log.info("Prometheus에 메트릭 저장 완료 (가상)");
+        log.info("[PrometheusStorage] saveMetrics - Prometheus에 메트릭 저장 완료 (가상)");
     }
 
     /**
@@ -85,17 +85,17 @@ public class PrometheusStorage implements MetricsStorage {
     @Override
     public List<Metric> getMetrics(String metricName, LocalDateTime startTime, LocalDateTime endTime) {
         if (!enabled) {
-            log.warn("PrometheusStorage가 비활성화되어 메트릭 조회를 건너뜁니다.");
+            log.warn("[PrometheusStorage] getMetrics - PrometheusStorage가 비활성화되어 메트릭 조회를 건너뜁니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_DISABLED, "Prometheus 저장소가 비활성화되어 있습니다.");
         }
         if (!connected) {
-            log.error("PrometheusStorage가 연결되지 않아 메트릭 조회를 실패했습니다.");
+            log.error("[PrometheusStorage] getMetrics - PrometheusStorage가 연결되지 않아 메트릭 조회를 실패했습니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_CONNECTION_FAILED, "Prometheus 저장소에 연결되지 않았습니다.");
         }
 
-        log.info("Prometheus에서 메트릭 조회 시도. 이름: {}, 시작: {}, 종료: {}", metricName, startTime, endTime);
+        log.info("[PrometheusStorage] getMetrics - Prometheus에서 메트릭 조회 시도. 이름: {}, 시작: {}, 종료: {}", metricName, startTime, endTime);
         // TODO: 실제 Prometheus API를 사용한 조회 로직 구현
-        log.info("Prometheus에서 메트릭 조회 완료 (가상)");
+        log.info("[PrometheusStorage] getMetrics - Prometheus에서 메트릭 조회 완료 (가상)");
         return new ArrayList<>();
     }
 
@@ -124,10 +124,10 @@ public class PrometheusStorage implements MetricsStorage {
     @Override
     public void connect() {
         if (connected) {
-            log.info("PrometheusStorage가 이미 연결되어 있습니다.");
+            log.info("[PrometheusStorage] connect - PrometheusStorage가 이미 연결되어 있습니다.");
             return;
         }
-        log.info("PrometheusStorage 연결 시도. URL: {}, Pushgateway: {}", config.getUrl(), config.getPushgateway());
+        log.info("[PrometheusStorage] connect - PrometheusStorage 연결 시도. URL: {}, Pushgateway: {}", config.getUrl(), config.getPushgateway());
         try {
             // TODO: 실제 Prometheus 클라이언트 연결 로직 구현
             // 예: PrometheusClient client = PrometheusClient.builder()
@@ -135,10 +135,10 @@ public class PrometheusStorage implements MetricsStorage {
             //     .pushgateway(config.getPushgateway())
             //     .build();
             this.connected = true;
-            log.info("PrometheusStorage 연결 성공.");
+            log.info("[PrometheusStorage] connect - PrometheusStorage 연결 성공.");
         } catch (Exception e) {
             this.connected = false;
-            log.error("PrometheusStorage 연결 실패: {}", e.getMessage(), e);
+            log.error("[PrometheusStorage] connect - PrometheusStorage 연결 실패: {}", e.getMessage(), e);
             throw new BusinessException(MonitoringErrorCode.STORAGE_CONNECTION_FAILED, "Prometheus 연결에 실패했습니다: " + e.getMessage());
         }
     }
@@ -152,13 +152,13 @@ public class PrometheusStorage implements MetricsStorage {
     @Override
     public void disconnect() {
         if (!connected) {
-            log.info("PrometheusStorage가 이미 연결 해제되어 있습니다.");
+            log.info("[PrometheusStorage] disconnect - PrometheusStorage가 이미 연결 해제되어 있습니다.");
             return;
         }
-        log.info("PrometheusStorage 연결 해제 시도.");
+        log.info("[PrometheusStorage] disconnect - PrometheusStorage 연결 해제 시도.");
         // TODO: 실제 Prometheus 클라이언트 연결 해제 로직 구현
         this.connected = false;
-        log.info("PrometheusStorage 연결 해제 완료.");
+        log.info("[PrometheusStorage] disconnect - PrometheusStorage 연결 해제 완료.");
     }
 
     /**
@@ -188,7 +188,7 @@ public class PrometheusStorage implements MetricsStorage {
      */
     @Override
     public void setEnabled(boolean enabled) {
-        log.info("PrometheusStorage 활성화 상태 변경: {}", enabled);
+        log.info("[PrometheusStorage] setEnabled - PrometheusStorage 활성화 상태 변경: {}", enabled);
         this.enabled = enabled;
     }
 }

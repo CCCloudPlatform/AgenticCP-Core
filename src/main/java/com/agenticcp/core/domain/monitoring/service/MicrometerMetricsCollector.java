@@ -58,11 +58,11 @@ public class MicrometerMetricsCollector implements MetricsCollector {
      */
     @Override
     public SystemMetrics collectSystemMetrics() {
-        log.debug("Micrometer 시스템 메트릭 수집 시작");
+        log.debug("[MicrometerMetricsCollector] collectSystemMetrics - Micrometer 시스템 메트릭 수집 시작");
         
         try {
             if (!enabled) {
-                log.debug("Micrometer 메트릭 수집기가 비활성화됨");
+                log.debug("[MicrometerMetricsCollector] collectSystemMetrics - Micrometer 메트릭 수집기가 비활성화됨");
                 return null;
             }
 
@@ -104,13 +104,13 @@ public class MicrometerMetricsCollector implements MetricsCollector {
                     .systemInfo(systemInfo)
                     .build();
                     
-            log.debug("Micrometer 시스템 메트릭 수집 완료: memoryUsage={}%, memoryUsedMB={}", 
+            log.debug("[MicrometerMetricsCollector] collectSystemMetrics - Micrometer 시스템 메트릭 수집 완료: memoryUsage={}%, memoryUsedMB={}", 
                     memoryUsage, memoryUsedMB);
             
             return metrics;
             
         } catch (Exception e) {
-            log.error("Micrometer 시스템 메트릭 수집 실패", e);
+            log.error("[MicrometerMetricsCollector] collectSystemMetrics - Micrometer 시스템 메트릭 수집 실패", e);
             throw new BusinessException(MonitoringErrorCode.METRICS_COLLECTION_FAILED, 
                 "Micrometer 시스템 메트릭 수집 중 오류가 발생했습니다: " + e.getMessage());
         }
@@ -124,13 +124,13 @@ public class MicrometerMetricsCollector implements MetricsCollector {
      */
     @Override
     public List<Metric> collectApplicationMetrics() {
-        log.debug("Micrometer 애플리케이션 메트릭 수집 시작");
+        log.debug("[MicrometerMetricsCollector] collectApplicationMetrics - Micrometer 애플리케이션 메트릭 수집 시작");
         
         List<Metric> metrics = new ArrayList<>();
         
         try {
             if (!enabled) {
-                log.debug("Micrometer 메트릭 수집기가 비활성화됨");
+                log.debug("[MicrometerMetricsCollector] collectApplicationMetrics - Micrometer 메트릭 수집기가 비활성화됨");
                 return metrics;
             }
             
@@ -148,11 +148,11 @@ public class MicrometerMetricsCollector implements MetricsCollector {
             // 커스텀 메트릭 수집
             collectCustomMetrics(metrics, collectedAt);
             
-            log.debug("Micrometer 애플리케이션 메트릭 수집 완료: 총 {}개 메트릭", metrics.size());
+            log.debug("[MicrometerMetricsCollector] collectApplicationMetrics - Micrometer 애플리케이션 메트릭 수집 완료: 총 {}개 메트릭", metrics.size());
             return metrics;
             
         } catch (Exception e) {
-            log.error("Micrometer 애플리케이션 메트릭 수집 실패", e);
+            log.error("[MicrometerMetricsCollector] collectApplicationMetrics - Micrometer 애플리케이션 메트릭 수집 실패", e);
             throw new BusinessException(MonitoringErrorCode.METRICS_COLLECTION_FAILED, 
                 "Micrometer 애플리케이션 메트릭 수집 중 오류가 발생했습니다: " + e.getMessage());
         }
@@ -180,6 +180,9 @@ public class MicrometerMetricsCollector implements MetricsCollector {
 
     /**
      * JVM 메모리 메트릭 수집 (Micrometer 방식)
+     *
+     * @param metrics 메트릭을 추가할 리스트
+     * @param collectedAt 수집 시각
      */
     private void collectJvmMemoryMetrics(List<Metric> metrics, LocalDateTime collectedAt) {
         try {
@@ -242,16 +245,19 @@ public class MicrometerMetricsCollector implements MetricsCollector {
             metrics.add(createMetric("jvm.memory.nonheap.max", nonHeapMax / (1024.0 * 1024.0), "MB", collectedAt));
             metrics.add(createMetric("jvm.memory.nonheap.committed", nonHeapCommitted / (1024.0 * 1024.0), "MB", collectedAt));
             
-            log.debug("Micrometer JVM 메모리 메트릭 수집 완료: heapUsed={}MB, nonHeapUsed={}MB", 
+            log.debug("[MicrometerMetricsCollector] collectJvmMemoryMetrics - Micrometer JVM 메모리 메트릭 수집 완료: heapUsed={}MB, nonHeapUsed={}MB", 
                     heapUsed / (1024 * 1024), nonHeapUsed / (1024 * 1024));
                     
         } catch (Exception e) {
-            log.warn("Micrometer JVM 메모리 메트릭 수집 실패", e);
+            log.warn("[MicrometerMetricsCollector] collectJvmMemoryMetrics - Micrometer JVM 메모리 메트릭 수집 실패", e);
         }
     }
 
     /**
      * JVM 스레드 메트릭 수집 (Micrometer 방식)
+     *
+     * @param metrics 메트릭을 추가할 리스트
+     * @param collectedAt 수집 시각
      */
     private void collectJvmThreadMetrics(List<Metric> metrics, LocalDateTime collectedAt) {
         try {
@@ -285,16 +291,19 @@ public class MicrometerMetricsCollector implements MetricsCollector {
             metrics.add(createMetric("jvm.threads.total_started", (double) totalStartedThreadCount, "count", collectedAt));
             metrics.add(createMetric("jvm.threads.daemon", (double) daemonThreadCount, "count", collectedAt));
             
-            log.debug("Micrometer JVM 스레드 메트릭 수집 완료: threadCount={}, daemonCount={}", 
+            log.debug("[MicrometerMetricsCollector] collectJvmThreadMetrics - Micrometer JVM 스레드 메트릭 수집 완료: threadCount={}, daemonCount={}", 
                     threadCount, daemonThreadCount);
                     
         } catch (Exception e) {
-            log.warn("Micrometer JVM 스레드 메트릭 수집 실패", e);
+            log.warn("[MicrometerMetricsCollector] collectJvmThreadMetrics - Micrometer JVM 스레드 메트릭 수집 실패", e);
         }
     }
 
     /**
      * GC 메트릭 수집 (Micrometer 방식)
+     *
+     * @param metrics 메트릭을 추가할 리스트
+     * @param collectedAt 수집 시각
      */
     private void collectGcMetrics(List<Metric> metrics, LocalDateTime collectedAt) {
         try {
@@ -324,15 +333,18 @@ public class MicrometerMetricsCollector implements MetricsCollector {
                 metrics.add(createMetric("jvm.gc.collection.time." + gcName, (double) collectionTime, "ms", collectedAt));
             }
             
-            log.debug("Micrometer GC 메트릭 수집 완료: {}개 GC 빈", gcBeans.size());
+            log.debug("[MicrometerMetricsCollector] collectGcMetrics - Micrometer GC 메트릭 수집 완료: {}개 GC 빈", gcBeans.size());
             
         } catch (Exception e) {
-            log.warn("Micrometer GC 메트릭 수집 실패", e);
+            log.warn("[MicrometerMetricsCollector] collectGcMetrics - Micrometer GC 메트릭 수집 실패", e);
         }
     }
 
     /**
      * 커스텀 메트릭 수집 (Micrometer 방식)
+     *
+     * @param metrics 메트릭을 추가할 리스트
+     * @param collectedAt 수집 시각
      */
     private void collectCustomMetrics(List<Metric> metrics, LocalDateTime collectedAt) {
         try {
@@ -366,15 +378,21 @@ public class MicrometerMetricsCollector implements MetricsCollector {
             metrics.add(createMetric("jvm.classes.total_loaded", (double) totalLoadedClassCount, "count", collectedAt));
             metrics.add(createMetric("jvm.classes.unloaded", (double) unloadedClassCount, "count", collectedAt));
             
-            log.debug("Micrometer 커스텀 메트릭 수집 완료");
+            log.debug("[MicrometerMetricsCollector] collectCustomMetrics - Micrometer 커스텀 메트릭 수집 완료");
             
         } catch (Exception e) {
-            log.warn("Micrometer 커스텀 메트릭 수집 실패", e);
+            log.warn("[MicrometerMetricsCollector] collectCustomMetrics - Micrometer 커스텀 메트릭 수집 실패", e);
         }
     }
 
     /**
      * Metric 엔티티 생성
+     *
+     * @param name 메트릭 이름
+     * @param value 메트릭 값
+     * @param unit 메트릭 단위
+     * @param collectedAt 수집 시각
+     * @return 생성된 Metric 엔티티
      */
     private Metric createMetric(String name, Double value, String unit, LocalDateTime collectedAt) {
         return Metric.builder()

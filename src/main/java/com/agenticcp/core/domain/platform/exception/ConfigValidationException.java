@@ -15,10 +15,27 @@ import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
  */
 public class ConfigValidationException extends BusinessException {
 
+    /**
+     * 에러 코드만으로 예외를 생성합니다.
+     * <p>
+     * 에러 코드에 정의된 기본 메시지를 사용합니다.
+     * </p>
+     *
+     * @param errorCode 플랫폼 설정 관련 에러 코드
+     */
     public ConfigValidationException(PlatformConfigErrorCode errorCode) {
         super(errorCode);
     }
 
+    /**
+     * 에러 코드와 커스텀 메시지로 예외를 생성합니다.
+     * <p>
+     * 에러 코드의 기본 메시지 대신 커스텀 메시지를 사용합니다.
+     * </p>
+     *
+     * @param errorCode 플랫폼 설정 관련 에러 코드
+     * @param customMessage 커스텀 에러 메시지
+     */
     public ConfigValidationException(PlatformConfigErrorCode errorCode, String customMessage) {
         super(errorCode, customMessage);
     }

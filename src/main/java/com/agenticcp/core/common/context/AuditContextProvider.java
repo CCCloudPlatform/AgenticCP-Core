@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
  * 사용자 ID 추출 등의 로직을 캡슐화합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Slf4j
