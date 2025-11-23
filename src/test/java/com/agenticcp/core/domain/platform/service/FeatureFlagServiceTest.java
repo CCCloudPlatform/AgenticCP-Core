@@ -60,7 +60,12 @@ class FeatureFlagServiceTest {
                 .build();
         
         // Optional<FeatureFlagSyncService>로 래핑하여 생성자 주입
-        featureFlagService = new FeatureFlagService(featureFlagRepository, Optional.of(syncService));
+        featureFlagService = new FeatureFlagService(
+                featureFlagRepository, 
+                Optional.of(syncService),
+                auditService,
+                policyValidator,
+                approvalService);
 
         // Mock 서비스들이 아무것도 하지 않도록 설정 (lenient 모드)
         lenient().doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
@@ -98,7 +103,12 @@ class FeatureFlagServiceTest {
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(testFlag);
 
             // syncService가 Optional.empty()인 경우를 시뮬레이션하기 위해 별도로 서비스 생성
-            FeatureFlagService serviceWithoutRedis = new FeatureFlagService(featureFlagRepository, Optional.empty());
+            FeatureFlagService serviceWithoutRedis = new FeatureFlagService(
+                    featureFlagRepository, 
+                    Optional.empty(),
+                    auditService,
+                    policyValidator,
+                    approvalService);
 
             doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
 

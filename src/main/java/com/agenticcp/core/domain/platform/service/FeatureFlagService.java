@@ -67,7 +67,7 @@ public class FeatureFlagService {
      */
     public FeatureFlagService(
             FeatureFlagRepository featureFlagRepository,
-            Optional<FeatureFlagSyncService> syncService) {
+            Optional<FeatureFlagSyncService> syncService,
             FeatureFlagAuditService auditService,
             FeatureFlagPolicyValidator policyValidator,
             FeatureFlagApprovalService approvalService) {
