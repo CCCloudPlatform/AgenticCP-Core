@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 이메일 주소 마스킹 전략
- * 
- * 이메일 주소는 사용자명의 일부만 표시하고 나머지는 마스킹 처리합니다.
- * 예: john.doe@example.com -> j***.d***@example.com
+ * 이메일 주소 마스킹 전략입니다. 사용자명 일부만 노출합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component

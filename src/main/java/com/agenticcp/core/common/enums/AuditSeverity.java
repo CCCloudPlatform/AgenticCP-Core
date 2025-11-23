@@ -27,8 +27,4 @@ public enum AuditSeverity {
         this.description = description;
         this.level = level;
     }
-
-    public boolean isAtLeast(AuditSeverity other) {
-        return this.level >= other.level;
-    }
 }
