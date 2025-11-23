@@ -3,7 +3,7 @@ package com.agenticcp.core.domain.cloud.port.command.vpc;
 import java.util.Map;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
-import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 
 import lombok.Builder;
 
