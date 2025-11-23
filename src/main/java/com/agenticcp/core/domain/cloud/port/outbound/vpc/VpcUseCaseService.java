@@ -7,33 +7,34 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
 import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
 import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
 import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
-import com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
 import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
-import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VpcUseCaseService {
 
     private final VpcPortRouter vpcPortRouter;
     private final CapabilityGuard capabilityGuard;
-    private final CredentialProviderPort credentialProviderPort;
-    private final CloudAccountRepository cloudAccountRepository;
+    private final AccountCredentialManagementPort accountCredentialManagementPort;
 
     @Transactional
     public CloudResource createVpc(VpcCreateRequest request) {
@@ -44,17 +45,38 @@ public class VpcUseCaseService {
             CapabilityGuard.Operation.TAGGING
         );
         
+        // tenantKey 획득 (가이드라인 모범 사례 2: 항상 TenantContextHolder 사용)
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        
+        // accountScope 검증
+        String accountScope = request.getAccountScope();
+        validateAccountScope(accountScope);
+        
         // JIT 세션 획득
-        String tenantKey = request.getTenantKey() != null 
-            ? request.getTenantKey() 
-            : TenantContextHolder.getCurrentTenantKeyOrThrow();
-        Long accountId = getAccountIdFromScope(request.getAccountScope(), request.getProviderType());
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, request.getProviderType());
+        log.debug("세션 획득 시작: tenantKey={}, accountScope={}, providerType={}", 
+                 tenantKey, accountScope, request.getProviderType());
+        
+        CloudSessionCredential session;
+        try {
+            session = accountCredentialManagementPort.getSession(
+                tenantKey, accountScope, request.getProviderType());
+            log.info("세션 획득 완료: expiresAt={}", session.getExpiresAt());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == CredentialErrorCode.CREDENTIAL_NOT_FOUND) {
+                log.error("자격증명을 찾을 수 없습니다: tenantKey={}, accountScope={}", 
+                         tenantKey, accountScope);
+                throw new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_CONFIGURED,
+                    "계정이 설정되지 않았습니다"
+                );
+            }
+            throw e;
+        }
         
         VpcManagementPort vpcPort = vpcPortRouter.getPort(request.getProviderType());
         CreateVpcCommand command = CreateVpcCommand.builder()
             .providerType(request.getProviderType())
-            .accountScope(request.getAccountScope())
+            .accountScope(accountScope)
             .region(request.getRegion())
             .serviceKey(VpcConstants.SERVICE_KEY)
             .resourceType(VpcConstants.RESOURCE_TYPE)
@@ -71,15 +93,38 @@ public class VpcUseCaseService {
 
     @Transactional(readOnly = true)
     public Optional<CloudResource> getVpc(ResourceIdentity vpcId) {
-        // JIT 세션 획득
+        // tenantKey 획득
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-        Long accountId = getAccountIdFromScope(vpcId.getAccountScope(), vpcId.getProviderType());
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, vpcId.getProviderType());
+        
+        // accountScope 검증
+        String accountScope = vpcId.getAccountScope();
+        validateAccountScope(accountScope);
+        
+        // JIT 세션 획득
+        log.debug("세션 획득 시작: tenantKey={}, accountScope={}, providerType={}", 
+                 tenantKey, accountScope, vpcId.getProviderType());
+        
+        CloudSessionCredential session;
+        try {
+            session = accountCredentialManagementPort.getSession(
+                tenantKey, accountScope, vpcId.getProviderType());
+            log.info("세션 획득 완료: expiresAt={}", session.getExpiresAt());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == CredentialErrorCode.CREDENTIAL_NOT_FOUND) {
+                log.error("자격증명을 찾을 수 없습니다: tenantKey={}, accountScope={}", 
+                         tenantKey, accountScope);
+                throw new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_CONFIGURED,
+                    "계정이 설정되지 않았습니다"
+                );
+            }
+            throw e;
+        }
         
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         GetVpcCommand command = GetVpcCommand.builder()
             .providerType(vpcId.getProviderType())
-            .accountScope(vpcId.getAccountScope())
+            .accountScope(accountScope)
             .region(vpcId.getRegion())
             .providerResourceId(vpcId.getProviderResourceId())
             .serviceKey(vpcId.getServiceKey() != null ? vpcId.getServiceKey() : VpcConstants.SERVICE_KEY)
@@ -91,17 +136,38 @@ public class VpcUseCaseService {
 
     @Transactional(readOnly = true)
     public List<CloudResource> listVpcs(VpcQuery query) {
+        // tenantKey 획득
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        
+        // accountScope 검증
+        String accountScope = query.getAccountScope();
+        validateAccountScope(accountScope);
+        
         // JIT 세션 획득
-        String tenantKey = query.getTenantKey() != null 
-            ? query.getTenantKey() 
-            : TenantContextHolder.getCurrentTenantKeyOrThrow();
-        Long accountId = getAccountIdFromScope(query.getAccountScope(), query.getProviderType());
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, query.getProviderType());
+        log.debug("세션 획득 시작: tenantKey={}, accountScope={}, providerType={}", 
+                 tenantKey, accountScope, query.getProviderType());
+        
+        CloudSessionCredential session;
+        try {
+            session = accountCredentialManagementPort.getSession(
+                tenantKey, accountScope, query.getProviderType());
+            log.info("세션 획득 완료: expiresAt={}", session.getExpiresAt());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == CredentialErrorCode.CREDENTIAL_NOT_FOUND) {
+                log.error("자격증명을 찾을 수 없습니다: tenantKey={}, accountScope={}", 
+                         tenantKey, accountScope);
+                throw new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_CONFIGURED,
+                    "계정이 설정되지 않았습니다"
+                );
+            }
+            throw e;
+        }
         
         VpcManagementPort vpcPort = vpcPortRouter.getPort(query.getProviderType());
         ListVpcsQuery command = ListVpcsQuery.builder()
             .providerType(query.getProviderType())
-            .accountScope(query.getAccountScope())
+            .accountScope(accountScope)
             .region(query.getRegion())
             .vpcName(query.getVpcName())
             .cidrBlock(query.getCidrBlock())
@@ -121,17 +187,38 @@ public class VpcUseCaseService {
             CapabilityGuard.Operation.TAGGING
         );
         
+        // tenantKey 획득 (가이드라인 모범 사례 2: 항상 TenantContextHolder 사용)
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        
+        // accountScope 검증
+        String accountScope = vpcId.getAccountScope();
+        validateAccountScope(accountScope);
+        
         // JIT 세션 획득
-        String tenantKey = request.getTenantKey() != null 
-            ? request.getTenantKey() 
-            : TenantContextHolder.getCurrentTenantKeyOrThrow();
-        Long accountId = getAccountIdFromScope(vpcId.getAccountScope(), vpcId.getProviderType());
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, vpcId.getProviderType());
+        log.debug("세션 획득 시작: tenantKey={}, accountScope={}, providerType={}", 
+                 tenantKey, accountScope, vpcId.getProviderType());
+        
+        CloudSessionCredential session;
+        try {
+            session = accountCredentialManagementPort.getSession(
+                tenantKey, accountScope, vpcId.getProviderType());
+            log.info("세션 획득 완료: expiresAt={}", session.getExpiresAt());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == CredentialErrorCode.CREDENTIAL_NOT_FOUND) {
+                log.error("자격증명을 찾을 수 없습니다: tenantKey={}, accountScope={}", 
+                         tenantKey, accountScope);
+                throw new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_CONFIGURED,
+                    "계정이 설정되지 않았습니다"
+                );
+            }
+            throw e;
+        }
         
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         UpdateVpcCommand command = UpdateVpcCommand.builder()
             .providerType(vpcId.getProviderType())
-            .accountScope(vpcId.getAccountScope())
+            .accountScope(accountScope)
             .region(vpcId.getRegion())
             .providerResourceId(vpcId.getProviderResourceId())
             .vpcName(request.getVpcName())
@@ -153,15 +240,38 @@ public class VpcUseCaseService {
             CapabilityGuard.Operation.TAGGING
         );
         
-        // JIT 세션 획득
+        // tenantKey 획득
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-        Long accountId = getAccountIdFromScope(vpcId.getAccountScope(), vpcId.getProviderType());
-        CloudSessionCredential session = credentialProviderPort.getSession(tenantKey, accountId, vpcId.getProviderType());
+        
+        // accountScope 검증
+        String accountScope = vpcId.getAccountScope();
+        validateAccountScope(accountScope);
+        
+        // JIT 세션 획득
+        log.debug("세션 획득 시작: tenantKey={}, accountScope={}, providerType={}", 
+                 tenantKey, accountScope, vpcId.getProviderType());
+        
+        CloudSessionCredential session;
+        try {
+            session = accountCredentialManagementPort.getSession(
+                tenantKey, accountScope, vpcId.getProviderType());
+            log.info("세션 획득 완료: expiresAt={}", session.getExpiresAt());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == CredentialErrorCode.CREDENTIAL_NOT_FOUND) {
+                log.error("자격증명을 찾을 수 없습니다: tenantKey={}, accountScope={}", 
+                         tenantKey, accountScope);
+                throw new BusinessException(
+                    CloudErrorCode.ACCOUNT_NOT_CONFIGURED,
+                    "계정이 설정되지 않았습니다"
+                );
+            }
+            throw e;
+        }
         
         VpcManagementPort vpcPort = vpcPortRouter.getPort(vpcId.getProviderType());
         DeleteVpcCommand command = DeleteVpcCommand.builder()
             .providerType(vpcId.getProviderType())
-            .accountScope(vpcId.getAccountScope())
+            .accountScope(accountScope)
             .region(vpcId.getRegion())
             .providerResourceId(vpcId.getProviderResourceId())
             .serviceKey(vpcId.getServiceKey() != null ? vpcId.getServiceKey() : VpcConstants.SERVICE_KEY)
@@ -173,23 +283,17 @@ public class VpcUseCaseService {
     }
     
     /**
-     * accountScope로 CloudAccount의 ID를 조회합니다.
+     * accountScope를 검증합니다.
      * 
-     * @param accountScope 계정 범위 (AWS AccountId, Azure SubscriptionId, GCP ProjectId)
-     * @param providerType 프로바이더 타입
-     * @return CloudAccount ID
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
+     * @throws BusinessException accountScope가 null이거나 비어있을 때
      */
-    private Long getAccountIdFromScope(String accountScope, com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType) {
-        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-        
-        return cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType)
-                .stream()
-                .filter(account -> account.getAccountId() != null && account.getAccountId().equals(accountScope))
-                .findFirst()
-                .map(account -> account.getId())
-                .orElseThrow(() -> new BusinessException(
-                    CloudErrorCode.ACCOUNT_NOT_FOUND,
-                    "계정을 찾을 수 없습니다: " + accountScope
-                ));
+    private void validateAccountScope(String accountScope) {
+        if (accountScope == null || accountScope.trim().isEmpty()) {
+            throw new BusinessException(
+                CloudErrorCode.ACCOUNT_SCOPE_REQUIRED,
+                "AccountScope가 필요합니다"
+            );
+        }
     }
 }
