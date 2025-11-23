@@ -4,20 +4,21 @@ import com.agenticcp.core.domain.monitoring.enums.QuotaExceededAction;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * 테넌트별 할당량 설정 요청 DTO
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Getter
 @Builder
+@NoArgsConstructor(force = true)
 @AllArgsConstructor
 public class QuotaRequestDto {
     

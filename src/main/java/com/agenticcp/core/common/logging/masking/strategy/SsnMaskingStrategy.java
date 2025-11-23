@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 주민등록번호 마스킹 전략
- * 
- * 주민등록번호의 뒤 6자리를 마스킹 처리합니다.
- * 예: 900101-1234567 -> 900101-1******
+ * 주민등록번호 마스킹 전략입니다. 뒤 6자리를 마스킹합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component

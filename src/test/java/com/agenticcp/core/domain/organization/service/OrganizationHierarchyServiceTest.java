@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.organization.service;
 
 import com.agenticcp.core.common.enums.Status;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.organization.dto.*;
 import com.agenticcp.core.domain.organization.entity.Organization;
 import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
@@ -135,7 +136,7 @@ class OrganizationHierarchyServiceTest {
 
             // When & Then
             assertThatThrownBy(() -> organizationService.getOrganizationPath(999L))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(BusinessException.class)
                     .hasMessage("존재하지 않는 조직입니다: 999");
         }
     }
@@ -235,7 +236,7 @@ class OrganizationHierarchyServiceTest {
 
             // When & Then
             assertThatThrownBy(() -> organizationService.moveOrganization(childOrganization1.getId(), request))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(BusinessException.class)
                     .hasMessage("순환 참조가 발생합니다: " + childOrganization1.getOrgName());
         }
     }

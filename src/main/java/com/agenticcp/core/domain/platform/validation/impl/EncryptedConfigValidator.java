@@ -5,7 +5,6 @@ import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 /**
  * ENCRYPTED 타입 설정 검증을 담당하는 구현체입니다.
@@ -21,6 +20,18 @@ import org.springframework.util.StringUtils;
 @Component
 public class EncryptedConfigValidator extends BaseConfigValidator {
 
+    /**
+     * ENCRYPTED 타입 설정 값 검증
+     * <p>
+     * 설정 값이 null이 아니고 빈 문자열이 아닌지 검증합니다.
+     * 실제 암호화 형식 검증은 별도의 암호화 서비스에서 수행되며,
+     * 이 검증기는 기본적인 값 존재 여부만 확인합니다.
+     * </p>
+     *
+     * @param configValue 검증할 설정 값
+     * @param configType 설정 타입 (ENCRYPTED가 아니면 검증하지 않음)
+     * @throws ConfigValidationException 설정 값이 null이거나 빈 문자열(공백만 포함)인 경우
+     */
     @Override
     protected void validateValueByType(String configValue, PlatformConfig.ConfigType configType) {
         if (configType != PlatformConfig.ConfigType.ENCRYPTED) {
@@ -29,7 +40,8 @@ public class EncryptedConfigValidator extends BaseConfigValidator {
 
         log.debug("[EncryptedConfigValidator] validateValueByType - ENCRYPTED type validation");
 
-        if (configValue == null || configValue.trim().isEmpty()) {
+        // BaseConfigValidator에서 이미 null 체크를 수행하므로, 여기서는 빈 문자열만 체크
+        if (configValue.trim().isEmpty()) {
             throw new ConfigValidationException(PlatformConfigErrorCode.ENCRYPTED_VALUE_EMPTY);
         }
 

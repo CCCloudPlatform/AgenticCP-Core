@@ -13,11 +13,11 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 /**
- * JPA 엔티티 생명주기 리스너
+ * JPA 엔티티 생명주기 리스너입니다.
+ * UPDATE/DELETE 직전 변경 전 값을 자동 캡처해 감사 컨텍스트에 저장합니다.
  * 
- * 엔티티가 UPDATE/DELETE 되기 직전에 자동으로 변경 전 값을 캡처합니다.
- *
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Slf4j

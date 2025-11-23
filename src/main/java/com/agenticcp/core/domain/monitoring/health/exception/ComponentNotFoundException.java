@@ -14,11 +14,22 @@ import com.agenticcp.core.domain.monitoring.enums.MonitoringErrorCode;
  */
 public class ComponentNotFoundException extends BusinessException {
     
+    /**
+     * 컴포넌트를 찾을 수 없을 때 발생하는 예외 생성
+     * 
+     * @param componentName 찾을 수 없는 컴포넌트 이름
+     */
     public ComponentNotFoundException(String componentName) {
         super(MonitoringErrorCode.COMPONENT_NOT_FOUND, 
               String.format("Component '%s' not found", componentName));
     }
     
+    /**
+     * 컴포넌트를 찾을 수 없을 때 발생하는 예외 생성 (커스텀 메시지)
+     * 
+     * @param componentName 찾을 수 없는 컴포넌트 이름
+     * @param message 예외 메시지
+     */
     public ComponentNotFoundException(String componentName, String message) {
         super(MonitoringErrorCode.COMPONENT_NOT_FOUND, message);
     }

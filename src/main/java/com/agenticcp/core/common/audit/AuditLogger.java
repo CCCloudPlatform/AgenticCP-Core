@@ -1,7 +1,9 @@
 package com.agenticcp.core.common.audit;
 
 import com.agenticcp.core.common.dto.audit.AuditEventDto;
+import com.agenticcp.core.common.enums.AuditErrorCode;
 import com.agenticcp.core.common.enums.AuditSeverity;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -14,11 +16,11 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 /**
- * 감사 로깅 전용 로거
- * 
- * 감사 이벤트를 JSON 형태로 로깅합니다.
+ * 감사 이벤트를 JSON 형태로 기록하는 로거입니다.
+ * 심각도에 따라 로그 레벨을 다르게 적용합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component
@@ -41,15 +43,38 @@ public class AuditLogger {
 
     private final ObjectMapper objectMapper;
 
-    public void log(AuditEventDto auditEvent) {    
+    /**
+     * 감사 이벤트를 JSON 형태로 직렬화하여 감사 로거에 출력합니다.
+     *
+     * @param auditEvent 기록할 감사 이벤트
+     * @throws BusinessException 직렬화 실패 시
+     */
+    public void log(AuditEventDto auditEvent) {
         try {
             String jsonLog = objectMapper.writeValueAsString(auditEvent);
-
-            logActions.getOrDefault(auditEvent.severity(), Logger::info)
-                    .accept(auditLog, jsonLog);
-
+            BiConsumer<Logger, String> logAction = resolveLogAction(auditEvent);
+            logAction.accept(auditLog, jsonLog);
         } catch (JsonProcessingException e) {
-            log.error("감사 이벤트 JSON 직렬화에 실패했습니다: {}", e.getMessage(), e);
+            log.error("감사 이벤트 JSON 직렬화 실패 [Action: {}, RequestId: {}, TenantId: {}]: {}",
+                    auditEvent.action(), auditEvent.requestId(), auditEvent.tenantId(), e.getMessage(), e);
+            throw new BusinessException(AuditErrorCode.AUDIT_LOG_CONVERSION_FAILED);
         }
+    }
+
+    private BiConsumer<Logger, String> resolveLogAction(AuditEventDto auditEvent) {
+        AuditSeverity severity = auditEvent.severity();
+        if (severity == null) {
+            log.warn("감사 이벤트 Severity 누락 [Action: {}, RequestId: {}], 기본 INFO 사용",
+                    auditEvent.action(), auditEvent.requestId());
+            return Logger::info;
+        }
+
+        BiConsumer<Logger, String> logAction = logActions.get(severity);
+        if (logAction == null) {
+            log.warn("정의되지 않은 감사 Severity [{}] 감지 [Action: {}, RequestId: {}], 기본 INFO 사용",
+                    severity, auditEvent.action(), auditEvent.requestId());
+            return Logger::info;
+        }
+        return logAction;
     }
 }

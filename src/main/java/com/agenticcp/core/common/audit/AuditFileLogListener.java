@@ -7,13 +7,12 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * 감사 로그 파일 로깅 리스너
- * 
- * AuditPublishEvent를 받아서 파일에 감사 로그를 기록합니다.
- * 동기로 동작하여 즉시 파일에 로그를 남깁니다.
+ * 감사 이벤트를 수신하여 파일로 기록하는 리스너입니다.
+ * 동기 방식으로 즉시 파일 로그를 남깁니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @since 2025-10-01
+* @version 1.0.0
  */
 @Slf4j
 @Component
@@ -37,4 +36,3 @@ public class AuditFileLogListener {
         }
     }
 }
-

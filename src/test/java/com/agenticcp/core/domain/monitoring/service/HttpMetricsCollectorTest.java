@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("HttpMetricsCollector 테스트")
@@ -60,39 +60,42 @@ class HttpMetricsCollectorTest {
 
         @Test
         @DisplayName("수집기 이름 반환")
-        void getCollectorName() {
-            // when
+        void getCollectorName_WhenCalled_ReturnsHttpMetrics() {
+            // When
             String name = httpMetricsCollector.getCollectorName();
 
-            // then
+            // Then
             assertThat(name).isEqualTo("http-metrics");
         }
 
         @Test
         @DisplayName("수집기 설명 반환")
-        void getCollectorDescription() {
-            // when
+        void getCollectorDescription_WhenCalled_ReturnsDescription() {
+            // When
             String description = httpMetricsCollector.getCollectorDescription();
 
-            // then
+            // Then
             assertThat(description).isEqualTo("HTTP API 응답시간, 처리량, 에러율 수집기");
         }
 
         @Test
         @DisplayName("수집기 타입 반환")
-        void getCollectorType() {
-            // when
+        void getCollectorType_WhenCalled_ReturnsCustom() {
+            // When
             CollectorType type = httpMetricsCollector.getCollectorType();
 
-            // then
+            // Then
             assertThat(type).isEqualTo(CollectorType.CUSTOM);
         }
 
         @Test
         @DisplayName("기본 활성화 상태")
-        void isEnabledByDefault() {
-            // then
-            assertThat(httpMetricsCollector.isEnabled()).isTrue();
+        void isEnabled_WhenDefault_ReturnsTrue() {
+            // When
+            boolean enabled = httpMetricsCollector.isEnabled();
+
+            // Then
+            assertThat(enabled).isTrue();
         }
     }
 
@@ -102,11 +105,11 @@ class HttpMetricsCollectorTest {
 
         @Test
         @DisplayName("HTTP 수집기는 시스템 메트릭을 수집하지 않음")
-        void collectSystemMetrics_ReturnsNull() {
-            // when
+        void collectSystemMetrics_WhenCalled_ReturnsNull() {
+            // When
             var result = httpMetricsCollector.collectSystemMetrics();
 
-            // then
+            // Then
             assertThat(result).isNull();
         }
     }
@@ -132,30 +135,30 @@ class HttpMetricsCollectorTest {
         @Test
         @DisplayName("메트릭이 없을 때 빈 리스트 반환")
         void collectApplicationMetrics_WhenNoMetrics_ReturnsEmptyList() {
-            // given
+            // Given
             // meterRegistry가 null을 반환하도록 설정 (메트릭 없음)
             when(meterRegistry.find(anyString())).thenReturn(null);
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             assertThat(metrics).isEmpty();
         }
 
         @Test
         @DisplayName("HTTP 요청 카운트 메트릭 수집")
-        void collectApplicationMetrics_RequestCount() {
-            // given
+        void collectApplicationMetrics_WhenRequestCountExists_CollectsRequestCount() {
+            // Given
             Search requestSearch = mock(Search.class);
             when(meterRegistry.find("http.server.requests")).thenReturn(requestSearch);
             when(requestSearch.counter()).thenReturn(counter);
             when(counter.count()).thenReturn(100.0);
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             assertThat(metrics).isNotEmpty();
             assertThat(metrics).anyMatch(m -> 
                 m.getMetricName().equals("http.requests.total") && 
@@ -165,8 +168,8 @@ class HttpMetricsCollectorTest {
 
         @Test
         @DisplayName("HTTP 응답 시간 메트릭 수집")
-        void collectApplicationMetrics_ResponseTime() {
-            // given
+        void collectApplicationMetrics_WhenResponseTimeExists_CollectsResponseTime() {
+            // Given
             Search timerSearch = mock(Search.class);
             when(meterRegistry.find("http.server.requests")).thenReturn(timerSearch);
             when(timerSearch.counter()).thenReturn(null);
@@ -176,10 +179,10 @@ class HttpMetricsCollectorTest {
             when(timer.max(TimeUnit.MILLISECONDS)).thenReturn(500.0);
             when(timer.totalTime(TimeUnit.SECONDS)).thenReturn(6.025);
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             assertThat(metrics).hasSize(3);
             assertThat(metrics).anyMatch(m -> 
                 m.getMetricName().equals("http.response.time.avg") && 
@@ -199,62 +202,62 @@ class HttpMetricsCollectorTest {
 
         @Test
         @DisplayName("HTTP 에러율 메트릭 수집")
-        void collectApplicationMetrics_ErrorRate() {
-            // given
+        void collectApplicationMetrics_WhenErrorRateExists_CollectsErrorRate() {
+            // Given
             // 에러율 계산을 위한 복잡한 Mock 설정은 실제 통합 테스트에서 검증
             // 단위 테스트에서는 기본 동작만 확인
             when(meterRegistry.find(anyString())).thenReturn(null);
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             // 메트릭이 없을 때 빈 리스트 반환하는지만 확인
             assertThat(metrics).isEmpty();
         }
 
         @Test
         @DisplayName("HTTP 상태 코드별 통계 수집")
-        void collectApplicationMetrics_StatusCodes() {
-            // given
+        void collectApplicationMetrics_WhenStatusCodesExist_CollectsStatusCodes() {
+            // Given
             // 상태 코드 통계는 실제 통합 테스트에서 검증
             // 단위 테스트에서는 기본 동작만 확인
             when(meterRegistry.find(anyString())).thenReturn(null);
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             assertThat(metrics).isEmpty();
         }
 
         @Test
         @DisplayName("메트릭 수집 중 예외 발생 시 빈 리스트 반환")
         void collectApplicationMetrics_WhenException_ReturnsEmptyList() {
-            // given
+            // Given
             // find()가 예외를 던지면 빈 리스트 반환
             when(meterRegistry.find(anyString())).thenThrow(new RuntimeException("Test exception"));
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             assertThat(metrics).isEmpty();
         }
 
         @Test
         @DisplayName("수집된 메트릭의 기본 정보 검증")
-        void collectApplicationMetrics_MetricBasicInfo() {
-            // given
+        void collectApplicationMetrics_WhenMetricsCollected_HasBasicInfo() {
+            // Given
             Search requestSearch = mock(Search.class);
             when(meterRegistry.find("http.server.requests")).thenReturn(requestSearch);
             when(requestSearch.counter()).thenReturn(counter);
             when(counter.count()).thenReturn(100.0);
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             assertThat(metrics).isNotEmpty();
             assertThat(metrics).allMatch(m -> 
                 m.getMetricType() == Metric.MetricType.APPLICATION &&
@@ -270,8 +273,8 @@ class HttpMetricsCollectorTest {
 
         @Test
         @DisplayName("전체 HTTP 메트릭 수집 시나리오")
-        void fullHttpMetricsCollection() {
-            // given
+        void collectApplicationMetrics_WhenFullScenario_CollectsAllMetrics() {
+            // Given
             // 간단한 시나리오: 요청 카운트와 응답 시간만 테스트
             Search requestSearch = mock(Search.class);
             when(meterRegistry.find("http.server.requests")).thenReturn(requestSearch);
@@ -283,10 +286,10 @@ class HttpMetricsCollectorTest {
             when(timer.max(TimeUnit.MILLISECONDS)).thenReturn(800.0);
             when(timer.totalTime(TimeUnit.SECONDS)).thenReturn(150.0);
 
-            // when
+            // When
             List<Metric> metrics = httpMetricsCollector.collectApplicationMetrics();
 
-            // then
+            // Then
             assertThat(metrics).hasSizeGreaterThanOrEqualTo(1);
             assertThat(metrics).extracting(Metric::getMetricName)
                 .contains("http.requests.total");

@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.platform.listener;
 
 import com.agenticcp.core.domain.platform.event.ConfigChangeEvent;
 import com.agenticcp.core.domain.platform.service.PlatformConfigRuntimeService;
+import com.agenticcp.core.common.util.LogMaskingUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -30,8 +31,8 @@ public class PlatformConfigChangeListener {
      */
     @EventListener
     public void handleConfigChange(ConfigChangeEvent event) {
-        log.info("[PlatformConfigChangeListener] handleConfigChange - configKey={}, changeType={}", 
-                event.getConfigKey(), event.getChangeType());
+        log.info("[PlatformConfigChangeListener] handleConfigChange - tenantId={}, configKey={}, changeType={}",
+                event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2), event.getChangeType());
 
         try {
             // 핵심 설정 키별 처리
@@ -51,13 +52,13 @@ public class PlatformConfigChangeListener {
                     handleLoggingConfigChange(event);
                     break;
                 default:
-                    log.debug("[PlatformConfigChangeListener] No special handling for configKey: {}", 
-                            event.getConfigKey());
+                    log.debug("[PlatformConfigChangeListener] No special handling for tenantId={}, configKey: {}",
+                            event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2));
                     break;
             }
         } catch (Exception e) {
-            log.error("[PlatformConfigChangeListener] Failed to handle config change: configKey={}, error={}", 
-                    event.getConfigKey(), e.getMessage(), e);
+            log.error("[PlatformConfigChangeListener] Failed to handle config change: tenantId={}, configKey={}, error={}",
+                    event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2), e.getMessage(), e);
         }
     }
 
@@ -93,12 +94,13 @@ public class PlatformConfigChangeListener {
      * @param event 설정 변경 이벤트
      */
     private void handleCacheConfigChange(ConfigChangeEvent event) {
-        log.info("[PlatformConfigChangeListener] handleCacheConfigChange - configKey={}, newValue={}", 
-                event.getConfigKey(), event.getNewValueMasked());
+        log.info("[PlatformConfigChangeListener] handleCacheConfigChange - tenantId={}, configKey={}, newValue={}",
+                event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2), event.getNewValueMasked());
 
         try {
             platformConfigRuntimeService.updateCacheSettings(event.getConfigKey(), event.getNewValueMasked());
-            log.info("[PlatformConfigChangeListener] Cache settings updated for key: {}", event.getConfigKey());
+            log.info("[PlatformConfigChangeListener] Cache settings updated for tenantId={}, key: {}",
+                    event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2));
         } catch (Exception e) {
             log.error("[PlatformConfigChangeListener] Failed to update cache settings", e);
         }
@@ -110,12 +112,13 @@ public class PlatformConfigChangeListener {
      * @param event 설정 변경 이벤트
      */
     private void handleSecurityConfigChange(ConfigChangeEvent event) {
-        log.info("[PlatformConfigChangeListener] handleSecurityConfigChange - configKey={}, newValue={}", 
-                event.getConfigKey(), event.getNewValueMasked());
+        log.info("[PlatformConfigChangeListener] handleSecurityConfigChange - tenantId={}, configKey={}, newValue={}",
+                event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2), event.getNewValueMasked());
 
         try {
             platformConfigRuntimeService.updateSecuritySettings(event.getConfigKey(), event.getNewValueMasked());
-            log.info("[PlatformConfigChangeListener] Security settings updated for key: {}", event.getConfigKey());
+            log.info("[PlatformConfigChangeListener] Security settings updated for tenantId={}, key: {}",
+                    event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2));
         } catch (Exception e) {
             log.error("[PlatformConfigChangeListener] Failed to update security settings", e);
         }
@@ -127,12 +130,13 @@ public class PlatformConfigChangeListener {
      * @param event 설정 변경 이벤트
      */
     private void handleLoggingConfigChange(ConfigChangeEvent event) {
-        log.info("[PlatformConfigChangeListener] handleLoggingConfigChange - configKey={}, newValue={}", 
-                event.getConfigKey(), event.getNewValueMasked());
+        log.info("[PlatformConfigChangeListener] handleLoggingConfigChange - tenantId={}, configKey={}, newValue={}",
+                event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2), event.getNewValueMasked());
 
         try {
             platformConfigRuntimeService.updateLoggingSettings(event.getConfigKey(), event.getNewValueMasked());
-            log.info("[PlatformConfigChangeListener] Logging settings updated for key: {}", event.getConfigKey());
+            log.info("[PlatformConfigChangeListener] Logging settings updated for tenantId={}, key: {}",
+                    event.getTenantId(), LogMaskingUtils.mask(event.getConfigKey(), 2, 2));
         } catch (Exception e) {
             log.error("[PlatformConfigChangeListener] Failed to update logging settings", e);
         }

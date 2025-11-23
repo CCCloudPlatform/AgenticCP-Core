@@ -17,6 +17,7 @@ import com.agenticcp.core.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -30,10 +31,15 @@ import java.util.Optional;
  * 적절한 알림을 발송합니다.</p>
  * 
  * <p>feature/39 브랜치의 모니터링 도메인과 연동됩니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class MonitoringNotificationService {
 
     private final NotificationService notificationService;
@@ -51,9 +57,10 @@ public class MonitoringNotificationService {
      * @param thresholdValue 임계값
      * @param operator 비교 연산자 (>, <, >=, <=, ==)
      */
+    @Transactional
     public void sendThresholdViolationAlert(Metric metric, Double thresholdValue, String operator) {
         try {
-            log.warn("🚨 임계값 위반 감지: {} {} {} {} (tenantId: {})", 
+            log.warn("[MonitoringNotificationService] sendThresholdViolationAlert - 임계값 위반 감지: {} {} {} {} (tenantId: {})", 
                 metric.getMetricName(), metric.getMetricValue(), operator, thresholdValue, metric.getTenantId());
 
             // 알림 우선순위 결정
@@ -97,14 +104,14 @@ public class MonitoringNotificationService {
             NotificationResponse response = notificationService.sendNotification(request);
             
             if (response.isSuccess()) {
-                log.info("임계값 위반 알림 발송 성공: {}", request.getNotificationId());
+                log.info("[MonitoringNotificationService] sendThresholdViolationAlert - success notificationId={}", request.getNotificationId());
             } else {
-                log.error("임계값 위반 알림 발송 실패: {}, 에러: {}", 
+                log.error("[MonitoringNotificationService] sendThresholdViolationAlert - 실패 notificationId={}, error={}", 
                     request.getNotificationId(), response.getErrorMessage());
             }
 
         } catch (Exception e) {
-            log.error("임계값 위반 알림 발송 중 오류 발생: metricName={}, tenantId={}", 
+            log.error("[MonitoringNotificationService] sendThresholdViolationAlert - 임계값 위반 알림 발송 중 오류 발생: metricName={}, tenantId={}", 
                 metric.getMetricName(), metric.getTenantId(), e);
         }
     }
@@ -120,6 +127,7 @@ public class MonitoringNotificationService {
      * @deprecated Metric 엔티티 기반 메서드 사용 권장
      */
     @Deprecated
+    @Transactional
     public void sendThresholdViolationAlert(String metricName, Double metricValue, 
                                            Double thresholdValue, String operator, String tenantId) {
         try {
@@ -135,7 +143,7 @@ public class MonitoringNotificationService {
             
             sendThresholdViolationAlert(tempMetric, thresholdValue, operator);
         } catch (Exception e) {
-            log.error("임계값 위반 알림 발송 중 오류 발생 (legacy): metricName={}, tenantId={}", 
+            log.error("[MonitoringNotificationService] sendThresholdViolationAlert - 임계값 위반 알림 발송 중 오류 발생 (legacy): metricName={}, tenantId={}", 
                 metricName, tenantId, e);
         }
     }
@@ -149,9 +157,10 @@ public class MonitoringNotificationService {
      * @param errorMessage 오류 메시지
      * @param tenantId 테넌트 ID
      */
+    @Transactional
     public void sendCollectionFailureAlert(String collectorType, String errorMessage, String tenantId) {
         try {
-            log.error("📊 메트릭 수집 실패: {} (tenantId: {})", collectorType, tenantId);
+            log.error("[MonitoringNotificationService] sendCollectionFailureAlert - 메트릭 수집 실패: {} (tenantId: {})", collectorType, tenantId);
 
             // 알림 데이터 구성
             Map<String, Object> alertData = new HashMap<>();
@@ -184,14 +193,14 @@ public class MonitoringNotificationService {
             NotificationResponse response = notificationService.sendNotification(request);
             
             if (response.isSuccess()) {
-                log.info("메트릭 수집 실패 알림 발송 성공: {}", request.getNotificationId());
+                log.info("[MonitoringNotificationService] sendCollectionFailureAlert - success notificationId={}", request.getNotificationId());
             } else {
-                log.error("메트릭 수집 실패 알림 발송 실패: {}, 에러: {}", 
+                log.error("[MonitoringNotificationService] sendCollectionFailureAlert - 실패 notificationId={}, error={}", 
                     request.getNotificationId(), response.getErrorMessage());
             }
 
         } catch (Exception e) {
-            log.error("메트릭 수집 실패 알림 발송 중 오류 발생: collectorType={}, tenantId={}", 
+            log.error("[MonitoringNotificationService] sendCollectionFailureAlert - 메트릭 수집 실패 알림 발송 중 오류 발생: collectorType={}, tenantId={}", 
                 collectorType, tenantId, e);
         }
     }
@@ -206,10 +215,11 @@ public class MonitoringNotificationService {
      * @param currentStatus 현재 상태
      * @param tenantId 테넌트 ID
      */
+    @Transactional
     public void sendSystemStatusChangeAlert(String serviceName, String previousStatus, 
                                           String currentStatus, String tenantId) {
         try {
-            log.warn("🔄 시스템 상태 변화: {} {} -> {} (tenantId: {})", 
+            log.warn("[MonitoringNotificationService] sendSystemStatusChangeAlert - 시스템 상태 변화: {} {} -> {} (tenantId: {})", 
                 serviceName, previousStatus, currentStatus, tenantId);
 
             // 알림 우선순위 결정
@@ -247,14 +257,14 @@ public class MonitoringNotificationService {
             NotificationResponse response = notificationService.sendNotification(request);
             
             if (response.isSuccess()) {
-                log.info("시스템 상태 변화 알림 발송 성공: {}", request.getNotificationId());
+                log.info("[MonitoringNotificationService] sendSystemStatusChangeAlert - success notificationId={}", request.getNotificationId());
             } else {
-                log.error("시스템 상태 변화 알림 발송 실패: {}, 에러: {}", 
+                log.error("[MonitoringNotificationService] sendSystemStatusChangeAlert - 실패 notificationId={}, error={}", 
                     request.getNotificationId(), response.getErrorMessage());
             }
 
         } catch (Exception e) {
-            log.error("시스템 상태 변화 알림 발송 중 오류 발생: serviceName={}, tenantId={}", 
+            log.error("[MonitoringNotificationService] sendSystemStatusChangeAlert - 시스템 상태 변화 알림 발송 중 오류 발생: serviceName={}, tenantId={}", 
                 serviceName, tenantId, e);
         }
     }
@@ -390,7 +400,7 @@ public class MonitoringNotificationService {
         // 2. 해당 채널 조회
         String channelId = findChannelId(tenantId, targetChannel);
         if (channelId != null) {
-            log.debug("채널 사용: {} (타입: {}, 우선순위: {})", targetChannel, notificationType, priority);
+            log.debug("[MonitoringNotificationService] getChannelIdForNotification - 채널 사용: {} (타입: {}, 우선순위: {})", targetChannel, notificationType, priority);
             return channelId;
         }
         
@@ -399,14 +409,14 @@ public class MonitoringNotificationService {
             for (ChannelType fallback : channelConfig.getFallbackOrder()) {
                 channelId = findChannelId(tenantId, fallback);
                 if (channelId != null) {
-                    log.warn("폴백 채널 사용: {} → {} (원래: {})", targetChannel, fallback, notificationType);
+                    log.warn("[MonitoringNotificationService] getChannelIdForNotification - 폴백 채널 사용: {} → {} (원래: {})", targetChannel, fallback, notificationType);
                     return channelId;
                 }
             }
         }
         
         // 4. 최종 폴백: ID 1 (기본 채널)
-        log.error("사용 가능한 채널을 찾을 수 없습니다. 기본 채널 ID '1'을 사용합니다. tenantId: {}", tenantId);
+        log.error("[MonitoringNotificationService] getChannelIdForNotification - 사용 가능한 채널을 찾을 수 없습니다. 기본 채널 ID '1'을 사용합니다. tenantId: {}", tenantId);
         return "1";
     }
 
@@ -423,13 +433,13 @@ public class MonitoringNotificationService {
         // 1. 우선순위 매핑 확인 (있으면 우선 사용)
         ChannelType priorityChannel = channelConfig.getChannelTypeForPriority(priority.name());
         if (priorityChannel != null) {
-            log.debug("우선순위 기반 채널 선택: {} ({})", priorityChannel, priority);
+            log.debug("[MonitoringNotificationService] determineChannelType - 우선순위 기반 채널 선택: {} ({})", priorityChannel, priority);
             return priorityChannel;
         }
         
         // 2. 알림 타입 매핑 사용 (우선순위 매핑 없으면)
         ChannelType typeChannel = channelConfig.getChannelTypeForNotification(notificationType);
-        log.debug("알림 타입 기반 채널 선택: {} ({})", typeChannel, notificationType);
+        log.debug("[MonitoringNotificationService] determineChannelType - 알림 타입 기반 채널 선택: {} ({})", typeChannel, notificationType);
         return typeChannel;
     }
 
@@ -463,7 +473,7 @@ public class MonitoringNotificationService {
         // 1. 테넌트 조회
         Optional<Tenant> tenantOpt = tenantRepository.findByTenantKey(tenantId);
         if (tenantOpt.isEmpty()) {
-            log.error("테넌트를 찾을 수 없습니다: {}", tenantId);
+            log.error("[MonitoringNotificationService] getTenantAdminUserId - 테넌트를 찾을 수 없습니다: {}", tenantId);
             // 폴백: 설정 파일의 기본 관리자 ID 사용
             return channelConfig.getDefaultAdminUserId();
         }
@@ -478,14 +488,14 @@ public class MonitoringNotificationService {
                 .findFirst();
         
         if (adminOpt.isEmpty()) {
-            log.warn("테넌트 {}의 관리자를 찾을 수 없습니다. 기본 관리자 ID 사용: {}", 
+            log.warn("[MonitoringNotificationService] getTenantAdminUserId - 테넌트 {}의 관리자를 찾을 수 없습니다. 기본 관리자 ID 사용: {}", 
                 tenantId, channelConfig.getDefaultAdminUserId());
             // 폴백: 설정 파일의 기본 관리자 ID 사용
             return channelConfig.getDefaultAdminUserId();
         }
         
         Long adminUserId = adminOpt.get().getId();
-        log.debug("테넌트 {} 관리자: userId={}, name={}", 
+        log.debug("[MonitoringNotificationService] getTenantAdminUserId - 테넌트 {} 관리자: userId={}, name={}", 
             tenantId, adminUserId, adminOpt.get().getName());
         
         return adminUserId;

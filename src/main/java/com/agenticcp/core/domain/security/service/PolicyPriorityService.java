@@ -16,8 +16,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 정책 우선순위 및 충돌 해결 서비스
- * 정책 간 우선순위를 관리하고 충돌을 해결하는 핵심 로직
+ * 정책 우선순위 및 충돌 해결 서비스.
+ *
+ * <p>정책 간 우선순위를 관리하고 충돌을 해결하는 핵심 로직을 제공합니다.</p>
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-08
  */
 @Slf4j
 @Service

@@ -5,7 +5,6 @@ import com.agenticcp.core.domain.platform.enums.PlatformConfigErrorCode;
 import com.agenticcp.core.domain.platform.exception.ConfigValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 /**
  * STRING 타입 설정 검증을 담당하는 구현체입니다.
@@ -28,7 +27,8 @@ public class StringConfigValidator extends BaseConfigValidator {
 
         log.debug("[StringConfigValidator] validateValueByType - STRING type validation");
 
-        if (configValue == null || configValue.trim().isEmpty()) {
+        // BaseConfigValidator에서 이미 null 체크를 수행하므로, 여기서는 빈 문자열만 체크
+        if (configValue.trim().isEmpty()) {
             throw new ConfigValidationException(PlatformConfigErrorCode.STRING_VALUE_EMPTY);
         }
 
