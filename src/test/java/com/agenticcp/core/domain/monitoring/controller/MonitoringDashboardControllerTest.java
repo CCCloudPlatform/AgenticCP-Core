@@ -260,7 +260,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - 일반 메트릭 조회 API를 호출하는 경우
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -292,7 +292,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - 트렌드 분석 모드로 메트릭 조회 API를 호출하는 경우
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("metricName", metricName)
                                 .param("interval", interval)
@@ -320,7 +320,7 @@ class MonitoringDashboardControllerTest {
                         .thenThrow(new RuntimeException("메트릭 조회 실패"));
 
                 // When & Then - 서비스 예외가 발생하는 경우
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isInternalServerError())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -477,7 +477,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - 음수 페이지 번호도 현재 구현에서는 200 OK로 처리됨
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("page", "-1")
                                 .param("size", "10"))
@@ -528,7 +528,7 @@ class MonitoringDashboardControllerTest {
         @DisplayName("메트릭 조회 - 잘못된 날짜 형식 (Spring 자동 검증)")
         void getMetrics_InvalidDateFormat_ReturnsBadRequest() throws Exception {
             // Given & When & Then - 잘못된 날짜 형식은 Spring이 자동으로 400 에러 반환
-            mockMvc.perform(get("/api/monitoring/metrics")
+            mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                             .header("X-Tenant-Id", testTenantId)
                             .param("startTime", "invalid-date")
                             .param("endTime", "2023-13-45T25:70:90"))
@@ -560,7 +560,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - 잘못된 날짜 범위도 현재 구현에서는 200 OK로 처리됨
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("startTime", startTime.toString())
                                 .param("endTime", endTime.toString()))
@@ -583,7 +583,7 @@ class MonitoringDashboardControllerTest {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(testTenantId);
 
                 // When & Then - 잘못된 interval 값도 현재 구현에서는 200 OK로 처리됨
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("metricName", "cpu.usage")
                                 .param("interval", "invalid-interval"))
@@ -604,7 +604,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - metricName만 있어도 현재 구현에서는 200 OK로 처리됨
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("metricName", "cpu.usage"))
                         .andExpect(status().isOk())
@@ -624,7 +624,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - interval만 있어도 현재 구현에서는 200 OK로 처리됨
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("interval", "1h"))
                         .andExpect(status().isOk())
@@ -650,7 +650,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - 트렌드 분석 모드로 메트릭 조회 API를 호출하는 경우
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("metricName", metricName)
                                 .param("interval", interval)
@@ -702,7 +702,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(Arrays.asList());
 
                 // When & Then - 조건에 맞는 메트릭이 없는 경우
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -758,7 +758,7 @@ class MonitoringDashboardControllerTest {
         @DisplayName("메트릭 조회 - 잘못된 HTTP 메서드 (DELETE)")
         void getMetrics_InvalidHttpMethod_ReturnsMethodNotAllowed() throws Exception {
             // Given & When & Then - DELETE 메서드로 GET 엔드포인트를 호출하는 경우
-            mockMvc.perform(delete("/api/monitoring/metrics")
+            mockMvc.perform(delete("/api/monitoring/dashboard/metrics")
                             .header("X-Tenant-Id", testTenantId))
                     .andExpect(status().isMethodNotAllowed());
         }
@@ -911,7 +911,7 @@ class MonitoringDashboardControllerTest {
                         .thenReturn(sampleMetrics);
 
                 // When & Then - 너무 큰 페이지 크기도 현재 구현에서는 200 OK로 처리됨
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("page", "0")
                                 .param("size", "10000")) // 너무 큰 페이지 크기
@@ -1022,7 +1022,7 @@ class MonitoringDashboardControllerTest {
                 when(dashboardService.getMetrics(eq(tenant1), anyInt(), anyInt(), any(), any()))
                         .thenReturn(tenant1Metrics);
 
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", tenant1))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data[0].metricName").value("cpu.usage"));
@@ -1032,7 +1032,7 @@ class MonitoringDashboardControllerTest {
                 when(dashboardService.getMetrics(eq(tenant2), anyInt(), anyInt(), any(), any()))
                         .thenReturn(tenant2Metrics);
 
-                mockMvc.perform(get("/api/monitoring/metrics")
+                mockMvc.perform(get("/api/monitoring/dashboard/metrics")
                                 .header("X-Tenant-Id", tenant2))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data[0].metricName").value("memory.usage"));

@@ -93,6 +93,7 @@ public class FeatureFlagAuditService {
                 .userId(userId != null ? userId : mdcContext.userId())
                 .action(normalizedAction)
                 .resourceType(AuditResourceType.FEATURE_FLAG)
+                .requestPath("/api/platform/feature-flags")
                 .operationSummary("Feature Flag " + normalizedAction)
                 .controllerName("FeatureFlagController")
                 .methodName("")

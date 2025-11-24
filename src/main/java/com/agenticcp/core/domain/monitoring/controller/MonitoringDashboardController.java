@@ -105,7 +105,7 @@ public class MonitoringDashboardController {
     /**
      * 메트릭 데이터 조회
      */
-    @GetMapping("/metrics")
+    @GetMapping("/dashboard/metrics")
     @Operation(summary = "메트릭 데이터 조회", description = "시스템 성능 메트릭 데이터를 조회 (트렌드 분석 지원)")
     public ResponseEntity<ApiResponse<List<Metric>>> getMetrics(
             HttpServletRequest request,
