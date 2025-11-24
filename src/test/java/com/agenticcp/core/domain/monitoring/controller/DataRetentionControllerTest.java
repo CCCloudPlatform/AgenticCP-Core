@@ -36,7 +36,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+<<<<<<<<< Temporary merge branch 1
+ * @since 2025-10-20
+=========
  * @since 2025-11-13
+>>>>>>>>> Temporary merge branch 2
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DataRetentionController 테스트")
