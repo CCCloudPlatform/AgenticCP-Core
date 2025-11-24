@@ -31,6 +31,8 @@ public enum CloudErrorCode implements BaseErrorCode {
     CONNECTION_TEST_FAILED(HttpStatus.BAD_REQUEST, 4015, "연결 테스트에 실패했습니다."),
     ACCOUNT_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4016, "계정 정보 동기화에 실패했습니다."),
     ACCOUNT_DELETION_RESTRICTED(HttpStatus.CONFLICT, 4017, "연결된 리소스가 있어 계정을 삭제할 수 없습니다."),
+    ACCOUNT_SCOPE_REQUIRED(HttpStatus.BAD_REQUEST, 4018, "AccountScope가 필요합니다."),
+    ACCOUNT_NOT_CONFIGURED(HttpStatus.BAD_REQUEST, 4019, "계정이 설정되지 않았습니다."),
     
     // 일반적인 클라우드 에러
     CLOUD_CONNECTION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, 4030, "클라우드 서비스 연결에 실패했습니다."),
