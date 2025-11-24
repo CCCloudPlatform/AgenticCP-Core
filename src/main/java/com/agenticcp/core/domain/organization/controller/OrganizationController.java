@@ -477,83 +477,27 @@ public class OrganizationController {
     // ========== 조직-테넌트 관계 관리 API ==========
 
     /**
-     * 조직별 테넌트 목록 조회
+     * 조직별 테넌트 조회 (1:1 관계)
      * 
      * @param id 조직 ID
-     * @return 테넌트 목록
+     * @return 테넌트 정보
      */
-    @GetMapping("/{id}/tenants")
+    @GetMapping("/{id}/tenant")
     @Operation(
-        summary = "조직별 테넌트 목록 조회",
-        description = "특정 조직에 속한 테넌트 목록을 조회합니다."
+        summary = "조직별 테넌트 조회",
+        description = "특정 조직에 속한 테넌트를 조회합니다. (1:1 관계)"
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직 또는 테넌트를 찾을 수 없음")
     })
-    public ResponseEntity<ApiResponse<List<Tenant>>> getOrganizationTenants(
+    public ResponseEntity<ApiResponse<Tenant>> getOrganizationTenant(
             @Parameter(description = "조직 ID", required = true, example = "1")
             @PathVariable @Positive Long id) {
-        log.info("[OrganizationController] getOrganizationTenants - id={}", id);
+        log.info("[OrganizationController] getOrganizationTenant - id={}", id);
 
-        List<Tenant> tenants = organizationService.getOrganizationTenants(id);
+        Tenant tenant = organizationService.getOrganizationTenantOrThrow(id);
 
-        return ResponseEntity.ok(ApiResponse.success(tenants, "조직 테넌트 목록을 성공적으로 조회했습니다."));
-    }
-
-    /**
-     * 조직별 테넌트 수 조회
-     * 
-     * @param id 조직 ID
-     * @return 테넌트 수 통계
-     */
-    @GetMapping("/{id}/tenants/count")
-    @Operation(
-        summary = "조직별 테넌트 수 조회",
-        description = "특정 조직에 속한 테넌트 수를 조회합니다."
-    )
-    @io.swagger.v3.oas.annotations.responses.ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
-    })
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getOrganizationTenantCount(
-            @Parameter(description = "조직 ID", required = true, example = "1")
-            @PathVariable @Positive Long id) {
-        log.info("[OrganizationController] getOrganizationTenantCount - id={}", id);
-
-        long totalCount = organizationService.getOrganizationTenantCount(id);
-        long activeCount = organizationService.getActiveTenantCount(id);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("totalTenants", totalCount);
-        response.put("activeTenants", activeCount);
-        response.put("inactiveTenants", totalCount - activeCount);
-
-        return ResponseEntity.ok(ApiResponse.success(response, "조직 테넌트 수를 성공적으로 조회했습니다."));
-    }
-
-    /**
-     * 조직별 테넌트 통계 조회
-     * 
-     * @param id 조직 ID
-     * @return 테넌트 통계 정보
-     */
-    @GetMapping("/{id}/tenants/stats")
-    @Operation(
-        summary = "조직별 테넌트 통계 조회",
-        description = "특정 조직의 테넌트 관련 상세 통계를 조회합니다."
-    )
-    @io.swagger.v3.oas.annotations.responses.ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
-    })
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getOrganizationTenantStats(
-            @Parameter(description = "조직 ID", required = true, example = "1")
-            @PathVariable @Positive Long id) {
-        log.info("[OrganizationController] getOrganizationTenantStats - id={}", id);
-
-        Map<String, Object> stats = organizationService.getOrganizationTenantStats(id);
-
-        return ResponseEntity.ok(ApiResponse.success(stats, "조직 테넌트 통계를 성공적으로 조회했습니다."));
+        return ResponseEntity.ok(ApiResponse.success(tenant, "조직 테넌트를 성공적으로 조회했습니다."));
     }
 }

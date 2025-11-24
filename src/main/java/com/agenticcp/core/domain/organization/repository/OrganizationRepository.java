@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 조직 Repository
@@ -70,10 +71,10 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     long count();
     
     /**
-     * 특정 조직에 속한 테넌트들 조회
+     * 특정 조직에 속한 테넌트 조회 (1:1 관계)
      * @param organizationId 조직 ID
-     * @return 테넌트 목록
+     * @return 테넌트 (Optional)
      */
-    @Query("SELECT t FROM Tenant t WHERE t.organization.id = :organizationId")
-    List<Tenant> findTenantsByOrganizationId(@Param("organizationId") Long organizationId);
+    @Query("SELECT o.tenant FROM Organization o WHERE o.id = :organizationId")
+    Optional<Tenant> findTenantByOrganizationId(@Param("organizationId") Long organizationId);
 }

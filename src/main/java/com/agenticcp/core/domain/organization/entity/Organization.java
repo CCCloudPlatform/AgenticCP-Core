@@ -15,7 +15,6 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 조직 엔티티
@@ -57,9 +56,9 @@ public class Organization extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    /** 테넌트 목록 */
-    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Tenant> tenants;
+    /** 테넌트 (1:1 관계) */
+    @OneToOne(mappedBy = "organization", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Tenant tenant;
 
     /** 상위 조직 */
     @ManyToOne(fetch = FetchType.LAZY)
