@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 토큰 마스킹 전략
- * 
- * JWT 토큰이나 기타 토큰은 앞 4자리와 뒤 4자리만 표시하고 중간은 마스킹 처리합니다.
- * 예: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... -> eyJh-****-****-****-IkpX
+ * 토큰 마스킹 전략입니다. JWT 등 토큰 문자열의 앞/뒤 일부만 노출합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component

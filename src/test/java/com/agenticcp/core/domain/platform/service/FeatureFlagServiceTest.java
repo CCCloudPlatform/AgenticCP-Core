@@ -35,6 +35,15 @@ class FeatureFlagServiceTest {
     private FeatureFlagRepository featureFlagRepository;
 
     @Mock
+    private FeatureFlagAuditService auditService;
+
+    @Mock
+    private FeatureFlagPolicyValidator policyValidator;
+
+    @Mock
+    private FeatureFlagApprovalService approvalService;
+
+    @Mock
     private FeatureFlagSyncService syncService;
 
     @InjectMocks
@@ -51,6 +60,11 @@ class FeatureFlagServiceTest {
                 .isEnabled(true)
                 .status(Status.ACTIVE)
                 .build();
+
+        // Mock 서비스들이 아무것도 하지 않도록 설정 (lenient 모드)
+        lenient().doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
+        lenient().doNothing().when(policyValidator).validateFlagChange(any(), anyBoolean());
+        lenient().when(approvalService.hasApproval(any(FeatureFlag.class))).thenReturn(false);
     }
 
     @Nested
@@ -63,14 +77,16 @@ class FeatureFlagServiceTest {
             // Given
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(testFlag);
             doNothing().when(syncService).publishCreated(anyString());
+            doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
 
             // When
-            FeatureFlag result = featureFlagService.createFlag(testFlag);
+            FeatureFlag result = featureFlagService.createFlag(testFlag, "system");
 
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getFlagKey()).isEqualTo("test-feature");
             verify(featureFlagRepository).save(testFlag);
+            verify(auditService).logFlagChange(any(), any(), eq("CREATE"), eq("system"));
             verify(syncService).publishCreated("test-feature");
         }
 
@@ -79,16 +95,24 @@ class FeatureFlagServiceTest {
         void createFlag_WithoutRedis_NoEvent() {
             // Given
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(testFlag);
+            doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
             // syncService가 null인 경우를 시뮬레이션하기 위해 별도로 서비스 생성
-            FeatureFlagService serviceWithoutRedis = new FeatureFlagService(featureFlagRepository, null);
+            FeatureFlagService serviceWithoutRedis = new FeatureFlagService(
+                    featureFlagRepository,
+                    auditService,
+                    policyValidator,
+                    approvalService,
+                    null
+            );
 
             // When
-            FeatureFlag result = serviceWithoutRedis.createFlag(testFlag);
+            FeatureFlag result = serviceWithoutRedis.createFlag(testFlag, "system");
 
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getFlagKey()).isEqualTo("test-feature");
             verify(featureFlagRepository).save(testFlag);
+            verify(auditService).logFlagChange(any(), any(), eq("CREATE"), eq("system"));
             // syncService가 null이므로 이벤트 발행되지 않음
         }
 
@@ -98,13 +122,15 @@ class FeatureFlagServiceTest {
             // Given
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(testFlag);
             doThrow(new RuntimeException("Redis connection failed")).when(syncService).publishCreated(anyString());
+            doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
 
             // When
-            FeatureFlag result = featureFlagService.createFlag(testFlag);
+            FeatureFlag result = featureFlagService.createFlag(testFlag, "system");
 
             // Then
             assertThat(result).isNotNull();
             verify(featureFlagRepository).save(testFlag);
+            verify(auditService).logFlagChange(any(), any(), eq("CREATE"), eq("system"));
             verify(syncService).publishCreated("test-feature");
         }
     }
@@ -134,9 +160,12 @@ class FeatureFlagServiceTest {
             when(featureFlagRepository.findByFlagKey("test-feature")).thenReturn(Optional.of(existingFlag));
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(existingFlag);
             doNothing().when(syncService).publishUpdated(anyString());
+            when(approvalService.hasApproval(any(FeatureFlag.class))).thenReturn(false);
+            doNothing().when(policyValidator).validateFlagChange(any(), anyBoolean());
+            doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
 
             // When
-            FeatureFlag result = featureFlagService.updateFlag("test-feature", updatedFlag);
+            FeatureFlag result = featureFlagService.updateFlag("test-feature", updatedFlag, "system");
 
             // Then
             assertThat(result).isNotNull();
@@ -181,9 +210,12 @@ class FeatureFlagServiceTest {
             when(featureFlagRepository.findByFlagKey("test-feature")).thenReturn(Optional.of(flag));
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(flag);
             doNothing().when(syncService).publishToggled(anyString());
+            when(approvalService.hasApproval(any(FeatureFlag.class))).thenReturn(false);
+            doNothing().when(policyValidator).validateFlagChange(any(), anyBoolean());
+            doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
 
             // When
-            FeatureFlag result = featureFlagService.toggleFlag("test-feature", true);
+            FeatureFlag result = featureFlagService.toggleFlag("test-feature", true, "system");
 
             // Then
             assertThat(result).isNotNull();
@@ -224,9 +256,12 @@ class FeatureFlagServiceTest {
             when(featureFlagRepository.findByFlagKey("test-feature")).thenReturn(Optional.of(flag));
             when(featureFlagRepository.save(any(FeatureFlag.class))).thenReturn(flag);
             doNothing().when(syncService).publishDeleted(anyString());
+            when(approvalService.hasApproval(any(FeatureFlag.class))).thenReturn(false);
+            doNothing().when(policyValidator).validateFlagChange(any(), anyBoolean());
+            doNothing().when(auditService).logFlagChange(any(), any(), anyString(), anyString());
 
             // When
-            featureFlagService.deleteFlag("test-feature");
+            featureFlagService.deleteFlag("test-feature", "system");
 
             // Then
             assertThat(flag.getIsDeleted()).isTrue();

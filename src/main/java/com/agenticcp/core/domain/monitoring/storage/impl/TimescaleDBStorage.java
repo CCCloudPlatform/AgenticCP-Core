@@ -56,20 +56,20 @@ public class TimescaleDBStorage implements MetricsStorage {
     @Override
     public void saveMetrics(List<Metric> metrics) {
         if (!enabled) {
-            log.warn("TimescaleDBStorage가 비활성화되어 메트릭 저장을 건너뜁니다.");
+            log.warn("[TimescaleDBStorage] saveMetrics - TimescaleDBStorage가 비활성화되어 메트릭 저장을 건너뜁니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_DISABLED, "TimescaleDB 저장소가 비활성화되어 있습니다.");
         }
         if (!connected) {
-            log.error("TimescaleDBStorage가 연결되지 않아 메트릭 저장을 실패했습니다.");
+            log.error("[TimescaleDBStorage] saveMetrics - TimescaleDBStorage가 연결되지 않아 메트릭 저장을 실패했습니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_CONNECTION_FAILED, "TimescaleDB 저장소에 연결되지 않았습니다.");
         }
 
-        log.info("TimescaleDB에 {}개의 메트릭 저장 시도. URL: {}", metrics.size(), config.getUrl());
+        log.info("[TimescaleDBStorage] saveMetrics - TimescaleDB에 {}개의 메트릭 저장 시도. URL: {}", metrics.size(), config.getUrl());
         // TODO: 실제 TimescaleDB 클라이언트를 사용한 저장 로직 구현
         for (Metric metric : metrics) {
-            log.debug("메트릭 저장: name={}, value={}", metric.getMetricName(), metric.getMetricValue());
+            log.debug("[TimescaleDBStorage] saveMetrics - 메트릭 저장: name={}, value={}", metric.getMetricName(), metric.getMetricValue());
         }
-        log.info("TimescaleDB에 메트릭 저장 완료 (가상)");
+        log.info("[TimescaleDBStorage] saveMetrics - TimescaleDB에 메트릭 저장 완료 (가상)");
     }
 
     /**
@@ -87,17 +87,17 @@ public class TimescaleDBStorage implements MetricsStorage {
     @Override
     public List<Metric> getMetrics(String metricName, LocalDateTime startTime, LocalDateTime endTime) {
         if (!enabled) {
-            log.warn("TimescaleDBStorage가 비활성화되어 메트릭 조회를 건너뜁니다.");
+            log.warn("[TimescaleDBStorage] getMetrics - TimescaleDBStorage가 비활성화되어 메트릭 조회를 건너뜁니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_DISABLED, "TimescaleDB 저장소가 비활성화되어 있습니다.");
         }
         if (!connected) {
-            log.error("TimescaleDBStorage가 연결되지 않아 메트릭 조회를 실패했습니다.");
+            log.error("[TimescaleDBStorage] getMetrics - TimescaleDBStorage가 연결되지 않아 메트릭 조회를 실패했습니다.");
             throw new BusinessException(MonitoringErrorCode.STORAGE_CONNECTION_FAILED, "TimescaleDB 저장소에 연결되지 않았습니다.");
         }
 
-        log.info("TimescaleDB에서 메트릭 조회 시도. 이름: {}, 시작: {}, 종료: {}", metricName, startTime, endTime);
+        log.info("[TimescaleDBStorage] getMetrics - TimescaleDB에서 메트릭 조회 시도. 이름: {}, 시작: {}, 종료: {}", metricName, startTime, endTime);
         // TODO: 실제 TimescaleDB 클라이언트를 사용한 조회 로직 구현
-        log.info("TimescaleDB에서 메트릭 조회 완료 (가상)");
+        log.info("[TimescaleDBStorage] getMetrics - TimescaleDB에서 메트릭 조회 완료 (가상)");
         return new ArrayList<>();
     }
 
@@ -126,18 +126,18 @@ public class TimescaleDBStorage implements MetricsStorage {
     @Override
     public void connect() {
         if (connected) {
-            log.info("TimescaleDBStorage가 이미 연결되어 있습니다.");
+            log.info("[TimescaleDBStorage] connect - TimescaleDBStorage가 이미 연결되어 있습니다.");
             return;
         }
-        log.info("TimescaleDBStorage 연결 시도. URL: {}", config.getUrl());
+        log.info("[TimescaleDBStorage] connect - TimescaleDBStorage 연결 시도. URL: {}", config.getUrl());
         try {
             // TODO: 실제 TimescaleDB 클라이언트 연결 로직 구현
             // 예: connection = DriverManager.getConnection(config.getUrl(), config.getUsername(), config.getPassword());
             this.connected = true;
-            log.info("TimescaleDBStorage 연결 성공.");
+            log.info("[TimescaleDBStorage] connect - TimescaleDBStorage 연결 성공.");
         } catch (Exception e) {
             this.connected = false;
-            log.error("TimescaleDBStorage 연결 실패: {}", e.getMessage(), e);
+            log.error("[TimescaleDBStorage] connect - TimescaleDBStorage 연결 실패: {}", e.getMessage(), e);
             throw new BusinessException(MonitoringErrorCode.STORAGE_CONNECTION_FAILED, "TimescaleDB 연결에 실패했습니다: " + e.getMessage());
         }
     }
@@ -151,13 +151,13 @@ public class TimescaleDBStorage implements MetricsStorage {
     @Override
     public void disconnect() {
         if (!connected) {
-            log.info("TimescaleDBStorage가 이미 연결 해제되어 있습니다.");
+            log.info("[TimescaleDBStorage] disconnect - TimescaleDBStorage가 이미 연결 해제되어 있습니다.");
             return;
         }
-        log.info("TimescaleDBStorage 연결 해제 시도.");
+        log.info("[TimescaleDBStorage] disconnect - TimescaleDBStorage 연결 해제 시도.");
         // TODO: 실제 TimescaleDB 클라이언트 연결 해제 로직 구현
         this.connected = false;
-        log.info("TimescaleDBStorage 연결 해제 완료.");
+        log.info("[TimescaleDBStorage] disconnect - TimescaleDBStorage 연결 해제 완료.");
     }
 
     /**
@@ -187,7 +187,7 @@ public class TimescaleDBStorage implements MetricsStorage {
      */
     @Override
     public void setEnabled(boolean enabled) {
-        log.info("TimescaleDBStorage 활성화 상태 변경: {}", enabled);
+        log.info("[TimescaleDBStorage] setEnabled - TimescaleDBStorage 활성화 상태 변경: {}", enabled);
         this.enabled = enabled;
     }
 }

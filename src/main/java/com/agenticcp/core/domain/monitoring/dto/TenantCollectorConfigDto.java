@@ -3,9 +3,11 @@ package com.agenticcp.core.domain.monitoring.dto;
 import com.agenticcp.core.domain.monitoring.enums.CollectorType;
 import com.agenticcp.core.domain.monitoring.enums.QuotaExceededAction;
 import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
@@ -14,9 +16,15 @@ import java.util.Map;
 
 /**
  * 테넌트별 수집기 설정 DTO
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Getter
 @Builder
+@NoArgsConstructor(force = true)
+@AllArgsConstructor
 @EqualsAndHashCode
 @ToString
 public class TenantCollectorConfigDto {

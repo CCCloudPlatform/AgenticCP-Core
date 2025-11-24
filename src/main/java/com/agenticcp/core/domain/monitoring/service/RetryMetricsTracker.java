@@ -59,7 +59,7 @@ public class RetryMetricsTracker {
             .tag("type", "failure")
             .register(meterRegistry);
         
-        log.info("RetryMetricsTracker가 초기화되었습니다. Micrometer 카운터가 등록되었습니다.");
+        log.info("[RetryMetricsTracker] RetryMetricsTracker - RetryMetricsTracker가 초기화되었습니다. Micrometer 카운터가 등록되었습니다.");
     }
     
     /**
@@ -69,7 +69,7 @@ public class RetryMetricsTracker {
      */
     public void recordRetryAttempt() {
         retryAttemptsCounter.increment();
-        log.debug("재시도 시도 기록됨. 총 시도 횟수: {}", retryAttemptsCounter.count());
+        log.debug("[RetryMetricsTracker] recordRetryAttempt - 재시도 시도 기록됨. 총 시도 횟수: {}", retryAttemptsCounter.count());
     }
     
     /**
@@ -79,7 +79,7 @@ public class RetryMetricsTracker {
      */
     public void recordRetrySuccess() {
         retrySuccessCounter.increment();
-        log.info("재시도 성공. 총 재시도 성공 횟수: {}", retrySuccessCounter.count());
+        log.info("[RetryMetricsTracker] recordRetrySuccess - 재시도 성공. 총 재시도 성공 횟수: {}", retrySuccessCounter.count());
     }
     
     /**
@@ -89,7 +89,7 @@ public class RetryMetricsTracker {
      */
     public void recordRetryFailure() {
         retryFailureCounter.increment();
-        log.error("모든 재시도 실패. 총 재시도 실패 횟수: {}", retryFailureCounter.count());
+        log.error("[RetryMetricsTracker] recordRetryFailure - 모든 재시도 실패. 총 재시도 실패 횟수: {}", retryFailureCounter.count());
     }
     
     /**

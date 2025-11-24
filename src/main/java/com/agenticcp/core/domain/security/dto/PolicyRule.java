@@ -10,12 +10,12 @@ import java.util.Map;
 
 /**
  * 개별 정책 규칙 데이터 전송 객체
- * 
+ *
  * <p>정책의 개별 규칙을 정의하는 DTO입니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Data
 @Builder

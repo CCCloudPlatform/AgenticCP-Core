@@ -9,12 +9,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 컨트롤러 클래스 레벨 감사 로깅 애노테이션
- * 
- * 이 애노테이션을 컨트롤러 클래스에 적용하면 해당 컨트롤러의 모든 메서드에 대해
- * 자동으로 감사 로깅이 적용됩니다. 메서드명을 기반으로 AuditAction을 자동 매핑합니다.
+ * 컨트롤러 클래스 레벨 감사 로깅 애노테이션입니다.
+ * 대상 HTTP 메서드/제외 메서드 등 기본 정책을 지정할 수 있습니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Target(ElementType.TYPE)

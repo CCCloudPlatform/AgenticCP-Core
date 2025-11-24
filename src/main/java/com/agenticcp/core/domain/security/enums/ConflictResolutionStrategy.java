@@ -5,6 +5,10 @@ import lombok.Getter;
 /**
  * 정책 충돌 해결 전략
  * 여러 정책이 동일한 리소스에 적용될 때 충돌을 해결하는 방법을 정의
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-08
  */
 @Getter
 public enum ConflictResolutionStrategy {

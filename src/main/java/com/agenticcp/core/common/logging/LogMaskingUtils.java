@@ -5,12 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.regex.Pattern;
 
 /**
- * 로그 마스킹 유틸리티
- * 민감한 정보를 로그에서 마스킹 처리합니다.
+ * 로그 메시지 내 민감 정보를 마스킹하는 유틸리티 클래스입니다.
+ * 이메일/전화/카드/토큰 등 패턴 기반 마스キング을 제공합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-10-01
  */
 @Slf4j
 public class LogMaskingUtils {

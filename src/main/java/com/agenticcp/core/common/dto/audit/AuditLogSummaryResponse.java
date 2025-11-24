@@ -1,0 +1,26 @@
+package com.agenticcp.core.common.dto.audit;
+
+import com.agenticcp.core.common.enums.AuditSeverity;
+
+import java.time.Instant;
+import java.util.Map;
+
+/**
+ * 감사 로그 대시보드 요약 응답 DTO입니다.
+ * 전체/성공/실패 건수와 분포, 갱신 시각을 제공합니다.
+ *
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ * @version 1.0.0
+ */
+public record AuditLogSummaryResponse(
+    long totalLogs,
+    long successLogs,
+    long failedLogs,
+    double successRate,
+    Map<AuditSeverity, Long> severityDistribution,
+    Map<String, Long> actionDistribution,
+    Map<String, Long> dailyLogCount,
+    Map<String, Long> hourlyLogCount,
+    Instant lastUpdated
+) {}

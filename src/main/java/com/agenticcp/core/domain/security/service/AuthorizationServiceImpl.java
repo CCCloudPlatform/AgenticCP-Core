@@ -13,6 +13,13 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.Optional;
 
+/**
+ * 권한 검증 서비스 구현체
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-10
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j

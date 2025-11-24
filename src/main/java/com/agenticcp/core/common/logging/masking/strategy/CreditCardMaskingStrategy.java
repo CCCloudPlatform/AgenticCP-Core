@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 신용카드 번호 마스킹 전략 (PCI DSS 표준 준수)
- * 
- * PCI DSS 표준에 따라 신용카드 번호는 앞 6자리와 뒤 4자리만 표시하고 중간은 마스킹 처리합니다.
- * 예: 1234-5678-9012-3456 -> 1234-56XX-XXXX-3456
+ * 신용카드 번호 마스킹 전략입니다. 앞 6자리/뒤 4자리만 노출합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component

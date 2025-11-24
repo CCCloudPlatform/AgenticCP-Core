@@ -7,16 +7,27 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 위협 탐지 엔티티
+ *
+ * <p>테넌트 환경에서 탐지된 보안 위협 정보를 관리합니다.</p>
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-08
+ */
 @Entity
 @Table(name = "threat_detections")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 public class ThreatDetection extends BaseEntity {
 
     @Column(name = "threat_id", nullable = false, unique = true)
@@ -34,6 +45,7 @@ public class ThreatDetection extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
+    @Builder.Default
     private Status status = Status.ACTIVE;
 
     @Enumerated(EnumType.STRING)
@@ -42,16 +54,20 @@ public class ThreatDetection extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "severity")
+    @Builder.Default
     private Severity severity = Severity.MEDIUM;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "confidence_level")
+    @Builder.Default
     private ConfidenceLevel confidenceLevel = ConfidenceLevel.MEDIUM;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "is_auto_remediate")
+    @Builder.Default
     private Boolean isAutoRemediate = false;
 
     @Column(name = "detection_rules", columnDefinition = "TEXT")
@@ -73,12 +89,15 @@ public class ThreatDetection extends BaseEntity {
     private LocalDateTime lastDetected;
 
     @Column(name = "detection_count")
+    @Builder.Default
     private Long detectionCount = 0L;
 
     @Column(name = "false_positive_count")
+    @Builder.Default
     private Long falsePositiveCount = 0L;
 
     @Column(name = "true_positive_count")
+    @Builder.Default
     private Long truePositiveCount = 0L;
 
     @Column(name = "metadata", columnDefinition = "TEXT")

@@ -23,6 +23,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * 테넌트 권한/역할 관리 서비스
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-10
+ */
 @Slf4j
 @Service
 @Transactional(readOnly = true)
