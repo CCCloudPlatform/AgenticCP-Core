@@ -4,7 +4,7 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.platform.cache.config.RedisCacheConfig.FeatureFlagCacheProperties;
 import com.agenticcp.core.domain.platform.cache.dto.FeatureFlagCacheDto;
 import com.agenticcp.core.domain.platform.entity.FeatureFlag;
-import com.agenticcp.core.domain.platform.exception.FeatureFlagCacheErrorCode;
+import com.agenticcp.core.domain.platform.enums.FeatureFlagCacheErrorCode;
 import com.agenticcp.core.domain.platform.service.FeatureFlagService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -91,6 +91,8 @@ public class RedisCacheConfig {
     /**
      * 캐시 설정 프로퍼티 빈
      * application.yml의 feature-flag.cache 설정을 바인딩
+     *
+     * @return 기능 플래그 캐시 설정 프로퍼티
      */
     @Bean
     @ConfigurationProperties(prefix = "feature-flag.cache")

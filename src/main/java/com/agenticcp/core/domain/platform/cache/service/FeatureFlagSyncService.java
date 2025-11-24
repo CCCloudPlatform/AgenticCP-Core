@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.platform.cache.service;
 
 import com.agenticcp.core.domain.platform.cache.event.FeatureFlagChangeEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -11,6 +10,7 @@ import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -36,12 +36,13 @@ public class FeatureFlagSyncService implements MessageListener {
     private final ChannelTopic featureFlagChangeTopic;
     private final RedisMessageListenerContainer redisMessageListenerContainer;
     private final FeatureFlagCacheService cacheService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RedisSerializer<FeatureFlagChangeEvent> valueSerializer;
     
     /**
      * 생성자
      * <p>
      * `cacheService`에 `@Lazy`를 적용하여 순환 의존성을 방지합니다.
+     * `redisTemplate`의 value serializer를 가져와 메시지 역직렬화에 활용합니다.
      * </p>
      */
     public FeatureFlagSyncService(
@@ -54,6 +55,11 @@ public class FeatureFlagSyncService implements MessageListener {
         this.featureFlagChangeTopic = featureFlagChangeTopic;
         this.redisMessageListenerContainer = redisMessageListenerContainer;
         this.cacheService = cacheService;
+        // redisTemplate의 value serializer를 가져와서 메시지 역직렬화에 활용
+        @SuppressWarnings("unchecked")
+        RedisSerializer<FeatureFlagChangeEvent> serializer = 
+                (RedisSerializer<FeatureFlagChangeEvent>) redisTemplate.getValueSerializer();
+        this.valueSerializer = serializer;
     }
 
     /**
@@ -79,6 +85,7 @@ public class FeatureFlagSyncService implements MessageListener {
      * Redis Pub/Sub 메시지 수신 핸들러
      * <p>
      * 다른 노드에서 발행한 플래그 변경 이벤트를 수신하여 로컬 캐시를 무효화합니다.
+     * `redisTemplate`의 value serializer를 활용하여 메시지를 역직렬화합니다.
      * </p>
      *
      * @param message 수신된 메시지
@@ -87,8 +94,13 @@ public class FeatureFlagSyncService implements MessageListener {
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
-            String messageBody = new String(message.getBody());
-            FeatureFlagChangeEvent event = objectMapper.readValue(messageBody, FeatureFlagChangeEvent.class);
+            // redisTemplate의 value serializer를 사용하여 역직렬화
+            FeatureFlagChangeEvent event = valueSerializer.deserialize(message.getBody());
+            
+            if (event == null) {
+                log.warn("[FeatureFlagSyncService] Failed to deserialize message: null result");
+                return;
+            }
             
             log.debug("[FeatureFlagSyncService] Received event: flagKey={}, changeType={}, sourceNodeId={}", 
                     event.getFlagKey(), event.getChangeType(), event.getSourceNodeId());

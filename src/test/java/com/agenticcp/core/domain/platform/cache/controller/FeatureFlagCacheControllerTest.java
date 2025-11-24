@@ -31,7 +31,7 @@ import static org.mockito.Mockito.*;
  *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-18
+ * @since 2025-11-15
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("FeatureFlagCacheController 단위 테스트")
@@ -61,14 +61,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("캐시 Warm-up 성공 - 5개 플래그 캐싱")
         void warmupCache_Success_ReturnsCachedCount() {
-            // 테스트 케이스: 캐시 Warm-up 성공
-            // 목적: 모든 활성 플래그가 캐시에 정상적으로 로드되는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. 응답이 성공 상태인지
-            // 3. cachedCount가 예상값과 일치하는지
-            // 4. cacheService.warmupCache()가 호출되는지
-
             // Given
             int expectedCachedCount = 5;
             when(cacheService.warmupCache()).thenReturn(expectedCachedCount);
@@ -89,12 +81,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("캐시 Warm-up 성공 - 플래그 없음 (0개)")
         void warmupCache_WithNoFlags_ReturnsZero() {
-            // 테스트 케이스: 플래그가 없는 경우 Warm-up
-            // 목적: 플래그가 없어도 정상적으로 처리되는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. cachedCount가 0인지
-
             // Given
             when(cacheService.warmupCache()).thenReturn(0);
 
@@ -125,13 +111,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("전체 캐시 무효화 성공")
         void invalidateAllCache_Success() {
-            // 테스트 케이스: 전체 캐시 무효화 성공
-            // 목적: 모든 플래그의 캐시가 정상적으로 무효화되는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. 응답이 성공 상태인지
-            // 3. cacheService.invalidateAllCache()가 호출되는지
-
             // Given
             doNothing().when(cacheService).invalidateAllCache();
 
@@ -164,13 +143,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("특정 플래그 캐시 무효화 성공")
         void invalidateFlagCache_WithValidFlagKey_Success() {
-            // 테스트 케이스: 특정 플래그 캐시 무효화 성공
-            // 목적: 특정 플래그의 캐시가 정상적으로 무효화되는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. 응답이 성공 상태인지
-            // 3. cacheService.invalidateCache(flagKey)가 호출되는지
-
             // Given
             String flagKey = "new-feature";
             doNothing().when(cacheService).invalidateCache(flagKey);
@@ -190,13 +162,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("잘못된 플래그 키 (null) - 400 Bad Request")
         void invalidateFlagCache_WithNullFlagKey_ReturnsBadRequest() {
-            // 테스트 케이스: null 플래그 키로 무효화 시도
-            // 목적: null 키에 대한 검증이 정상적으로 작동하는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 400 Bad Request인지
-            // 2. 응답이 에러 상태인지
-            // 3. cacheService.invalidateCache()가 호출되지 않는지
-
             // Given
             String flagKey = null;
 
@@ -215,13 +180,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("잘못된 플래그 키 (빈 문자열) - 400 Bad Request")
         void invalidateFlagCache_WithEmptyFlagKey_ReturnsBadRequest() {
-            // 테스트 케이스: 빈 문자열 플래그 키로 무효화 시도
-            // 목적: 빈 문자열 키에 대한 검증이 정상적으로 작동하는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 400 Bad Request인지
-            // 2. 응답이 에러 상태인지
-            // 3. cacheService.invalidateCache()가 호출되지 않는지
-
             // Given
             String flagKey = "";
 
@@ -239,12 +197,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("잘못된 플래그 키 (공백만) - 400 Bad Request")
         void invalidateFlagCache_WithWhitespaceFlagKey_ReturnsBadRequest() {
-            // 테스트 케이스: 공백만 있는 플래그 키로 무효화 시도
-            // 목적: 공백 문자열 키에 대한 검증이 정상적으로 작동하는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 400 Bad Request인지
-            // 2. 응답이 에러 상태인지
-
             // Given
             String flagKey = "   ";
 
@@ -275,15 +227,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("Redis 정상 상태 조회")
         void checkHealth_RedisHealthy_ReturnsHealthyStatus() {
-            // 테스트 케이스: Redis 정상 상태 조회
-            // 목적: Redis가 정상일 때 헬스체크 응답이 올바른지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. isHealthy가 true인지
-            // 3. isFallbackMode가 false인지
-            // 4. redisConnected가 true인지
-            // 5. consecutiveFailures가 0인지
-
             // Given
             CacheHealthStatusDto healthyStatus = CacheHealthStatusDto.builder()
                     .isHealthy(true)
@@ -315,15 +258,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("Fallback 모드 상태 조회 (연속 3회 실패)")
         void checkHealth_FallbackMode_ReturnsFallbackStatus() {
-            // 테스트 케이스: Fallback 모드 상태 조회
-            // 목적: Redis 장애 시 Fallback 모드로 전환되었는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. isHealthy가 false인지
-            // 3. isFallbackMode가 true인지
-            // 4. redisConnected가 false인지
-            // 5. consecutiveFailures가 3인지
-
             // Given
             CacheHealthStatusDto fallbackStatus = CacheHealthStatusDto.builder()
                     .isHealthy(false)
@@ -369,13 +303,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("메트릭 조회 성공 - 캐시 히트율 95%")
         void getMetrics_Success_ReturnsMetrics() {
-            // 테스트 케이스: 메트릭 조회 성공
-            // 목적: 캐시 성능 지표가 정상적으로 조회되는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. 응답이 성공 상태인지
-            // 3. 메트릭 데이터가 정확한지 (총 요청, 히트, 미스, 히트율)
-
             // Given
             CacheMetricsDto metrics = CacheMetricsDto.builder()
                     .totalRequests(1000L)
@@ -409,12 +336,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("메트릭 조회 성공 - 요청 없음 (초기 상태)")
         void getMetrics_WithNoRequests_ReturnsZeroMetrics() {
-            // 테스트 케이스: 요청이 없는 초기 상태 메트릭 조회
-            // 목적: 초기 상태에서도 정상적으로 메트릭이 조회되는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. 모든 메트릭 값이 0인지
-
             // Given
             CacheMetricsDto metrics = CacheMetricsDto.builder()
                     .totalRequests(0L)
@@ -458,13 +379,6 @@ class FeatureFlagCacheControllerTest {
         @Test
         @DisplayName("메트릭 리셋 성공")
         void resetMetrics_Success() {
-            // 테스트 케이스: 메트릭 리셋 성공
-            // 목적: 캐시 메트릭이 정상적으로 초기화되는지 확인
-            // 검증 항목:
-            // 1. HTTP 상태 코드가 200 OK인지
-            // 2. 응답이 성공 상태인지
-            // 3. healthService.resetMetrics()가 호출되는지
-
             // Given
             doNothing().when(healthService).resetMetrics();
 
