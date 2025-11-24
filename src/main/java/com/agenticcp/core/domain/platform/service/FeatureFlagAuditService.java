@@ -93,6 +93,8 @@ public class FeatureFlagAuditService {
                 .userId(userId != null ? userId : mdcContext.userId())
                 .action(normalizedAction)
                 .resourceType(AuditResourceType.FEATURE_FLAG)
+                .requestPath(mdcContext.requestPath() != null ? mdcContext.requestPath() : "/api/platform/feature-flags")
+                .httpMethod(mdcContext.httpMethod() != null ? mdcContext.httpMethod() : "POST")
                 .operationSummary("Feature Flag " + normalizedAction)
                 .controllerName("FeatureFlagController")
                 .methodName("")
@@ -103,6 +105,12 @@ public class FeatureFlagAuditService {
 
         // 감사 이벤트 생성
         AuditEventDto event = AuditEventBuilder.builder(context)
+                .requestPath(context.requestPath() != null && !context.requestPath().isBlank() 
+                        ? context.requestPath() 
+                        : "/api/platform/feature-flags")
+                .httpMethod(context.httpMethod() != null && !context.httpMethod().isBlank() 
+                        ? context.httpMethod() 
+                        : "POST")
                 .requestData(changeDetails)
                 .responseData(null)
                 .oldValue(oldValue)

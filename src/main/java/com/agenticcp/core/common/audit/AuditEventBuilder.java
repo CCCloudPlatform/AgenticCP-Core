@@ -67,6 +67,11 @@ public class AuditEventBuilder {
             this.userId = context.userId();
             this.clientIp = context.clientIp();
         }
+        
+        // requestPath가 null이거나 blank인 경우 기본값 설정 (나중에 덮어쓸 수 있음)
+        if (this.requestPath == null || this.requestPath.isBlank()) {
+            this.requestPath = "/api/unknown";
+        }
     }
 
     /**
@@ -154,6 +159,28 @@ public class AuditEventBuilder {
      */
     public AuditEventBuilder targetResourceId(String targetResourceId) {
         this.targetResourceId = targetResourceId;
+        return this;
+    }
+    
+    /**
+     * 요청 경로를 설정합니다.
+     *
+     * @param requestPath 요청 경로
+     * @return 빌더
+     */
+    public AuditEventBuilder requestPath(String requestPath) {
+        this.requestPath = requestPath;
+        return this;
+    }
+    
+    /**
+     * HTTP 메서드를 설정합니다.
+     *
+     * @param httpMethod HTTP 메서드
+     * @return 빌더
+     */
+    public AuditEventBuilder httpMethod(String httpMethod) {
+        this.httpMethod = httpMethod;
         return this;
     }
     
