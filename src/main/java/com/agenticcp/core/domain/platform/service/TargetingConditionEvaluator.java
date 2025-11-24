@@ -22,12 +22,14 @@ import java.util.Map;
 
 /**
  * 타겟팅 조건 평가 서비스
- * 
+ * <p>
  * 기능 플래그의 타겟팅 규칙을 평가하여 특정 사용자/테넌트에 대해 
  * 기능 플래그가 활성화되어야 하는지 판단합니다.
- * 
+ * </p>
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @Slf4j
 @Service

@@ -63,6 +63,8 @@ class FeatureFlagAuditServiceTest {
                 .tenantId("test-tenant-id")
                 .clientIp("127.0.0.1")
                 .userId("test-user-id")
+                .requestPath("/api/v1/feature-flags")
+                .httpMethod("POST")
                 .build();
         lenient().when(auditContextProvider.getCurrentContext()).thenReturn(mockContext);
 
