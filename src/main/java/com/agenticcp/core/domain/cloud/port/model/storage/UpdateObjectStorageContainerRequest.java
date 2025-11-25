@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.cloud.port.model.storage;
 
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,17 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateObjectStorageContainerRequest {
+
+    /**
+     * 프로바이더 / 계정 스코프
+     */
+    CloudProvider.ProviderType providerType;
+    String accountScope;
+
+    /**
+     * 컨테이너명
+     */
+    String containerName;
     
     /**
      * 버전 관리 활성화 여부 (선택적)

@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.cloud.port.model.storage;
 
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,6 +15,12 @@ import java.util.Map;
 @Data
 @Builder
 public class ObjectStorageContainerQuery {
+
+    /**
+     * 프로바이더 / 계정 스코프
+     */
+    private CloudProvider.ProviderType providerType;
+    private String accountScope;
 
     /**
      * 페이징 정보
