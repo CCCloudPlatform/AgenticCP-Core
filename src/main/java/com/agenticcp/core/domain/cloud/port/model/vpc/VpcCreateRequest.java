@@ -1,10 +1,9 @@
-package com.agenticcp.core.domain.cloud.port.model;
+package com.agenticcp.core.domain.cloud.port.model.vpc;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import lombok.Builder;
 import lombok.Value;
 
-import java.util.List;
 import java.util.Map;
 
 /**

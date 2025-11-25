@@ -5,11 +5,11 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.common.CloudErrorTransla
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
-import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.DeleteVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 
 import lombok.RequiredArgsConstructor;
@@ -101,7 +101,7 @@ public class AwsVpcManagementAdapter implements VpcManagementPort, ProviderScope
     }
 
     @Override
-    public List<CloudResource> listVpcs(ListVpcsQuery query) {
+    public List<CloudResource> listVpcs(ListVpcsQueryRequest query) {
         try (Ec2Client ec2Client = awsClientConfig.createEc2Client(query.session(), query.region())) {
             DescribeVpcsRequest.Builder requestBuilder = DescribeVpcsRequest.builder();
             List<Filter> filters = new java.util.ArrayList<>();

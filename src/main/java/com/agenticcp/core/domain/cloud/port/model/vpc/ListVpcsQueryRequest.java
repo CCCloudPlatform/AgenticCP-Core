@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.command.vpc;
+package com.agenticcp.core.domain.cloud.port.model.vpc;
 
 import java.util.Map;
 
@@ -11,7 +11,7 @@ import lombok.Builder;
  * VPC 목록 조회 명령.
  */
 @Builder
-public record ListVpcsQuery(
+public record ListVpcsQueryRequest(
         CloudProvider.ProviderType providerType,
         String accountScope,
         String region,
