@@ -5,7 +5,7 @@ import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.port.model.storage.CreateObjectStorageContainerRequest;
-import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQuery;
+import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.storage.UpdateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
@@ -165,7 +165,7 @@ public class ObjectStorageController {
         log.info("[ObjectStorageController] listContainers - provider={}, accountScope={}, page={}, size={}",
                 provider, accountScope, page, size);
         
-        ObjectStorageContainerQuery query = ObjectStorageContainerQuery.builder()
+        ObjectStorageContainerQueryRequest query = ObjectStorageContainerQueryRequest.builder()
                 .providerType(provider)
                 .accountScope(accountScope)
                 .page(page)

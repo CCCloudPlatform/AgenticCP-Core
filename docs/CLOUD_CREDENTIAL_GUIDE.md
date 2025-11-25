@@ -467,7 +467,7 @@ private CloudSessionCredential getSession() {
 
         if (session == null) {
             log.error("세션 획득 결과가 null입니다: tenantKey={}, accountScope={}", tenantKey, accountScope);
-            throw new BusinessException(AwsErrorCode.AWS_CREDENTIALS_INVALID, 
+            throw new BusinessException(CredentialErrorCode.INVALID_CREDENTIALS, 
                     "세션 획득에 실패했습니다: 세션이 null입니다");
         }
 
@@ -478,7 +478,7 @@ private CloudSessionCredential getSession() {
         throw e;
     } catch (Exception e) {
         log.error("세션 획득 실패: {}", e.getMessage(), e);
-        throw new BusinessException(AwsErrorCode.AWS_CREDENTIALS_INVALID, 
+        throw new BusinessException(CredentialErrorCode.INVALID_CREDENTIALS, 
                 "세션 획득에 실패했습니다: " + e.getMessage());
     }
 }

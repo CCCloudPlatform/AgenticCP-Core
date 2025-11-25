@@ -7,10 +7,10 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConf
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.exception.AwsErrorCode;
+import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQuery;
+import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQueryRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
@@ -55,7 +55,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
     private final AwsS3ErrorTranslator errorTranslator;
 
     @Override
-    public Page<CloudResource> listContainers(ObjectStorageContainerQuery query) {
+    public Page<CloudResource> listContainers(ObjectStorageContainerQueryRequest query) {
         log.debug("Listing S3 buckets using Resource Groups Tagging API with query: {}", query);
 
         return executeWithTaggingClient(query.getAccountScope(), client -> {
@@ -141,7 +141,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
     }
 
     private List<ResourceTagMapping> fetchAllTagMappings(ResourceGroupsTaggingApiClient client,
-                                                         ObjectStorageContainerQuery query) {
+                                                         ObjectStorageContainerQueryRequest query) {
         GetResourcesRequest.Builder requestBuilder = GetResourcesRequest.builder()
                 .resourceTypeFilters("s3:bucket");
 
@@ -220,7 +220,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
     }
 
     private Page<CloudResource> applyMemoryOperations(List<CloudResource> resources,
-                                                      ObjectStorageContainerQuery query) {
+                                                      ObjectStorageContainerQueryRequest query) {
         List<CloudResource> filtered = resources;
         if (query.getNameContains() != null && !query.getNameContains().isEmpty()) {
             filtered = filtered.stream()
@@ -297,9 +297,8 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
             throw e;
         } catch (Exception e) {
             log.error("세션 획득 실패: accountScope={}", accountScope, e);
-            throw new BusinessException(AwsErrorCode.AWS_CREDENTIALS_INVALID,
+            throw new BusinessException(CredentialErrorCode.INVALID_CREDENTIALS,
                     "세션 획득에 실패했습니다: " + e.getMessage());
         }
     }
-
 }

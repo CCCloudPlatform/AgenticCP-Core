@@ -4,8 +4,7 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
-import com.agenticcp.core.domain.cloud.exception.S3ErrorCode;
-import com.agenticcp.core.domain.cloud.exception.AwsErrorCode;
+import com.agenticcp.core.domain.cloud.exception.ObjectStorageErrorCode;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -16,8 +15,6 @@ import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.core.exception.SdkServiceException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
@@ -91,7 +88,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
         try (S3Client s3Client = awsClientConfig.createS3Client(session, null)) {
             if (!isBucketEmpty(s3Client, containerName)) {
                 throw new BusinessException(
-                        S3ErrorCode.S3_BUCKET_OPERATION_FAILED,
+                        ObjectStorageErrorCode.BUCKET_OPERATION_FAILED,
                         "Bucket is not empty. Use force delete instead."
                 );
             }
@@ -102,7 +99,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             throw e;
         } catch (NoSuchBucketException e) {
             log.error("S3 bucket not found: {}", containerName);
-            throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
+            throw new ResourceNotFoundException(ObjectStorageErrorCode.BUCKET_NOT_FOUND);
         } catch (Exception e) {
             log.error("Failed to delete S3 bucket: {}", containerName, e);
             throw errorTranslator.translate(e);
@@ -116,7 +113,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
 
         try (S3Client s3Client = awsClientConfig.createS3Client(command.getSession(), null)) {
             if (!checkBucketExists(s3Client, containerName)) {
-                throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
+                throw new ResourceNotFoundException(ObjectStorageErrorCode.BUCKET_NOT_FOUND);
             }
 
             if (command.getVersioningEnabled() != null) {
@@ -148,7 +145,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
 
         try (S3Client s3Client = awsClientConfig.createS3Client(session, null)) {
             if (!checkBucketExists(s3Client, containerName)) {
-                throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
+                throw new ResourceNotFoundException(ObjectStorageErrorCode.BUCKET_NOT_FOUND);
             }
 
             emptyBucket(s3Client, containerName);
@@ -195,7 +192,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
         } catch (BucketAlreadyOwnedByYouException e) {
             log.warn("S3 bucket {} already owned by requester. Treating as success.", bucketName);
         } catch (BucketAlreadyExistsException e) {
-            throw new BusinessException(S3ErrorCode.S3_BUCKET_ALREADY_EXISTS);
+            throw new BusinessException(ObjectStorageErrorCode.BUCKET_ALREADY_EXISTS);
         }
     }
 
@@ -225,7 +222,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             return true;
         } catch (Exception e) {
             log.error("Failed to check bucket content state: {}", bucketName, e);
-            throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED);
+            throw new BusinessException(ObjectStorageErrorCode.BUCKET_OPERATION_FAILED);
         }
     }
 
@@ -296,7 +293,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             );
         } catch (Exception e) {
             log.error("Failed to update versioning for bucket {}", bucketName, e);
-            throw new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED);
+            throw new BusinessException(ObjectStorageErrorCode.BUCKET_OPERATION_FAILED);
         }
     }
 

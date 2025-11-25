@@ -212,12 +212,12 @@ class S3BucketUseCaseServiceTest {
     @DisplayName("Object Storage Container 목록 조회 테스트")
     class ListContainersTest {
 
-        private ObjectStorageContainerQuery query;
+        private ObjectStorageContainerQueryRequest query;
         private Page<CloudResource> expectedPage;
 
         @BeforeEach
         void setUp() {
-            query = ObjectStorageContainerQuery.builder()
+            query = ObjectStorageContainerQueryRequest.builder()
                     .page(0)
                     .size(10)
                     .nameContains("test")

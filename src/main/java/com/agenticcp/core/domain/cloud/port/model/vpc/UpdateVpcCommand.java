@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.command.vpc;
+package com.agenticcp.core.domain.cloud.port.model.vpc;
 
 import java.util.Map;
 

@@ -14,7 +14,7 @@ import java.util.Map;
  */
 @Data
 @Builder
-public class ObjectStorageContainerQuery {
+public class ObjectStorageContainerQueryRequest {
 
     /**
      * 프로바이더 / 계정 스코프
@@ -43,8 +43,8 @@ public class ObjectStorageContainerQuery {
     /**
      * 기본값으로 페이징 설정
      */
-    public static ObjectStorageContainerQuery defaultQuery() {
-        return ObjectStorageContainerQuery.builder()
+    public static ObjectStorageContainerQueryRequest defaultQuery() {
+        return ObjectStorageContainerQueryRequest.builder()
                 .page(0)
                 .size(20)
                 .sortBy("name")
