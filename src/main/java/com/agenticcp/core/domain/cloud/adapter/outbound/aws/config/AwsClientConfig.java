@@ -10,6 +10,8 @@ import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.resourcegroupstaggingapi.ResourceGroupsTaggingApiClient;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sts.StsClient;
 
 /**
@@ -33,28 +35,10 @@ public class AwsClientConfig {
      */
     public StsClient createStsClient(String accessKeyId, String secretAccessKey, String region) {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
-        
+
         return StsClient.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.of(region != null ? region : "us-east-1"))
-                .build();
-    }
-
-    /**
-     * 동적 자격증명으로 EC2 Client를 생성합니다.
-     * EC2 인스턴스 조회, 관리 등에 사용됩니다.
-     * 
-     * @param accessKeyId AWS Access Key ID
-     * @param secretAccessKey AWS Secret Access Key
-     * @param region AWS 리전 (예: us-east-1)
-     * @return Ec2Client 인스턴스
-     */
-    public Ec2Client createEc2Client(String accessKeyId, String secretAccessKey, String region) {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
-        
-        return Ec2Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.of(region != null ? region : "us-east-1"))
+                .region(Region.of(resolveRegion(region)))
                 .build();
     }
 
@@ -68,9 +52,57 @@ public class AwsClientConfig {
      * @throws BusinessException 세션이 유효하지 않거나 AWS 세션이 아닌 경우
      */
     public Ec2Client createEc2Client(CloudSessionCredential session, String region) {
+        AwsSessionCredential awsSession = validateAndCastSession(session);
+        String targetRegion = region != null ? region : awsSession.getRegion();
+
+        return Ec2Client.builder()
+                .credentialsProvider(StaticCredentialsProvider.create(toSdkCredentials(awsSession)))
+                .region(Region.of(resolveRegion(targetRegion)))
+                .build();
+    }
+
+    /**
+     * 세션 자격증명으로 S3 Client를 생성합니다.
+     * * @param session AWS 세션 자격증명
+     * @param region AWS 리전 (S3는 리전이 중요하므로 명시적 전달 권장, null이면 세션 리전 사용)
+     * @return S3Client 인스턴스
+     */
+    public S3Client createS3Client(CloudSessionCredential session, String region) {
+        AwsSessionCredential awsSession = validateAndCastSession(session);
+
+        String targetRegion = region != null ? region : awsSession.getRegion();
+
+        return S3Client.builder()
+                .credentialsProvider(StaticCredentialsProvider.create(toSdkCredentials(awsSession)))
+                .region(Region.of(resolveRegion(targetRegion)))
+                // .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
+                .build();
+    }
+
+    /**
+     * 세션 자격증명으로 Resource Groups Tagging API Client를 생성합니다.
+     * 태그 기반 리소스 조회 시 사용됩니다.
+     *
+     * @param session AWS 세션 자격증명
+     * @param region AWS 리전 (null이면 세션의 리전 사용)
+     * @return ResourceGroupsTaggingApiClient 인스턴스
+     */
+    public ResourceGroupsTaggingApiClient createResourceGroupsTaggingApiClient(CloudSessionCredential session, String region) {
+        AwsSessionCredential awsSession = validateAndCastSession(session);
+        String targetRegion = region != null ? region : awsSession.getRegion();
+
+        return ResourceGroupsTaggingApiClient.builder()
+                .credentialsProvider(StaticCredentialsProvider.create(toSdkCredentials(awsSession)))
+                .region(Region.of(resolveRegion(targetRegion)))
+                .build();
+    }
+
+    /**
+     * 세션 유효성 검증 및 형변환
+     */
+    private AwsSessionCredential validateAndCastSession(CloudSessionCredential session) {
         if (session == null) {
-            throw new BusinessException(CloudErrorCode.CLOUD_CONNECTION_FAILED,
-                    "세션 자격증명이 필요합니다.");
+            throw new BusinessException(CloudErrorCode.CLOUD_CONNECTION_FAILED, "세션 자격증명이 필요합니다.");
         }
 
         if (!(session instanceof AwsSessionCredential awsSession)) {
@@ -82,24 +114,25 @@ public class AwsClientConfig {
             throw new BusinessException(CloudErrorCode.CLOUD_CONNECTION_FAILED,
                     "세션이 만료되었습니다. expiresAt: " + awsSession.getExpiresAt());
         }
+        return awsSession;
+    }
 
-        // 세션 자격증명 생성 (sessionToken 포함)
-        AwsSessionCredentials sessionCredentials = AwsSessionCredentials.builder()
-                .accessKeyId(awsSession.getAccessKeyId())
-                .secretAccessKey(awsSession.getSecretAccessKey())
-                .sessionToken(awsSession.getSessionToken())
-                .build();
+    /**
+     * 도메인 세션 객체를 AWS SDK 세션 객체로 변환
+     */
+    private AwsSessionCredentials toSdkCredentials(AwsSessionCredential session) {
+        return AwsSessionCredentials.create(
+                session.getAccessKeyId(),
+                session.getSecretAccessKey(),
+                session.getSessionToken()
+        );
+    }
 
-        // 리전 결정: 파라미터 우선, 없으면 세션의 region 사용
-        String resolvedRegion = region != null ? region : awsSession.getRegion();
-        if (resolvedRegion == null || resolvedRegion.isBlank()) {
-            resolvedRegion = "us-east-1"; // 기본값
-        }
-
-        return Ec2Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(sessionCredentials))
-                .region(Region.of(resolvedRegion))
-                .build();
+    /**
+     * 리전 기본값 처리
+     */
+    private String resolveRegion(String region) {
+        return (region != null && !region.isBlank()) ? region : "us-east-1";
     }
 }
 
