@@ -6,7 +6,6 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConf
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.S3ErrorCode;
 import com.agenticcp.core.domain.cloud.exception.AwsErrorCode;
-import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -41,16 +40,12 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort, ProviderScoped {
+public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort {
 
     private final AwsClientConfig awsClientConfig;
     private final AwsS3BucketMapper mapper;
     private final CloudProviderRepository cloudProviderRepository;
-
-    @Override
-    public CloudProvider.ProviderType getProviderType() {
-        return CloudProvider.ProviderType.AWS;
-    }
+    private final AwsS3ErrorTranslator errorTranslator;
 
     /**
      * S3 버킷 생성, 태그 적용, 객체 소유권 및 잠금 설정을 수행합니다.
@@ -85,7 +80,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             throw e;
         } catch (Exception e) {
             log.error("Failed to create S3 bucket: {}", bucketName, e);
-            throw translateException(e);
+            throw errorTranslator.translate(e);
         }
     }
 
@@ -110,7 +105,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             throw new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
         } catch (Exception e) {
             log.error("Failed to delete S3 bucket: {}", containerName, e);
-            throw translateException(e);
+            throw errorTranslator.translate(e);
         }
     }
 
@@ -143,7 +138,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             throw e;
         } catch (Exception e) {
             log.error("Failed to update S3 bucket: {}", containerName, e);
-            throw translateException(e);
+            throw errorTranslator.translate(e);
         }
     }
 
@@ -163,7 +158,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             throw e;
         } catch (Exception e) {
             log.error("Failed to force delete S3 bucket: {}", containerName, e);
-            throw translateException(e);
+            throw errorTranslator.translate(e);
         }
     }
 
@@ -329,53 +324,5 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
     private CloudProvider findAwsProvider() {
         return cloudProviderRepository.findFirstByProviderType(CloudProvider.ProviderType.AWS)
                 .orElseThrow(() -> new ResourceNotFoundException(CloudErrorCode.CLOUD_PROVIDER_NOT_FOUND));
-    }
-
-    /**
-     * AWS 예외를 비즈니스 예외로 변환합니다.
-     */
-    private RuntimeException translateException(Exception e) {
-        log.error("AWS S3 operation failed", e);
-        
-        if (e instanceof NoSuchBucketException) {
-            return new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
-        }
-        
-        if (e instanceof BucketAlreadyExistsException) {
-            return new BusinessException(S3ErrorCode.S3_BUCKET_ALREADY_EXISTS);
-        }
-        
-        if (e instanceof S3Exception) {
-            S3Exception s3Exception = (S3Exception) e;
-            String errorCode = s3Exception.awsErrorDetails().errorCode();
-            
-            switch (errorCode) {
-                case "NoSuchBucket":
-                    return new ResourceNotFoundException(S3ErrorCode.S3_BUCKET_NOT_FOUND);
-                case "BucketAlreadyExists":
-                    return new BusinessException(S3ErrorCode.S3_BUCKET_ALREADY_EXISTS);
-                case "AccessDenied":
-                    return new BusinessException(S3ErrorCode.S3_BUCKET_ACCESS_DENIED);
-                case "InvalidBucketName":
-                    return new BusinessException(S3ErrorCode.S3_BUCKET_INVALID_NAME);
-                case "ServiceUnavailable":
-                    return new BusinessException(AwsErrorCode.AWS_SERVICE_UNAVAILABLE);
-                case "ThrottlingException":
-                    return new BusinessException(AwsErrorCode.AWS_QUOTA_EXCEEDED);
-                default:
-                    return new BusinessException(S3ErrorCode.S3_BUCKET_OPERATION_FAILED);
-            }
-        }
-        
-        if (e instanceof SdkClientException) {
-            return new BusinessException(AwsErrorCode.AWS_CREDENTIALS_INVALID);
-        }
-        
-        if (e instanceof SdkServiceException) {
-            return new BusinessException(AwsErrorCode.AWS_API_ERROR);
-        }
-        
-        // 일반적인 예외
-        return new BusinessException(CloudErrorCode.CLOUD_CONNECTION_FAILED);
     }
 }
