@@ -15,6 +15,7 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-05
  */
 @Data
 @Builder
@@ -23,9 +24,13 @@ import java.util.Map;
 public class CreateObjectStorageContainerRequest {
 
     /**
-     * 프로바이더 / 계정 스코프
+     * 클라우드 프로바이더 타입
      */
     CloudProvider.ProviderType providerType;
+    
+    /**
+     * 계정 스코프
+     */
     String accountScope;
 
     /**

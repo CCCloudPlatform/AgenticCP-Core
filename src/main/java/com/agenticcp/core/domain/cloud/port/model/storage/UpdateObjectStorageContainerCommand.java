@@ -7,14 +7,26 @@ import lombok.Getter;
 
 import java.util.Map;
 
+/**
+ * Object Storage Container 업데이트 명령
+ * 어댑터 레이어에서 사용하는 내부 명령 객체
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-05
+ */
 @Getter
 @Builder
 public class UpdateObjectStorageContainerCommand {
 
     /**
-     * 프로바이더 / 계정 스코프
+     * 클라우드 프로바이더 타입
      */
     CloudProvider.ProviderType providerType;
+    
+    /**
+     * 계정 스코프
+     */
     String accountScope;
 
     /**

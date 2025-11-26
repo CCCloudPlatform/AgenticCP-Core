@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-05
  */
 @Slf4j
 @Component
@@ -45,7 +46,13 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
     private final AwsS3ErrorTranslator errorTranslator;
 
     /**
-     * S3 버킷 생성, 태그 적용, 객체 소유권 및 잠금 설정을 수행합니다.
+     * S3 버킷을 생성합니다.
+     * 버킷 생성 시 태그, 객체 소유권, 객체 잠금 설정을 함께 적용할 수 있습니다.
+     *
+     * @param command 버킷 생성 명령 (이름, 리전, 태그, 객체 소유권, 객체 잠금 등)
+     * @return 생성된 버킷 정보
+     * @throws BusinessException 버킷이 이미 존재하거나 생성 실패 시
+     * @throws ResourceNotFoundException AWS 프로바이더를 찾을 수 없을 때
      */
     @Override
     public CloudResource createContainer(CreateObjectStorageContainerCommand command) {
@@ -81,6 +88,15 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
         }
     }
 
+    /**
+     * S3 버킷을 삭제합니다.
+     * 버킷이 비어있지 않으면 삭제에 실패하며, forceDeleteContainer를 사용해야 합니다.
+     *
+     * @param session 클라우드 세션 인증 정보
+     * @param containerName 삭제할 버킷 이름
+     * @throws BusinessException 버킷이 비어있지 않거나 삭제 실패 시
+     * @throws ResourceNotFoundException 버킷을 찾을 수 없을 때
+     */
     @Override
     public void deleteContainer(CloudSessionCredential session, String containerName) {
         log.info("Deleting S3 bucket: {}", containerName);
@@ -106,6 +122,15 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
         }
     }
 
+    /**
+     * S3 버킷의 설정을 업데이트합니다.
+     * 버전 관리 활성화/비활성화 및 태그 수정을 지원합니다.
+     *
+     * @param command 업데이트 명령 (버킷 이름, 버전 관리 설정, 태그 등)
+     * @return 업데이트된 버킷 정보
+     * @throws BusinessException 업데이트 실패 시
+     * @throws ResourceNotFoundException 버킷을 찾을 수 없을 때
+     */
     @Override
     public CloudResource updateContainer(UpdateObjectStorageContainerCommand command) {
         String containerName = command.getContainerName();
@@ -139,6 +164,15 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
         }
     }
 
+    /**
+     * S3 버킷을 강제 삭제합니다.
+     * 버킷 내부의 모든 객체와 버전을 먼저 삭제한 후 버킷을 삭제합니다.
+     *
+     * @param containerName 삭제할 버킷 이름
+     * @param session 클라우드 세션 인증 정보
+     * @throws BusinessException 삭제 실패 시
+     * @throws ResourceNotFoundException 버킷을 찾을 수 없을 때
+     */
     @Override
     public void forceDeleteContainer(String containerName, CloudSessionCredential session) {
         log.info("Force deleting S3 bucket: {}", containerName);

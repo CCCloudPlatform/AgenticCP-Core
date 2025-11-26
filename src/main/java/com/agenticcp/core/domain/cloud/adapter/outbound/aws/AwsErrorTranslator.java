@@ -14,10 +14,38 @@ import software.amazon.awssdk.services.sts.model.StsException;
 import java.util.Locale;
 import java.util.Optional;
 
+/**
+ * AWS 예외 변환기
+ * AWS SDK에서 발생하는 예외를 도메인 예외로 변환합니다.
+ * 
+ * 지원하는 예외 타입:
+ * - StsException: STS(AssumeRole) 관련 예외
+ * - SdkClientException: 클라이언트 설정 및 네트워크 관련 예외
+ * - SdkServiceException: AWS 서비스 응답 예외
+ * - IllegalArgumentException: 잘못된 파라미터 예외
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-05
+ */
 @Slf4j
 @Component
 public class AwsErrorTranslator {
 
+    /**
+     * AWS 예외를 도메인 예외로 변환합니다.
+     * 
+     * 변환 우선순위:
+     * 1. BusinessException은 그대로 반환
+     * 2. StsException → STS 관련 도메인 예외로 변환
+     * 3. SdkClientException → 클라이언트/네트워크 관련 예외로 변환
+     * 4. SdkServiceException → 서비스 응답 예외로 변환
+     * 5. IllegalArgumentException → INVALID_REQUEST 예외로 변환
+     * 6. 기타 → CLOUD_PROVIDER_UNAVAILABLE 예외로 변환
+     *
+     * @param throwable 변환할 예외
+     * @return 변환된 도메인 예외 (BusinessException 또는 그 하위 타입)
+     */
     public RuntimeException translate(Throwable throwable) {
         if (throwable instanceof BusinessException businessException) {
             return businessException;

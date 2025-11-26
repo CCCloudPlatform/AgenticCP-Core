@@ -19,7 +19,6 @@ public interface ObjectStorageDiscoveryPort {
      * 
      * @param query 조회 조건 (페이징, 필터링 포함)
      * @return CloudResource 페이지 (빈 페이지 가능, null 반환 금지)
-     * @throws com.agenticcp.core.common.exception.BusinessException 조회 권한 없음, 잘못된 쿼리 조건
      */
     Page<CloudResource> listContainers(ObjectStorageContainerQueryRequest query);
 
@@ -29,7 +28,6 @@ public interface ObjectStorageDiscoveryPort {
      * @param accountScope 조회 대상 Cloud 계정 범위 (null 불가)
      * @param containerName Container 이름 (null 불가)
      * @return CloudResource (존재하지 않으면 Optional.empty())
-     * @throws com.agenticcp.core.common.exception.BusinessException 잘못된 Container 이름 형식
      */
     Optional<CloudResource> getContainer(String accountScope, String containerName);
 

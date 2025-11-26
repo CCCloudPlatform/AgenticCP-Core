@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-05
  */
 @Slf4j
 @Component
@@ -54,6 +55,14 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
     private final AwsClientConfig awsClientConfig;
     private final AwsS3ErrorTranslator errorTranslator;
 
+    /**
+     * AWS S3 버킷 목록을 조회합니다.
+     * Resource Groups Tagging API를 사용하여 태그 필터링 및 페이징을 지원합니다.
+     *
+     * @param query 조회 조건 (태그 필터, 페이징, 정렬 등)
+     * @return 조회된 버킷 목록 (페이징 정보 포함)
+     * @throws BusinessException 세션 획득 실패 또는 AWS API 호출 실패 시
+     */
     @Override
     public Page<CloudResource> listContainers(ObjectStorageContainerQueryRequest query) {
         log.debug("Listing S3 buckets using Resource Groups Tagging API with query: {}", query);
@@ -70,6 +79,15 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
         });
     }
 
+    /**
+     * 특정 S3 버킷의 상세 정보를 조회합니다.
+     * 버킷의 위치(리전), 태그 등의 추가 정보를 포함합니다.
+     *
+     * @param accountScope 계정 스코프 (필수)
+     * @param containerName 조회할 버킷 이름
+     * @return 버킷 정보 (존재하지 않으면 Optional.empty())
+     * @throws BusinessException accountScope가 없거나 세션 획득 실패 시
+     */
     @Override
     public Optional<CloudResource> getContainer(String accountScope, String containerName) {
         log.debug("Getting S3 bucket details for: {}, accountScope={}", containerName, accountScope);
@@ -93,6 +111,14 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
         });
     }
 
+    /**
+     * S3 버킷의 존재 여부를 확인합니다.
+     *
+     * @param accountScope 계정 스코프 (필수)
+     * @param containerName 확인할 버킷 이름
+     * @return 버킷이 존재하면 true, 존재하지 않으면 false
+     * @throws BusinessException accountScope가 없거나 세션 획득 실패 시
+     */
     @Override
     public boolean containerExists(String accountScope, String containerName) {
         log.debug("Checking if S3 bucket exists: {}, accountScope={}", containerName, accountScope);
@@ -108,6 +134,11 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
         });
     }
 
+    /**
+     * 이 어댑터가 지원하는 클라우드 프로바이더 타입을 반환합니다.
+     *
+     * @return AWS 프로바이더 타입
+     */
     @Override
     public CloudProvider.ProviderType getProviderType() {
         return CloudProvider.ProviderType.AWS;

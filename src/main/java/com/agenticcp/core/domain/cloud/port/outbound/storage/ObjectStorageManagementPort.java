@@ -21,7 +21,6 @@ public interface ObjectStorageManagementPort {
      *
      * @param command 생성 명령 (세션 포함)
      * @return 생성된 CloudResource
-     * @throws com.agenticcp.core.common.exception.BusinessException Container 이름 중복, 권한 없음, 잘못된 이름 형식
      */
     CloudResource createContainer(CreateObjectStorageContainerCommand command);
 
@@ -30,7 +29,6 @@ public interface ObjectStorageManagementPort {
      *
      * @param command 업데이트 명령 (세션 포함)
      * @return 업데이트된 CloudResource
-     * @throws com.agenticcp.core.common.exception.BusinessException Container 없음, 권한 없음
      */
     CloudResource updateContainer(UpdateObjectStorageContainerCommand command);
 
@@ -39,7 +37,6 @@ public interface ObjectStorageManagementPort {
      * 
      * @param containerName Container 이름
      * @param session 클라우드 세션 자격증명
-     * @throws com.agenticcp.core.common.exception.BusinessException Container 없음, 권한 없음, Container가 비어있지 않음
      */
     void deleteContainer(CloudSessionCredential session, String containerName);
 
@@ -48,7 +45,6 @@ public interface ObjectStorageManagementPort {
      * 
      * @param containerName Container 이름
      * @param session 클라우드 세션 자격증명
-     * @throws com.agenticcp.core.common.exception.BusinessException Container 없음, 권한 없음
      */
     void forceDeleteContainer(String containerName, CloudSessionCredential session);
 }

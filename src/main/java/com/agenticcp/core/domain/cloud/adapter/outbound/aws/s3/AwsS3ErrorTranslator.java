@@ -14,6 +14,14 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+/**
+ * AWS S3 관련 예외 변환기
+ * AWS S3 SDK에서 발생하는 예외를 도메인 예외로 변환합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-05
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -23,6 +31,15 @@ public class AwsS3ErrorTranslator {
 
     /**
      * AWS S3 관련 예외를 도메인 예외로 변환합니다.
+     * 
+     * 변환 규칙:
+     * - NoSuchBucketException → ResourceNotFoundException (BUCKET_NOT_FOUND)
+     * - BucketAlreadyExistsException → BusinessException (BUCKET_ALREADY_EXISTS)
+     * - S3Exception의 errorCode에 따라 적절한 예외로 변환
+     * - 기타 예외는 AwsErrorTranslator를 통해 변환
+     *
+     * @param e 변환할 예외
+     * @return 변환된 도메인 예외 (BusinessException 또는 ResourceNotFoundException)
      */
     public RuntimeException translate(Exception e) {
         log.error("[AwsS3ErrorTranslator] S3 operation failed: {}", e.getMessage(), e);
