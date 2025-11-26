@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.outbound.vpc;
+package com.agenticcp.core.domain.cloud.service.vpc;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
@@ -7,7 +7,6 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
-import com.agenticcp.core.domain.cloud.port.command.vpc.*;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.vpc.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.vpc.VpcQueryRequest;
@@ -17,9 +16,7 @@ import com.agenticcp.core.domain.cloud.port.model.vpc.*;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 
-import com.agenticcp.core.domain.cloud.service.vpc.VpcConstants;
-import com.agenticcp.core.domain.cloud.service.vpc.VpcPortRouter;
-import com.agenticcp.core.domain.cloud.service.vpc.VpcUseCaseService;
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

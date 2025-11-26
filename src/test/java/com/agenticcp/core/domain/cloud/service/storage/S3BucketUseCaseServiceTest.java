@@ -1,11 +1,13 @@
 package com.agenticcp.core.domain.cloud.service.storage;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.storage.*;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageManagementPort;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +35,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * ObjectStorageUseCaseService 단위 테스트
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
  */
@@ -47,7 +50,7 @@ class S3BucketUseCaseServiceTest {
     private CapabilityGuard capabilityGuard;
 
     @Mock
-    private CredentialProviderPort credentialProviderPort;
+    private AccountCredentialManagementPort accountCredentialManagementPort;
 
     @Mock
     private ObjectStorageManagementPort managementPort;
@@ -60,13 +63,24 @@ class S3BucketUseCaseServiceTest {
 
     private static final String TENANT_KEY = "test-tenant";
     private static final CloudProvider.ProviderType AWS = CloudProvider.ProviderType.AWS;
+    private static final String ACCOUNT_SCOPE = "123456789012";
     private static final String CONTAINER_NAME = "test-container";
     private static final String REGION = "us-east-1";
+
+    private CloudSessionCredential mockSession;
 
     @BeforeEach
     void setUp() {
         lenient().when(router.management(AWS)).thenReturn(managementPort);
         lenient().when(router.discovery(AWS)).thenReturn(discoveryPort);
+
+        mockSession = AwsSessionCredential.builder()
+                .accessKeyId("AKIA_TEST")
+                .secretAccessKey("secret")
+                .sessionToken("token")
+                .region(REGION)
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
     }
 
     @Nested
@@ -83,6 +97,8 @@ class S3BucketUseCaseServiceTest {
             tags.put("Project", "agenticcp");
 
             request = CreateObjectStorageContainerRequest.builder()
+                    .providerType(AWS)
+                    .accountScope(ACCOUNT_SCOPE)
                     .containerName(CONTAINER_NAME)
                     .region(REGION)
                     .objectOwnership("BucketOwnerEnforced")
@@ -102,11 +118,12 @@ class S3BucketUseCaseServiceTest {
         void createContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
+                mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
+                when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
                 when(managementPort.createContainer(any(CreateObjectStorageContainerCommand.class))).thenReturn(expectedContainer);
 
                 // When
-                CloudResource result = objectStorageUseCaseService.createContainer(AWS, request);
+                CloudResource result = objectStorageUseCaseService.createContainer(request);
 
                 // Then
                 assertThat(result).isNotNull();
@@ -114,7 +131,7 @@ class S3BucketUseCaseServiceTest {
                 assertThat(result.getResourceId()).isEqualTo("container-" + CONTAINER_NAME);
 
                 verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, REGION);
+                verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(managementPort).createContainer(any(CreateObjectStorageContainerCommand.class));
             }
         }
@@ -122,21 +139,18 @@ class S3BucketUseCaseServiceTest {
         @Test
         @DisplayName("Capability 검증 실패 시 예외 발생")
         void createContainer_CapabilityCheckFailed_ThrowsException() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                doThrow(new RuntimeException("Capability not supported"))
-                        .when(capabilityGuard).ensureSupported(any(), any(), any(), any());
+            // Given
+            doThrow(new RuntimeException("Capability not supported"))
+                    .when(capabilityGuard).ensureSupported(any(), any(), any(), any());
 
-                // When & Then
-                assertThatThrownBy(() -> objectStorageUseCaseService.createContainer(AWS, request))
-                        .isInstanceOf(RuntimeException.class)
-                        .hasMessageContaining("Capability not supported");
+            // When & Then
+            assertThatThrownBy(() -> objectStorageUseCaseService.createContainer(request))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Capability not supported");
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, REGION);
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
-                verify(managementPort, never()).createContainer(any());
-            }
+            verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+            verify(accountCredentialManagementPort, never()).getSession(any(), any(), any());
+            verify(managementPort, never()).createContainer(any());
         }
 
         @Test
@@ -144,17 +158,17 @@ class S3BucketUseCaseServiceTest {
         void createContainer_CredentialCheckFailed_ThrowsException() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                doThrow(new RuntimeException("Invalid credentials"))
-                        .when(credentialProviderPort).resolveCredentials(any(), any(), any());
+                mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
+                when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS))
+                        .thenThrow(new RuntimeException("Invalid credentials"));
 
                 // When & Then
-                assertThatThrownBy(() -> objectStorageUseCaseService.createContainer(AWS, request))
+                assertThatThrownBy(() -> objectStorageUseCaseService.createContainer(request))
                         .isInstanceOf(RuntimeException.class)
                         .hasMessageContaining("Invalid credentials");
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, REGION);
-                verify(capabilityGuard, never()).ensureSupported(any(), any(), any(), any());
+                verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
+                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
                 verify(managementPort, never()).createContainer(any());
             }
         }
@@ -174,6 +188,9 @@ class S3BucketUseCaseServiceTest {
             tags.put("Updated", "true");
 
             request = UpdateObjectStorageContainerRequest.builder()
+                    .providerType(AWS)
+                    .accountScope(ACCOUNT_SCOPE)
+                    .containerName(CONTAINER_NAME)
                     .versioningEnabled(true)
                     .tags(tags)
                     .build();
@@ -190,18 +207,19 @@ class S3BucketUseCaseServiceTest {
         void updateContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
+                mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
+                when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
                 when(managementPort.updateContainer(any(UpdateObjectStorageContainerCommand.class))).thenReturn(expectedContainer);
 
                 // When
-                CloudResource result = objectStorageUseCaseService.updateContainer(AWS, CONTAINER_NAME, request);
+                CloudResource result = objectStorageUseCaseService.updateContainer(request);
 
                 // Then
                 assertThat(result).isNotNull();
                 assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
                 assertThat(result.getDisplayName()).isEqualTo("Updated Test Container");
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
+                verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
                 verify(managementPort).updateContainer(any(UpdateObjectStorageContainerCommand.class));
             }
@@ -218,6 +236,8 @@ class S3BucketUseCaseServiceTest {
         @BeforeEach
         void setUp() {
             query = ObjectStorageContainerQueryRequest.builder()
+                    .providerType(AWS)
+                    .accountScope(ACCOUNT_SCOPE)
                     .page(0)
                     .size(10)
                     .nameContains("test")
@@ -241,45 +261,37 @@ class S3BucketUseCaseServiceTest {
         @Test
         @DisplayName("정상적인 Object Storage Container 목록 조회")
         void listContainers_Success() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                when(discoveryPort.listContainers(query)).thenReturn(expectedPage);
+            // Given
+            when(discoveryPort.listContainers(query)).thenReturn(expectedPage);
 
-                // When
-                Page<CloudResource> result = objectStorageUseCaseService.listContainers(AWS, query);
+            // When
+            Page<CloudResource> result = objectStorageUseCaseService.listContainers(query);
 
-                // Then
-                assertThat(result).isNotNull();
-                assertThat(result.getTotalElements()).isEqualTo(2);
-                assertThat(result.getContent()).hasSize(2);
-                assertThat(result.getContent().get(0).getResourceName()).isEqualTo("test-container-1");
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getTotalElements()).isEqualTo(2);
+            assertThat(result.getContent()).hasSize(2);
+            assertThat(result.getContent().get(0).getResourceName()).isEqualTo("test-container-1");
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(discoveryPort).listContainers(query);
-            }
+            verify(discoveryPort).listContainers(query);
         }
 
         @Test
         @DisplayName("빈 목록 조회")
         void listContainers_EmptyResult() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                Page<CloudResource> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
-                when(discoveryPort.listContainers(query)).thenReturn(emptyPage);
+            // Given
+            Page<CloudResource> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+            when(discoveryPort.listContainers(query)).thenReturn(emptyPage);
 
-                // When
-                Page<CloudResource> result = objectStorageUseCaseService.listContainers(AWS, query);
+            // When
+            Page<CloudResource> result = objectStorageUseCaseService.listContainers(query);
 
-                // Then
-                assertThat(result).isNotNull();
-                assertThat(result.getTotalElements()).isEqualTo(0);
-                assertThat(result.getContent()).isEmpty();
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getTotalElements()).isEqualTo(0);
+            assertThat(result.getContent()).isEmpty();
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(discoveryPort).listContainers(query);
-            }
+            verify(discoveryPort).listContainers(query);
         }
     }
 
@@ -301,40 +313,32 @@ class S3BucketUseCaseServiceTest {
         @Test
         @DisplayName("정상적인 Object Storage Container 조회")
         void getContainer_Success() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                when(discoveryPort.getContainer(CONTAINER_NAME)).thenReturn(Optional.of(expectedContainer));
+            // Given
+            when(discoveryPort.getContainer(ACCOUNT_SCOPE, CONTAINER_NAME)).thenReturn(Optional.of(expectedContainer));
 
-                // When
-                CloudResource result = objectStorageUseCaseService.getContainer(AWS, CONTAINER_NAME);
+            // When
+            CloudResource result = objectStorageUseCaseService.getContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME);
 
-                // Then
-                assertThat(result).isNotNull();
-                assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
-                assertThat(result.getResourceId()).isEqualTo("container-" + CONTAINER_NAME);
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
+            assertThat(result.getResourceId()).isEqualTo("container-" + CONTAINER_NAME);
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(discoveryPort).getContainer(CONTAINER_NAME);
-            }
+            verify(discoveryPort).getContainer(ACCOUNT_SCOPE, CONTAINER_NAME);
         }
 
         @Test
         @DisplayName("존재하지 않는 Container 조회 시 예외 발생")
         void getContainer_NotFound_ThrowsException() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                when(discoveryPort.getContainer(CONTAINER_NAME)).thenReturn(Optional.empty());
+            // Given
+            when(discoveryPort.getContainer(ACCOUNT_SCOPE, CONTAINER_NAME)).thenReturn(Optional.empty());
 
-                // When & Then
-                assertThatThrownBy(() -> objectStorageUseCaseService.getContainer(AWS, CONTAINER_NAME))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("Object Storage Container를 찾을 수 없습니다: " + CONTAINER_NAME);
+            // When & Then
+            assertThatThrownBy(() -> objectStorageUseCaseService.getContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Object Storage Container를 찾을 수 없습니다: " + CONTAINER_NAME);
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(discoveryPort).getContainer(CONTAINER_NAME);
-            }
+            verify(discoveryPort).getContainer(ACCOUNT_SCOPE, CONTAINER_NAME);
         }
     }
 
@@ -345,39 +349,31 @@ class S3BucketUseCaseServiceTest {
         @Test
         @DisplayName("Container가 존재하는 경우 true 반환")
         void containerExists_Exists_ReturnsTrue() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                when(discoveryPort.containerExists(CONTAINER_NAME)).thenReturn(true);
+            // Given
+            when(discoveryPort.containerExists(ACCOUNT_SCOPE, CONTAINER_NAME)).thenReturn(true);
 
-                // When
-                boolean result = objectStorageUseCaseService.containerExists(AWS, CONTAINER_NAME);
+            // When
+            boolean result = objectStorageUseCaseService.containerExists(AWS, ACCOUNT_SCOPE, CONTAINER_NAME);
 
-                // Then
-                assertThat(result).isTrue();
+            // Then
+            assertThat(result).isTrue();
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(discoveryPort).containerExists(CONTAINER_NAME);
-            }
+            verify(discoveryPort).containerExists(ACCOUNT_SCOPE, CONTAINER_NAME);
         }
 
         @Test
         @DisplayName("Container가 존재하지 않는 경우 false 반환")
         void containerExists_NotExists_ReturnsFalse() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                when(discoveryPort.containerExists(CONTAINER_NAME)).thenReturn(false);
+            // Given
+            when(discoveryPort.containerExists(ACCOUNT_SCOPE, CONTAINER_NAME)).thenReturn(false);
 
-                // When
-                boolean result = objectStorageUseCaseService.containerExists(AWS, CONTAINER_NAME);
+            // When
+            boolean result = objectStorageUseCaseService.containerExists(AWS, ACCOUNT_SCOPE, CONTAINER_NAME);
 
-                // Then
-                assertThat(result).isFalse();
+            // Then
+            assertThat(result).isFalse();
 
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(discoveryPort).containerExists(CONTAINER_NAME);
-            }
+            verify(discoveryPort).containerExists(ACCOUNT_SCOPE, CONTAINER_NAME);
         }
     }
 
@@ -390,36 +386,35 @@ class S3BucketUseCaseServiceTest {
         void deleteContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
+                mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
+                when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
+                doNothing().when(managementPort).deleteContainer(any(CloudSessionCredential.class), eq(CONTAINER_NAME));
 
                 // When
-                objectStorageUseCaseService.deleteContainer(AWS, CONTAINER_NAME);
+                objectStorageUseCaseService.deleteContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME);
 
                 // Then
                 verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(managementPort).deleteContainer(CONTAINER_NAME);
+                verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
+                verify(managementPort).deleteContainer(mockSession, CONTAINER_NAME);
             }
         }
 
         @Test
         @DisplayName("Capability 검증 실패 시 예외 발생")
         void deleteContainer_CapabilityCheckFailed_ThrowsException() {
-            try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
-                // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                doThrow(new RuntimeException("Delete capability not supported"))
-                        .when(capabilityGuard).ensureSupported(any(), any(), any(), any());
+            // Given
+            doThrow(new RuntimeException("Delete capability not supported"))
+                    .when(capabilityGuard).ensureSupported(any(), any(), any(), any());
 
-                // When & Then
-                assertThatThrownBy(() -> objectStorageUseCaseService.deleteContainer(AWS, CONTAINER_NAME))
-                        .isInstanceOf(RuntimeException.class)
-                        .hasMessageContaining("Delete capability not supported");
+            // When & Then
+            assertThatThrownBy(() -> objectStorageUseCaseService.deleteContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Delete capability not supported");
 
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
-                verify(credentialProviderPort, never()).resolveCredentials(any(), any(), any());
-                verify(managementPort, never()).deleteContainer(any());
-            }
+            verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+            verify(accountCredentialManagementPort, never()).getSession(any(), any(), any());
+            verify(managementPort, never()).deleteContainer(any(), any());
         }
     }
 
@@ -432,15 +427,17 @@ class S3BucketUseCaseServiceTest {
         void forceDeleteContainer_Success() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
+                mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
+                when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
+                doNothing().when(managementPort).forceDeleteContainer(eq(CONTAINER_NAME), any(CloudSessionCredential.class));
 
                 // When
-                objectStorageUseCaseService.forceDeleteContainer(AWS, CONTAINER_NAME);
+                objectStorageUseCaseService.forceDeleteContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME);
 
                 // Then
                 verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(managementPort).forceDeleteContainer(CONTAINER_NAME);
+                verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
+                verify(managementPort).forceDeleteContainer(CONTAINER_NAME, mockSession);
             }
         }
 
@@ -449,18 +446,18 @@ class S3BucketUseCaseServiceTest {
         void forceDeleteContainer_CredentialCheckFailed_ThrowsException() {
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 // Given
-                mockedStatic.when(TenantContextHolder::getCurrentTenantKey).thenReturn(TENANT_KEY);
-                doThrow(new RuntimeException("Invalid credentials for force delete"))
-                        .when(credentialProviderPort).resolveCredentials(any(), any(), any());
+                mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
+                when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS))
+                        .thenThrow(new RuntimeException("Invalid credentials for force delete"));
 
                 // When & Then
-                assertThatThrownBy(() -> objectStorageUseCaseService.forceDeleteContainer(AWS, CONTAINER_NAME))
+                assertThatThrownBy(() -> objectStorageUseCaseService.forceDeleteContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME))
                         .isInstanceOf(RuntimeException.class)
                         .hasMessageContaining("Invalid credentials for force delete");
 
                 verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
-                verify(credentialProviderPort).resolveCredentials(TENANT_KEY, AWS, null);
-                verify(managementPort, never()).forceDeleteContainer(any());
+                verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
+                verify(managementPort, never()).forceDeleteContainer(any(), any());
             }
         }
     }
