@@ -1,9 +1,6 @@
 package com.agenticcp.core.domain.cloud.mapper;
 
-import com.agenticcp.core.domain.cloud.command.DeleteCredentialCommand;
-import com.agenticcp.core.domain.cloud.command.ResolveCredentialCommand;
-import com.agenticcp.core.domain.cloud.command.StoreCredentialCommand;
-import com.agenticcp.core.domain.cloud.dto.RegisterCloudAccountRequest;
+import com.agenticcp.core.domain.cloud.port.model.account.*;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +34,7 @@ public class CredentialCommandMapper {
         return StoreCredentialCommand.builder()
                 .tenantKey(tenantKey)
                 .providerType(request.getProviderType())
-                .accountScope(request.getAccountId())
+                .accountScope(request.getAccountScope())
                 .credentials(credentials)
                 .build();
     }

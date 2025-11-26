@@ -3,9 +3,10 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.mock;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm.AwsVmMapper;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.mockito.Mockito;
@@ -35,45 +36,44 @@ import static org.mockito.Mockito.*;
 @Slf4j
 public class MockAdaptersConfig {
 
-    @Bean
-    @Primary
-    public CredentialProviderPort mockCredentialProviderPort() {
-        return new CredentialProviderPort() {
-            @Override
-            public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
-                log.debug("Mock credential resolution for tenant: {}, provider: {}, account: {}", 
-                         tenantKey, providerType, accountScope);
-                return "mock-credentials";
-            }
+    // @Bean
+    // public AccountCredentialManagementPort mockCredentialProviderPort() {
+    //     return new AccountCredentialManagementPort() {
+    //         @Override
+    //         public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
+    //             log.debug("Mock credential resolution for tenant: {}, provider: {}, account: {}", 
+    //                      tenantKey, providerType, accountScope);
+    //             return "mock-credentials";
+    //         }
 
-            @Override
-            public String storeCredentials(String tenantKey, ProviderType providerType, 
-                                          String accountScope, Map<String, String> credentials) {
-                log.debug("Mock credential storage for tenant: {}, provider: {}, account: {}",
-                         tenantKey, providerType, accountScope);
-                return "mock-credential-key";
-            }
+    //         @Override
+    //         public String storeCredentials(String tenantKey, ProviderType providerType, 
+    //                                       String accountScope, Map<String, String> credentials) {
+    //             log.debug("Mock credential storage for tenant: {}, provider: {}, account: {}",
+    //                      tenantKey, providerType, accountScope);
+    //             return "mock-credential-key";
+    //         }
 
-            @Override
-            public void deleteCredentials(ProviderType providerType, String credentialKey) {
-                log.debug("Mock credential deletion: providerType={}, credentialKey={}", providerType, credentialKey);
-            }
+    //         @Override
+    //         public void deleteCredentials(ProviderType providerType, String credentialKey) {
+    //             log.debug("Mock credential deletion: providerType={}, credentialKey={}", providerType, credentialKey);
+    //         }
 
-            @Override
-            public com.agenticcp.core.domain.cloud.port.model.CloudSessionCredential getSession(
-                    String tenantKey, Long accountId, ProviderType providerType) {
-                log.debug("Mock session retrieval: tenantKey={}, accountId={}, providerType={}", 
-                        tenantKey, accountId, providerType);
-                return com.agenticcp.core.domain.cloud.port.model.AwsSessionCredential.builder()
-                        .accessKeyId("mock-access-key")
-                        .secretAccessKey("mock-secret-key")
-                        .sessionToken("mock-session-token")
-                        .region("us-east-1")
-                        .expiresAt(java.time.LocalDateTime.now().plusHours(1))
-                        .build();
-            }
-        };
-    }
+    //         @Override
+    //         public CloudSessionCredential getSession(
+    //                 String tenantKey, String accountScope, ProviderType providerType) {
+    //             log.debug("Mock session retrieval: tenantKey={}, accountScope={}, providerType={}",
+    //                     tenantKey, accountScope, providerType);
+    //             return com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential.builder()
+    //                     .accessKeyId("mock-access-key")
+    //                     .secretAccessKey("mock-secret-key")
+    //                     .sessionToken("mock-session-token")
+    //                     .region("us-east-1")
+    //                     .expiresAt(java.time.LocalDateTime.now().plusHours(1))
+    //                     .build();
+    //         }
+    //     };
+    // }
 
     @Bean
     @Primary

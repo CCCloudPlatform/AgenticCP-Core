@@ -54,17 +54,17 @@ public interface CloudAccountRepository extends JpaRepository<CloudAccount, Long
     );
 
     /**
-     * 테넌트 ID와 계정 ID로 계정 존재 여부를 확인합니다.
+     * 테넌트 ID와 계정 범위로 계정 존재 여부를 확인합니다.
      * 
      * @param tenantId 테넌트 ID
-     * @param accountId 계정 ID (AWS Account ID, Azure Subscription ID 등)
+     * @param accountScope 계정 범위 (AWS Account ID, Azure Subscription ID, GCP Project ID)
      * @return 존재하면 true
      */
     @Query("SELECT COUNT(ca) > 0 FROM CloudAccount ca WHERE ca.tenant.id = :tenantId " +
-           "AND ca.accountId = :accountId AND ca.isDeleted = false")
-    boolean existsByTenantIdAndAccountId(
+           "AND ca.accountScope = :accountScope AND ca.isDeleted = false")
+    boolean existsByTenantIdAndAccountScope(
         @Param("tenantId") Long tenantId, 
-        @Param("accountId") String accountId
+        @Param("accountScope") String accountScope
     );
 
     /**
