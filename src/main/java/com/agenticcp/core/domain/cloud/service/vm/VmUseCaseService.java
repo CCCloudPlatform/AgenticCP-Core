@@ -95,13 +95,14 @@ public class VmUseCaseService {
     /**
      * 새로운 VM 인스턴스를 생성합니다.
      *
-     * @param providerType 클라우드 프로바이더 타입
-     * @param accountScope 계정 스코프
-     * @param request 생성 요청 정보
+     * @param request 생성 요청 정보 (providerType, accountScope 포함)
      * @return 생성된 인스턴스 ID
      */
     @Transactional
-    public String createInstance(ProviderType providerType, String accountScope, VmCreateRequest request) {
+    public String createInstance(VmCreateRequest request) {
+        ProviderType providerType = request.getProviderType();
+        String accountScope = request.getAccountScope();
+        
         log.debug("VM 인스턴스 생성 시작: provider={}, accountScope={}, request={}", providerType, accountScope, request);
 
         // Capability 검증
@@ -216,12 +217,13 @@ public class VmUseCaseService {
     /**
      * VM 인스턴스를 삭제합니다.
      *
-     * @param providerType 클라우드 프로바이더 타입
-     * @param accountScope 계정 스코프
-     * @param request 삭제 요청 정보
+     * @param request 삭제 요청 정보 (providerType, accountScope 포함)
      */
     @Transactional
-    public void deleteInstance(ProviderType providerType, String accountScope, VmDeleteRequest request) {
+    public void deleteInstance(VmDeleteRequest request) {
+        ProviderType providerType = request.getProviderType();
+        String accountScope = request.getAccountScope();
+        
         log.debug("VM 인스턴스 삭제: provider={}, accountScope={}, request={}", providerType, accountScope, request);
 
         // Capability 검증
@@ -241,12 +243,13 @@ public class VmUseCaseService {
     /**
      * VM 인스턴스 정보를 수정합니다.
      *
-     * @param providerType 클라우드 프로바이더 타입
-     * @param accountScope 계정 스코프
-     * @param request 수정 요청 정보
+     * @param request 수정 요청 정보 (providerType, accountScope 포함)
      */
     @Transactional
-    public void updateInstance(ProviderType providerType, String accountScope, VmUpdateRequest request) {
+    public void updateInstance(VmUpdateRequest request) {
+        ProviderType providerType = request.getProviderType();
+        String accountScope = request.getAccountScope();
+        
         log.debug("VM 인스턴스 수정: provider={}, accountScope={}, request={}", providerType, accountScope, request);
 
         // Capability 검증

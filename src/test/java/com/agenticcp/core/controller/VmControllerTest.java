@@ -1,5 +1,6 @@
 package com.agenticcp.core.controller;
 
+import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -35,10 +37,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 
  * Mockito를 사용하여 컨트롤러 계층만 테스트합니다.
  * Spring Context 로딩 없이 순수한 단위 테스트로 진행합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 2.0.0
  */
 @ExtendWith(MockitoExtension.class)
 class VmControllerTest {
 
+    private static final String BASE_URL = "/api/v1/cloud/providers/{provider}/accounts/{accountScope}/vms/instances";
+    
     private MockMvc mockMvc;
 
     @Mock
@@ -69,39 +76,39 @@ class VmControllerTest {
             PageRequest.of(0, 10), 
             1
         );
-        when(vmUseCaseService.listInstances(any(VmQuery.class))).thenReturn(page);
+        when(vmUseCaseService.listInstances(eq(ProviderType.AWS), any(VmQuery.class))).thenReturn(page);
 
         // When & Then
-        mockMvc.perform(get("/api/v1/vms/instances")
+        mockMvc.perform(get(BASE_URL, "AWS", "123456789012")
                 .param("page", "0")
                 .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content[0].resourceId").value("i-1234567890abcdef0"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content[0].resourceId").value("i-1234567890abcdef0"))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
     }
 
     @Test
     void getInstance_성공() throws Exception {
         // Given
-        when(vmUseCaseService.getInstance("i-1234567890abcdef0"))
+        when(vmUseCaseService.getInstance(eq(ProviderType.AWS), eq("i-1234567890abcdef0")))
             .thenReturn(Optional.of(testInstance));
 
         // When & Then
-        mockMvc.perform(get("/api/v1/vms/instances/i-1234567890abcdef0"))
+        mockMvc.perform(get(BASE_URL + "/{instanceId}", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.resourceId").value("i-1234567890abcdef0"))
-                .andExpect(jsonPath("$.resourceName").value("test-instance"));
+                .andExpect(jsonPath("$.data.resourceId").value("i-1234567890abcdef0"))
+                .andExpect(jsonPath("$.data.resourceName").value("test-instance"));
     }
 
     @Test
     void getInstance_인스턴스없음() throws Exception {
         // Given
-        when(vmUseCaseService.getInstance("i-nonexistent"))
+        when(vmUseCaseService.getInstance(eq(ProviderType.AWS), eq("i-nonexistent")))
             .thenReturn(Optional.empty());
 
         // When & Then
-        mockMvc.perform(get("/api/v1/vms/instances/i-nonexistent"))
+        mockMvc.perform(get(BASE_URL + "/{instanceId}", "AWS", "123456789012", "i-nonexistent"))
                 .andExpect(status().isNotFound());
     }
 
@@ -119,38 +126,38 @@ class VmControllerTest {
             .thenReturn("i-1234567890abcdef0");
 
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances")
+        mockMvc.perform(post(BASE_URL, "AWS", "123456789012")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(content().string("i-1234567890abcdef0"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data").value("i-1234567890abcdef0"));
     }
 
     @Test
     void startInstance_성공() throws Exception {
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances/i-1234567890abcdef0/start"))
+        mockMvc.perform(post(BASE_URL + "/{instanceId}/start", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void stopInstance_성공() throws Exception {
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances/i-1234567890abcdef0/stop"))
+        mockMvc.perform(post(BASE_URL + "/{instanceId}/stop", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void rebootInstance_성공() throws Exception {
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances/i-1234567890abcdef0/reboot"))
+        mockMvc.perform(post(BASE_URL + "/{instanceId}/reboot", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void terminateInstance_성공() throws Exception {
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances/i-1234567890abcdef0/terminate"))
+        mockMvc.perform(post(BASE_URL + "/{instanceId}/terminate", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk());
     }
 
@@ -160,10 +167,10 @@ class VmControllerTest {
         VmDeleteRequest request = VmDeleteRequest.basic("i-1234567890abcdef0");
 
         // When & Then
-        mockMvc.perform(delete("/api/v1/vms/instances/i-1234567890abcdef0")
+        mockMvc.perform(delete(BASE_URL + "/{instanceId}", "AWS", "123456789012", "i-1234567890abcdef0")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -175,7 +182,7 @@ class VmControllerTest {
             .build();
 
         // When & Then
-        mockMvc.perform(put("/api/v1/vms/instances/i-1234567890abcdef0")
+        mockMvc.perform(put(BASE_URL + "/{instanceId}", "AWS", "123456789012", "i-1234567890abcdef0")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -190,7 +197,7 @@ class VmControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances/i-1234567890abcdef0/tags")
+        mockMvc.perform(post(BASE_URL + "/{instanceId}/tags", "AWS", "123456789012", "i-1234567890abcdef0")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(tags)))
                 .andExpect(status().isOk());
@@ -205,7 +212,7 @@ class VmControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(delete("/api/v1/vms/instances/i-1234567890abcdef0/tags")
+        mockMvc.perform(delete(BASE_URL + "/{instanceId}/tags", "AWS", "123456789012", "i-1234567890abcdef0")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(tagKeys)))
                 .andExpect(status().isOk());
@@ -219,53 +226,53 @@ class VmControllerTest {
             "Project", "TestProject"
         );
 
-        when(vmUseCaseService.getTags("i-1234567890abcdef0"))
+        when(vmUseCaseService.getTags(eq(ProviderType.AWS), eq("i-1234567890abcdef0")))
             .thenReturn(tags);
 
         // When & Then
-        mockMvc.perform(get("/api/v1/vms/instances/i-1234567890abcdef0/tags"))
+        mockMvc.perform(get(BASE_URL + "/{instanceId}/tags", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.Environment").value("Development"))
-                .andExpect(jsonPath("$.Project").value("TestProject"));
+                .andExpect(jsonPath("$.data.Environment").value("Development"))
+                .andExpect(jsonPath("$.data.Project").value("TestProject"));
     }
 
     @Test
     void getInstanceStatus_성공() throws Exception {
         // Given
-        when(vmUseCaseService.getInstanceStatus("i-1234567890abcdef0"))
+        when(vmUseCaseService.getInstanceStatus(eq(ProviderType.AWS), eq("i-1234567890abcdef0")))
             .thenReturn("running");
 
         // When & Then
-        mockMvc.perform(get("/api/v1/vms/instances/i-1234567890abcdef0/status"))
+        mockMvc.perform(get(BASE_URL + "/{instanceId}/status", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("running"));
+                .andExpect(jsonPath("$.data").value("running"));
     }
 
     @Test
     void waitForInstanceStatus_성공() throws Exception {
         // Given
-        when(vmUseCaseService.waitForInstanceStatus("i-1234567890abcdef0", "running", 300))
+        when(vmUseCaseService.waitForInstanceStatus(eq(ProviderType.AWS), eq("i-1234567890abcdef0"), eq("running"), eq(300)))
             .thenReturn(true);
 
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances/i-1234567890abcdef0/wait")
+        mockMvc.perform(post(BASE_URL + "/{instanceId}/wait", "AWS", "123456789012", "i-1234567890abcdef0")
                 .param("targetStatus", "running")
                 .param("timeoutSeconds", "300"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("true"));
+                .andExpect(jsonPath("$.data").value(true));
     }
 
     @Test
     void waitForInstanceStatus_기본타임아웃() throws Exception {
         // Given
-        when(vmUseCaseService.waitForInstanceStatus("i-1234567890abcdef0", "running", 300))
+        when(vmUseCaseService.waitForInstanceStatus(eq(ProviderType.AWS), eq("i-1234567890abcdef0"), eq("running"), eq(300)))
             .thenReturn(true);
 
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances/i-1234567890abcdef0/wait")
+        mockMvc.perform(post(BASE_URL + "/{instanceId}/wait", "AWS", "123456789012", "i-1234567890abcdef0")
                 .param("targetStatus", "running"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("true"));
+                .andExpect(jsonPath("$.data").value(true));
     }
 
     @Test
@@ -274,7 +281,7 @@ class VmControllerTest {
         String invalidJson = "{ invalid json }";
 
         // When & Then
-        mockMvc.perform(post("/api/v1/vms/instances")
+        mockMvc.perform(post(BASE_URL, "AWS", "123456789012")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalidJson))
                 .andExpect(status().isBadRequest());
@@ -286,7 +293,7 @@ class VmControllerTest {
         String invalidJson = "{ invalid json }";
 
         // When & Then
-        mockMvc.perform(put("/api/v1/vms/instances/i-1234567890abcdef0")
+        mockMvc.perform(put(BASE_URL + "/{instanceId}", "AWS", "123456789012", "i-1234567890abcdef0")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalidJson))
                 .andExpect(status().isBadRequest());
@@ -295,8 +302,8 @@ class VmControllerTest {
     @Test
     void deleteInstance_요청없이_삭제() throws Exception {
         // When & Then - 요청 본문 없이 삭제 (기본 삭제 요청 사용)
-        mockMvc.perform(delete("/api/v1/vms/instances/i-1234567890abcdef0"))
-                .andExpect(status().isOk());
+        mockMvc.perform(delete(BASE_URL + "/{instanceId}", "AWS", "123456789012", "i-1234567890abcdef0"))
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -307,14 +314,14 @@ class VmControllerTest {
             PageRequest.of(0, 20), 
             1
         );
-        when(vmUseCaseService.listInstances(any(VmQuery.class))).thenReturn(page);
+        when(vmUseCaseService.listInstances(eq(ProviderType.AWS), any(VmQuery.class))).thenReturn(page);
 
         // When & Then - 파라미터 없이 호출 (기본값 사용)
-        mockMvc.perform(get("/api/v1/vms/instances")
+        mockMvc.perform(get(BASE_URL, "AWS", "123456789012")
                 .param("page", "0")
                 .param("size", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.totalElements").value(1));
     }
 }

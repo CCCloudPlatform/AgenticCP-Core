@@ -1,20 +1,40 @@
 package com.agenticcp.core.domain.cloud.port.model;
 
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 가상머신(Virtual Machine) 삭제 요청을 정의하는 모델
  * AWS EC2 등 VM 종료 API를 도메인 중심으로 추상화합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 2.0.0
  */
-@Value
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class VmDeleteRequest {
+    
+    /**
+     * 클라우드 프로바이더 타입 (AWS, GCP, AZURE)
+     * Controller에서 PathVariable로 주입됩니다.
+     */
+    private CloudProvider.ProviderType providerType;
+    
+    /**
+     * 계정 스코프 (Account ID 등)
+     * Controller에서 PathVariable로 주입됩니다.
+     */
+    private String accountScope;
     
     /**
      * 삭제할 인스턴스 ID
      */
-    String instanceId;
+    private String instanceId;
     
     /**
      * 강제 삭제 여부
@@ -22,13 +42,13 @@ public class VmDeleteRequest {
      * false: 보호된 인스턴스는 삭제하지 않음
      */
     @Builder.Default
-    boolean force = false;
+    private boolean force = false;
     
     /**
      * 삭제 이유 (감사 로그용)
      * 예: "Cost optimization", "Environment cleanup", "Security incident"
      */
-    String reason;
+    private String reason;
     
     /**
      * 삭제 전 스냅샷 생성 여부
@@ -36,7 +56,7 @@ public class VmDeleteRequest {
      * false: 스냅샷 생성하지 않음
      */
     @Builder.Default
-    boolean createSnapshot = false;
+    private boolean createSnapshot = false;
     
     /**
      * 기본 인스턴스 삭제 요청 생성

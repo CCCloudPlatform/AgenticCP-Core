@@ -1,7 +1,10 @@
 package com.agenticcp.core.domain.cloud.port.model;
 
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.jackson.Jacksonized;
 import jakarta.validation.constraints.Min;
 
@@ -16,10 +19,24 @@ import java.util.Map;
  * @author AgenticCP Team
  * @version 2.0.0
  */
-@Value
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Jacksonized
 public class VmCreateRequest {
+    
+    /**
+     * 클라우드 프로바이더 타입 (AWS, GCP, AZURE)
+     * Controller에서 PathVariable로 주입됩니다.
+     */
+    private CloudProvider.ProviderType providerType;
+    
+    /**
+     * 계정 스코프 (Account ID 등)
+     * Controller에서 PathVariable로 주입됩니다.
+     */
+    private String accountScope;
     
     /**
      * VM 이미지 식별자 (CSP별로 해석)
@@ -27,7 +44,7 @@ public class VmCreateRequest {
      * - GCP: Image family/project (예: projects/debian-cloud/global/images/debian-11)
      * - Azure: Image reference (예: Canonical:UbuntuServer:18.04-LTS:latest)
      */
-    String image;
+    private String image;
     
     /**
      * 인스턴스 크기/타입 (CSP별로 매핑)
@@ -35,7 +52,7 @@ public class VmCreateRequest {
      * - GCP: n1-standard-1, e2-medium 등
      * - Azure: Standard_DS1_v2, Standard_B1s 등
      */
-    String instanceSize;
+    private String instanceSize;
     
     /**
      * SSH 키 이름 또는 공개 키
@@ -43,7 +60,7 @@ public class VmCreateRequest {
      * - GCP: SSH 공개 키
      * - Azure: SSH 공개 키
      */
-    String sshKey;
+    private String sshKey;
     
     /**
      * 네트워크/보안 그룹 식별자 (CSP별로 해석)
@@ -51,7 +68,7 @@ public class VmCreateRequest {
      * - GCP: Firewall rule 이름
      * - Azure: Network Security Group ID
      */
-    String networkSecurityId;
+    private String networkSecurityId;
     
     /**
      * 서브넷 식별자 (CSP별로 해석)
@@ -59,7 +76,7 @@ public class VmCreateRequest {
      * - GCP: Subnetwork (예: projects/xxx/regions/xxx/subnetworks/xxx)
      * - Azure: Subnet resource ID
      */
-    String subnetId;
+    private String subnetId;
     
     /**
      * 리전/가용영역 (CSP별로 해석)
@@ -67,33 +84,33 @@ public class VmCreateRequest {
      * - GCP: us-central1-a
      * - Azure: eastus
      */
-    String zone;
+    private String zone;
     
     /**
      * 사용자 데이터 (스크립트 또는 클라우드-초기화 데이터)
      * Base64 인코딩된 문자열 또는 plain text
      */
-    String userData;
+    private String userData;
     
     /**
      * 인스턴스에 적용할 태그/라벨
      * 예: {"Name": "web-server", "Environment": "production"}
      */
-    Map<String, String> tags;
+    private Map<String, String> tags;
     
     /**
      * 최소 생성 인스턴스 수
      */
     @Min(1)
     @Builder.Default
-    int minCount = 1;
+    private int minCount = 1;
     
     /**
      * 최대 생성 인스턴스 수
      */
     @Min(1)
     @Builder.Default
-    int maxCount = 1;
+    private int maxCount = 1;
     
     /**
      * 기본 인스턴스 생성 요청 생성

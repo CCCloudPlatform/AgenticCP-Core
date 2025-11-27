@@ -5,7 +5,6 @@ import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
-import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
@@ -23,22 +22,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * VM 유스케이스 서비스 생성 기능 테스트
+ * 
+ * @author AgenticCP Team
+ * @version 2.0.0
  */
 @ExtendWith(MockitoExtension.class)
 class VmUseCaseServiceCreateTest {
 
     @Mock
     private VmPortRouter vmPortRouter;
-
-    @Mock
-    private AuditEventPort auditEventPort;
 
     @Mock
     private VmLifecyclePort vmLifecyclePort;
@@ -60,12 +58,12 @@ class VmUseCaseServiceCreateTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey("tenant-test");
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, auditEventPort, capabilityGuard, credentialProviderPort);
+        vmUseCaseService = new VmUseCaseService(vmPortRouter, capabilityGuard, credentialProviderPort);
 
         when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);
         when(vmPortRouter.discovery(ProviderType.AWS)).thenReturn(vmDiscoveryPort);
         when(vmPortRouter.tagging(ProviderType.AWS)).thenReturn(vmTaggingPort);
-        when(credentialProviderPort.resolveCredentials(anyString(), any(), anyString())).thenReturn(new Object());
+        when(credentialProviderPort.getSession(anyString(), anyString(), any())).thenReturn(null);
         doNothing().when(capabilityGuard).ensureSupported(any(), anyString(), anyString(), any());
     }
 
@@ -78,6 +76,8 @@ class VmUseCaseServiceCreateTest {
     void createInstance_성공() {
         // Given
         VmCreateRequest request = VmCreateRequest.builder()
+            .providerType(ProviderType.AWS)
+            .accountScope("123456789012")
             .image("ami-12345678")
             .instanceSize("t3.micro")
             .sshKey("my-key")
@@ -98,20 +98,14 @@ class VmUseCaseServiceCreateTest {
 
         // 포트 호출 확인
         verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
-
-        // 감사 로그 기록 확인
-        verify(auditEventPort).record(
-            eq("CREATE_INSTANCE"), 
-            eq("VM"), 
-            eq("SUCCESS"), 
-            any(Map.class)
-        );
     }
 
     @Test
     void createInstance_최소요청() {
         // Given - 최소 필수 정보만 포함
         VmCreateRequest request = VmCreateRequest.builder()
+            .providerType(ProviderType.AWS)
+            .accountScope("123456789012")
             .image("ami-12345678")
             .instanceSize("t3.micro")
             .minCount(1)
@@ -129,20 +123,14 @@ class VmUseCaseServiceCreateTest {
 
         // 포트 호출 확인
         verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
-
-        // 감사 로그 기록 확인
-        verify(auditEventPort).record(
-            eq("CREATE_INSTANCE"), 
-            eq("VM"), 
-            eq("SUCCESS"), 
-            any(Map.class)
-        );
     }
 
     @Test
-    void createInstance_예외발생시_감사로그기록() {
+    void createInstance_예외발생시() {
         // Given
         VmCreateRequest request = VmCreateRequest.builder()
+            .providerType(ProviderType.AWS)
+            .accountScope("123456789012")
             .image("ami-12345678")
             .instanceSize("t3.micro")
             .minCount(1)
@@ -158,20 +146,14 @@ class VmUseCaseServiceCreateTest {
         } catch (RuntimeException e) {
             assertThat(e).isEqualTo(exception);
         }
-
-        // 실패 감사 로그 기록 확인
-        verify(auditEventPort).record(
-            eq("CREATE_INSTANCE"), 
-            eq("VM"), 
-            eq("FAILED"), 
-            any(Map.class)
-        );
     }
 
     @Test
     void createInstance_태그포함요청() {
         // Given - 태그가 포함된 요청
         VmCreateRequest request = VmCreateRequest.builder()
+            .providerType(ProviderType.AWS)
+            .accountScope("123456789012")
             .image("ami-12345678")
             .instanceSize("t3.micro")
             .sshKey("my-key")
@@ -198,13 +180,5 @@ class VmUseCaseServiceCreateTest {
 
         // 포트 호출 확인
         verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
-
-        // 감사 로그 기록 확인
-        verify(auditEventPort).record(
-            eq("CREATE_INSTANCE"), 
-            eq("VM"), 
-            eq("SUCCESS"), 
-            any(Map.class)
-        );
     }
 }
