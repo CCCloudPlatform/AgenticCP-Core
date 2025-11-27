@@ -1,8 +1,10 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm;
 
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.CloudErrorTranslator;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
@@ -16,6 +18,14 @@ import software.amazon.awssdk.services.ec2.model.*;
 
 /**
  * AWS VM 생명주기 어댑터
+ * 
+ * <p>Management 작업(create, update, delete)은 Command에 포함된 세션을 사용하여
+ * 요청별로 EC2 클라이언트를 생성합니다.</p>
+ * 
+ * <p>TODO(Phase 6): start, stop, reboot, terminate 메서드도 Command 기반으로 변경 예정</p>
+ * 
+ * @author AgenticCP Team
+ * @version 2.0.0
  */
 @Slf4j
 @Component
@@ -23,8 +33,14 @@ import software.amazon.awssdk.services.ec2.model.*;
 @RequiredArgsConstructor
 public class AwsVmLifecycleAdapter implements VmLifecyclePort, ProviderScoped {
 
-    private final Ec2Client ec2Client;
+    private final AwsClientConfig awsClientConfig;
     private final AwsVmMapper mapper;
+    
+    /**
+     * 기존 싱글톤 클라이언트 (Phase 6에서 제거 예정)
+     * start, stop, reboot, terminate 메서드에서 임시 사용
+     */
+    private final Ec2Client ec2Client;
 
     @Override
     public ProviderType getProviderType() {
@@ -33,11 +49,14 @@ public class AwsVmLifecycleAdapter implements VmLifecyclePort, ProviderScoped {
 
     @Override
     public String createInstance(VmCreateCommand command) {
+        log.debug("[AwsVmLifecycleAdapter] Creating VM instance with command: {}", command);
+        
+        CloudSessionCredential session = command.getSession();
+        Ec2Client client = awsClientConfig.createEc2Client(session, null);
+        
         try {
-            log.debug("[AwsVmLifecycleAdapter] Creating VM instance with command: {}", command);
-
             RunInstancesRequest awsRequest = mapper.toRunInstancesRequest(command);
-            RunInstancesResponse response = ec2Client.runInstances(awsRequest);
+            RunInstancesResponse response = client.runInstances(awsRequest);
 
             String instanceId = response.instances().get(0).instanceId();
             log.info("[AwsVmLifecycleAdapter] Successfully created VM instance: {}", instanceId);
@@ -47,6 +66,8 @@ public class AwsVmLifecycleAdapter implements VmLifecyclePort, ProviderScoped {
         } catch (Throwable t) {
             log.error("[AwsVmLifecycleAdapter] Failed to create VM instance", t);
             throw CloudErrorTranslator.translate(t);
+        } finally {
+            client.close();
         }
     }
 
@@ -124,33 +145,43 @@ public class AwsVmLifecycleAdapter implements VmLifecyclePort, ProviderScoped {
 
     @Override
     public void deleteInstance(VmDeleteCommand command) {
+        log.debug("[AwsVmLifecycleAdapter] Deleting VM instance: {}", command.getInstanceId());
+        
+        CloudSessionCredential session = command.getSession();
+        Ec2Client client = awsClientConfig.createEc2Client(session, null);
+        
         try {
-            log.debug("[AwsVmLifecycleAdapter] Deleting VM instance: {}", command.getInstanceId());
-
             TerminateInstancesRequest request = mapper.toTerminateInstancesRequest(command);
-            ec2Client.terminateInstances(request);
+            client.terminateInstances(request);
 
             log.info("[AwsVmLifecycleAdapter] Successfully deleted VM instance: {}", command.getInstanceId());
 
         } catch (Throwable t) {
             log.error("[AwsVmLifecycleAdapter] Failed to delete VM instance: {}", command.getInstanceId(), t);
             throw CloudErrorTranslator.translate(t);
+        } finally {
+            client.close();
         }
     }
 
     @Override
     public void updateInstance(VmUpdateCommand command) {
+        log.debug("[AwsVmLifecycleAdapter] Updating VM instance: {}", command.getInstanceId());
+        
+        CloudSessionCredential session = command.getSession();
+        Ec2Client client = awsClientConfig.createEc2Client(session, null);
+        
         try {
-            log.debug("[AwsVmLifecycleAdapter] Updating VM instance: {}", command.getInstanceId());
-
             ModifyInstanceAttributeRequest request = mapper.toModifyInstanceAttributeRequest(command);
-            ec2Client.modifyInstanceAttribute(request);
+            client.modifyInstanceAttribute(request);
 
             log.info("[AwsVmLifecycleAdapter] Successfully updated VM instance: {}", command.getInstanceId());
 
         } catch (Throwable t) {
             log.error("[AwsVmLifecycleAdapter] Failed to update VM instance: {}", command.getInstanceId(), t);
             throw CloudErrorTranslator.translate(t);
+        } finally {
+            client.close();
         }
     }
 }
