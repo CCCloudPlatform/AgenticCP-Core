@@ -4,6 +4,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -146,49 +148,53 @@ class VmManagementContractTest {
     @Test
     void startInstance_계약_테스트() {
         // Given
-        doNothing().when(vmManagementPort).startInstance(anyString());
+        doNothing().when(vmManagementPort).startInstance(anyString(), any(CloudSessionCredential.class));
+        CloudSessionCredential mockSession = mock(CloudSessionCredential.class);
 
         // When
-        vmManagementPort.startInstance("i-1234567890abcdef0");
+        vmManagementPort.startInstance("i-1234567890abcdef0", mockSession);
 
         // Then
-        verify(vmManagementPort).startInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).startInstance(eq("i-1234567890abcdef0"), any(CloudSessionCredential.class));
     }
 
     @Test
     void stopInstance_계약_테스트() {
         // Given
-        doNothing().when(vmManagementPort).stopInstance(anyString());
+        doNothing().when(vmManagementPort).stopInstance(anyString(), any(CloudSessionCredential.class));
+        CloudSessionCredential mockSession = mock(CloudSessionCredential.class);
 
         // When
-        vmManagementPort.stopInstance("i-1234567890abcdef0");
+        vmManagementPort.stopInstance("i-1234567890abcdef0", mockSession);
 
         // Then
-        verify(vmManagementPort).stopInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).stopInstance(eq("i-1234567890abcdef0"), any(CloudSessionCredential.class));
     }
 
     @Test
     void rebootInstance_계약_테스트() {
         // Given
-        doNothing().when(vmManagementPort).rebootInstance(anyString());
+        doNothing().when(vmManagementPort).rebootInstance(anyString(), any(CloudSessionCredential.class));
+        CloudSessionCredential mockSession = mock(CloudSessionCredential.class);
 
         // When
-        vmManagementPort.rebootInstance("i-1234567890abcdef0");
+        vmManagementPort.rebootInstance("i-1234567890abcdef0", mockSession);
 
         // Then
-        verify(vmManagementPort).rebootInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).rebootInstance(eq("i-1234567890abcdef0"), any(CloudSessionCredential.class));
     }
 
     @Test
     void terminateInstance_계약_테스트() {
         // Given
-        doNothing().when(vmManagementPort).terminateInstance(anyString());
+        doNothing().when(vmManagementPort).terminateInstance(anyString(), any(CloudSessionCredential.class));
+        CloudSessionCredential mockSession = mock(CloudSessionCredential.class);
 
         // When
-        vmManagementPort.terminateInstance("i-1234567890abcdef0");
+        vmManagementPort.terminateInstance("i-1234567890abcdef0", mockSession);
 
         // Then
-        verify(vmManagementPort).terminateInstance("i-1234567890abcdef0");
+        verify(vmManagementPort).terminateInstance(eq("i-1234567890abcdef0"), any(CloudSessionCredential.class));
     }
 
     @Test
