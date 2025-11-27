@@ -78,10 +78,10 @@ class VmUseCaseServiceCreateTest {
     void createInstance_성공() {
         // Given
         VmCreateRequest request = VmCreateRequest.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
-            .keyName("my-key")
-            .securityGroupId("sg-12345678")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
+            .sshKey("my-key")
+            .networkSecurityId("sg-12345678")
             .subnetId("subnet-12345678")
             .minCount(1)
             .maxCount(1)
@@ -112,8 +112,8 @@ class VmUseCaseServiceCreateTest {
     void createInstance_최소요청() {
         // Given - 최소 필수 정보만 포함
         VmCreateRequest request = VmCreateRequest.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
             .minCount(1)
             .maxCount(1)
             .build();
@@ -143,8 +143,8 @@ class VmUseCaseServiceCreateTest {
     void createInstance_예외발생시_감사로그기록() {
         // Given
         VmCreateRequest request = VmCreateRequest.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
             .minCount(1)
             .maxCount(1)
             .build();
@@ -172,10 +172,10 @@ class VmUseCaseServiceCreateTest {
     void createInstance_태그포함요청() {
         // Given - 태그가 포함된 요청
         VmCreateRequest request = VmCreateRequest.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
-            .keyName("my-key")
-            .securityGroupId("sg-12345678")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
+            .sshKey("my-key")
+            .networkSecurityId("sg-12345678")
             .subnetId("subnet-12345678")
             .userData("#!/bin/bash\necho 'Hello World'")
             .tags(Map.of(

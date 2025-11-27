@@ -64,8 +64,8 @@ class VmManagementContractTest {
             .build();
 
         testCreateCommand = VmCreateCommand.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
             .minCount(1)
             .maxCount(1)
             .build();

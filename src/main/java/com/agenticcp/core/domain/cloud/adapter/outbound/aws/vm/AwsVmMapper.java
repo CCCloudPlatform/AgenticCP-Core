@@ -20,9 +20,14 @@ import java.util.stream.Collectors;
  * AWS EC2 인스턴스와 도메인 모델 간의 데이터 변환을 담당하는 매퍼
  * 
  * 이 매퍼는 AWS SDK의 Instance 객체를 우리 도메인의 CloudResource로 변환하고,
- * 도메인 모델을 AWS SDK 요청 객체로 변환하는 역할을 합니다.
+ * CSP 중립적인 도메인 모델을 AWS SDK 요청 객체로 변환하는 역할을 합니다.
  * 
- * Canonical 모델 패턴을 사용하여 CSP별 차이를 흡수합니다.
+ * CSP별 차이를 흡수하는 핵심 컴포넌트입니다:
+ * - 도메인 모델(CSP 중립) → AWS SDK 요청(CSP 특화)
+ * - AWS SDK 응답(CSP 특화) → CloudResource(Canonical 모델)
+ * 
+ * @author AgenticCP Team
+ * @version 2.0.0
  */
 @Slf4j
 @Component
@@ -138,29 +143,48 @@ public class AwsVmMapper {
     // ==================== VmCreateCommand → AWS 요청 변환 ====================
     
     /**
-     * VmCreateCommand를 AWS RunInstancesRequest로 변환합니다.
+     * VmCreateCommand(CSP 중립)를 AWS RunInstancesRequest(AWS 특화)로 변환합니다.
+     * 
+     * CSP 중립 필드 → AWS 특화 필드 매핑:
+     * - image → imageId (AWS AMI ID)
+     * - instanceSize → instanceType (AWS Instance Type)
+     * - sshKey → keyName (AWS Key Pair 이름)
+     * - networkSecurityId → securityGroupIds (AWS Security Group ID)
+     * - zone → placement.availabilityZone
      *
-     * @param command 도메인 생성 커맨드
+     * @param command CSP 중립적인 도메인 생성 커맨드
+     * @return AWS SDK RunInstancesRequest 객체
      */
     public RunInstancesRequest toRunInstancesRequest(VmCreateCommand command) {
-        log.debug("[AwsVmMapper] Converting VmCreateCommand to RunInstancesRequest");
+        log.debug("[AwsVmMapper] Converting VmCreateCommand to RunInstancesRequest: image={}, instanceSize={}", 
+            command.getImage(), command.getInstanceSize());
         
         RunInstancesRequest.Builder builder = RunInstancesRequest.builder()
-            .imageId(command.getImageId())
-            .instanceType(InstanceType.fromValue(command.getInstanceType()))
+            .imageId(command.getImage())                                      // image → imageId (AMI)
+            .instanceType(InstanceType.fromValue(command.getInstanceSize()))  // instanceSize → instanceType
             .minCount(command.getMinCount())
             .maxCount(command.getMaxCount());
         
-        if (command.getKeyName() != null) {
-            builder.keyName(command.getKeyName());
+        // sshKey → keyName (AWS Key Pair)
+        if (command.getSshKey() != null) {
+            builder.keyName(command.getSshKey());
         }
         
-        if (command.getSecurityGroupId() != null) {
-            builder.securityGroupIds(command.getSecurityGroupId());
+        // networkSecurityId → securityGroupIds (AWS Security Group)
+        if (command.getNetworkSecurityId() != null) {
+            builder.securityGroupIds(command.getNetworkSecurityId());
         }
         
+        // subnetId → subnetId (동일)
         if (command.getSubnetId() != null) {
             builder.subnetId(command.getSubnetId());
+        }
+        
+        // zone → placement.availabilityZone
+        if (command.getZone() != null) {
+            builder.placement(Placement.builder()
+                .availabilityZone(command.getZone())
+                .build());
         }
         
         if (command.getUserData() != null) {

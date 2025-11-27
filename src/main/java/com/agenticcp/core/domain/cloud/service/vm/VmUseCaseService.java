@@ -375,11 +375,12 @@ public class VmUseCaseService {
 
     private VmCreateCommand toCreateCommand(VmCreateRequest request, CloudSessionCredential session) {
         return VmCreateCommand.builder()
-                .imageId(request.getImageId())
-                .instanceType(request.getInstanceType())
-                .keyName(request.getKeyName())
-                .securityGroupId(request.getSecurityGroupId())
+                .image(request.getImage())
+                .instanceSize(request.getInstanceSize())
+                .sshKey(request.getSshKey())
+                .networkSecurityId(request.getNetworkSecurityId())
                 .subnetId(request.getSubnetId())
+                .zone(request.getZone())
                 .userData(request.getUserData())
                 .tags(request.getTags())
                 .minCount(request.getMinCount())

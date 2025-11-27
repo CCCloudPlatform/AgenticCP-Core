@@ -28,8 +28,8 @@ class AwsVmMapperCreateTest {
     void toRunInstancesRequest_기본요청() {
         // Given
         VmCreateCommand request = VmCreateCommand.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
             .minCount(1)
             .maxCount(1)
             .build();
@@ -54,10 +54,10 @@ class AwsVmMapperCreateTest {
     void toRunInstancesRequest_전체옵션요청() {
         // Given
         VmCreateCommand request = VmCreateCommand.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.small")
-            .keyName("my-key-pair")
-            .securityGroupId("sg-12345678")
+            .image("ami-12345678")
+            .instanceSize("t3.small")
+            .sshKey("my-key-pair")
+            .networkSecurityId("sg-12345678")
             .subnetId("subnet-12345678")
             .userData("#!/bin/bash\necho 'Hello World'")
             .tags(Map.of(
@@ -99,8 +99,8 @@ class AwsVmMapperCreateTest {
     void toRunInstancesRequest_다양한인스턴스타입() {
         // Given
         VmCreateCommand request = VmCreateCommand.builder()
-            .imageId("ami-12345678")
-            .instanceType("m5.large")
+            .image("ami-12345678")
+            .instanceSize("m5.large")
             .minCount(1)
             .maxCount(1)
             .build();
@@ -116,8 +116,8 @@ class AwsVmMapperCreateTest {
     void toRunInstancesRequest_빈태그() {
         // Given
         VmCreateCommand request = VmCreateCommand.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
             .tags(Map.of()) // 빈 태그 맵
             .minCount(1)
             .maxCount(1)
@@ -134,8 +134,8 @@ class AwsVmMapperCreateTest {
     void toRunInstancesRequest_null태그() {
         // Given
         VmCreateCommand request = VmCreateCommand.builder()
-            .imageId("ami-12345678")
-            .instanceType("t3.micro")
+            .image("ami-12345678")
+            .instanceSize("t3.micro")
             .tags(null) // null 태그
             .minCount(1)
             .maxCount(1)
