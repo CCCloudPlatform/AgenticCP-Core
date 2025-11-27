@@ -9,7 +9,7 @@ import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
@@ -45,7 +45,7 @@ public class VmUseCaseService {
     private final VmPortRouter vmPortRouter;
     private final AuditEventPort auditEventPort;
     private final CapabilityGuard capabilityGuard;
-    private final CredentialProviderPort credentialProviderPort;
+    private final AccountCredentialManagementPort credentialProviderPort;
 
     private static final String SERVICE_KEY = "VM";
     private static final String RESOURCE_TYPE = "INSTANCE";

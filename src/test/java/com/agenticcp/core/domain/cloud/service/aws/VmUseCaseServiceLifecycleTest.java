@@ -6,7 +6,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
@@ -56,7 +56,7 @@ class VmUseCaseServiceLifecycleTest {
     private CapabilityGuard capabilityGuard;
 
     @Mock
-    private CredentialProviderPort credentialProviderPort;
+    private AccountCredentialManagementPort credentialProviderPort;
 
     private VmUseCaseService vmUseCaseService;
 

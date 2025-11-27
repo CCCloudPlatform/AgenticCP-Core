@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.cloud.service.aws;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,54 +20,42 @@ class VmPortRouterTest {
     @Test
     void 라우터_인스턴스_생성_테스트() {
         // Given & When
-        VmPortRouter router = new VmPortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of(), List.of(), List.of());
 
         // Then
         assertThat(router).isNotNull();
     }
 
     @Test
-    void 지원되지_않는_제공업체_예외_발생() {
+    void discovery_지원되지_않는_제공업체_예외_발생() {
         // Given
-        VmPortRouter router = new VmPortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of(), List.of(), List.of());
 
         // When & Then
-        assertThatThrownBy(() -> router.vm(ProviderType.AWS))
+        assertThatThrownBy(() -> router.discovery(ProviderType.AWS))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported provider: AWS");
+            .hasMessageContaining("지원하지 않는 프로바이더입니다");
     }
 
     @Test
-    void 지원되는_제공업체_목록_조회() {
+    void lifecycle_지원되지_않는_제공업체_예외_발생() {
         // Given
-        VmPortRouter router = new VmPortRouter(List.of());
-
-        // When
-        var supportedProviders = router.getSupportedProviders();
-
-        // Then
-        assertThat(supportedProviders).isEmpty();
-    }
-
-    @Test
-    void 제공업체_지원_여부_확인() {
-        // Given
-        VmPortRouter router = new VmPortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of(), List.of(), List.of());
 
         // When & Then
-        assertThat(router.isProviderSupported(ProviderType.AWS)).isFalse();
-        assertThat(router.isProviderSupported(ProviderType.AZURE)).isFalse();
+        assertThatThrownBy(() -> router.lifecycle(ProviderType.AWS))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("지원하지 않는 프로바이더입니다");
     }
 
     @Test
-    void 등록된_포트_개수_확인() {
+    void tagging_지원되지_않는_제공업체_예외_발생() {
         // Given
-        VmPortRouter router = new VmPortRouter(List.of());
+        VmPortRouter router = new VmPortRouter(List.of(), List.of(), List.of());
 
-        // When
-        int portCount = router.getPortCount();
-
-        // Then
-        assertThat(portCount).isEqualTo(0);
+        // When & Then
+        assertThatThrownBy(() -> router.tagging(ProviderType.AWS))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("태그 관리를 지원하지 않는 프로바이더입니다");
     }
 }

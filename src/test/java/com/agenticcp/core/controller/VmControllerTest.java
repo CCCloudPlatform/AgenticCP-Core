@@ -5,7 +5,8 @@ import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
-import com.agenticcp.core.domain.cloud.service.aws.VmUseCaseService;
+import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
+import com.agenticcp.core.domain.cloud.controller.VmController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
