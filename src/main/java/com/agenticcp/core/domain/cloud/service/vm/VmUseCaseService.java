@@ -158,10 +158,8 @@ public class VmUseCaseService {
         try {
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
             
-            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
-            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
-            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).startInstance(instanceId);
+            CloudSessionCredential session = acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).startInstance(instanceId, session);
 
             auditEventPort.record("START_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -188,10 +186,8 @@ public class VmUseCaseService {
         try {
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
             
-            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
-            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
-            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).stopInstance(instanceId);
+            CloudSessionCredential session = acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).stopInstance(instanceId, session);
 
             auditEventPort.record("STOP_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -219,10 +215,8 @@ public class VmUseCaseService {
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
             
-            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
-            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
-            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).rebootInstance(instanceId);
+            CloudSessionCredential session = acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).rebootInstance(instanceId, session);
 
             auditEventPort.record("REBOOT_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));
@@ -249,10 +243,8 @@ public class VmUseCaseService {
         try {
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
             
-            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
-            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
-            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).terminateInstance(instanceId);
+            CloudSessionCredential session = acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).terminateInstance(instanceId, session);
 
             auditEventPort.record("TERMINATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId));

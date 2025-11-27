@@ -19,13 +19,10 @@ import software.amazon.awssdk.services.ec2.model.*;
 /**
  * AWS VM 생명주기 어댑터
  * 
- * <p>Management 작업(create, update, delete)은 Command에 포함된 세션을 사용하여
- * 요청별로 EC2 클라이언트를 생성합니다.</p>
- * 
- * <p>TODO(Phase 6): start, stop, reboot, terminate 메서드도 Command 기반으로 변경 예정</p>
+ * <p>모든 Management 작업은 세션 자격증명을 사용하여 요청별로 EC2 클라이언트를 생성합니다.</p>
  * 
  * @author AgenticCP Team
- * @version 2.0.0
+ * @version 2.1.0
  */
 @Slf4j
 @Component
@@ -35,12 +32,6 @@ public class AwsVmLifecycleAdapter implements VmLifecyclePort, ProviderScoped {
 
     private final AwsClientConfig awsClientConfig;
     private final AwsVmMapper mapper;
-    
-    /**
-     * 기존 싱글톤 클라이언트 (Phase 6에서 제거 예정)
-     * start, stop, reboot, terminate 메서드에서 임시 사용
-     */
-    private final Ec2Client ec2Client;
 
     @Override
     public ProviderType getProviderType() {
@@ -72,74 +63,90 @@ public class AwsVmLifecycleAdapter implements VmLifecyclePort, ProviderScoped {
     }
 
     @Override
-    public void startInstance(String instanceId) {
+    public void startInstance(String instanceId, CloudSessionCredential session) {
+        log.debug("[AwsVmLifecycleAdapter] Starting VM instance: {}", instanceId);
+        
+        Ec2Client client = awsClientConfig.createEc2Client(session, null);
+        
         try {
-            log.debug("[AwsVmLifecycleAdapter] Starting VM instance: {}", instanceId);
-
             StartInstancesRequest request = StartInstancesRequest.builder()
                     .instanceIds(instanceId)
                     .build();
 
-            ec2Client.startInstances(request);
+            client.startInstances(request);
             log.info("[AwsVmLifecycleAdapter] Successfully started VM instance: {}", instanceId);
 
         } catch (Throwable t) {
             log.error("[AwsVmLifecycleAdapter] Failed to start VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
+        } finally {
+            client.close();
         }
     }
 
     @Override
-    public void stopInstance(String instanceId) {
+    public void stopInstance(String instanceId, CloudSessionCredential session) {
+        log.debug("[AwsVmLifecycleAdapter] Stopping VM instance: {}", instanceId);
+        
+        Ec2Client client = awsClientConfig.createEc2Client(session, null);
+        
         try {
-            log.debug("[AwsVmLifecycleAdapter] Stopping VM instance: {}", instanceId);
-
             StopInstancesRequest request = StopInstancesRequest.builder()
                     .instanceIds(instanceId)
                     .build();
 
-            ec2Client.stopInstances(request);
+            client.stopInstances(request);
             log.info("[AwsVmLifecycleAdapter] Successfully stopped VM instance: {}", instanceId);
 
         } catch (Throwable t) {
             log.error("[AwsVmLifecycleAdapter] Failed to stop VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
+        } finally {
+            client.close();
         }
     }
 
     @Override
-    public void rebootInstance(String instanceId) {
+    public void rebootInstance(String instanceId, CloudSessionCredential session) {
+        log.debug("[AwsVmLifecycleAdapter] Rebooting VM instance: {}", instanceId);
+        
+        Ec2Client client = awsClientConfig.createEc2Client(session, null);
+        
         try {
-            log.debug("[AwsVmLifecycleAdapter] Rebooting VM instance: {}", instanceId);
-
             RebootInstancesRequest request = RebootInstancesRequest.builder()
                     .instanceIds(instanceId)
                     .build();
 
-            ec2Client.rebootInstances(request);
+            client.rebootInstances(request);
             log.info("[AwsVmLifecycleAdapter] Successfully rebooted VM instance: {}", instanceId);
 
         } catch (Throwable t) {
             log.error("[AwsVmLifecycleAdapter] Failed to reboot VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
+        } finally {
+            client.close();
         }
     }
 
     @Override
-    public void terminateInstance(String instanceId) {
+    public void terminateInstance(String instanceId, CloudSessionCredential session) {
+        log.debug("[AwsVmLifecycleAdapter] Terminating VM instance: {}", instanceId);
+        
+        Ec2Client client = awsClientConfig.createEc2Client(session, null);
+        
         try {
-            log.debug("[AwsVmLifecycleAdapter] Terminating VM instance: {}", instanceId);
-
             TerminateInstancesRequest request = TerminateInstancesRequest.builder()
                     .instanceIds(instanceId)
                     .build();
 
-            ec2Client.terminateInstances(request);
+            client.terminateInstances(request);
             log.info("[AwsVmLifecycleAdapter] Successfully terminated VM instance: {}", instanceId);
 
         } catch (Throwable t) {
             log.error("[AwsVmLifecycleAdapter] Failed to terminate VM instance: {}", instanceId, t);
             throw CloudErrorTranslator.translate(t);
+        } finally {
+            client.close();
         }
     }
 
