@@ -4,6 +4,7 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,15 +62,19 @@ class VmUseCaseServiceLifecycleTest {
 
     private VmUseCaseService vmUseCaseService;
 
+    private CloudSessionCredential mockSession;
+
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey("tenant-test");
         vmUseCaseService = new VmUseCaseService(vmPortRouter, auditEventPort, capabilityGuard, credentialProviderPort);
+        mockSession = mock(CloudSessionCredential.class);
 
         when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);
         when(vmPortRouter.discovery(ProviderType.AWS)).thenReturn(vmDiscoveryPort);
         when(vmPortRouter.tagging(ProviderType.AWS)).thenReturn(vmTaggingPort);
         when(credentialProviderPort.resolveCredentials(anyString(), any(), anyString())).thenReturn(new Object());
+        when(credentialProviderPort.getSession(anyString(), anyString(), any(ProviderType.class))).thenReturn(mockSession);
         doNothing().when(capabilityGuard).ensureSupported(any(), anyString(), anyString(), any());
     }
 
@@ -86,7 +92,7 @@ class VmUseCaseServiceLifecycleTest {
         vmUseCaseService.startInstance(instanceId);
 
         // Then
-        verify(vmLifecyclePort).startInstance(instanceId);
+        verify(vmLifecyclePort).startInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
@@ -106,7 +112,7 @@ class VmUseCaseServiceLifecycleTest {
         vmUseCaseService.stopInstance(instanceId);
 
         // Then
-        verify(vmLifecyclePort).stopInstance(instanceId);
+        verify(vmLifecyclePort).stopInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
@@ -126,7 +132,7 @@ class VmUseCaseServiceLifecycleTest {
         vmUseCaseService.rebootInstance(instanceId);
 
         // Then
-        verify(vmLifecyclePort).rebootInstance(instanceId);
+        verify(vmLifecyclePort).rebootInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
@@ -146,7 +152,7 @@ class VmUseCaseServiceLifecycleTest {
         vmUseCaseService.terminateInstance(instanceId);
 
         // Then
-        verify(vmLifecyclePort).terminateInstance(instanceId);
+        verify(vmLifecyclePort).terminateInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // 감사 로그 기록 확인
         verify(auditEventPort).record(
@@ -188,7 +194,7 @@ class VmUseCaseServiceLifecycleTest {
         // Given
         String instanceId = "i-1234567890abcdef0";
         RuntimeException exception = new RuntimeException("AWS API Error");
-        doThrow(exception).when(vmLifecyclePort).startInstance(instanceId);
+        doThrow(exception).when(vmLifecyclePort).startInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // When & Then
         try {
@@ -211,7 +217,7 @@ class VmUseCaseServiceLifecycleTest {
         // Given
         String instanceId = "i-1234567890abcdef0";
         RuntimeException exception = new RuntimeException("AWS API Error");
-        doThrow(exception).when(vmLifecyclePort).stopInstance(instanceId);
+        doThrow(exception).when(vmLifecyclePort).stopInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // When & Then
         try {
@@ -234,7 +240,7 @@ class VmUseCaseServiceLifecycleTest {
         // Given
         String instanceId = "i-1234567890abcdef0";
         RuntimeException exception = new RuntimeException("AWS API Error");
-        doThrow(exception).when(vmLifecyclePort).rebootInstance(instanceId);
+        doThrow(exception).when(vmLifecyclePort).rebootInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // When & Then
         try {
@@ -257,7 +263,7 @@ class VmUseCaseServiceLifecycleTest {
         // Given
         String instanceId = "i-1234567890abcdef0";
         RuntimeException exception = new RuntimeException("AWS API Error");
-        doThrow(exception).when(vmLifecyclePort).terminateInstance(instanceId);
+        doThrow(exception).when(vmLifecyclePort).terminateInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // When & Then
         try {
@@ -314,10 +320,10 @@ class VmUseCaseServiceLifecycleTest {
         vmUseCaseService.terminateInstance(instanceId);
 
         // Then
-        verify(vmLifecyclePort).startInstance(instanceId);
-        verify(vmLifecyclePort).stopInstance(instanceId);
-        verify(vmLifecyclePort).rebootInstance(instanceId);
-        verify(vmLifecyclePort).terminateInstance(instanceId);
+        verify(vmLifecyclePort).startInstance(eq(instanceId), any(CloudSessionCredential.class));
+        verify(vmLifecyclePort).stopInstance(eq(instanceId), any(CloudSessionCredential.class));
+        verify(vmLifecyclePort).rebootInstance(eq(instanceId), any(CloudSessionCredential.class));
+        verify(vmLifecyclePort).terminateInstance(eq(instanceId), any(CloudSessionCredential.class));
 
         // 모든 작업에 대한 감사 로그 기록 확인
         verify(auditEventPort, times(4)).record(
