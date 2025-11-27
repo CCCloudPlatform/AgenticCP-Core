@@ -84,7 +84,7 @@ public class VmController {
             .availabilityZone(availabilityZone)
             .build();
         
-        Page<CloudResource> result = vmUseCaseService.listInstances(provider, query);
+        Page<CloudResource> result = vmUseCaseService.listInstances(provider, accountScope, query);
         log.info("[VmController] listInstances - success provider={}, count={}", provider, result.getTotalElements());
         return ResponseEntity.ok(ApiResponse.success(result, "VM 인스턴스 목록 조회에 성공했습니다."));
     }
@@ -116,7 +116,7 @@ public class VmController {
         log.info("[VmController] getInstance - provider={}, accountScope={}, instanceId={}", 
                 provider, accountScope, instanceId);
         
-        Optional<CloudResource> result = vmUseCaseService.getInstance(provider, instanceId);
+        Optional<CloudResource> result = vmUseCaseService.getInstance(provider, accountScope, instanceId);
         
         if (result.isPresent()) {
             log.info("[VmController] getInstance - success provider={}, instanceId={}", provider, instanceId);
@@ -482,7 +482,7 @@ public class VmController {
         log.info("[VmController] getTags - provider={}, accountScope={}, instanceId={}", 
                 provider, accountScope, instanceId);
         
-        Map<String, String> tags = vmUseCaseService.getTags(provider, instanceId);
+        Map<String, String> tags = vmUseCaseService.getTags(provider, accountScope, instanceId);
         log.info("[VmController] getTags - success provider={}, instanceId={}, tagCount={}", 
                 provider, instanceId, tags.size());
         return ResponseEntity.ok(ApiResponse.success(tags, "VM 인스턴스 태그 조회에 성공했습니다."));
@@ -517,7 +517,7 @@ public class VmController {
         log.info("[VmController] getInstanceStatus - provider={}, accountScope={}, instanceId={}", 
                 provider, accountScope, instanceId);
         
-        String status = vmUseCaseService.getInstanceStatus(provider, instanceId);
+        String status = vmUseCaseService.getInstanceStatus(provider, accountScope, instanceId);
         log.info("[VmController] getInstanceStatus - success provider={}, instanceId={}, status={}", 
                 provider, instanceId, status);
         return ResponseEntity.ok(ApiResponse.success(status, "VM 인스턴스 상태 조회에 성공했습니다."));
@@ -556,7 +556,7 @@ public class VmController {
         log.info("[VmController] waitForInstanceStatus - provider={}, accountScope={}, instanceId={}, targetStatus={}, timeout={}s", 
                 provider, accountScope, instanceId, targetStatus, timeoutSeconds);
         
-        boolean success = vmUseCaseService.waitForInstanceStatus(provider, instanceId, targetStatus, timeoutSeconds);
+        boolean success = vmUseCaseService.waitForInstanceStatus(provider, accountScope, instanceId, targetStatus, timeoutSeconds);
         log.info("[VmController] waitForInstanceStatus - success={} provider={}, instanceId={}", 
                 success, provider, instanceId);
         return ResponseEntity.ok(ApiResponse.success(success, "VM 인스턴스 상태 대기 결과입니다."));

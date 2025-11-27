@@ -7,9 +7,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
-import com.agenticcp.core.common.context.TenantContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,8 +29,10 @@ import java.util.stream.Collectors;
 /**
  * AWS VM 조회 어댑터
  * 
- * <p>Discovery 작업은 Execute Around 패턴을 사용하여 JIT(Just-In-Time) 세션을 획득합니다.
- * 어댑터 내부에서 세션을 획득하고 클라이언트를 생성/해제합니다.</p>
+ * <p>PR #142 JIT 세션 관리 패턴을 따릅니다:
+ * - Service 레벨에서 세션을 획득하여 파라미터로 전달받음
+ * - 전달받은 세션으로 EC2 클라이언트 생성
+ * - Execute Around 패턴으로 클라이언트 생명주기 관리</p>
  * 
  * @author AgenticCP Team
  * @version 2.0.0
@@ -43,10 +43,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AwsVmDiscoveryAdapter implements VmDiscoveryPort, ProviderScoped {
 
-    private static final String DEFAULT_ACCOUNT_SCOPE = "default";
-    
     private final AwsClientConfig awsClientConfig;
-    private final AccountCredentialManagementPort credentialPort;
     private final AwsVmMapper mapper;
 
     @Override
@@ -57,15 +54,14 @@ public class AwsVmDiscoveryAdapter implements VmDiscoveryPort, ProviderScoped {
     // ==================== Execute Around Pattern ====================
 
     /**
-     * Execute Around 패턴: JIT 세션 획득 → 클라이언트 생성 → 작업 실행 → 클라이언트 해제
+     * Execute Around 패턴: 세션 기반 클라이언트 생성 → 작업 실행 → 클라이언트 해제
      * 
+     * @param session 세션 자격증명 (Service에서 전달받음)
      * @param operation EC2 클라이언트를 사용하는 작업
      * @param <T> 반환 타입
      * @return 작업 결과
      */
-    private <T> T executeWithEc2Client(Function<Ec2Client, T> operation) {
-        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-        CloudSessionCredential session = credentialPort.getSession(tenantKey, DEFAULT_ACCOUNT_SCOPE, ProviderType.AWS);
+    private <T> T executeWithEc2Client(CloudSessionCredential session, Function<Ec2Client, T> operation) {
         Ec2Client client = awsClientConfig.createEc2Client(session, null);
         
         try {
@@ -78,10 +74,10 @@ public class AwsVmDiscoveryAdapter implements VmDiscoveryPort, ProviderScoped {
     // ==================== Discovery Operations ====================
 
     @Override
-    public Page<CloudResource> listInstances(VmQuery query) {
+    public Page<CloudResource> listInstances(VmQuery query, CloudSessionCredential session) {
         log.debug("[AwsVmDiscoveryAdapter] Listing VM instances with query: {}", query);
         
-        return executeWithEc2Client(client -> {
+        return executeWithEc2Client(session, client -> {
             try {
                 DescribeInstancesRequest request = mapper.toDescribeInstancesRequest(query);
                 DescribeInstancesResponse response = client.describeInstances(request);
@@ -107,10 +103,10 @@ public class AwsVmDiscoveryAdapter implements VmDiscoveryPort, ProviderScoped {
     }
 
     @Override
-    public Optional<CloudResource> getInstance(String instanceId) {
+    public Optional<CloudResource> getInstance(String instanceId, CloudSessionCredential session) {
         log.debug("[AwsVmDiscoveryAdapter] Getting VM instance: {}", instanceId);
         
-        return executeWithEc2Client(client -> {
+        return executeWithEc2Client(session, client -> {
             try {
                 DescribeInstancesRequest request = DescribeInstancesRequest.builder()
                         .instanceIds(instanceId)
@@ -134,10 +130,10 @@ public class AwsVmDiscoveryAdapter implements VmDiscoveryPort, ProviderScoped {
     }
 
     @Override
-    public String getInstanceStatus(String instanceId) {
+    public String getInstanceStatus(String instanceId, CloudSessionCredential session) {
         log.debug("[AwsVmDiscoveryAdapter] Getting status for VM instance: {}", instanceId);
         
-        return executeWithEc2Client(client -> {
+        return executeWithEc2Client(session, client -> {
             try {
                 DescribeInstancesRequest request = DescribeInstancesRequest.builder()
                         .instanceIds(instanceId)
@@ -162,11 +158,11 @@ public class AwsVmDiscoveryAdapter implements VmDiscoveryPort, ProviderScoped {
     }
 
     @Override
-    public boolean waitForInstanceStatus(String instanceId, String status, int timeoutSeconds) {
+    public boolean waitForInstanceStatus(String instanceId, String status, int timeoutSeconds, CloudSessionCredential session) {
         log.debug("[AwsVmDiscoveryAdapter] Waiting for VM instance {} to reach status: {} (timeout: {}s)",
                 instanceId, status, timeoutSeconds);
         
-        return executeWithEc2Client(client -> {
+        return executeWithEc2Client(session, client -> {
             try {
                 DescribeInstanceStatusRequest request = DescribeInstanceStatusRequest.builder()
                         .instanceIds(instanceId)

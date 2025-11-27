@@ -26,6 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * 헥사고날 아키텍처의 애플리케이션 계층에서 VM 인스턴스 관련 비즈니스 로직을 처리합니다.
  * 포트 인터페이스를 통해서만 외부 시스템과 통신하며, 트랜잭션을 담당합니다.
+ * 
+ * JIT 세션 관리 패턴을 따릅니다:
+ * - 모든 작업에서 Service 레벨에서 세션을 획득하여 Port에 전달
+ * - getSession()을 통한 Redis 캐싱 활용
  *
  * @author AgenticCP Team
  * @version 2.0.0
@@ -44,12 +48,14 @@ public class VmUseCaseService {
 
     /**
      * 세션 자격증명을 획득합니다.
+     * IT 세션 관리 패턴을 따릅니다.
+     * - Redis 캐시 확인 → 없으면 발급 → 캐싱 → 반환
      * 
      * @param providerType 프로바이더 타입
      * @param accountScope 계정 스코프
      * @return CloudSessionCredential 세션 자격증명
      */
-    private CloudSessionCredential acquireSession(ProviderType providerType, String accountScope) {
+    private CloudSessionCredential getSession(ProviderType providerType, String accountScope) {
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         return credentialProviderPort.getSession(tenantKey, accountScope, providerType);
     }
@@ -60,14 +66,17 @@ public class VmUseCaseService {
      * VM 인스턴스 목록을 조회합니다.
      *
      * @param providerType 클라우드 프로바이더 타입
+     * @param accountScope 계정 스코프
      * @param query 조회 조건
      * @return CloudResource 페이지
      */
-    public Page<CloudResource> listInstances(ProviderType providerType, VmQuery query) {
-        log.debug("VM 인스턴스 목록 조회 시작: provider={}, query={}", providerType, query);
+    public Page<CloudResource> listInstances(ProviderType providerType, String accountScope, VmQuery query) {
+        log.debug("VM 인스턴스 목록 조회 시작: provider={}, accountScope={}, query={}", providerType, accountScope, query);
 
-        // Discovery 작업은 Adapter 내부에서 JIT 세션 획득
-        Page<CloudResource> result = vmPortRouter.discovery(providerType).listInstances(query);
+        // 세션 획득
+        CloudSessionCredential session = getSession(providerType, accountScope);
+
+        Page<CloudResource> result = vmPortRouter.discovery(providerType).listInstances(query, session);
 
         log.info("VM 인스턴스 목록 조회 완료: provider={}, totalElements={}", providerType, result.getTotalElements());
         return result;
@@ -77,14 +86,17 @@ public class VmUseCaseService {
      * 특정 VM 인스턴스를 조회합니다.
      *
      * @param providerType 클라우드 프로바이더 타입
+     * @param accountScope 계정 스코프
      * @param instanceId 인스턴스 ID
      * @return CloudResource (존재하지 않으면 Optional.empty())
      */
-    public Optional<CloudResource> getInstance(ProviderType providerType, String instanceId) {
-        log.debug("VM 인스턴스 조회 시작: provider={}, instanceId={}", providerType, instanceId);
+    public Optional<CloudResource> getInstance(ProviderType providerType, String accountScope, String instanceId) {
+        log.debug("VM 인스턴스 조회 시작: provider={}, accountScope={}, instanceId={}", providerType, accountScope, instanceId);
 
-        // Discovery 작업은 Adapter 내부에서 JIT 세션 획득
-        Optional<CloudResource> result = vmPortRouter.discovery(providerType).getInstance(instanceId);
+        // 세션 획득
+        CloudSessionCredential session = getSession(providerType, accountScope);
+
+        Optional<CloudResource> result = vmPortRouter.discovery(providerType).getInstance(instanceId, session);
 
         log.info("VM 인스턴스 조회 완료: provider={}, instanceId={}, found={}", providerType, instanceId, result.isPresent());
         return result;
@@ -109,7 +121,7 @@ public class VmUseCaseService {
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.CREATE);
 
         // 세션 획득
-        CloudSessionCredential session = acquireSession(providerType, accountScope);
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // VM 인스턴스 생성
         String instanceId = vmPortRouter.lifecycle(providerType)
@@ -136,7 +148,7 @@ public class VmUseCaseService {
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
 
         // 세션 획득
-        CloudSessionCredential session = acquireSession(providerType, accountScope);
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // VM 인스턴스 시작
         vmPortRouter.lifecycle(providerType).startInstance(instanceId, session);
@@ -159,7 +171,7 @@ public class VmUseCaseService {
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
 
         // 세션 획득
-        CloudSessionCredential session = acquireSession(providerType, accountScope);
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // VM 인스턴스 중지
         vmPortRouter.lifecycle(providerType).stopInstance(instanceId, session);
@@ -183,7 +195,7 @@ public class VmUseCaseService {
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
 
         // 세션 획득
-        CloudSessionCredential session = acquireSession(providerType, accountScope);
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // VM 인스턴스 재부팅
         vmPortRouter.lifecycle(providerType).rebootInstance(instanceId, session);
@@ -206,7 +218,7 @@ public class VmUseCaseService {
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
         // 세션 획득
-        CloudSessionCredential session = acquireSession(providerType, accountScope);
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // VM 인스턴스 종료
         vmPortRouter.lifecycle(providerType).terminateInstance(instanceId, session);
@@ -230,7 +242,7 @@ public class VmUseCaseService {
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
         // 세션 획득
-        CloudSessionCredential session = acquireSession(providerType, accountScope);
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // VM 인스턴스 삭제
         vmPortRouter.lifecycle(providerType).deleteInstance(toDeleteCommand(request, session));
@@ -256,7 +268,7 @@ public class VmUseCaseService {
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.UPDATE);
 
         // 세션 획득
-        CloudSessionCredential session = acquireSession(providerType, accountScope);
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // VM 인스턴스 수정
         vmPortRouter.lifecycle(providerType).updateInstance(toUpdateCommand(request, session));
@@ -282,11 +294,11 @@ public class VmUseCaseService {
         // Capability 검증
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
-        // 세션 획득 (TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정)
-        acquireSession(providerType, accountScope);
+        // 세션 획득
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // 태그 추가
-        vmPortRouter.tagging(providerType).addTags(instanceId, tags);
+        vmPortRouter.tagging(providerType).addTags(instanceId, tags, session);
 
         log.info("VM 인스턴스 태그 추가 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -307,11 +319,11 @@ public class VmUseCaseService {
         // Capability 검증
         capabilityGuard.ensureSupported(providerType, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
-        // 세션 획득 (TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정)
-        acquireSession(providerType, accountScope);
+        // 세션 획득
+        CloudSessionCredential session = getSession(providerType, accountScope);
 
         // 태그 제거
-        vmPortRouter.tagging(providerType).removeTags(instanceId, tagKeys);
+        vmPortRouter.tagging(providerType).removeTags(instanceId, tagKeys, session);
 
         log.info("VM 인스턴스 태그 제거 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -320,14 +332,17 @@ public class VmUseCaseService {
      * VM 인스턴스의 모든 태그를 조회합니다.
      *
      * @param providerType 클라우드 프로바이더 타입
+     * @param accountScope 계정 스코프
      * @param instanceId 인스턴스 ID
      * @return 태그 맵
      */
-    public Map<String, String> getTags(ProviderType providerType, String instanceId) {
-        log.debug("VM 인스턴스 태그 조회: provider={}, instanceId={}", providerType, instanceId);
+    public Map<String, String> getTags(ProviderType providerType, String accountScope, String instanceId) {
+        log.debug("VM 인스턴스 태그 조회: provider={}, accountScope={}, instanceId={}", providerType, accountScope, instanceId);
 
-        // Discovery 작업은 Adapter 내부에서 JIT 세션 획득
-        Map<String, String> tags = vmPortRouter.tagging(providerType).getTags(instanceId);
+        // 세션 획득
+        CloudSessionCredential session = getSession(providerType, accountScope);
+
+        Map<String, String> tags = vmPortRouter.tagging(providerType).getTags(instanceId, session);
 
         log.info("VM 인스턴스 태그 조회 완료: provider={}, instanceId={}, tagCount={}", 
             providerType, instanceId, tags.size());
@@ -340,14 +355,17 @@ public class VmUseCaseService {
      * VM 인스턴스의 현재 상태를 확인합니다.
      *
      * @param providerType 클라우드 프로바이더 타입
+     * @param accountScope 계정 스코프
      * @param instanceId 인스턴스 ID
      * @return 인스턴스 상태
      */
-    public String getInstanceStatus(ProviderType providerType, String instanceId) {
-        log.debug("VM 인스턴스 상태 확인: provider={}, instanceId={}", providerType, instanceId);
+    public String getInstanceStatus(ProviderType providerType, String accountScope, String instanceId) {
+        log.debug("VM 인스턴스 상태 확인: provider={}, accountScope={}, instanceId={}", providerType, accountScope, instanceId);
 
-        // Discovery 작업은 Adapter 내부에서 JIT 세션 획득
-        String status = vmPortRouter.discovery(providerType).getInstanceStatus(instanceId);
+        // 세션 획득
+        CloudSessionCredential session = getSession(providerType, accountScope);
+
+        String status = vmPortRouter.discovery(providerType).getInstanceStatus(instanceId, session);
 
         log.info("VM 인스턴스 상태 확인 완료: provider={}, instanceId={}, status={}", providerType, instanceId, status);
         return status;
@@ -357,18 +375,22 @@ public class VmUseCaseService {
      * VM 인스턴스가 특정 상태에 도달할 때까지 대기합니다.
      *
      * @param providerType 클라우드 프로바이더 타입
+     * @param accountScope 계정 스코프
      * @param instanceId 인스턴스 ID
      * @param targetStatus 목표 상태
      * @param timeoutSeconds 타임아웃 (초)
      * @return 대기 성공 여부
      */
-    public boolean waitForInstanceStatus(ProviderType providerType, String instanceId, String targetStatus, int timeoutSeconds) {
-        log.debug("VM 인스턴스 상태 대기: provider={}, instanceId={}, targetStatus={}, timeout={}s", 
-            providerType, instanceId, targetStatus, timeoutSeconds);
+    public boolean waitForInstanceStatus(ProviderType providerType, String accountScope, String instanceId, 
+                                         String targetStatus, int timeoutSeconds) {
+        log.debug("VM 인스턴스 상태 대기: provider={}, accountScope={}, instanceId={}, targetStatus={}, timeout={}s", 
+            providerType, accountScope, instanceId, targetStatus, timeoutSeconds);
 
-        // Discovery 작업은 Adapter 내부에서 JIT 세션 획득
+        // 세션 획득
+        CloudSessionCredential session = getSession(providerType, accountScope);
+
         boolean success = vmPortRouter.discovery(providerType)
-            .waitForInstanceStatus(instanceId, targetStatus, timeoutSeconds);
+            .waitForInstanceStatus(instanceId, targetStatus, timeoutSeconds, session);
 
         log.info("VM 인스턴스 상태 대기 완료: provider={}, instanceId={}, success={}", providerType, instanceId, success);
         return success;
