@@ -10,6 +10,7 @@ import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
@@ -62,8 +63,7 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] listInstances - query={}", query);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
+            // Discovery 작업은 Adapter 내부에서 JIT 세션 획득 (PR #160 Pattern 3)
             Page<CloudResource> result = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE)
                 .listInstances(query);
 
@@ -91,8 +91,7 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] getInstance - instanceId={}", instanceId);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
+            // Discovery 작업은 Adapter 내부에서 JIT 세션 획득 (PR #160 Pattern 3)
             Optional<CloudResource> result = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE)
                 .getInstance(instanceId);
 
@@ -123,11 +122,13 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] createInstance - request={}", request);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.CREATE);
 
+            // 세션 획득 (PR #160 패턴: Service에서 세션 획득 후 Command에 포함)
+            CloudSessionCredential session = acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
             String instanceId = vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE)
-                .createInstance(toCreateCommand(request));
+                .createInstance(toCreateCommand(request, session));
 
             auditEventPort.record("CREATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", instanceId, "request", request));
@@ -155,8 +156,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] startInstance - instanceId={}", instanceId);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
+            
+            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
+            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
             vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).startInstance(instanceId);
 
@@ -183,8 +186,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] stopInstance - instanceId={}", instanceId);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
+            
+            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
+            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
             vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).stopInstance(instanceId);
 
@@ -211,9 +216,11 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] rebootInstance - instanceId={}", instanceId);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.STOP);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.START);
+            
+            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
+            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
             vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).rebootInstance(instanceId);
 
@@ -240,8 +247,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] terminateInstance - instanceId={}", instanceId);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
+            
+            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
+            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
             vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).terminateInstance(instanceId);
 
@@ -268,10 +277,12 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] deleteInstance - request={}", request);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
-            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).deleteInstance(toDeleteCommand(request));
+            // 세션 획득 (PR #160 패턴: Service에서 세션 획득 후 Command에 포함)
+            CloudSessionCredential session = acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).deleteInstance(toDeleteCommand(request, session));
 
             auditEventPort.record("DELETE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", request.getInstanceId(), "request", request));
@@ -298,10 +309,12 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] updateInstance - request={}", request);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.UPDATE);
 
-            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).updateInstance(toUpdateCommand(request));
+            // 세션 획득 (PR #160 패턴: Service에서 세션 획득 후 Command에 포함)
+            CloudSessionCredential session = acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
+
+            vmPortRouter.lifecycle(DEFAULT_PROVIDER_TYPE).updateInstance(toUpdateCommand(request, session));
 
             auditEventPort.record("UPDATE_INSTANCE", "VM", "SUCCESS",
                 Map.of("instanceId", request.getInstanceId(), "request", request));
@@ -329,8 +342,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] addTags - instanceId={}, tags={}", instanceId, tags);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
+            
+            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
+            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
             vmPortRouter.tagging(DEFAULT_PROVIDER_TYPE).addTags(instanceId, tags);
 
@@ -358,8 +373,10 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] removeTags - instanceId={}, tagKeys={}", instanceId, tagKeys.keySet());
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
             capabilityGuard.ensureSupported(DEFAULT_PROVIDER_TYPE, SERVICE_KEY, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
+            
+            // TODO: Phase 4에서 Port 시그니처 변경 후 세션 전달 방식으로 수정
+            acquireSession(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
 
             vmPortRouter.tagging(DEFAULT_PROVIDER_TYPE).removeTags(instanceId, tagKeys);
 
@@ -386,8 +403,7 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] getTags - instanceId={}", instanceId);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
+            // Discovery 작업은 Adapter 내부에서 JIT 세션 획득 (PR #160 Pattern 3)
             Map<String, String> tags = vmPortRouter.tagging(DEFAULT_PROVIDER_TYPE).getTags(instanceId);
 
             auditEventPort.record("GET_TAGS", "VM", "SUCCESS",
@@ -416,8 +432,7 @@ public class VmUseCaseService {
         log.info("[VmUseCaseService] getInstanceStatus - instanceId={}", instanceId);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
+            // Discovery 작업은 Adapter 내부에서 JIT 세션 획득 (PR #160 Pattern 3)
             String status = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE).getInstanceStatus(instanceId);
 
             auditEventPort.record("GET_INSTANCE_STATUS", "VM", "SUCCESS",
@@ -447,8 +462,7 @@ public class VmUseCaseService {
             instanceId, targetStatus, timeoutSeconds);
 
         try {
-            setupTenantContextAndCredentials(DEFAULT_PROVIDER_TYPE, DEFAULT_ACCOUNT_SCOPE);
-
+            // Discovery 작업은 Adapter 내부에서 JIT 세션 획득 (PR #160 Pattern 3)
             boolean success = vmPortRouter.discovery(DEFAULT_PROVIDER_TYPE)
                 .waitForInstanceStatus(instanceId, targetStatus, timeoutSeconds);
 
@@ -468,16 +482,24 @@ public class VmUseCaseService {
         }
     }
 
-    private void setupTenantContextAndCredentials(ProviderType providerType, String accountScope) {
+    /**
+     * 세션 자격증명을 획득합니다.
+     * PR #160 패턴: Management 작업 시 Service에서 세션을 획득하여 Command에 포함
+     * 
+     * @param providerType 프로바이더 타입
+     * @param accountScope 계정 스코프
+     * @return CloudSessionCredential 세션 자격증명
+     */
+    private CloudSessionCredential acquireSession(ProviderType providerType, String accountScope) {
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         String effectiveAccountScope = (accountScope == null || accountScope.isBlank())
                 ? DEFAULT_ACCOUNT_SCOPE
                 : accountScope;
 
-        credentialProviderPort.resolveCredentials(tenantKey, providerType, effectiveAccountScope);
+        return credentialProviderPort.getSession(tenantKey, effectiveAccountScope, providerType);
     }
 
-    private VmCreateCommand toCreateCommand(VmCreateRequest request) {
+    private VmCreateCommand toCreateCommand(VmCreateRequest request, CloudSessionCredential session) {
         return VmCreateCommand.builder()
                 .imageId(request.getImageId())
                 .instanceType(request.getInstanceType())
@@ -488,25 +510,28 @@ public class VmUseCaseService {
                 .tags(request.getTags())
                 .minCount(request.getMinCount())
                 .maxCount(request.getMaxCount())
+                .session(session)
                 .build();
     }
 
-    private VmUpdateCommand toUpdateCommand(VmUpdateRequest request) {
+    private VmUpdateCommand toUpdateCommand(VmUpdateRequest request, CloudSessionCredential session) {
         return VmUpdateCommand.builder()
                 .instanceId(request.getInstanceId())
                 .instanceType(request.getInstanceType())
                 .userData(request.getUserData())
                 .tagsToAdd(request.getTagsToAdd())
                 .tagsToRemove(request.getTagsToRemove())
+                .session(session)
                 .build();
     }
 
-    private VmDeleteCommand toDeleteCommand(VmDeleteRequest request) {
+    private VmDeleteCommand toDeleteCommand(VmDeleteRequest request, CloudSessionCredential session) {
         return VmDeleteCommand.builder()
                 .instanceId(request.getInstanceId())
                 .force(request.isForce())
                 .reason(request.getReason())
                 .createSnapshot(request.isCreateSnapshot())
+                .session(session)
                 .build();
     }
 }
