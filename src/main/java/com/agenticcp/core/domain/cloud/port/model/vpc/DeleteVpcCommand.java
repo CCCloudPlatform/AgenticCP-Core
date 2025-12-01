@@ -1,6 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.command.vpc;
-
-import java.util.Map;
+package com.agenticcp.core.domain.cloud.port.model.vpc;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -8,21 +6,17 @@ import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential
 import lombok.Builder;
 
 /**
- * VPC 생성 시 아웃바운드 포트로 전달되는 명령 모델.
+ * VPC 삭제 명령.
  */
 @Builder
-public record CreateVpcCommand(
+public record DeleteVpcCommand(
         CloudProvider.ProviderType providerType,
         String accountScope,
         String region,
+        String providerResourceId,
         String serviceKey,
         String resourceType,
-        String vpcName,
-        String cidrBlock,
-        String description,
-        Map<String, String> tags,
         String tenantKey,
-        Map<String, Object> providerSpecificConfig,
         CloudSessionCredential session
 ) {
 }

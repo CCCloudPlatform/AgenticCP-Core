@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model;
+package com.agenticcp.core.domain.cloud.port.model.vpc;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import lombok.Builder;
@@ -16,7 +16,7 @@ import java.util.Map;
  */
 @Value
 @Builder
-public class VpcQuery {
+public class VpcQueryRequest {
     CloudProvider.ProviderType providerType;
     String accountScope;
     String region;

@@ -4,9 +4,10 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudRegion;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
-import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
+import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudRegionRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
@@ -64,14 +65,14 @@ public class AwsVpcMapper {
     /**
      * Vpc를 CloudResource로 변환 (ListVpcsQuery 사용)
      */
-    public CloudResource toCloudResource(Vpc vpc, ListVpcsQuery query) {
+    public CloudResource toCloudResource(Vpc vpc, ListVpcsQueryRequest query) {
         return buildCloudResource(vpc, query.providerType(), "EC2", query.region(), query.tenantKey(), extractTagsFromVpc(vpc));
     }
     
     /**
      * Vpc를 CloudResource로 변환 (UpdateVpcCommand 사용)
      */
-    public CloudResource toCloudResource(Vpc vpc, com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand command) {
+    public CloudResource toCloudResource(Vpc vpc, UpdateVpcCommand command) {
         Map<String, String> tags = command.tags() != null ? command.tags() : extractTagsFromVpc(vpc);
         return buildCloudResource(vpc, command.providerType(), "EC2", command.region(), command.tenantKey(), tags);
     }

@@ -2,6 +2,7 @@ package com.agenticcp.core.domain.cloud.port.model.storage;
 
 import com.agenticcp.core.common.logging.masking.Masked;
 import com.agenticcp.core.common.logging.masking.MaskingType;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -14,12 +15,23 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-05
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 public class CreateObjectStorageContainerRequest {
+
+    /**
+     * 클라우드 프로바이더 타입
+     */
+    CloudProvider.ProviderType providerType;
+    
+    /**
+     * 계정 스코프
+     */
+    String accountScope;
 
     /**
      * Container 이름 (필수)

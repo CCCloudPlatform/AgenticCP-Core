@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.outbound.vpc;
+package com.agenticcp.core.domain.cloud.service.vpc;
 
 /**
  * VPC 관련 상수 정의

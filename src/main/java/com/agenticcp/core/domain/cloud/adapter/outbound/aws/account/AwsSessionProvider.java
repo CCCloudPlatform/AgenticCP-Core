@@ -69,7 +69,7 @@ public class AwsSessionProvider {
 
                 if (session == null) {
                     throw new BusinessException(
-                            CredentialErrorCode.SESSION_ISSUANCE_FAILED,
+                            CredentialErrorCode.TEMPORARY_SESSION_ISSUANCE_FAILED,
                             "AWS 세션 매핑에 실패했습니다"
                     );
                 }
@@ -84,7 +84,7 @@ public class AwsSessionProvider {
         } catch (Exception e) {
             log.error("[AwsSessionProvider] getSession - failed", e);
             throw new BusinessException(
-                CredentialErrorCode.SESSION_ISSUANCE_FAILED,
+                CredentialErrorCode.TEMPORARY_SESSION_ISSUANCE_FAILED,
                 "AWS 세션 발급에 실패했습니다: " + e.getMessage()
             );
         }

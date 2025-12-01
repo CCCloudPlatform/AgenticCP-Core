@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.outbound.vpc;
+package com.agenticcp.core.domain.cloud.service.vpc;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
@@ -7,15 +7,16 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
-import com.agenticcp.core.domain.cloud.port.command.vpc.*;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
-import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
-import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcCreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcQueryRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.vpc.*;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -413,7 +414,7 @@ class VpcUseCaseServiceTest {
         @DisplayName("정상적인 VPC 목록 조회")
         void listVpcs_Success() {
             // Given
-            VpcQuery query = createVpcQuery();
+            VpcQueryRequest query = createVpcQuery();
 
             given(accountCredentialManagementPort.getSession(
                 eq(tenantKey),
@@ -421,7 +422,7 @@ class VpcUseCaseServiceTest {
                 eq(providerType)
             )).willReturn(mockSession);
 
-            given(vpcManagementPort.listVpcs(any(ListVpcsQuery.class)))
+            given(vpcManagementPort.listVpcs(any(ListVpcsQueryRequest.class)))
                 .willReturn(List.of(mockVpcResource));
 
             // When
@@ -437,14 +438,14 @@ class VpcUseCaseServiceTest {
                 eq(accountScope),
                 eq(providerType)
             );
-            then(vpcManagementPort).should(times(1)).listVpcs(any(ListVpcsQuery.class));
+            then(vpcManagementPort).should(times(1)).listVpcs(any(ListVpcsQueryRequest.class));
         }
 
         @Test
         @DisplayName("accountScope가 null일 때 ACCOUNT_SCOPE_REQUIRED 예외 발생")
         void listVpcs_NullAccountScope_ThrowsException() {
             // Given
-            VpcQuery query = VpcQuery.builder()
+            VpcQueryRequest query = VpcQueryRequest.builder()
                 .providerType(providerType)
                 .accountScope(null)
                 .region("us-east-1")
@@ -467,7 +468,7 @@ class VpcUseCaseServiceTest {
         @DisplayName("자격증명을 찾을 수 없을 때 ACCOUNT_NOT_CONFIGURED 예외 발생")
         void listVpcs_CredentialNotFound_ThrowsException() {
             // Given
-            VpcQuery query = createVpcQuery();
+            VpcQueryRequest query = createVpcQuery();
 
             given(accountCredentialManagementPort.getSession(
                 eq(tenantKey),
@@ -489,7 +490,7 @@ class VpcUseCaseServiceTest {
         @DisplayName("빈 VPC 목록 반환")
         void listVpcs_EmptyList_ReturnsEmptyList() {
             // Given
-            VpcQuery query = createVpcQuery();
+            VpcQueryRequest query = createVpcQuery();
 
             given(accountCredentialManagementPort.getSession(
                 eq(tenantKey),
@@ -497,7 +498,7 @@ class VpcUseCaseServiceTest {
                 eq(providerType)
             )).willReturn(mockSession);
 
-            given(vpcManagementPort.listVpcs(any(ListVpcsQuery.class)))
+            given(vpcManagementPort.listVpcs(any(ListVpcsQueryRequest.class)))
                 .willReturn(List.of());
 
             // When
@@ -864,8 +865,8 @@ class VpcUseCaseServiceTest {
             .build();
     }
 
-    private VpcQuery createVpcQuery() {
-        return VpcQuery.builder()
+    private VpcQueryRequest createVpcQuery() {
+        return VpcQueryRequest.builder()
             .providerType(providerType)
             .accountScope(accountScope)
             .region("us-east-1")
