@@ -2,9 +2,10 @@ package com.agenticcp.core.common.config;
 
 import com.agenticcp.core.common.security.JwtAuthenticationFilter;
 import com.agenticcp.core.common.security.PendingUserAccessFilter;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -30,11 +31,17 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final PendingUserAccessFilter pendingUserAccessFilter;
+
+    @Autowired
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, 
+                         @Lazy PendingUserAccessFilter pendingUserAccessFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.pendingUserAccessFilter = pendingUserAccessFilter;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
