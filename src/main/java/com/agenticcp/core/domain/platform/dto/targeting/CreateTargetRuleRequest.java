@@ -13,9 +13,10 @@ import lombok.NoArgsConstructor;
 
 /**
  * 타겟팅 규칙 생성 요청 DTO
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @Data
 @Builder

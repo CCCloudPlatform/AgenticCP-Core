@@ -17,6 +17,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * 테넌트 권한/역할 관리 컨트롤러
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-10
+ */
 @RestController
 @RequestMapping("/api/v1/tenants/{tenantKey}")
 @RequiredArgsConstructor

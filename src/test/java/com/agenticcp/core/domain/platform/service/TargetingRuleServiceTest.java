@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.platform.service;
 
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.platform.dto.targeting.CreateTargetRuleRequest;
 import com.agenticcp.core.domain.platform.dto.targeting.TargetRuleResponse;
 import com.agenticcp.core.domain.platform.enums.TargetingRuleErrorCode;
@@ -26,9 +27,10 @@ import static org.mockito.BDDMockito.*;
 
 /**
  * 타겟팅 규칙 서비스 단위 테스트
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("타겟팅 규칙 서비스 테스트")
@@ -134,7 +136,7 @@ class TargetingRuleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> targetingRuleService.createTargetingRule("non-existent-feature", testCreateRequest))
-                .isInstanceOf(Exception.class);
+                .isInstanceOf(ResourceNotFoundException.class);
         
         verify(featureFlagRepository).findByFlagKey("non-existent-feature");
         verify(targetingRuleRepository, never()).existsByFeatureFlagIdAndRuleName(any(), any(), any());
@@ -200,7 +202,7 @@ class TargetingRuleServiceTest {
 
         // when & then
         assertThatThrownBy(() -> targetingRuleService.activateTargetingRule(999L))
-                .isInstanceOf(Exception.class);
+                .isInstanceOf(ResourceNotFoundException.class);
         
         verify(targetingRuleRepository).findByIdAndNotDeleted(999L, false);
         verify(targetingRuleRepository, never()).save(any(FeatureFlagTargetRule.class));

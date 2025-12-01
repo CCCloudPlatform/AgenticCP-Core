@@ -2,7 +2,10 @@ package com.agenticcp.core.domain.monitoring.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -21,7 +24,7 @@ import java.util.List;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Entity
 @Table(name = "metrics", indexes = {
@@ -35,7 +38,9 @@ import java.util.List;
     @Index(name = "idx_metrics_tenant_time", columnList = "tenant_id,collected_at")
 })
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false, exclude = {"id", "createdAt", "updatedAt"})
 @ToString(callSuper = true)
 public class Metric extends BaseEntity {
@@ -43,12 +48,15 @@ public class Metric extends BaseEntity {
     /**
      * 메트릭 이름 (예: cpu.usage, memory.used, disk.free)
      */
+    @NotBlank(message = "메트릭 이름은 필수입니다")
+    @Size(max = 100, message = "메트릭 이름은 100자를 초과할 수 없습니다")
     @Column(name = "metric_name", nullable = false, length = 100)
     private String metricName;
 
     /**
      * 메트릭 값
      */
+    @NotNull(message = "메트릭 값은 필수입니다")
     @Column(name = "metric_value", nullable = false)
     private Double metricValue;
 
@@ -63,11 +71,13 @@ public class Metric extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "metric_type", nullable = false)
+    @NotNull(message = "메트릭 타입은 필수입니다")
     private MetricType metricType;
 
     /**
      * 메트릭 수집 시간
      */
+    @NotNull(message = "수집 시간은 필수입니다")
     @Column(name = "collected_at", nullable = false)
     private LocalDateTime collectedAt;
 
@@ -75,6 +85,7 @@ public class Metric extends BaseEntity {
      * 메트릭 소스 (예: system, application, custom)
      */
     @Column(name = "source", length = 50)
+    @Builder.Default
     private String source = "system";
 
     /**
@@ -82,6 +93,7 @@ public class Metric extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
+    @Builder.Default
     private Status status = Status.ACTIVE;
 
     /**
@@ -95,12 +107,14 @@ public class Metric extends BaseEntity {
      * 메트릭 메타데이터 목록
      */
     @OneToMany(mappedBy = "metric", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<MetricMetadata> metadataList = new ArrayList<>();
 
     /**
      * 메트릭 태그 목록
      */
     @OneToMany(mappedBy = "metric", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<MetricTag> tags = new ArrayList<>();
 
     /**
@@ -110,20 +124,6 @@ public class Metric extends BaseEntity {
      */
     @Column(name = "tenant_id")
     private String tenantId;
-
-    @Builder
-    public Metric(String metricName, Double metricValue, String unit, MetricType metricType, 
-                  LocalDateTime collectedAt, String source, Status status, String metadata, String tenantId) {
-        this.metricName = metricName;
-        this.metricValue = metricValue;
-        this.unit = unit;
-        this.metricType = metricType;
-        this.collectedAt = collectedAt;
-        this.source = source;
-        this.status = status;
-        this.metadata = metadata;
-        this.tenantId = tenantId;
-    }
 
     /**
      * 메트릭 값 업데이트

@@ -2,7 +2,6 @@ package com.agenticcp.core.domain.monitoring.controller;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.dto.exception.ApiResponse;
-import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.domain.monitoring.entity.TenantDataRetentionPolicy;
 import com.agenticcp.core.domain.monitoring.service.TenantDataRetentionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -22,7 +23,11 @@ import java.util.List;
 /**
  * 테넌트별 데이터 보관 정책 관리 컨트롤러
  * 
- * 테넌트별로 메트릭 데이터의 보관 기간과 정책을 관리합니다.
+ * <p>테넌트별로 메트릭 데이터의 보관 기간과 정책을 관리합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Tag(name = "Metric Data Retention Policy", description = "테넌트별 메트릭 데이터 보관 정책 관리 API")
 @RestController
@@ -36,27 +41,26 @@ public class DataRetentionController {
 
     /**
      * 테넌트별 기본 보관 정책 설정 (30일)
+     * 
+     * @return 생성된 보관 정책
+     * @throws IllegalStateException 테넌트 컨텍스트가 없는 경우
      */
     @Operation(summary = "기본 보관 정책 설정", description = "30일 기본 보관 정책을 설정합니다")
     @PostMapping("/policies/default")
     public ResponseEntity<ApiResponse<TenantDataRetentionPolicy>> createDefaultRetentionPolicy() {
-        try {
-            String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            log.info("테넌트별 기본 보관 정책 설정: tenantId={}", tenantId);
-            
-            TenantDataRetentionPolicy policy = retentionService.createDefaultRetentionPolicy(tenantId);
-            
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(policy, "기본 보관 정책이 설정되었습니다 (30일)."));
-        } catch (IllegalStateException e) {
-            log.warn("테넌트 컨텍스트가 없습니다: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(CommonErrorCode.TENANT_CONTEXT_NOT_SET));
-        }
+        String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        log.info("테넌트별 기본 보관 정책 설정: tenantId={}", tenantId);
+        
+        TenantDataRetentionPolicy policy = retentionService.createDefaultRetentionPolicy(tenantId);
+        
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(policy, "기본 보관 정책이 설정되었습니다 (30일)."));
     }
 
     /**
      * 테넌트별 보관 정책 목록 조회
+     * 
+     * @return 보관 정책 목록
      */
     @Operation(summary = "보관 정책 목록 조회", description = "테넌트의 모든 보관 정책을 조회합니다")
     @GetMapping("/policies")
@@ -71,6 +75,8 @@ public class DataRetentionController {
 
     /**
      * 테넌트별 활성화된 보관 정책 조회
+     * 
+     * @return 활성화된 보관 정책 목록
      */
     @Operation(summary = "활성화된 보관 정책 조회", description = "테넌트의 활성화된 보관 정책을 조회합니다")
     @GetMapping("/policies/enabled")
@@ -85,6 +91,9 @@ public class DataRetentionController {
 
     /**
      * 테넌트별 특정 데이터 타입 보관 정책 조회
+     * 
+     * @param dataType 데이터 타입
+     * @return 보관 정책 (없으면 null)
      */
     @Operation(summary = "특정 데이터 타입 보관 정책 조회", description = "특정 데이터 타입의 보관 정책을 조회합니다")
     @GetMapping("/policies/{dataType}")
@@ -105,22 +114,20 @@ public class DataRetentionController {
 
     /**
      * 테넌트별 보관 정책 업데이트
+     * 
+     * @param dataType 데이터 타입
+     * @param request 보관 정책 업데이트 요청
+     * @return 업데이트된 보관 정책
      */
     @Operation(summary = "보관 정책 업데이트", description = "특정 데이터 타입의 보관 정책을 업데이트합니다")
     @PutMapping("/policies/{dataType}")
     public ResponseEntity<ApiResponse<TenantDataRetentionPolicy>> updateRetentionPolicy(
             @Parameter(description = "데이터 타입", required = true)
             @PathVariable @NotBlank String dataType,
-            @RequestBody @NotNull RetentionPolicyUpdateRequest request) {
+            @Valid @RequestBody RetentionPolicyUpdateRequest request) {
         String tenantId = TenantContextHolder.getCurrentTenantKeyOrThrow();
         log.info("테넌트별 보관 정책 업데이트: tenantId={}, dataType={}, retentionDays={}", 
                 tenantId, dataType, request.getRetentionDays());
-        
-        // 유효성 검증
-        if (request.getRetentionDays() == null || request.getRetentionDays() <= 0) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(CommonErrorCode.BAD_REQUEST));
-        }
         
         TenantDataRetentionPolicy policy = retentionService.updateRetentionPolicy(
                 tenantId, dataType, request.getRetentionDays(), 
@@ -131,6 +138,10 @@ public class DataRetentionController {
 
     /**
      * 테넌트별 보관 정책 활성화/비활성화
+     * 
+     * @param dataType 데이터 타입
+     * @param enabled 활성화 여부
+     * @return 성공 메시지
      */
     @Operation(summary = "보관 정책 활성화/비활성화", description = "특정 데이터 타입의 보관 정책을 활성화/비활성화합니다")
     @PatchMapping("/policies/{dataType}/toggle")
@@ -150,6 +161,9 @@ public class DataRetentionController {
 
     /**
      * 수동 데이터 정리 실행
+     * 
+     * @param dataType 데이터 타입
+     * @return 정리된 레코드 개수 메시지
      */
     @Operation(summary = "수동 데이터 정리", description = "특정 데이터 타입의 오래된 메트릭 데이터를 수동으로 정리합니다")
     @PostMapping("/cleanup/{dataType}")
@@ -167,6 +181,8 @@ public class DataRetentionController {
 
     /**
      * 보관 정책 통계 조회
+     * 
+     * @return 보관 정책 통계 정보
      */
     @Operation(summary = "보관 정책 통계 조회", description = "보관 정책 관련 통계 정보를 조회합니다")
     @GetMapping("/statistics")
@@ -185,6 +201,7 @@ public class DataRetentionController {
     @lombok.Data
     public static class RetentionPolicyUpdateRequest {
         @NotNull(message = "보관 기간은 필수입니다")
+        @Min(value = 1, message = "보관 기간은 1일 이상이어야 합니다")
         private Integer retentionDays;
         
         private TenantDataRetentionPolicy.DeletionStrategy deletionStrategy = 

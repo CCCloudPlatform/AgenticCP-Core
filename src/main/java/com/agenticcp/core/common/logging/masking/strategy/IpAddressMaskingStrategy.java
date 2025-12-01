@@ -5,28 +5,14 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * IP 주소 마스킹 전략
- * 
- * IP 주소의 마지막 두 옥텟을 마스킹 처리합니다.
- * 예: 192.168.1.100 -> 192.168.***.***
+ * IP 주소 마스킹 전략입니다. IPv4/IPv6 일부만 노출합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component
 public class IpAddressMaskingStrategy implements MaskingStrategy {
-    
-    // IPv4 주소 패턴: 0-255.0-255.0-255.0-255
-    private static final String IPV4_PATTERN = "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$";
-    
-    // IPv4 마스킹 결과
-    private static final String IPV4_MASKED = "***.***.***.***";
-    
-    // IPv6 마스킹 결과
-    private static final String IPV6_MASKED = "****:****:****:****:****:****:****:****";
-    
-    // IPv4 구분자
-    private static final String IPV4_SEPARATOR = "\\.";
     
     @Override
     public String mask(String value) {
@@ -34,8 +20,8 @@ public class IpAddressMaskingStrategy implements MaskingStrategy {
             return value;
         }
         
-        // IPv4 주소 패턴 체크 - 기존 LogMaskingUtils와 동일한 방식(추후 통합)
-        if (value.contains(".")) { // IPv4
+        // IPv4
+        if (value.contains(".")) {
             String[] parts = value.split("\\.");
             if (parts.length == 4) {
                 return parts[0] + "." + parts[1] + "." + parts[2] + ".***";

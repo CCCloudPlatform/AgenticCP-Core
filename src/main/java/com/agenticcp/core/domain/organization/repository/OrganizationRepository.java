@@ -8,8 +8,16 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
+/**
+ * 조직 Repository
+ * 
+ * <p>조직 엔티티에 대한 데이터 접근을 제공합니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
+ */
 @Repository
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
     

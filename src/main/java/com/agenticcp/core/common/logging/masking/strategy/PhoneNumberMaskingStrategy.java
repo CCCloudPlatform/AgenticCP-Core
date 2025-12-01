@@ -5,12 +5,10 @@ import com.agenticcp.core.common.logging.masking.MaskingType;
 import org.springframework.stereotype.Component;
 
 /**
- * 전화번호 마스킹 전략
- * 
- * 전화번호의 중간 4자리를 마스킹 처리합니다.
- * 예: 010-1234-5678 -> 010-****-5678
+ * 전화번호 마스킹 전략입니다. 중간 4자리를 마스킹합니다.
  * 
  * @author AgenticCP Team
+ * @since 2025-10-01
  * @version 1.0.0
  */
 @Component

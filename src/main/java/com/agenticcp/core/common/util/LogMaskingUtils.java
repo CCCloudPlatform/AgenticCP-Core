@@ -1,8 +1,12 @@
 package com.agenticcp.core.common.util;
 
 /**
- * 로그 마스킹 유틸리티
+ * 로그 마스킹 유틸리티.
  * 민감한 문자열(tenantKey, permissionKey 등)을 로그에 출력할 때 일부만 노출합니다.
+ *
+ * @author AgenticCP Team
+ * @since 2025-10-01
+ * @version 1.0.0
  */
 public final class LogMaskingUtils {
 
@@ -52,6 +56,14 @@ public final class LogMaskingUtils {
 		return mask(value, 3, 3);
 	}
 
+	/**
+	 * Nullable 객체에 대한 마스킹.
+	 *
+	 * @param value       마스킹할 값 (null 허용)
+	 * @param revealStart 앞에서 노출할 길이
+	 * @param revealEnd   뒤에서 노출할 길이
+	 * @return null이면 빈 문자열, 아니면 {@link #mask(String, int, int)} 결과
+	 */
 	public static String maskNullable(Object value, int revealStart, int revealEnd) {
 		return value == null ? "" : mask(String.valueOf(value), revealStart, revealEnd);
 	}

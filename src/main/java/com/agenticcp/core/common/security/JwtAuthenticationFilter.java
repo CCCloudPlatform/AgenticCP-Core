@@ -27,7 +27,7 @@ import static com.agenticcp.core.common.security.JwtConstants.*;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-10-24
  */
 @Slf4j
 @Component
@@ -42,6 +42,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
+    /**
+     * 필터 내부 로직 처리
+     * JWT 토큰을 추출하고 검증하여 SecurityContext에 인증 정보를 설정합니다.
+     * 블랙리스트 확인을 토큰 검증 전에 수행합니다.
+     * 
+     * @param request HTTP 요청
+     * @param response HTTP 응답
+     * @param filterChain 필터 체인
+     * @throws ServletException 서블릿 예외
+     * @throws IOException IO 예외
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
                                   FilterChain filterChain) throws ServletException, IOException {
@@ -49,16 +60,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractTokenFromRequest(request);
             
-            if (token != null && jwtService.isTokenValid(token, extractUsernameFromToken(token))) {
-                // Redis 블랙리스트 확인
+            if (token != null) {
+                // 1. 블랙리스트 확인 (먼저 수행)
                 if (isTokenBlacklisted(token)) {
                     log.warn("Blacklisted token attempted: {}", token.substring(0, 20) + "...");
                     filterChain.doFilter(request, response);
                     return;
                 }
                 
-                // SecurityContext에 인증 정보 설정
-                setAuthenticationInContext(token);
+                // 2. 토큰 검증
+                String username = extractUsernameFromToken(token);
+                if (username != null && jwtService.isTokenValid(token, username)) {
+                    // SecurityContext에 인증 정보 설정
+                    setAuthenticationInContext(token);
+                }
             }
             
         } catch (Exception e) {

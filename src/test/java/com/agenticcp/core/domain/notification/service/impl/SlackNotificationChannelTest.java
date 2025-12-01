@@ -6,6 +6,8 @@ import com.agenticcp.core.domain.notification.enums.NotificationPriority;
 import com.agenticcp.core.domain.notification.enums.NotificationStatus;
 import com.agenticcp.core.domain.notification.enums.NotificationType;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,8 +22,9 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -29,8 +32,13 @@ import static org.mockito.Mockito.*;
  * SlackNotificationChannel 단위 테스트
  * 
  * <p>슬랙 알림 채널의 핵심 발송 로직을 테스트합니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("SlackNotificationChannel 단위 테스트")
 class SlackNotificationChannelTest {
 
     @Mock
@@ -61,352 +69,289 @@ class SlackNotificationChannelTest {
                 .build();
     }
 
-    /**
-     * 슬랙 알림 발송 성공 테스트
-     * 
-     * Given: 유효한 알림 요청과 웹훅 URL
-     * When: 슬랙 알림 발송 요청
-     * Then: RestTemplate으로 웹훅 호출하고 SENT 상태 반환
-     */
-    @Test
-    void send_Success() {
-        // Given
-        when(restTemplate.postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        )).thenReturn(ResponseEntity.ok("ok"));
+    @Nested
+    @DisplayName("알림 발송 테스트")
+    class SendNotificationTest {
 
-        // When
-        NotificationResponse response = slackChannel.send(testRequest);
+        @Test
+        @DisplayName("정상 발송 시 SENT 상태 반환")
+        void send_WhenValidRequest_ReturnsSentStatus() {
+            // Given
+            when(restTemplate.postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok("ok"));
 
-        // Then
-        assertNotNull(response);
-        assertTrue(response.isSuccess());
-        assertEquals(NotificationStatus.SENT, response.getStatus());
-        assertEquals("slack-test-001", response.getNotificationId());
-        assertEquals("슬랙 메시지가 성공적으로 발송되었습니다.", response.getMessage());
-        assertNotNull(response.getSentAt());
-        
-        // RestTemplate 호출 검증
-        verify(restTemplate, times(1)).postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        );
+            // When
+            NotificationResponse response = slackChannel.send(testRequest);
+
+            // Then
+            assertThat(response).isNotNull();
+            assertThat(response.isSuccess()).isTrue();
+            assertThat(response.getStatus()).isEqualTo(NotificationStatus.SENT);
+            assertThat(response.getNotificationId()).isEqualTo("slack-test-001");
+            assertThat(response.getMessage()).isEqualTo("슬랙 메시지가 성공적으로 발송되었습니다.");
+            assertThat(response.getSentAt()).isNotNull();
+            
+            // RestTemplate 호출 검증
+            verify(restTemplate, times(1)).postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            );
+        }
+
+        @Test
+        @DisplayName("네트워크 오류 시 FAILED 상태 반환")
+        void send_WhenNetworkError_ReturnsFailedStatus() {
+            // Given
+            when(restTemplate.postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenThrow(new RestClientException("Connection timeout"));
+
+            // When
+            NotificationResponse response = slackChannel.send(testRequest);
+
+            // Then
+            assertThat(response).isNotNull();
+            assertThat(response.isSuccess()).isFalse();
+            assertThat(response.getStatus()).isEqualTo(NotificationStatus.FAILED);
+            assertThat(response.getNotificationId()).isEqualTo("slack-test-001");
+            assertThat(response.getErrorMessage()).contains("Connection timeout");
+            assertThat(response.getSentAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("URGENT 우선순위 시 🔥 이모지 포함")
+        void send_WhenUrgentPriority_ContainsFireEmoji() {
+            // Given
+            NotificationRequest urgentRequest = NotificationRequest.builder()
+                    .notificationId(testRequest.getNotificationId())
+                    .tenantId(testRequest.getTenantId())
+                    .userId(testRequest.getUserId())
+                    .title(testRequest.getTitle())
+                    .content(testRequest.getContent())
+                    .type(testRequest.getType())
+                    .priority(NotificationPriority.URGENT)
+                    .recipient(testRequest.getRecipient())
+                    .channelId(testRequest.getChannelId())
+                    .data(testRequest.getData())
+                    .build();
+            
+            when(restTemplate.postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok("ok"));
+
+            // When
+            NotificationResponse response = slackChannel.send(urgentRequest);
+
+            // Then
+            assertThat(response.isSuccess()).isTrue();
+            verify(restTemplate).postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    argThat(entity -> {
+                        @SuppressWarnings("unchecked")
+                        HttpEntity<Map<String, Object>> httpEntity = (HttpEntity<Map<String, Object>>) entity;
+                        Map<String, Object> body = httpEntity.getBody();
+                        String text = (String) body.get("text");
+                        return text.contains("🔥");
+                    }),
+                    eq(String.class)
+            );
+        }
+
+        @Test
+        @DisplayName("LOW 우선순위 시 ℹ️ 이모지 포함")
+        void send_WhenLowPriority_ContainsInfoEmoji() {
+            // Given
+            NotificationRequest lowPriorityRequest = NotificationRequest.builder()
+                    .notificationId(testRequest.getNotificationId())
+                    .tenantId(testRequest.getTenantId())
+                    .userId(testRequest.getUserId())
+                    .title(testRequest.getTitle())
+                    .content(testRequest.getContent())
+                    .type(testRequest.getType())
+                    .priority(NotificationPriority.LOW)
+                    .recipient(testRequest.getRecipient())
+                    .channelId(testRequest.getChannelId())
+                    .data(testRequest.getData())
+                    .build();
+            
+            when(restTemplate.postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok("ok"));
+
+            // When
+            NotificationResponse response = slackChannel.send(lowPriorityRequest);
+
+            // Then
+            assertThat(response.isSuccess()).isTrue();
+            verify(restTemplate).postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    argThat(entity -> {
+                        @SuppressWarnings("unchecked")
+                        HttpEntity<Map<String, Object>> httpEntity = (HttpEntity<Map<String, Object>>) entity;
+                        Map<String, Object> body = httpEntity.getBody();
+                        String text = (String) body.get("text");
+                        return text.contains("ℹ️");
+                    }),
+                    eq(String.class)
+            );
+        }
+
+        @Test
+        @DisplayName("데이터 포함 시 메시지에 블록 포함")
+        void send_WhenDataProvided_ContainsBlocks() {
+            // Given
+            when(restTemplate.postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok("ok"));
+
+            // When
+            NotificationResponse response = slackChannel.send(testRequest);
+
+            // Then
+            assertThat(response.isSuccess()).isTrue();
+            verify(restTemplate).postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    argThat(entity -> {
+                        @SuppressWarnings("unchecked")
+                        HttpEntity<Map<String, Object>> httpEntity = (HttpEntity<Map<String, Object>>) entity;
+                        Map<String, Object> body = httpEntity.getBody();
+                        assertThat(body.get("blocks")).isNotNull();
+                        return true;
+                    }),
+                    eq(String.class)
+            );
+        }
     }
 
-    /**
-     * 슬랙 알림 발송 실패 - 네트워크 오류
-     * 
-     * Given: RestTemplate에서 예외 발생
-     * When: 슬랙 알림 발송 요청
-     * Then: FAILED 상태와 에러 메시지 반환
-     */
-    @Test
-    void send_NetworkError_Failure() {
-        // Given
-        when(restTemplate.postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        )).thenThrow(new RestClientException("Connection timeout"));
+    @Nested
+    @DisplayName("연결 테스트")
+    class ConnectionTest {
 
-        // When
-        NotificationResponse response = slackChannel.send(testRequest);
+        @Test
+        @DisplayName("정상 연결 시 true 반환")
+        void testConnection_WhenValidWebhook_ReturnsTrue() {
+            // Given
+            when(restTemplate.postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenReturn(ResponseEntity.ok("ok"));
 
-        // Then
-        assertNotNull(response);
-        assertFalse(response.isSuccess());
-        assertEquals(NotificationStatus.FAILED, response.getStatus());
-        assertEquals("slack-test-001", response.getNotificationId());
-        assertTrue(response.getErrorMessage().contains("Connection timeout"));
-        assertNull(response.getSentAt());
+            // When
+            boolean result = slackChannel.testConnection();
+
+            // Then
+            assertThat(result).isTrue();
+            verify(restTemplate, times(1)).postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            );
+        }
+
+        @Test
+        @DisplayName("웹훅 URL 미설정 시 false 반환")
+        void testConnection_WhenNoWebhookUrl_ReturnsFalse() {
+            // Given
+            ReflectionTestUtils.setField(slackChannel, "webhookUrl", "");
+
+            // When
+            boolean result = slackChannel.testConnection();
+
+            // Then
+            assertThat(result).isFalse();
+            verify(restTemplate, never()).postForEntity(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("네트워크 오류 시 false 반환")
+        void testConnection_WhenNetworkError_ReturnsFalse() {
+            // Given
+            when(restTemplate.postForEntity(
+                    eq(TEST_WEBHOOK_URL),
+                    any(HttpEntity.class),
+                    eq(String.class)
+            )).thenThrow(new RestClientException("Network error"));
+
+            // When
+            boolean result = slackChannel.testConnection();
+
+            // Then
+            assertThat(result).isFalse();
+        }
     }
 
-    /**
-     * 슬랙 알림 발송 - URGENT 우선순위
-     * 
-     * Given: URGENT 우선순위의 알림 요청
-     * When: 슬랙 알림 발송 요청
-     * Then: 🔥 이모지가 포함된 메시지 발송
-     */
-    @Test
-    void send_UrgentPriority_ContainsFireEmoji() {
-        // Given
-        testRequest = NotificationRequest.builder()
-                .notificationId(testRequest.getNotificationId())
-                .tenantId(testRequest.getTenantId())
-                .userId(testRequest.getUserId())
-                .title(testRequest.getTitle())
-                .content(testRequest.getContent())
-                .type(testRequest.getType())
-                .priority(NotificationPriority.URGENT)
-                .recipient(testRequest.getRecipient())
-                .channelId(testRequest.getChannelId())
-                .data(testRequest.getData())
-                .build();
-        
-        when(restTemplate.postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        )).thenReturn(ResponseEntity.ok("ok"));
+    @Nested
+    @DisplayName("채널 정보 테스트")
+    class ChannelInfoTest {
 
-        // When
-        NotificationResponse response = slackChannel.send(testRequest);
+        @Test
+        @DisplayName("채널 타입 반환")
+        void getChannelType_WhenCalled_ReturnsSlack() {
+            // When
+            String channelType = slackChannel.getChannelType();
 
-        // Then
-        assertTrue(response.isSuccess());
-        verify(restTemplate).postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                argThat(entity -> {
-                    @SuppressWarnings("unchecked")
-                    HttpEntity<Map<String, Object>> httpEntity = (HttpEntity<Map<String, Object>>) entity;
-                    Map<String, Object> body = httpEntity.getBody();
-                    String text = (String) body.get("text");
-                    return text.contains("🔥");
-                }),
-                eq(String.class)
-        );
-    }
+            // Then
+            assertThat(channelType).isEqualTo("SLACK");
+        }
 
-    /**
-     * 슬랙 알림 발송 - LOW 우선순위
-     * 
-     * Given: LOW 우선순위의 알림 요청
-     * When: 슬랙 알림 발송 요청
-     * Then: ℹ️ 이모지가 포함된 메시지 발송
-     */
-    @Test
-    void send_LowPriority_ContainsInfoEmoji() {
-        // Given
-        testRequest = NotificationRequest.builder()
-                .notificationId(testRequest.getNotificationId())
-                .tenantId(testRequest.getTenantId())
-                .userId(testRequest.getUserId())
-                .title(testRequest.getTitle())
-                .content(testRequest.getContent())
-                .type(testRequest.getType())
-                .priority(NotificationPriority.LOW)
-                .recipient(testRequest.getRecipient())
-                .channelId(testRequest.getChannelId())
-                .data(testRequest.getData())
-                .build();
-        
-        when(restTemplate.postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        )).thenReturn(ResponseEntity.ok("ok"));
+        @Test
+        @DisplayName("웹훅 URL 설정 시 활성화 상태 true")
+        void isEnabled_WhenWebhookUrlSet_ReturnsTrue() {
+            // When
+            boolean enabled = slackChannel.isEnabled();
 
-        // When
-        NotificationResponse response = slackChannel.send(testRequest);
+            // Then
+            assertThat(enabled).isTrue();
+        }
 
-        // Then
-        assertTrue(response.isSuccess());
-        verify(restTemplate).postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                argThat(entity -> {
-                    @SuppressWarnings("unchecked")
-                    HttpEntity<Map<String, Object>> httpEntity = (HttpEntity<Map<String, Object>>) entity;
-                    Map<String, Object> body = httpEntity.getBody();
-                    String text = (String) body.get("text");
-                    return text.contains("ℹ️");
-                }),
-                eq(String.class)
-        );
-    }
+        @Test
+        @DisplayName("웹훅 URL 미설정 시 활성화 상태 false")
+        void isEnabled_WhenWebhookUrlNotSet_ReturnsFalse() {
+            // Given
+            ReflectionTestUtils.setField(slackChannel, "webhookUrl", null);
 
-    /**
-     * 슬랙 연결 테스트 성공
-     * 
-     * Given: 유효한 웹훅 URL
-     * When: 연결 테스트 요청
-     * Then: true 반환
-     */
-    @Test
-    void testConnection_Success() {
-        // Given
-        when(restTemplate.postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        )).thenReturn(ResponseEntity.ok("ok"));
+            // When
+            boolean enabled = slackChannel.isEnabled();
 
-        // When
-        boolean result = slackChannel.testConnection();
+            // Then
+            assertThat(enabled).isFalse();
+        }
 
-        // Then
-        assertTrue(result);
-        verify(restTemplate, times(1)).postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        );
-    }
+        @Test
+        @DisplayName("웹훅 URL 설정 시 설정 검증 true")
+        void validateConfiguration_WhenWebhookUrlSet_ReturnsTrue() {
+            // When
+            boolean valid = slackChannel.validateConfiguration();
 
-    /**
-     * 슬랙 연결 테스트 실패 - 웹훅 URL 미설정
-     * 
-     * Given: 웹훅 URL이 설정되지 않음
-     * When: 연결 테스트 요청
-     * Then: false 반환
-     */
-    @Test
-    void testConnection_NoWebhookUrl_Failure() {
-        // Given
-        ReflectionTestUtils.setField(slackChannel, "webhookUrl", "");
+            // Then
+            assertThat(valid).isTrue();
+        }
 
-        // When
-        boolean result = slackChannel.testConnection();
+        @Test
+        @DisplayName("웹훅 URL 미설정 시 설정 검증 false")
+        void validateConfiguration_WhenWebhookUrlNotSet_ReturnsFalse() {
+            // Given
+            ReflectionTestUtils.setField(slackChannel, "webhookUrl", "");
 
-        // Then
-        assertFalse(result);
-        verify(restTemplate, never()).postForEntity(any(), any(), any());
-    }
+            // When
+            boolean valid = slackChannel.validateConfiguration();
 
-    /**
-     * 슬랙 연결 테스트 실패 - 네트워크 오류
-     * 
-     * Given: RestTemplate에서 예외 발생
-     * When: 연결 테스트 요청
-     * Then: false 반환
-     */
-    @Test
-    void testConnection_NetworkError_Failure() {
-        // Given
-        when(restTemplate.postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        )).thenThrow(new RestClientException("Network error"));
-
-        // When
-        boolean result = slackChannel.testConnection();
-
-        // Then
-        assertFalse(result);
-    }
-
-    /**
-     * 채널 타입 확인
-     * 
-     * Given: SlackNotificationChannel
-     * When: getChannelType() 호출
-     * Then: "SLACK" 반환
-     */
-    @Test
-    void getChannelType_ReturnsSlack() {
-        // When
-        String channelType = slackChannel.getChannelType();
-
-        // Then
-        assertEquals("SLACK", channelType);
-    }
-
-    /**
-     * 채널 활성화 상태 확인 - 웹훅 URL 있음
-     * 
-     * Given: 웹훅 URL이 설정됨
-     * When: isEnabled() 호출
-     * Then: true 반환
-     */
-    @Test
-    void isEnabled_WithWebhookUrl_ReturnsTrue() {
-        // When
-        boolean enabled = slackChannel.isEnabled();
-
-        // Then
-        assertTrue(enabled);
-    }
-
-    /**
-     * 채널 활성화 상태 확인 - 웹훅 URL 없음
-     * 
-     * Given: 웹훅 URL이 설정되지 않음
-     * When: isEnabled() 호출
-     * Then: false 반환
-     */
-    @Test
-    void isEnabled_WithoutWebhookUrl_ReturnsFalse() {
-        // Given
-        ReflectionTestUtils.setField(slackChannel, "webhookUrl", null);
-
-        // When
-        boolean enabled = slackChannel.isEnabled();
-
-        // Then
-        assertFalse(enabled);
-    }
-
-    /**
-     * 채널 설정 검증 성공
-     * 
-     * Given: 웹훅 URL이 설정됨
-     * When: validateConfiguration() 호출
-     * Then: true 반환
-     */
-    @Test
-    void validateConfiguration_WithWebhookUrl_ReturnsTrue() {
-        // When
-        boolean valid = slackChannel.validateConfiguration();
-
-        // Then
-        assertTrue(valid);
-    }
-
-    /**
-     * 채널 설정 검증 실패
-     * 
-     * Given: 웹훅 URL이 설정되지 않음
-     * When: validateConfiguration() 호출
-     * Then: false 반환
-     */
-    @Test
-    void validateConfiguration_WithoutWebhookUrl_ReturnsFalse() {
-        // Given
-        ReflectionTestUtils.setField(slackChannel, "webhookUrl", "");
-
-        // When
-        boolean valid = slackChannel.validateConfiguration();
-
-        // Then
-        assertFalse(valid);
-    }
-
-    /**
-     * 슬랙 메시지에 데이터 포함 확인
-     * 
-     * Given: 추가 데이터가 포함된 알림 요청
-     * When: 슬랙 알림 발송 요청
-     * Then: 메시지에 데이터 필드 포함
-     */
-    @Test
-    void send_WithData_ContainsDataFields() {
-        // Given
-        when(restTemplate.postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                any(HttpEntity.class),
-                eq(String.class)
-        )).thenReturn(ResponseEntity.ok("ok"));
-
-        // When
-        NotificationResponse response = slackChannel.send(testRequest);
-
-        // Then
-        assertTrue(response.isSuccess());
-        verify(restTemplate).postForEntity(
-                eq(TEST_WEBHOOK_URL),
-                argThat(entity -> {
-                    @SuppressWarnings("unchecked")
-                    HttpEntity<Map<String, Object>> httpEntity = (HttpEntity<Map<String, Object>>) entity;
-                    Map<String, Object> body = httpEntity.getBody();
-                    assertNotNull(body.get("blocks"));
-                    return true;
-                }),
-                eq(String.class)
-        );
+            // Then
+            assertThat(valid).isFalse();
+        }
     }
 
     /**

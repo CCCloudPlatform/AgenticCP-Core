@@ -31,6 +31,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     
     private static final String TENANT_KEY_HEADER = "X-Tenant-Key";
     private static final String TENANT_KEY_PARAM = "tenantKey";
+    private static final String TENANT_ID_PARAM = "tenantId"; // tenantId도 tenantKey로 간주
     
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
@@ -56,6 +57,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
      */
     private void setTenantContext(HttpServletRequest request) {
         String tenantKey = extractTenantKey(request);
+        String requestURI = request.getRequestURI();
         
         if (tenantKey != null) {
             try {
@@ -66,20 +68,21 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 // 테넌트 컨텍스트에 설정
                 TenantContextHolder.setTenant(tenant);
                 
-                log.debug("Tenant context set for request: {} -> {}", request.getRequestURI(), tenantKey);
+                log.debug("Tenant context set for request: {} -> {}", requestURI, tenantKey);
                 
             } catch (Exception e) {
                 log.warn("Failed to set tenant context for key: {}, error: {}", tenantKey, e.getMessage());
                 // 테넌트 컨텍스트 설정 실패 시에도 요청은 계속 진행
+                // 서비스 레이어에서 테넌트 검증을 수행하여 적절한 에러를 반환
             }
         } else {
-            log.debug("No tenant key found in request: {}", request.getRequestURI());
+            log.debug("No tenant key found in request: {}", requestURI);
         }
     }
     
     /**
      * HTTP 요청에서 테넌트 키를 추출
-     * 우선순위: Header > Query Parameter > Path Variable
+     * 우선순위: Header > Query Parameter (tenantKey) > Query Parameter (tenantId) > Path Variable
      * 
      * @param request HTTP 요청 객체
      * @return 추출된 테넌트 키, 없으면 null
@@ -91,13 +94,19 @@ public class TenantContextFilter extends OncePerRequestFilter {
             return tenantKey.trim();
         }
         
-        // 2. Query Parameter에서 테넌트 키 추출
+        // 2. Query Parameter에서 테넌트 키 추출 (tenantKey 우선)
         tenantKey = request.getParameter(TENANT_KEY_PARAM);
         if (tenantKey != null && !tenantKey.trim().isEmpty()) {
             return tenantKey.trim();
         }
         
-        // 3. Path Variable에서 테넌트 키 추출 (예: /api/tenants/{tenantKey}/roles)
+        // 3. Query Parameter에서 테넌트 ID 추출 (tenantId도 tenantKey로 간주)
+        tenantKey = request.getParameter(TENANT_ID_PARAM);
+        if (tenantKey != null && !tenantKey.trim().isEmpty()) {
+            return tenantKey.trim();
+        }
+        
+        // 4. Path Variable에서 테넌트 키 추출 (예: /api/tenants/{tenantKey}/roles)
         String requestURI = request.getRequestURI();
         if (requestURI.contains("/tenants/")) {
             String[] pathParts = requestURI.split("/");

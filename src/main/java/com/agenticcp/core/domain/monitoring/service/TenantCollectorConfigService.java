@@ -17,7 +17,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,11 +24,16 @@ import java.util.stream.Collectors;
 /**
  * 테넌트별 수집기 설정 서비스
  * 
- * 테넌트별 메트릭 수집기 설정을 관리합니다.
+ * <p>테넌트별 메트릭 수집기 설정을 관리합니다.
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class TenantCollectorConfigService {
 
     private final TenantCollectorConfigRepository repository;
@@ -38,10 +42,12 @@ public class TenantCollectorConfigService {
 
     /**
      * 테넌트별 활성화된 수집기 설정 조회
+     *
+     * @param tenantId 테넌트 ID
+     * @return 활성화된 수집기 설정 목록
      */
-    @Transactional(readOnly = true)
     public List<TenantCollectorConfigDto> getEnabledConfigsByTenant(String tenantId) {
-        log.info("테넌트별 활성화된 수집기 설정 조회: tenantId={}", tenantId);
+        log.info("[TenantCollectorConfigService] getEnabledConfigsByTenant - 테넌트별 활성화된 수집기 설정 조회: tenantId={}", tenantId);
         
         List<TenantCollectorConfig> configs = repository.findEnabledByTenantId(tenantId);
         
@@ -52,10 +58,12 @@ public class TenantCollectorConfigService {
 
     /**
      * 테넌트별 모든 수집기 설정 조회
+     *
+     * @param tenantId 테넌트 ID
+     * @return 모든 수집기 설정 목록
      */
-    @Transactional(readOnly = true)
     public List<TenantCollectorConfigDto> getAllConfigsByTenant(String tenantId) {
-        log.info("테넌트별 모든 수집기 설정 조회: tenantId={}", tenantId);
+        log.info("[TenantCollectorConfigService] getAllConfigsByTenant - 테넌트별 모든 수집기 설정 조회: tenantId={}", tenantId);
         
         List<TenantCollectorConfig> configs = repository.findAllByTenantId(tenantId);
         
@@ -66,10 +74,14 @@ public class TenantCollectorConfigService {
 
     /**
      * 특정 수집기 설정 조회
+     *
+     * @param tenantId 테넌트 ID
+     * @param collectorType 수집기 타입
+     * @return 수집기 설정
+     * @throws ResourceNotFoundException 설정을 찾을 수 없는 경우
      */
-    @Transactional(readOnly = true)
     public TenantCollectorConfigDto getConfigByTenantAndType(String tenantId, CollectorType collectorType) {
-        log.info("특정 수집기 설정 조회: tenantId={}, collectorType={}", tenantId, collectorType);
+        log.info("[TenantCollectorConfigService] getConfigByTenantAndType - 특정 수집기 설정 조회: tenantId={}, collectorType={}", tenantId, collectorType);
         
         TenantCollectorConfig config = repository.findByTenantIdAndCollectorType(tenantId, collectorType)
                 .orElseThrow(() -> new ResourceNotFoundException(MonitoringErrorCode.COLLECTOR_CONFIG_NOT_FOUND));
@@ -79,10 +91,14 @@ public class TenantCollectorConfigService {
 
     /**
      * 수집기 설정 생성
+     *
+     * @param configDto 수집기 설정 DTO
+     * @return 생성된 수집기 설정
+     * @throws BusinessException 설정 검증 실패 또는 중복 설정인 경우
      */
     @Transactional
     public TenantCollectorConfigDto createConfig(TenantCollectorConfigDto configDto) {
-        log.info("수집기 설정 생성: tenantId={}, collectorType={}", 
+        log.info("[TenantCollectorConfigService] createConfig - 수집기 설정 생성: tenantId={}, collectorType={}", 
                 configDto.getTenantId(), configDto.getCollectorType());
         
         // 중복 설정 확인
@@ -100,22 +116,27 @@ public class TenantCollectorConfigService {
         // 테넌트별 기본 데이터 보관 정책 자동 생성 (30일)
         try {
             retentionService.createDefaultRetentionPolicy(configDto.getTenantId());
-            log.info("테넌트별 기본 보관 정책 자동 생성 완료: tenantId={}", configDto.getTenantId());
+            log.info("[TenantCollectorConfigService] createConfig - 테넌트별 기본 보관 정책 자동 생성 완료: tenantId={}", configDto.getTenantId());
         } catch (Exception e) {
-            log.warn("테넌트별 기본 보관 정책 생성 실패 (설정은 생성됨): tenantId={}, error={}", 
+            log.warn("[TenantCollectorConfigService] createConfig - 테넌트별 기본 보관 정책 생성 실패 (설정은 생성됨): tenantId={}, error={}", 
                     configDto.getTenantId(), e.getMessage());
         }
         
-        log.info("수집기 설정 생성 완료: id={}", savedConfig.getId());
+        log.info("[TenantCollectorConfigService] createConfig - 수집기 설정 생성 완료: id={}", savedConfig.getId());
         return convertToDto(savedConfig);
     }
 
     /**
      * 수집기 설정 수정
+     *
+     * @param configId 설정 ID
+     * @param configDto 수집기 설정 DTO
+     * @return 수정된 수집기 설정
+     * @throws ResourceNotFoundException 설정을 찾을 수 없는 경우
      */
     @Transactional
     public TenantCollectorConfigDto updateConfig(Long configId, TenantCollectorConfigDto configDto) {
-        log.info("수집기 설정 수정: configId={}", configId);
+        log.info("[TenantCollectorConfigService] updateConfig - 수집기 설정 수정: configId={}", configId);
         
         TenantCollectorConfig existingConfig = repository.findById(configId)
                 .orElseThrow(() -> new ResourceNotFoundException(MonitoringErrorCode.COLLECTOR_CONFIG_NOT_FOUND));
@@ -127,31 +148,39 @@ public class TenantCollectorConfigService {
         updateConfigFields(existingConfig, configDto);
         TenantCollectorConfig savedConfig = repository.save(existingConfig);
         
-        log.info("수집기 설정 수정 완료: id={}", savedConfig.getId());
+        log.info("[TenantCollectorConfigService] updateConfig - 수집기 설정 수정 완료: id={}", savedConfig.getId());
         return convertToDto(savedConfig);
     }
 
     /**
      * 수집기 설정 삭제
+     *
+     * @param configId 설정 ID
+     * @throws ResourceNotFoundException 설정을 찾을 수 없는 경우
      */
     @Transactional
     public void deleteConfig(Long configId) {
-        log.info("수집기 설정 삭제: configId={}", configId);
+        log.info("[TenantCollectorConfigService] deleteConfig - 수집기 설정 삭제: configId={}", configId);
         
         if (!repository.existsById(configId)) {
             throw new ResourceNotFoundException(MonitoringErrorCode.COLLECTOR_CONFIG_NOT_FOUND);
         }
         
         repository.deleteById(configId);
-        log.info("수집기 설정 삭제 완료: configId={}", configId);
+        log.info("[TenantCollectorConfigService] deleteConfig - 수집기 설정 삭제 완료: configId={}", configId);
     }
 
     /**
      * 수집기 활성화/비활성화
+     *
+     * @param configId 설정 ID
+     * @param enabled 활성화 여부
+     * @return 변경된 수집기 설정
+     * @throws ResourceNotFoundException 설정을 찾을 수 없는 경우
      */
     @Transactional
     public TenantCollectorConfigDto toggleConfig(Long configId, boolean enabled) {
-        log.info("수집기 활성화 상태 변경: configId={}, enabled={}", configId, enabled);
+        log.info("[TenantCollectorConfigService] toggleConfig - 수집기 활성화 상태 변경: configId={}, enabled={}", configId, enabled);
         
         TenantCollectorConfig config = repository.findById(configId)
                 .orElseThrow(() -> new ResourceNotFoundException(MonitoringErrorCode.COLLECTOR_CONFIG_NOT_FOUND));
@@ -159,40 +188,49 @@ public class TenantCollectorConfigService {
         config.setEnabled(enabled);
         TenantCollectorConfig savedConfig = repository.save(config);
         
-        log.info("수집기 활성화 상태 변경 완료: id={}, enabled={}", savedConfig.getId(), enabled);
+        log.info("[TenantCollectorConfigService] toggleConfig - 수집기 활성화 상태 변경 완료: id={}, enabled={}", savedConfig.getId(), enabled);
         return convertToDto(savedConfig);
     }
 
     /**
      * 테넌트별 활성화된 수집기 타입 목록 조회
+     *
+     * @param tenantId 테넌트 ID
+     * @return 활성화된 수집기 타입 목록
      */
-    @Transactional(readOnly = true)
     public List<CollectorType> getEnabledCollectorTypesByTenant(String tenantId) {
-        log.info("테넌트별 활성화된 수집기 타입 조회: tenantId={}", tenantId);
+        log.info("[TenantCollectorConfigService] getEnabledCollectorTypesByTenant - 테넌트별 활성화된 수집기 타입 조회: tenantId={}", tenantId);
         
         return repository.findEnabledCollectorTypesByTenantId(tenantId);
     }
 
     /**
      * 특정 수집기 타입을 사용하는 테넌트 목록 조회
+     *
+     * @param collectorType 수집기 타입
+     * @return 테넌트 ID 목록
      */
-    @Transactional(readOnly = true)
     public List<String> getTenantIdsByCollectorType(CollectorType collectorType) {
-        log.info("특정 수집기 타입 사용 테넌트 조회: collectorType={}", collectorType);
+        log.info("[TenantCollectorConfigService] getTenantIdsByCollectorType - 특정 수집기 타입 사용 테넌트 조회: collectorType={}", collectorType);
         
         return repository.findTenantIdsByCollectorType(collectorType);
     }
 
     /**
      * 테넌트별 활성화된 수집기 수 조회
+     *
+     * @param tenantId 테넌트 ID
+     * @return 활성화된 수집기 수
      */
-    @Transactional(readOnly = true)
     public long countEnabledByTenant(String tenantId) {
         return repository.countEnabledByTenantId(tenantId);
     }
 
     /**
      * 설정 검증
+     *
+     * @param configDto 수집기 설정 DTO
+     * @throws BusinessException 설정이 유효하지 않은 경우
      */
     private void validateConfig(TenantCollectorConfigDto configDto) {
         if (configDto.getTenantId() == null || configDto.getTenantId().trim().isEmpty()) {
@@ -218,6 +256,9 @@ public class TenantCollectorConfigService {
 
     /**
      * 설정 필드 업데이트
+     *
+     * @param config 수집기 설정 엔티티
+     * @param configDto 수집기 설정 DTO
      */
     private void updateConfigFields(TenantCollectorConfig config, TenantCollectorConfigDto configDto) {
         if (configDto.getIsEnabled() != null) {
@@ -241,7 +282,7 @@ public class TenantCollectorConfigService {
                 String targetMetricsJson = objectMapper.writeValueAsString(configDto.getTargetMetrics());
                 config.updateTargetMetrics(targetMetricsJson);
             } catch (Exception e) {
-                log.warn("타겟 메트릭 JSON 변환 실패: {}", e.getMessage());
+                log.warn("[TenantCollectorConfigService] updateConfigFields - 타겟 메트릭 JSON 변환 실패: {}", e.getMessage());
             }
         }
         
@@ -250,7 +291,7 @@ public class TenantCollectorConfigService {
                 String settingsJson = objectMapper.writeValueAsString(configDto.getCollectorSettings());
                 config.updateCollectorSettings(settingsJson);
             } catch (Exception e) {
-                log.warn("수집기 설정 JSON 변환 실패: {}", e.getMessage());
+                log.warn("[TenantCollectorConfigService] updateConfigFields - 수집기 설정 JSON 변환 실패: {}", e.getMessage());
             }
         }
         
@@ -261,6 +302,10 @@ public class TenantCollectorConfigService {
 
     /**
      * Entity를 DTO로 변환
+     *
+     * @param config 수집기 설정 엔티티
+     * @return 수집기 설정 DTO
+     * @throws BusinessException 변환 중 오류 발생 시
      */
     private TenantCollectorConfigDto convertToDto(TenantCollectorConfig config) {
         try {
@@ -317,7 +362,7 @@ public class TenantCollectorConfigService {
                     .build();
                     
         } catch (Exception e) {
-            log.error("DTO 변환 중 오류 발생: {}", e.getMessage(), e);
+            log.error("[TenantCollectorConfigService] convertToDto - DTO 변환 중 오류 발생: {}", e.getMessage(), e);
             throw new BusinessException(MonitoringErrorCode.CONFIG_CONVERSION_FAILED, 
                     "설정 변환 중 오류가 발생했습니다.");
         }
@@ -325,6 +370,10 @@ public class TenantCollectorConfigService {
 
     /**
      * DTO를 Entity로 변환
+     *
+     * @param configDto 수집기 설정 DTO
+     * @return 수집기 설정 엔티티
+     * @throws BusinessException 변환 중 오류 발생 시
      */
     private TenantCollectorConfig convertToEntity(TenantCollectorConfigDto configDto) {
         try {
@@ -351,7 +400,7 @@ public class TenantCollectorConfigService {
                     .build();
                     
         } catch (Exception e) {
-            log.error("Entity 변환 중 오류 발생: {}", e.getMessage(), e);
+            log.error("[TenantCollectorConfigService] convertToEntity - Entity 변환 중 오류 발생: {}", e.getMessage(), e);
             throw new BusinessException(MonitoringErrorCode.CONFIG_CONVERSION_FAILED, 
                     "설정 변환 중 오류가 발생했습니다.");
         }
@@ -361,11 +410,16 @@ public class TenantCollectorConfigService {
     
     /**
      * 테넌트별 할당량 설정
+     *
+     * @param tenantId 테넌트 ID
+     * @param dailyMetricLimit 일일 메트릭 제한
+     * @param storageQuotaMb 저장 공간 할당량 (MB)
+     * @param quotaExceededAction 할당량 초과 시 동작
      */
     @Transactional
     public void setQuotaForTenant(String tenantId, Long dailyMetricLimit, Long storageQuotaMb, 
                                  QuotaExceededAction quotaExceededAction) {
-        log.info("테넌트별 할당량 설정: tenantId={}, dailyLimit={}, storageQuota={}, action={}", 
+        log.info("[TenantCollectorConfigService] setQuotaForTenant - 테넌트별 할당량 설정: tenantId={}, dailyLimit={}, storageQuota={}, action={}", 
                 tenantId, dailyMetricLimit, storageQuotaMb, quotaExceededAction);
         
         List<TenantCollectorConfig> configs = repository.findAllByTenantId(tenantId);
@@ -375,15 +429,18 @@ public class TenantCollectorConfigService {
             repository.save(config);
         }
         
-        log.info("테넌트별 할당량 설정 완료: tenantId={}", tenantId);
+        log.info("[TenantCollectorConfigService] setQuotaForTenant - 테넌트별 할당량 설정 완료: tenantId={}", tenantId);
     }
     
     /**
      * 테넌트별 할당량 조회
+     *
+     * @param tenantId 테넌트 ID
+     * @return 할당량 정보가 포함된 수집기 설정
+     * @throws BusinessException 테넌트 설정을 찾을 수 없는 경우
      */
-    @Transactional(readOnly = true)
     public TenantCollectorConfigDto getQuotaForTenant(String tenantId) {
-        log.info("테넌트별 할당량 조회: tenantId={}", tenantId);
+        log.info("[TenantCollectorConfigService] getQuotaForTenant - 테넌트별 할당량 조회: tenantId={}", tenantId);
         
         List<TenantCollectorConfig> configs = repository.findAllByTenantId(tenantId);
         if (configs.isEmpty()) {
@@ -398,8 +455,10 @@ public class TenantCollectorConfigService {
     
     /**
      * 할당량 초과 여부 확인
+     *
+     * @param tenantId 테넌트 ID
+     * @return 할당량 초과 여부
      */
-    @Transactional(readOnly = true)
     public boolean isQuotaExceeded(String tenantId) {
         List<TenantCollectorConfig> configs = repository.findAllByTenantId(tenantId);
         
@@ -414,10 +473,13 @@ public class TenantCollectorConfigService {
     
     /**
      * 일일 사용량 증가
+     *
+     * @param tenantId 테넌트 ID
+     * @param amount 증가할 사용량
      */
     @Transactional
     public void incrementDailyUsage(String tenantId, Long amount) {
-        log.debug("테넌트별 일일 사용량 증가: tenantId={}, amount={}", tenantId, amount);
+        log.debug("[TenantCollectorConfigService] incrementDailyUsage - 테넌트별 일일 사용량 증가: tenantId={}, amount={}", tenantId, amount);
         
         List<TenantCollectorConfig> configs = repository.findAllByTenantId(tenantId);
         
@@ -429,10 +491,13 @@ public class TenantCollectorConfigService {
     
     /**
      * 저장 공간 사용량 증가
+     *
+     * @param tenantId 테넌트 ID
+     * @param amountMb 증가할 저장 공간 사용량 (MB)
      */
     @Transactional
     public void incrementStorageUsage(String tenantId, Long amountMb) {
-        log.debug("테넌트별 저장 공간 사용량 증가: tenantId={}, amount={}MB", tenantId, amountMb);
+        log.debug("[TenantCollectorConfigService] incrementStorageUsage - 테넌트별 저장 공간 사용량 증가: tenantId={}, amount={}MB", tenantId, amountMb);
         
         List<TenantCollectorConfig> configs = repository.findAllByTenantId(tenantId);
         
@@ -448,7 +513,7 @@ public class TenantCollectorConfigService {
     @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void resetDailyUsage() {
-        log.info("일일 사용량 리셋 시작");
+        log.info("[TenantCollectorConfigService] resetDailyUsage - 일일 사용량 리셋 시작");
         
         List<TenantCollectorConfig> allConfigs = repository.findAll();
         
@@ -457,15 +522,17 @@ public class TenantCollectorConfigService {
             repository.save(config);
         }
         
-        log.info("일일 사용량 리셋 완료: {} 개 설정", allConfigs.size());
+        log.info("[TenantCollectorConfigService] resetDailyUsage - 일일 사용량 리셋 완료: {} 개 설정", allConfigs.size());
     }
     
     /**
      * 할당량 초과 동작 실행
+     *
+     * @param tenantId 테넌트 ID
      */
     @Transactional
     public void handleQuotaExceeded(String tenantId) {
-        log.warn("할당량 초과 처리: tenantId={}", tenantId);
+        log.warn("[TenantCollectorConfigService] handleQuotaExceeded - 할당량 초과 처리: tenantId={}", tenantId);
         
         List<TenantCollectorConfig> configs = repository.findAllByTenantId(tenantId);
         
@@ -476,23 +543,23 @@ public class TenantCollectorConfigService {
                 switch (action) {
                     case BLOCK_COLLECTION -> {
                         config.setEnabled(false);
-                        log.warn("수집기 비활성화: tenantId={}, collectorType={}", 
+                        log.warn("[TenantCollectorConfigService] handleQuotaExceeded - 수집기 비활성화: tenantId={}, collectorType={}", 
                                 tenantId, config.getCollectorType());
                     }
                     case THROTTLE_COLLECTION -> {
                         // 수집 주기를 2배로 늘림
                         Long newInterval = config.getCollectionInterval() * 2;
                         config.updateCollectionInterval(newInterval);
-                        log.warn("수집 주기 조절: tenantId={}, newInterval={}", 
+                        log.warn("[TenantCollectorConfigService] handleQuotaExceeded - 수집 주기 조절: tenantId={}, newInterval={}", 
                                 tenantId, newInterval);
                     }
                     case WARN_ONLY -> {
-                        log.warn("할당량 초과 경고: tenantId={}, collectorType={}", 
+                        log.warn("[TenantCollectorConfigService] handleQuotaExceeded - 할당량 초과 경고: tenantId={}, collectorType={}", 
                                 tenantId, config.getCollectorType());
                     }
                     case AUTO_UPGRADE -> {
                         // 자동 업그레이드 로직 (추후 구현)
-                        log.info("자동 업그레이드 요청: tenantId={}", tenantId);
+                        log.info("[TenantCollectorConfigService] handleQuotaExceeded - 자동 업그레이드 요청: tenantId={}", tenantId);
                     }
                 }
                 

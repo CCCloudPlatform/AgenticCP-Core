@@ -7,8 +7,8 @@ import com.agenticcp.core.domain.security.enums.PolicyDecision;
 import com.agenticcp.core.domain.security.enums.SecurityErrorCode;
 import com.agenticcp.core.domain.security.repository.SecurityPolicyRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.ObjectProvider;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Service
 @Slf4j
@@ -34,17 +34,17 @@ import java.util.stream.Collectors;
 public class PolicyEngineService {
     
     private final SecurityPolicyRepository securityPolicyRepository;
-    
-    @Autowired(required = false) // RedisTemplate이 필수가 아님을 명시
-    private RedisTemplate<String, Object> redisTemplate;
-    
+    private final RedisTemplate<String, Object> redisTemplate;
     private final PolicyJsonParser policyJsonParser;
     private final ObjectMapper objectMapper;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
     
-    public PolicyEngineService(SecurityPolicyRepository securityPolicyRepository, 
-                              PolicyJsonParser policyJsonParser, 
+    public PolicyEngineService(SecurityPolicyRepository securityPolicyRepository,
+                              ObjectProvider<RedisTemplate<String, Object>> redisTemplateProvider,
+                              PolicyJsonParser policyJsonParser,
                               ObjectMapper objectMapper) {
         this.securityPolicyRepository = securityPolicyRepository;
+        this.redisTemplate = redisTemplateProvider.getIfAvailable();
         this.policyJsonParser = policyJsonParser;
         this.objectMapper = objectMapper;
     }
@@ -90,6 +90,11 @@ public class PolicyEngineService {
             
             log.info("정책 평가 완료: decision={}, policyKey={}, evaluationTime={}ms", 
                 result.getDecision(), result.getPolicyKey(), result.getEvaluationTimeMs());
+            
+            // Feature 4: DENY 결정 시 정책 위반 이벤트 발행
+            if (result.getDecision() == PolicyDecision.DENY && eventPublisher != null) {
+                publishViolationEvent(request, result, applicablePolicies);
+            }
             
             return result;
             
@@ -1166,6 +1171,115 @@ public class PolicyEngineService {
             log.error("계층적 리소스 타입 매칭 중 오류: target={}, resource={}, error={}", 
                 targetResource, resourceType, e.getMessage());
             return false;
+        }
+    }
+    
+    /**
+     * 정책 위반 이벤트 발행 (Feature 4 통합)
+     * 
+     * @param request 정책 평가 요청
+     * @param result 정책 평가 결과
+     * @param policies 적용된 정책 목록
+     */
+    private void publishViolationEvent(PolicyEvaluationRequest request, PolicyEvaluationResult result, List<SecurityPolicy> policies) {
+        try {
+            if (policies == null || policies.isEmpty()) {
+                return;
+            }
+            
+            SecurityPolicy violatedPolicy = policies.get(0);
+            
+            // 위반 타입 결정
+            com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType violationType = 
+                determineViolationType(request.getAction(), request.getResourceType());
+            
+            // 위반 이벤트 생성
+            com.agenticcp.core.domain.security.dto.PolicyViolationEvent event = 
+                com.agenticcp.core.domain.security.dto.PolicyViolationEvent.builder()
+                    .eventId(java.util.UUID.randomUUID().toString())
+                    .tenantId(parseTenantId(request.getTenantKey()))
+                    .policyId(violatedPolicy.getId())
+                    .policyName(violatedPolicy.getPolicyName())
+                    .userId(parseLong(request.getUserId()))
+                    .username(request.getUserId())
+                    .ipAddress(request.getClientIp())
+                    .userAgent(request.getUserAgent())
+                    .violationType(violationType)
+                    .severity(violatedPolicy.getSeverity())
+                    .description(result.getReason())
+                    .detectedAt(LocalDateTime.now())
+                    .resourceType(request.getResourceType())
+                    .resourceId(request.getResourceId())
+                    .actionAttempted(request.getAction())
+                    .requiresAutoResponse(violatedPolicy.getSeverity() == com.agenticcp.core.domain.security.entity.SecurityPolicy.Severity.HIGH ||
+                                         violatedPolicy.getSeverity() == com.agenticcp.core.domain.security.entity.SecurityPolicy.Severity.CRITICAL)
+                    .requiresNotification(true)
+                    .build();
+            
+            // 이벤트 발행
+            log.warn("🚨 [정책 위반 감지] 이벤트 발행 - policyId={}, violationType={}, severity={}",
+                    violatedPolicy.getId(), violationType, violatedPolicy.getSeverity());
+            
+            eventPublisher.publishEvent(event);
+            
+        } catch (Exception e) {
+            log.error("정책 위반 이벤트 발행 중 오류 발생: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 액션과 리소스 타입으로 위반 타입 결정
+     */
+    private com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType determineViolationType(String action, String resourceType) {
+        if (action == null) {
+            return com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType.POLICY_RULE_VIOLATION;
+        }
+        
+        String actionLower = action.toLowerCase();
+        
+        if (actionLower.contains("login") || actionLower.contains("auth")) {
+            return com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType.AUTHENTICATION_FAILURE;
+        } else if (actionLower.contains("access") || actionLower.contains("read") || actionLower.contains("view")) {
+            return com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType.ACCESS_DENIED;
+        } else if (actionLower.contains("create") || actionLower.contains("update") || actionLower.contains("delete")) {
+            return com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType.AUTHORIZATION_FAILURE;
+        } else if (actionLower.contains("rate") || actionLower.contains("limit")) {
+            return com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType.RATE_LIMIT_EXCEEDED;
+        } else {
+            return com.agenticcp.core.domain.security.entity.PolicyViolation.ViolationType.POLICY_RULE_VIOLATION;
+        }
+    }
+    
+    /**
+     * 테넌트 키에서 테넌트 ID 추출
+     */
+    private Long parseTenantId(String tenantKey) {
+        if (tenantKey == null) {
+            return 1L; // 기본 테넌트
+        }
+        try {
+            // "tenant-1" 형식에서 숫자 추출
+            String[] parts = tenantKey.split("-");
+            if (parts.length > 1) {
+                return Long.parseLong(parts[parts.length - 1]);
+            }
+        } catch (Exception e) {
+            log.warn("테넌트 키 파싱 실패: {}", tenantKey);
+        }
+        return 1L; // 기본 테넌트
+    }
+    
+    /**
+     * 문자열을 Long으로 변환
+     */
+    private Long parseLong(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (Exception e) {
+            return null;
         }
     }
 }

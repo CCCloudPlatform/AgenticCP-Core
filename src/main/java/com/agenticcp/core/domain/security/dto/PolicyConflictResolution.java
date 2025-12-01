@@ -16,6 +16,10 @@ import java.util.HashMap;
 /**
  * 정책 충돌 해결 결과를 표현하는 DTO
  * 충돌이 발생한 정책들과 해결 과정, 최종 결정을 담음
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-08
  */
 @Data
 @Builder

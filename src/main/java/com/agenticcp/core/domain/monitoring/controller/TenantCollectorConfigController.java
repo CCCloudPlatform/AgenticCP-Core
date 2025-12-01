@@ -26,7 +26,7 @@ import java.util.List;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Slf4j
 @RestController
@@ -40,6 +40,8 @@ public class TenantCollectorConfigController {
 
     /**
      * 현재 테넌트의 활성화된 수집기 설정 조회
+     * 
+     * @return 활성화된 수집기 설정 목록
      */
     @Operation(summary = "활성화된 수집기 설정 조회", description = "현재 테넌트의 활성 설정만 조회합니다")
     @GetMapping("/enabled")
@@ -54,6 +56,8 @@ public class TenantCollectorConfigController {
 
     /**
      * 현재 테넌트의 모든 수집기 설정 조회
+     * 
+     * @return 모든 수집기 설정 목록
      */
     @Operation(summary = "모든 수집기 설정 조회", description = "현재 테넌트의 전체 수집기 설정을 조회합니다")
     @GetMapping
@@ -68,6 +72,9 @@ public class TenantCollectorConfigController {
 
     /**
      * 특정 수집기 설정 조회
+     * 
+     * @param collectorType 수집기 타입
+     * @return 수집기 설정
      */
     @Operation(summary = "특정 수집기 설정 조회", description = "수집기 타입으로 설정을 조회합니다")
     @GetMapping("/{collectorType}")
@@ -84,6 +91,9 @@ public class TenantCollectorConfigController {
 
     /**
      * 수집기 설정 생성
+     * 
+     * @param configDto 수집기 설정 정보
+     * @return 생성된 수집기 설정
      */
     @Operation(summary = "수집기 설정 생성", description = "현재 테넌트 기준으로 수집기 설정을 생성합니다")
     @PostMapping
@@ -113,6 +123,10 @@ public class TenantCollectorConfigController {
 
     /**
      * 수집기 설정 수정
+     * 
+     * @param configId 설정 ID
+     * @param configDto 수집기 설정 정보
+     * @return 수정된 수집기 설정
      */
     @Operation(summary = "수집기 설정 수정", description = "설정 식별자와 요청 본문으로 설정을 수정합니다")
     @PutMapping("/{configId}")
@@ -144,6 +158,9 @@ public class TenantCollectorConfigController {
 
     /**
      * 수집기 설정 삭제
+     * 
+     * @param configId 설정 ID
+     * @return 204 No Content
      */
     @Operation(summary = "수집기 설정 삭제", description = "설정 식별자로 설정을 삭제합니다")
     @DeleteMapping("/{configId}")
@@ -160,6 +177,10 @@ public class TenantCollectorConfigController {
 
     /**
      * 수집기 활성화/비활성화
+     * 
+     * @param configId 설정 ID
+     * @param enabled 활성화 여부
+     * @return 수정된 수집기 설정
      */
     @Operation(summary = "수집기 활성/비활성 전환", description = "설정의 활성 상태를 변경합니다")
     @PatchMapping("/{configId}/toggle")
@@ -178,6 +199,8 @@ public class TenantCollectorConfigController {
 
     /**
      * 현재 테넌트의 활성화된 수집기 타입 목록 조회
+     * 
+     * @return 활성화된 수집기 타입 목록
      */
     @Operation(summary = "활성 수집기 타입 목록", description = "활성화된 수집기 타입만 반환합니다")
     @GetMapping("/enabled/types")
@@ -192,6 +215,8 @@ public class TenantCollectorConfigController {
 
     /**
      * 현재 테넌트의 활성화된 수집기 수 조회
+     * 
+     * @return 활성화된 수집기 개수
      */
     @Operation(summary = "활성 수집기 개수", description = "활성화된 수집기 설정의 개수를 반환합니다")
     @GetMapping("/enabled/count")
@@ -232,6 +257,8 @@ public class TenantCollectorConfigController {
     
     /**
      * 테넌트별 할당량 조회
+     * 
+     * @return 할당량 설정 정보
      */
     @Operation(summary = "할당량 조회", description = "현재 테넌트의 할당량 설정을 조회합니다")
     @GetMapping("/quota")
@@ -246,6 +273,8 @@ public class TenantCollectorConfigController {
     
     /**
      * 할당량 초과 여부 확인
+     * 
+     * @return 할당량 초과 여부
      */
     @Operation(summary = "할당량 초과 여부", description = "현재 테넌트의 할당량 초과 여부를 반환합니다")
     @GetMapping("/quota/exceeded")
@@ -260,6 +289,8 @@ public class TenantCollectorConfigController {
     
     /**
      * 할당량 초과 처리
+     * 
+     * @return 처리 완료 메시지
      */
     @Operation(summary = "할당량 초과 처리", description = "초과 시 후속 조치를 수행합니다")
     @PostMapping("/quota/handle-exceeded")

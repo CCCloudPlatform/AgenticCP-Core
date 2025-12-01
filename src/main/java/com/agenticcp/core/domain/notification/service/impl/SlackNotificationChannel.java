@@ -11,6 +11,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -25,7 +26,7 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @Component
 @RequiredArgsConstructor
@@ -37,16 +38,32 @@ public class SlackNotificationChannel implements NotificationChannel {
     @Value("${slack.webhook.url:}")
     private String webhookUrl;
 
+    /**
+     * 채널 타입 반환
+     * 
+     * @return 채널 타입 (SLACK)
+     */
     @Override
     public String getChannelType() {
         return "SLACK";
     }
 
+    /**
+     * 채널 활성화 여부 확인
+     * 
+     * @return 활성화 여부
+     */
     @Override
     public boolean isEnabled() {
         return webhookUrl != null && !webhookUrl.isEmpty();
     }
 
+    /**
+     * 알림 발송
+     * 
+     * @param request 알림 요청 정보
+     * @return 알림 응답 정보
+     */
     @Override
     public NotificationResponse send(NotificationRequest request) {
         try {
@@ -74,6 +91,24 @@ public class SlackNotificationChannel implements NotificationChannel {
                     .success(true)
                     .build();
 
+        } catch (RestClientException e) {
+            log.error("슬랙 웹훅 요청 실패: {}", request.getNotificationId(), e);
+            
+            return NotificationResponse.builder()
+                    .notificationId(request.getNotificationId())
+                    .status(NotificationStatus.FAILED)
+                    .errorMessage("슬랙 웹훅 요청 실패: " + e.getMessage())
+                    .success(false)
+                    .build();
+        } catch (IllegalArgumentException e) {
+            log.error("슬랙 메시지 생성 실패: {}", request.getNotificationId(), e);
+            
+            return NotificationResponse.builder()
+                    .notificationId(request.getNotificationId())
+                    .status(NotificationStatus.FAILED)
+                    .errorMessage("슬랙 메시지 생성 실패: " + e.getMessage())
+                    .success(false)
+                    .build();
         } catch (Exception e) {
             log.error("슬랙 알림 발송 실패: {}", request.getNotificationId(), e);
             
@@ -86,6 +121,11 @@ public class SlackNotificationChannel implements NotificationChannel {
         }
     }
 
+    /**
+     * 연결 테스트
+     * 
+     * @return 연결 성공 여부
+     */
     @Override
     public boolean testConnection() {
         if (!isEnabled()) {
@@ -104,12 +144,20 @@ public class SlackNotificationChannel implements NotificationChannel {
             
             restTemplate.postForEntity(webhookUrl, entity, String.class);
             return true;
+        } catch (RestClientException e) {
+            log.error("슬랙 연결 테스트 실패", e);
+            return false;
         } catch (Exception e) {
             log.error("슬랙 연결 테스트 실패", e);
             return false;
         }
     }
 
+    /**
+     * 설정 검증
+     * 
+     * @return 설정 유효 여부
+     */
     @Override
     public boolean validateConfiguration() {
         return isEnabled();
@@ -119,6 +167,9 @@ public class SlackNotificationChannel implements NotificationChannel {
      * 슬랙 메시지 생성
      * 
      * <p>Slack Block Kit 형식으로 구조화된 메시지를 생성합니다.</p>
+     * 
+     * @param request 알림 요청 정보
+     * @return 슬랙 메시지 맵
      */
     private Map<String, Object> createSlackMessage(NotificationRequest request) {
         Map<String, Object> message = new HashMap<>();
@@ -138,6 +189,10 @@ public class SlackNotificationChannel implements NotificationChannel {
 
     /**
      * 슬랙 Block Kit 블록 생성
+     * 
+     * @param request 알림 요청 정보
+     * @param emoji 우선순위 이모지
+     * @return Block Kit 블록 배열
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object>[] createBlocks(NotificationRequest request, String emoji) {
@@ -178,6 +233,9 @@ public class SlackNotificationChannel implements NotificationChannel {
 
     /**
      * 슬랙 포맷으로 내용 변환
+     * 
+     * @param request 알림 요청 정보
+     * @return 포맷팅된 내용 문자열
      */
     private String formatContentForSlack(NotificationRequest request) {
         StringBuilder content = new StringBuilder();
@@ -204,6 +262,9 @@ public class SlackNotificationChannel implements NotificationChannel {
 
     /**
      * 필드명을 읽기 쉽게 변환
+     * 
+     * @param fieldName 필드명
+     * @return 변환된 필드명
      */
     private String formatFieldName(String fieldName) {
         return switch (fieldName) {
@@ -224,6 +285,9 @@ public class SlackNotificationChannel implements NotificationChannel {
 
     /**
      * 우선순위에 따른 이모지 선택
+     * 
+     * @param priority 알림 우선순위
+     * @return 우선순위 이모지
      */
     private String getPriorityEmoji(com.agenticcp.core.domain.notification.enums.NotificationPriority priority) {
         if (priority == null) {
