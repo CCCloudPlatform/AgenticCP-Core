@@ -157,6 +157,10 @@ public class AuthController {
 
     /**
      * 토큰 검증
+     * 현재 요청의 JWT 토큰 유효성을 검증하고 블랙리스트 여부를 확인합니다.
+     * 
+     * @param request HTTP 요청 (Authorization 헤더에서 토큰 추출)
+     * @return 토큰 유효성 검증 결과
      */
     @GetMapping("/validate")
     @Operation(summary = "토큰 검증", description = "현재 토큰의 유효성을 검증합니다.")
@@ -170,6 +174,12 @@ public class AuthController {
             }
             
             String token = authHeader.substring(7);
+            
+            // 블랙리스트 확인
+            if (authenticationService.isTokenBlacklisted(token)) {
+                return ResponseEntity.ok(ApiResponse.success(false, "토큰이 블랙리스트에 등록되어 있습니다."));
+            }
+            
             String username = jwtService.extractUsername(token);
             boolean isValid = jwtService.isTokenValid(token, username);
             
