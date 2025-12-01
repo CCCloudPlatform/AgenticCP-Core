@@ -30,7 +30,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/monitoring/metrics")
+@RequestMapping("/api/monitoring/metrics")
 @RequiredArgsConstructor
 @Tag(name = "Metric Monitoring", description = "메트릭 조회/수집 API")
 public class MetricsController {

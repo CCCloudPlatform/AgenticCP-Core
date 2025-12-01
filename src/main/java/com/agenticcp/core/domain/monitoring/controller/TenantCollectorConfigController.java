@@ -30,7 +30,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/monitoring/collectors/configs")
+@RequestMapping("/api/monitoring/collectors/configs")
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "Metric Collector Configuration", description = "테넌트별 메트릭 수집기 설정 및 할당량 관리 API")
