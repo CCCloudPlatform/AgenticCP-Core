@@ -1,6 +1,7 @@
 package com.agenticcp.core.common.config;
 
 import com.agenticcp.core.common.security.JwtAuthenticationFilter;
+import com.agenticcp.core.common.security.PendingUserAccessFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,7 @@ import java.util.Arrays;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-10-24
  */
 @Configuration
 @EnableWebSecurity
@@ -33,6 +34,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final PendingUserAccessFilter pendingUserAccessFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -57,7 +59,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(pendingUserAccessFilter, JwtAuthenticationFilter.class);
         
         return http.build();
     }
