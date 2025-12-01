@@ -139,7 +139,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 권한 목록 생성 (null 체크)
             List<SimpleGrantedAuthority> authorities = permissions != null
                     ? permissions.stream()
-                            .map(SimpleGrantedAuthority::new)
+                    .map(SimpleGrantedAuthority::new)
                             .collect(Collectors.toList())
                     : new java.util.ArrayList<>();
             
