@@ -1,11 +1,11 @@
 package com.agenticcp.core.domain.cloud.port.outbound.vpc;
 
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
-import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.DeleteVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,7 +27,7 @@ public interface VpcManagementPort {
     /**
      * VPC 목록 조회
      */
-    List<CloudResource> listVpcs(ListVpcsQuery command);
+    List<CloudResource> listVpcs(ListVpcsQueryRequest command);
     
     /**
      * VPC 수정

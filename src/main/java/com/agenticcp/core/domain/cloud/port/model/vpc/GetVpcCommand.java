@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.command.vpc;
+package com.agenticcp.core.domain.cloud.port.model.vpc;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;

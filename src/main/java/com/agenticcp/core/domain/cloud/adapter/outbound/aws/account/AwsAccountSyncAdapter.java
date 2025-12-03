@@ -115,7 +115,7 @@ public class AwsAccountSyncAdapter implements AccountSyncPort, ProviderScoped {
             cloudAccountRepository.save(account);
             
             throw new BusinessException(
-                CloudErrorCode.PROVIDER_UNAVAILABLE,
+                CloudErrorCode.CLOUD_PROVIDER_UNAVAILABLE,
                 "AWS 계정 동기화 실패: " + e.getMessage()
             );
             

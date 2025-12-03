@@ -1,5 +1,6 @@
-package com.agenticcp.core.domain.cloud.port.outbound.vpc;
+package com.agenticcp.core.domain.cloud.service.vpc;
 
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import org.springframework.stereotype.Component;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;

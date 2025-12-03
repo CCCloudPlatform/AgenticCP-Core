@@ -1,5 +1,6 @@
-package com.agenticcp.core.domain.cloud.port.outbound.vpc;
+package com.agenticcp.core.domain.cloud.service.vpc;
 
+import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,16 +9,16 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
-import com.agenticcp.core.domain.cloud.port.command.vpc.CreateVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.DeleteVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.GetVpcCommand;
-import com.agenticcp.core.domain.cloud.port.command.vpc.ListVpcsQuery;
-import com.agenticcp.core.domain.cloud.port.command.vpc.UpdateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.DeleteVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
+import com.agenticcp.core.domain.cloud.port.model.vpc.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
-import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
-import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcCreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcQueryRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 
@@ -40,7 +41,7 @@ public class VpcUseCaseService {
     public CloudResource createVpc(VpcCreateRequest request) {
         capabilityGuard.ensureSupported(
             request.getProviderType(), 
-            VpcConstants.SERVICE_KEY, 
+            VpcConstants.SERVICE_KEY,
             VpcConstants.RESOURCE_TYPE, 
             CapabilityGuard.Operation.TAGGING
         );
@@ -135,7 +136,7 @@ public class VpcUseCaseService {
     }
 
     @Transactional(readOnly = true)
-    public List<CloudResource> listVpcs(VpcQuery query) {
+    public List<CloudResource> listVpcs(VpcQueryRequest query) {
         // tenantKey 획득
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         
@@ -165,7 +166,7 @@ public class VpcUseCaseService {
         }
         
         VpcManagementPort vpcPort = vpcPortRouter.getPort(query.getProviderType());
-        ListVpcsQuery command = ListVpcsQuery.builder()
+        ListVpcsQueryRequest command = ListVpcsQueryRequest.builder()
             .providerType(query.getProviderType())
             .accountScope(accountScope)
             .region(query.getRegion())

@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.command.vpc;
+package com.agenticcp.core.domain.cloud.port.model.vpc;
 
 import java.util.Map;
 
@@ -8,19 +8,21 @@ import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential
 import lombok.Builder;
 
 /**
- * VPC 수정 명령.
+ * VPC 목록 조회 명령.
  */
 @Builder
-public record UpdateVpcCommand(
+public record ListVpcsQueryRequest(
         CloudProvider.ProviderType providerType,
         String accountScope,
         String region,
-        String providerResourceId,
         String vpcName,
-        String description,
+        String cidrBlock,
         Map<String, String> tags,
         String tenantKey,
-        Map<String, Object> providerSpecificConfig,
+        Integer page,
+        Integer size,
+        String sortBy,
+        String sortDirection,
         CloudSessionCredential session
 ) {
 }

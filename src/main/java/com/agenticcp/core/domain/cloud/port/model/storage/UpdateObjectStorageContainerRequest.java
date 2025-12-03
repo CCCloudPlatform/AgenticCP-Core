@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.cloud.port.model.storage;
 
+import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,12 +13,28 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-05
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateObjectStorageContainerRequest {
+
+    /**
+     * 클라우드 프로바이더 타입
+     */
+    CloudProvider.ProviderType providerType;
+    
+    /**
+     * 계정 스코프
+     */
+    String accountScope;
+
+    /**
+     * 업데이트할 Container 이름
+     */
+    String containerName;
     
     /**
      * 버전 관리 활성화 여부 (선택적)

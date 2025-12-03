@@ -5,12 +5,12 @@ import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VpcUpdateRequest;
-import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcUseCaseService;
-import com.agenticcp.core.domain.cloud.port.model.VpcQuery;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcCreateRequest;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.service.vpc.VpcUseCaseService;
+import com.agenticcp.core.domain.cloud.port.model.vpc.VpcQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
-import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcConstants;
+import com.agenticcp.core.domain.cloud.service.vpc.VpcConstants;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -124,7 +124,7 @@ public class VpcController {
         includeResponseData = false,
         severity = AuditSeverity.LOW
     )
-    public ResponseEntity<List<CloudResource>> listVpcs(VpcQuery query) {
+    public ResponseEntity<List<CloudResource>> listVpcs(VpcQueryRequest query) {
         log.info("[VpcController] listVpcs - provider={}", query.getProviderType());
         List<CloudResource> vpcs = vpcUseCaseService.listVpcs(query);
         log.info("[VpcController] listVpcs - success count={}", vpcs.size());

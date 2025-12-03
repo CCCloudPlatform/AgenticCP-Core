@@ -5,7 +5,7 @@ import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.port.model.storage.CreateObjectStorageContainerRequest;
-import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQuery;
+import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.storage.UpdateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
@@ -32,7 +32,7 @@ import jakarta.validation.Valid;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/cloud/providers/{provider}/storage/containers")
+@RequestMapping("/api/v1/cloud/providers/{provider}/accounts/{accountScope}/storage/containers")
 @RequiredArgsConstructor
 @Tag(name = "Object Storage Container Management", description = "Object Storage Container 관리 API")
 public class ObjectStorageController {
@@ -63,13 +63,19 @@ public class ObjectStorageController {
             @Parameter(description = "클라우드 프로바이더 타입", required = true, example = "AWS")
             @PathVariable CloudProvider.ProviderType provider,
 
+            @Parameter(description = "계정 식별자 (Account ID 등)", required = true, example = "123456789012")
+            @PathVariable String accountScope,
+
             @Parameter(description = "Object Storage Container 생성 요청", required = true)
             @Valid @RequestBody CreateObjectStorageContainerRequest request) {
 
-        log.info("[ObjectStorageController] createContainer - provider={}, containerName={}", 
-                provider, request.getContainerName());
+        request.setProviderType(provider);
+        request.setAccountScope(accountScope);
+
+        log.info("[ObjectStorageController] createContainer - provider={}, accountScope={}, containerName={}",
+                provider, accountScope, request.getContainerName());
         
-        CloudResource container = objectStorageUseCaseService.createContainer(provider, request);
+        CloudResource container = objectStorageUseCaseService.createContainer(request);
         
         log.info("[ObjectStorageController] createContainer - success containerId={}", container.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -101,18 +107,25 @@ public class ObjectStorageController {
             @Parameter(description = "클라우드 프로바이더 타입", required = true, example = "AWS")
             @PathVariable CloudProvider.ProviderType provider,
 
+            @Parameter(description = "계정 식별자 (Account ID 등)", required = true, example = "123456789012")
+            @PathVariable String accountScope,
+
             @Parameter(description = "Container 이름", required = true, example = "my-container")
             @PathVariable String containerName,
 
             @Parameter(description = "Object Storage Container 업데이트 요청", required = true)
             @Valid @RequestBody UpdateObjectStorageContainerRequest request) {
 
-        log.info("[ObjectStorageController] updateContainer - provider={}, containerName={}", 
-                provider, containerName);
+        request.setProviderType(provider);
+        request.setAccountScope(accountScope);
+        request.setContainerName(containerName);
+
+        log.info("[ObjectStorageController] updateContainer - provider={}, accountScope={}, containerName={}",
+                provider, accountScope, containerName);
         
-        CloudResource container = objectStorageUseCaseService.updateContainer(provider, containerName, request);
-        
+        CloudResource container = objectStorageUseCaseService.updateContainer(request);
         log.info("[ObjectStorageController] updateContainer - success containerId={}", container.getId());
+
         return ResponseEntity.ok(ApiResponse.success(container, "Object Storage Container 업데이트에 성공했습니다."));
     }
 
@@ -140,21 +153,26 @@ public class ObjectStorageController {
             @Parameter(description = "클라우드 프로바이더 타입", required = true, example = "AWS")
             @PathVariable CloudProvider.ProviderType provider,
 
+            @Parameter(description = "계정 식별자 (Account ID 등)", required = true, example = "123456789012")
+            @PathVariable String accountScope,
+
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
             @RequestParam(defaultValue = "0") int page,
 
             @Parameter(description = "페이지 크기", example = "10")
             @RequestParam(defaultValue = "10") int size) {
 
-        log.info("[ObjectStorageController] listContainers - provider={}, page={}, size={}", 
-                provider, page, size);
+        log.info("[ObjectStorageController] listContainers - provider={}, accountScope={}, page={}, size={}",
+                provider, accountScope, page, size);
         
-        ObjectStorageContainerQuery query = ObjectStorageContainerQuery.builder()
+        ObjectStorageContainerQueryRequest query = ObjectStorageContainerQueryRequest.builder()
+                .providerType(provider)
+                .accountScope(accountScope)
                 .page(page)
                 .size(size)
                 .build();
 
-        Page<CloudResource> containers = objectStorageUseCaseService.listContainers(provider, query);
+        Page<CloudResource> containers = objectStorageUseCaseService.listContainers(query);
         
         log.info("[ObjectStorageController] listContainers - success count={}", containers.getTotalElements());
         return ResponseEntity.ok(ApiResponse.success(containers, "Object Storage Container 목록 조회에 성공했습니다."));
@@ -184,13 +202,16 @@ public class ObjectStorageController {
             @Parameter(description = "클라우드 프로바이더 타입", required = true, example = "AWS")
             @PathVariable CloudProvider.ProviderType provider,
 
+            @Parameter(description = "계정 식별자 (Account ID 등)", required = true, example = "123456789012")
+            @PathVariable String accountScope,
+
             @Parameter(description = "Container 이름", required = true, example = "my-container")
             @PathVariable String containerName) {
 
-        log.info("[ObjectStorageController] getContainer - provider={}, containerName={}", 
-                provider, containerName);
+        log.info("[ObjectStorageController] getContainer - provider={}, accountScope={}, containerName={}",
+                provider, accountScope, containerName);
         
-        CloudResource container = objectStorageUseCaseService.getContainer(provider, containerName);
+        CloudResource container = objectStorageUseCaseService.getContainer(provider, accountScope, containerName);
         
         log.info("[ObjectStorageController] getContainer - success containerId={}", container.getId());
         return ResponseEntity.ok(ApiResponse.success(container, "Object Storage Container 조회에 성공했습니다."));
@@ -220,12 +241,16 @@ public class ObjectStorageController {
             @Parameter(description = "클라우드 프로바이더 타입", required = true, example = "AWS")
             @PathVariable CloudProvider.ProviderType provider,
 
+            @Parameter(description = "계정 식별자 (Account ID 등)", required = true, example = "123456789012")
+            @PathVariable String accountScope,
+
             @Parameter(description = "Container 이름", required = true, example = "my-container")
             @PathVariable String containerName) {
 
-        log.info("[ObjectStorageController] containerExists - provider={}, containerName={}", provider, containerName);
+        log.info("[ObjectStorageController] containerExists - provider={}, accountScope={}, containerName={}",
+                provider, accountScope, containerName);
 
-        boolean exists = objectStorageUseCaseService.containerExists(provider, containerName);
+        boolean exists = objectStorageUseCaseService.containerExists(provider, accountScope, containerName);
 
         log.info("[ObjectStorageController] containerExists - success exists={}", exists);
 
@@ -259,21 +284,24 @@ public class ObjectStorageController {
             @Parameter(description = "클라우드 프로바이더 타입", required = true, example = "AWS")
             @PathVariable CloudProvider.ProviderType provider,
 
+            @Parameter(description = "계정 식별자 (Account ID 등)", required = true, example = "123456789012")
+            @PathVariable String accountScope,
+
             @Parameter(description = "Container 이름", required = true, example = "my-container")
             @PathVariable String containerName,
 
             @Parameter(description = "강제 삭제 여부 (내용물 포함)", example = "false")
             @RequestParam(defaultValue = "false") boolean force) {
 
-        log.info("[ObjectStorageController] deleteContainer - provider={}, containerName={}, force={}",
-                provider, containerName, force);
+        log.info("[ObjectStorageController] deleteContainer - provider={}, accountScope={}, containerName={}, force={}",
+                provider, accountScope, containerName, force);
 
         if (force) {
             // force 값에 따라 다른 서비스 호출
-            objectStorageUseCaseService.forceDeleteContainer(provider, containerName);
+            objectStorageUseCaseService.forceDeleteContainer(provider, accountScope, containerName);
             log.info("[ObjectStorageController] forceDeleteContainer - success containerName={}", containerName);
         } else {
-            objectStorageUseCaseService.deleteContainer(provider, containerName);
+            objectStorageUseCaseService.deleteContainer(provider, accountScope, containerName);
             log.info("[ObjectStorageController] deleteContainer - success containerName={}", containerName);
         }
 
