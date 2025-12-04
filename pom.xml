@@ -264,6 +264,27 @@
             <artifactId>resourcegroupstaggingapi</artifactId>
         </dependency>
 
+        <!-- AWS SDK v2 for Java - EC2 only -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>ec2</artifactId>
+            <version>2.21.29</version>
+        </dependency>
+        
+        <!-- AWS SDK Core -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>aws-core</artifactId>
+            <version>2.21.29</version>
+        </dependency>
+        
+        <!-- AWS SDK Auth -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>auth</artifactId>
+            <version>2.21.29</version>
+        </dependency>
+
     </dependencies>
 
     <build>

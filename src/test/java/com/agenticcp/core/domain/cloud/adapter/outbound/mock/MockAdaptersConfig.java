@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.mock;
 
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm.AwsVmMapper;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
@@ -8,10 +9,12 @@ import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import software.amazon.awssdk.services.ec2.Ec2Client;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -152,5 +155,19 @@ public class MockAdaptersConfig {
 
         log.debug("Mock RedisTemplate configured - will use in-memory Map for caching");
         return mockRedis;
+    }
+
+    @Bean
+    @Primary
+    public Ec2Client mockEc2Client() {
+        log.debug("Creating mock Ec2Client for test environment");
+        return Mockito.mock(Ec2Client.class);
+    }
+
+    @Bean
+    @Primary
+    public AwsVmMapper mockAwsVmMapper() {
+        log.debug("Creating mock AwsVmMapper for test environment");
+        return Mockito.mock(AwsVmMapper.class);
     }
 }

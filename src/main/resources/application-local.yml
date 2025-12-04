@@ -19,6 +19,14 @@ app:
   redis:
     enabled: ${APP_REDIS_ENABLED:true}
 
+# 로컬 개발용 AWS 설정
+aws:
+  enabled: ${AWS_ENABLED:true}  # AWS 활성화
+  region: ${AWS_REGION:ap-northeast-2}  # 한국 리전
+  endpoint-override: ${AWS_ENDPOINT_OVERRIDE:}  # LocalStack 사용 시: http://localhost:4566
+  connection-timeout: 10000
+  read-timeout: 10000
+
 logging:
   level:
     root: INFO
