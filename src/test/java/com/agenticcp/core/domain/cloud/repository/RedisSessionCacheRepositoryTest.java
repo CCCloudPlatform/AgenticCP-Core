@@ -1,9 +1,8 @@
-package com.agenticcp.core.domain.cloud.adapter.outbound.redis.account;
+package com.agenticcp.core.domain.cloud.repository;
 
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.repository.RedisSessionCacheRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -30,7 +29,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RedisSessionCacheAdapter 테스트")
-class RedisSessionCacheAdapterTest {
+class RedisSessionCacheRepositoryTest {
 
     @Mock
     private RedisTemplate<String, Object> redisTemplate;
