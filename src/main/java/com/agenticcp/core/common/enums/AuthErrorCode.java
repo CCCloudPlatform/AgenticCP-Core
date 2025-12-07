@@ -50,7 +50,18 @@ public enum AuthErrorCode implements BaseErrorCode {
     QR_CODE_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1505, "QR 코드 생성에 실패했습니다."),
     ACCOUNT_PENDING_2FA_SETUP(HttpStatus.FORBIDDEN, 1506, "2FA 설정이 필요합니다."),
     TWO_FACTOR_SETUP_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1507, "2FA 설정에 실패했습니다."),
-    TWO_FACTOR_DISABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1508, "2FA 비활성화에 실패했습니다.");
+    TWO_FACTOR_DISABLE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1508, "2FA 비활성화에 실패했습니다."),
+    
+    // 비밀번호 재설정 관련 (1600-1699)
+    PASSWORD_RESET_REQUEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1601, "비밀번호 재설정 요청에 실패했습니다."),
+    PASSWORD_RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, 1602, "유효하지 않은 비밀번호 재설정 토큰입니다."),
+    PASSWORD_RESET_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, 1603, "비밀번호 재설정 토큰이 만료되었습니다."),
+    PASSWORD_RESET_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1604, "비밀번호 재설정에 실패했습니다."),
+    PASSWORD_CHANGE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1605, "비밀번호 변경에 실패했습니다."),
+    INVALID_CURRENT_PASSWORD(HttpStatus.UNAUTHORIZED, 1606, "현재 비밀번호가 일치하지 않습니다."),
+    PASSWORD_COMPLEXITY_FAILED(HttpStatus.BAD_REQUEST, 1607, "비밀번호는 8자 이상이며 대소문자, 숫자, 특수문자를 포함해야 합니다."),
+    USER_NOT_FOUND_BY_EMAIL(HttpStatus.NOT_FOUND, 1608, "해당 이메일로 등록된 사용자를 찾을 수 없습니다."),
+    EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1609, "이메일 발송에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final int codeNumber;

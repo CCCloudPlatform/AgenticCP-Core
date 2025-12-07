@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 로그인 요청 DTO
+ * 비밀번호 재설정 확인 DTO
  * 
  * @author AgenticCP Team
  * @version 1.0.0
@@ -20,20 +20,14 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginRequest {
-
-    @NotBlank(message = "사용자명은 필수입니다.")
-    @Size(min = 2, max = 50, message = "사용자명은 2자 이상 50자 이하여야 합니다.")
-    private String username;
-
-    @NotBlank(message = "비밀번호는 필수입니다.")
+public class PasswordResetConfirm {
+    
+    @NotBlank(message = "재설정 토큰은 필수입니다.")
+    private String token;
+    
+    @NotBlank(message = "새 비밀번호는 필수입니다.")
     @Size(min = 8, max = 100, message = "비밀번호는 8자 이상 100자 이하여야 합니다.")
     @Masked(type = MaskingType.PASSWORD)
-    private String password;
-    
-    /**
-     * TOTP 코드 (2FA 활성화된 사용자의 경우 필수)
-     */
-    @Size(min = 6, max = 6, message = "TOTP 코드는 6자리여야 합니다.")
-    private String totpCode;
+    private String newPassword;
 }
+

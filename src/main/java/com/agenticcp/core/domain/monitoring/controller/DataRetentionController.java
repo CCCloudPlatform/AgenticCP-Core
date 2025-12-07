@@ -31,7 +31,7 @@ import java.util.List;
  */
 @Tag(name = "Metric Data Retention Policy", description = "테넌트별 메트릭 데이터 보관 정책 관리 API")
 @RestController
-@RequestMapping("/api/v1/monitoring/retention")
+@RequestMapping("/api/monitoring/retention")
 @RequiredArgsConstructor
 @Slf4j
 @Validated
