@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.redis.account;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.repository.RedisSessionCacheRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -37,7 +38,7 @@ class RedisSessionCacheAdapterTest {
     @Mock
     private ValueOperations<String, Object> valueOperations;
 
-    private RedisSessionCacheAdapter sessionCacheAdapter;
+    private RedisSessionCacheRepository sessionCacheAdapter;
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -45,7 +46,7 @@ class RedisSessionCacheAdapterTest {
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        sessionCacheAdapter = new RedisSessionCacheAdapter(objectMapper, redisTemplate);
+        sessionCacheAdapter = new RedisSessionCacheRepository(objectMapper, redisTemplate);
     }
 
     @Nested
@@ -80,7 +81,7 @@ class RedisSessionCacheAdapterTest {
         @DisplayName("Redis가 null이면 캐싱하지 않음")
         void cacheSession_RedisNull_Skip() {
             // given
-            RedisSessionCacheAdapter adapterWithoutRedis = new RedisSessionCacheAdapter(objectMapper, null);
+            RedisSessionCacheRepository adapterWithoutRedis = new RedisSessionCacheRepository(objectMapper, null);
             AwsSessionCredential session = AwsSessionCredential.builder()
                     .accessKeyId("test-key")
                     .expiresAt(LocalDateTime.now().plusHours(1))
@@ -166,7 +167,7 @@ class RedisSessionCacheAdapterTest {
         @DisplayName("Redis가 null이면 empty 반환")
         void getCachedSession_RedisNull_ReturnsEmpty() {
             // given
-            RedisSessionCacheAdapter adapterWithoutRedis = new RedisSessionCacheAdapter(objectMapper, null);
+            RedisSessionCacheRepository adapterWithoutRedis = new RedisSessionCacheRepository(objectMapper, null);
 
             // when
             Optional<CloudSessionCredential> result = adapterWithoutRedis.getCachedSession(
@@ -200,7 +201,7 @@ class RedisSessionCacheAdapterTest {
         @DisplayName("Redis가 null이면 삭제하지 않음")
         void evictSession_RedisNull_Skip() {
             // given
-            RedisSessionCacheAdapter adapterWithoutRedis = new RedisSessionCacheAdapter(objectMapper, null);
+            RedisSessionCacheRepository adapterWithoutRedis = new RedisSessionCacheRepository(objectMapper, null);
 
             // when & then - 예외 없이 종료
             adapterWithoutRedis.evictSession("tenant-1", "123456789012", ProviderType.AWS);

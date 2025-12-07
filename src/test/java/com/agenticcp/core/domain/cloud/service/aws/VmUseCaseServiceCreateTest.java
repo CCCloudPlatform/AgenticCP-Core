@@ -3,12 +3,10 @@ package com.agenticcp.core.domain.cloud.service.aws;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
+import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
-import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
-import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
 import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
 import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
 import java.util.Map;
@@ -42,12 +40,6 @@ class VmUseCaseServiceCreateTest {
     private VmLifecyclePort vmLifecyclePort;
 
     @Mock
-    private VmDiscoveryPort vmDiscoveryPort;
-
-    @Mock
-    private VmTaggingPort vmTaggingPort;
-
-    @Mock
     private CapabilityGuard capabilityGuard;
 
     @Mock
@@ -61,8 +53,6 @@ class VmUseCaseServiceCreateTest {
         vmUseCaseService = new VmUseCaseService(vmPortRouter, capabilityGuard, credentialProviderPort);
 
         when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);
-        when(vmPortRouter.discovery(ProviderType.AWS)).thenReturn(vmDiscoveryPort);
-        when(vmPortRouter.tagging(ProviderType.AWS)).thenReturn(vmTaggingPort);
         when(credentialProviderPort.getSession(anyString(), anyString(), any())).thenReturn(null);
         doNothing().when(capabilityGuard).ensureSupported(any(), anyString(), anyString(), any());
     }
