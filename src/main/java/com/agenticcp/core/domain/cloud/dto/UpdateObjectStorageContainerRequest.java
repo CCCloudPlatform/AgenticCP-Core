@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model.storage;
+package com.agenticcp.core.domain.cloud.dto;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import lombok.AllArgsConstructor;

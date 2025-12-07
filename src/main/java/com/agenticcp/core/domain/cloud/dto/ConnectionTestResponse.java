@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model.account;
+package com.agenticcp.core.domain.cloud.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +19,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConnectionTestResult {
+public class ConnectionTestResponse {
     
     /**
      * 연결 테스트 성공 여부
