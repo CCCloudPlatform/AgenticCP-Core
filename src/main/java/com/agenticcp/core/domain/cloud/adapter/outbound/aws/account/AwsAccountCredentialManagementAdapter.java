@@ -8,7 +8,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
-import com.agenticcp.core.domain.cloud.port.outbound.account.SessionCachePort;
+import com.agenticcp.core.domain.cloud.repository.SessionCacheRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
 
     private final AwsCredentialManager awsCredentialManager;
     private final AwsSessionProvider awsSessionProvider;
-    private final SessionCachePort sessionCachePort;
+    private final SessionCacheRepository sessionCachePort;
     private final CloudAccountRepository cloudAccountRepository;
     private final MaskingService maskingService;
 

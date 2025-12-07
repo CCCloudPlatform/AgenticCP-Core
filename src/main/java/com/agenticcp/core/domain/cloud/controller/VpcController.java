@@ -5,10 +5,10 @@ import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.vpc.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.vpc.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.dto.VpcCreateRequest;
+import com.agenticcp.core.domain.cloud.dto.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.service.vpc.VpcUseCaseService;
-import com.agenticcp.core.domain.cloud.port.model.vpc.VpcQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.VpcQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.service.vpc.VpcConstants;
 

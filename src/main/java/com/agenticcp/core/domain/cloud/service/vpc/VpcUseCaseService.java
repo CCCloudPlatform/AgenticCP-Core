@@ -12,13 +12,13 @@ import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.vpc.DeleteVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
-import com.agenticcp.core.domain.cloud.port.model.vpc.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ListVpcsQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
-import com.agenticcp.core.domain.cloud.port.model.vpc.VpcCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.vpc.VpcQueryRequest;
-import com.agenticcp.core.domain.cloud.port.model.vpc.VpcUpdateRequest;
+import com.agenticcp.core.domain.cloud.dto.VpcCreateRequest;
+import com.agenticcp.core.domain.cloud.dto.VpcQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 

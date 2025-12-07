@@ -4,7 +4,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.vpc.DeleteVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
-import com.agenticcp.core.domain.cloud.port.model.vpc.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ListVpcsQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 
 import java.util.List;
