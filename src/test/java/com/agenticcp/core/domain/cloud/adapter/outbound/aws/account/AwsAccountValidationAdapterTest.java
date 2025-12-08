@@ -1,13 +1,11 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
-import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
-import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationRequest;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationResponse;
+import com.agenticcp.core.domain.cloud.dto.ConnectionTestResponse;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,9 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import software.amazon.awssdk.services.ec2.Ec2Client;
-import software.amazon.awssdk.services.ec2.model.DescribeRegionsRequest;
-import software.amazon.awssdk.services.ec2.model.DescribeRegionsResponse;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest;
 import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse;
@@ -35,7 +30,6 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.when;
 
 /**
  * AwsAccountValidationAdapter 단위 테스트
@@ -96,7 +90,7 @@ class AwsAccountValidationAdapterTest {
                     .willReturn(stsResponse);
 
             // when
-            AccountValidationResult result = adapter.validateAccount(validationRequest);
+            AccountValidationResponse result = adapter.validateAccount(validationRequest);
 
             // then
             assertThat(result).isNotNull();
@@ -128,7 +122,7 @@ class AwsAccountValidationAdapterTest {
                             .build());
 
             // when
-            AccountValidationResult result = adapter.validateAccount(validationRequest);
+            AccountValidationResponse result = adapter.validateAccount(validationRequest);
 
             // then
             assertThat(result).isNotNull();
@@ -154,7 +148,7 @@ class AwsAccountValidationAdapterTest {
                     .willReturn(stsResponse);
 
             // when
-            AccountValidationResult result = adapter.validateAccount(validationRequest);
+            AccountValidationResponse result = adapter.validateAccount(validationRequest);
 
             // then
             assertThat(result).isNotNull();
@@ -193,7 +187,7 @@ class AwsAccountValidationAdapterTest {
                     .willReturn(stsResponse);
 
             // when
-            ConnectionTestResult result = adapter.testConnection(accountId, credentials);
+            ConnectionTestResponse result = adapter.testConnection(accountId, credentials);
 
             // then
             assertThat(result).isNotNull();
@@ -227,7 +221,7 @@ class AwsAccountValidationAdapterTest {
                             .build());
 
             // when
-            ConnectionTestResult result = adapter.testConnection(accountId, credentials);
+            ConnectionTestResponse result = adapter.testConnection(accountId, credentials);
 
             // then
             assertThat(result).isNotNull();

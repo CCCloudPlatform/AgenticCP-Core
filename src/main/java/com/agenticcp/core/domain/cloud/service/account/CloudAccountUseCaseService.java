@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.service.account;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.domain.cloud.dto.*;
 import com.agenticcp.core.domain.cloud.port.model.account.*;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
@@ -98,7 +99,7 @@ public class CloudAccountUseCaseService {
                 .region(request.getRegion())
                 .build();
         
-        AccountValidationResult validationResult = accountValidationPort.validateAccount(validationRequest);
+        AccountValidationResponse validationResult = accountValidationPort.validateAccount(validationRequest);
         
         if (!validationResult.getValid()) {
             log.warn("[CloudAccountUseCaseService] registerCloudAccount - validation failed: {}", 
@@ -289,7 +290,7 @@ public class CloudAccountUseCaseService {
      * @return ConnectionTestResult 테스트 결과
      */
     @Transactional(readOnly = true)
-    public ConnectionTestResult testConnection(Long accountId) {
+    public ConnectionTestResponse testConnection(Long accountId) {
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         log.info("[CloudAccountUseCaseService] testConnection - accountId={}, tenantKey={}", 
                  accountId, tenantKey);
@@ -376,11 +377,11 @@ public class CloudAccountUseCaseService {
      * @return AccountValidationResult 검증 결과
      */
     @Transactional(readOnly = true)
-    public AccountValidationResult validateAccountBeforeRegistration(AccountValidationRequest request) {
+    public AccountValidationResponse validateAccountBeforeRegistration(AccountValidationRequest request) {
         log.info("[CloudAccountUseCaseService] validateAccountBeforeRegistration - providerType={}", 
                  request.getProviderType());
         
-        AccountValidationResult result = accountValidationPort.validateAccount(request);
+        AccountValidationResponse result = accountValidationPort.validateAccount(request);
         
         log.info("[CloudAccountUseCaseService] validateAccountBeforeRegistration - result: valid={}", 
                  result.getValid());
@@ -515,7 +516,7 @@ public class CloudAccountUseCaseService {
      * @param additionalMetadata 추가 메타데이터
      * @return JSON 문자열
      */
-    private String buildMetadata(AccountValidationResult validationResult, Map<String, String> additionalMetadata) {
+    private String buildMetadata(AccountValidationResponse validationResult, Map<String, String> additionalMetadata) {
         Map<String, Object> metadata = new HashMap<>();
         
         // 검증 결과에서 메타데이터 추출

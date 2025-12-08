@@ -1,6 +1,6 @@
 package com.agenticcp.core.domain.cloud.mapper;
 
-import com.agenticcp.core.domain.cloud.port.model.account.CloudAccountDto;
+import com.agenticcp.core.domain.cloud.dto.CloudAccountDto;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.fasterxml.jackson.core.JsonProcessingException;

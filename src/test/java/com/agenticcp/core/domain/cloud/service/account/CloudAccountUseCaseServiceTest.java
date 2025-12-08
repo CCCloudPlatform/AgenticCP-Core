@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.service.account;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsCredentialManager;
+import com.agenticcp.core.domain.cloud.dto.*;
 import com.agenticcp.core.domain.cloud.port.model.account.*;
 import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
@@ -11,7 +12,6 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.mapper.CredentialCommandMapper;
-import com.agenticcp.core.domain.cloud.service.account.CloudAccountUseCaseService;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountValidationPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
@@ -90,7 +90,7 @@ class CloudAccountUseCaseServiceTest {
     private Tenant tenant;
     private CloudProvider provider;
     private RegisterCloudAccountRequest registerRequest;
-    private AccountValidationResult validationResult;
+    private AccountValidationResponse validationResult;
     private CloudAccountCredential credential;
     private CloudAccount cloudAccount;
 
@@ -121,7 +121,7 @@ class CloudAccountUseCaseServiceTest {
                 .isDefault(false)
                 .build();
 
-        validationResult = AccountValidationResult.builder()
+        validationResult = AccountValidationResponse.builder()
                 .valid(true)
                 .message("Validation successful")
                 .accountScope("123456789012")
@@ -216,7 +216,7 @@ class CloudAccountUseCaseServiceTest {
             doNothing().when(cloudAccountDomainService)
                     .validateAccountUniqueness(anyLong(), anyString(), any(ProviderType.class));
 
-            AccountValidationResult failedValidation = AccountValidationResult.builder()
+            AccountValidationResponse failedValidation = AccountValidationResponse.builder()
                     .valid(false)
                     .message("Invalid credentials")
                     .build();
@@ -390,7 +390,7 @@ class CloudAccountUseCaseServiceTest {
         void testConnection_Success() {
             // given
             Long accountId = 1L;
-            ConnectionTestResult expectedResult = ConnectionTestResult.builder()
+            ConnectionTestResponse expectedResult = ConnectionTestResponse.builder()
                     .success(true)
                     .message("Connection successful")
                     .accountId(accountId)
@@ -417,7 +417,7 @@ class CloudAccountUseCaseServiceTest {
                     .willReturn(expectedResult);
 
             // when
-            ConnectionTestResult result = cloudAccountUseCaseService.testConnection(accountId);
+            ConnectionTestResponse result = cloudAccountUseCaseService.testConnection(accountId);
 
             // then
             assertThat(result).isNotNull();
@@ -430,7 +430,7 @@ class CloudAccountUseCaseServiceTest {
         void testConnection_Failed() {
             // given
             Long accountId = 1L;
-            ConnectionTestResult failedResult = ConnectionTestResult.builder()
+            ConnectionTestResponse failedResult = ConnectionTestResponse.builder()
                     .success(false)
                     .message("Connection failed")
                     .accountId(accountId)
@@ -457,7 +457,7 @@ class CloudAccountUseCaseServiceTest {
                     .willReturn(failedResult);
 
             // when
-            ConnectionTestResult result = cloudAccountUseCaseService.testConnection(accountId);
+            ConnectionTestResponse result = cloudAccountUseCaseService.testConnection(accountId);
 
             // then
             assertThat(result).isNotNull();
@@ -520,7 +520,7 @@ class CloudAccountUseCaseServiceTest {
                     .willReturn(validationResult);
 
             // when
-            AccountValidationResult result = 
+            AccountValidationResponse result =
                     cloudAccountUseCaseService.validateAccountBeforeRegistration(validationRequest);
 
             // then

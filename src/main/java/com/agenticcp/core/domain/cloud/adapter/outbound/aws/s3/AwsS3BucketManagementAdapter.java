@@ -2,7 +2,7 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.s3;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsS3Config;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.ObjectStorageErrorCode;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort {
 
-    private final AwsClientConfig awsClientConfig;
+    private final AwsS3Config awsS3Config;
     private final AwsS3BucketMapper mapper;
     private final CloudProviderRepository cloudProviderRepository;
     private final AwsS3ErrorTranslator errorTranslator;
@@ -59,7 +59,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
         String bucketName = command.getContainerName();
         Instant creationTime = Instant.now();
 
-        try (S3Client s3Client = awsClientConfig.createS3Client(command.getSession(), command.getRegion())) {
+        try (S3Client s3Client = awsS3Config.createS3Client(command.getSession(), command.getRegion())) {
             log.info("Creating S3 bucket: {} in region {}", bucketName, command.getRegion());
 
             performCreateBucket(
@@ -101,7 +101,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
     public void deleteContainer(CloudSessionCredential session, String containerName) {
         log.info("Deleting S3 bucket: {}", containerName);
 
-        try (S3Client s3Client = awsClientConfig.createS3Client(session, null)) {
+        try (S3Client s3Client = awsS3Config.createS3Client(session, null)) {
             if (!isBucketEmpty(s3Client, containerName)) {
                 throw new BusinessException(
                         ObjectStorageErrorCode.BUCKET_OPERATION_FAILED,
@@ -136,7 +136,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
         String containerName = command.getContainerName();
         log.info("Updating S3 bucket: {} with command: {}", containerName, command);
 
-        try (S3Client s3Client = awsClientConfig.createS3Client(command.getSession(), null)) {
+        try (S3Client s3Client = awsS3Config.createS3Client(command.getSession(), null)) {
             if (!checkBucketExists(s3Client, containerName)) {
                 throw new ResourceNotFoundException(ObjectStorageErrorCode.BUCKET_NOT_FOUND);
             }
@@ -177,7 +177,7 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
     public void forceDeleteContainer(String containerName, CloudSessionCredential session) {
         log.info("Force deleting S3 bucket: {}", containerName);
 
-        try (S3Client s3Client = awsClientConfig.createS3Client(session, null)) {
+        try (S3Client s3Client = awsS3Config.createS3Client(session, null)) {
             if (!checkBucketExists(s3Client, containerName)) {
                 throw new ResourceNotFoundException(ObjectStorageErrorCode.BUCKET_NOT_FOUND);
             }

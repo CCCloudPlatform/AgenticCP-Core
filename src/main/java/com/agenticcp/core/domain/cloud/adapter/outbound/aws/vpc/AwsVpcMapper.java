@@ -6,7 +6,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
-import com.agenticcp.core.domain.cloud.port.model.vpc.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ListVpcsQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudRegionRepository;

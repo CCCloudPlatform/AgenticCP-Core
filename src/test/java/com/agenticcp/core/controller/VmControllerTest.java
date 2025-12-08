@@ -2,10 +2,10 @@ package com.agenticcp.core.controller;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.VmCreateRequest;
-import com.agenticcp.core.domain.cloud.port.model.VmDeleteRequest;
+import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
+import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
-import com.agenticcp.core.domain.cloud.port.model.VmUpdateRequest;
+import com.agenticcp.core.domain.cloud.dto.VmUpdateRequest;
 import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
 import com.agenticcp.core.domain.cloud.controller.VmController;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,7 +76,7 @@ class VmControllerTest {
             PageRequest.of(0, 10), 
             1
         );
-        when(vmUseCaseService.listInstances(eq(ProviderType.AWS), any(VmQuery.class))).thenReturn(page);
+        when(vmUseCaseService.listInstances(eq(ProviderType.AWS), eq("123456789012"), any(VmQuery.class))).thenReturn(page);
 
         // When & Then
         mockMvc.perform(get(BASE_URL, "AWS", "123456789012")
@@ -91,7 +91,7 @@ class VmControllerTest {
     @Test
     void getInstance_성공() throws Exception {
         // Given
-        when(vmUseCaseService.getInstance(eq(ProviderType.AWS), eq("i-1234567890abcdef0")))
+        when(vmUseCaseService.getInstance(eq(ProviderType.AWS), eq("123456789012"), eq("i-1234567890abcdef0")))
             .thenReturn(Optional.of(testInstance));
 
         // When & Then
@@ -104,7 +104,7 @@ class VmControllerTest {
     @Test
     void getInstance_인스턴스없음() throws Exception {
         // Given
-        when(vmUseCaseService.getInstance(eq(ProviderType.AWS), eq("i-nonexistent")))
+        when(vmUseCaseService.getInstance(eq(ProviderType.AWS), eq("123456789012"), eq("i-nonexistent")))
             .thenReturn(Optional.empty());
 
         // When & Then
@@ -226,7 +226,7 @@ class VmControllerTest {
             "Project", "TestProject"
         );
 
-        when(vmUseCaseService.getTags(eq(ProviderType.AWS), eq("i-1234567890abcdef0")))
+        when(vmUseCaseService.getTags(eq(ProviderType.AWS), eq("123456789012"), eq("i-1234567890abcdef0")))
             .thenReturn(tags);
 
         // When & Then
@@ -239,7 +239,7 @@ class VmControllerTest {
     @Test
     void getInstanceStatus_성공() throws Exception {
         // Given
-        when(vmUseCaseService.getInstanceStatus(eq(ProviderType.AWS), eq("i-1234567890abcdef0")))
+        when(vmUseCaseService.getInstanceStatus(eq(ProviderType.AWS), eq("123456789012"), eq("i-1234567890abcdef0")))
             .thenReturn("running");
 
         // When & Then
@@ -251,7 +251,7 @@ class VmControllerTest {
     @Test
     void waitForInstanceStatus_성공() throws Exception {
         // Given
-        when(vmUseCaseService.waitForInstanceStatus(eq(ProviderType.AWS), eq("i-1234567890abcdef0"), eq("running"), eq(300)))
+        when(vmUseCaseService.waitForInstanceStatus(eq(ProviderType.AWS), eq("123456789012"), eq("i-1234567890abcdef0"), eq("running"), eq(300)))
             .thenReturn(true);
 
         // When & Then
@@ -265,7 +265,7 @@ class VmControllerTest {
     @Test
     void waitForInstanceStatus_기본타임아웃() throws Exception {
         // Given
-        when(vmUseCaseService.waitForInstanceStatus(eq(ProviderType.AWS), eq("i-1234567890abcdef0"), eq("running"), eq(300)))
+        when(vmUseCaseService.waitForInstanceStatus(eq(ProviderType.AWS), eq("123456789012"), eq("i-1234567890abcdef0"), eq("running"), eq(300)))
             .thenReturn(true);
 
         // When & Then
@@ -314,7 +314,7 @@ class VmControllerTest {
             PageRequest.of(0, 20), 
             1
         );
-        when(vmUseCaseService.listInstances(eq(ProviderType.AWS), any(VmQuery.class))).thenReturn(page);
+        when(vmUseCaseService.listInstances(eq(ProviderType.AWS), eq("123456789012"), any(VmQuery.class))).thenReturn(page);
 
         // When & Then - 파라미터 없이 호출 (기본값 사용)
         mockMvc.perform(get(BASE_URL, "AWS", "123456789012")

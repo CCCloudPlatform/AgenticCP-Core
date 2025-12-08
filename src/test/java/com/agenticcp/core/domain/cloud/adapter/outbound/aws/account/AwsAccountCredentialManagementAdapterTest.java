@@ -7,7 +7,7 @@ import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.port.outbound.account.SessionCachePort;
+import com.agenticcp.core.domain.cloud.repository.SessionCacheRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,7 +37,7 @@ class AwsAccountCredentialManagementAdapterTest {
     private AwsSessionProvider awsSessionProvider;
 
     @Mock
-    private SessionCachePort sessionCachePort;
+    private SessionCacheRepository sessionCachePort;
 
     @Mock
     private CloudAccountRepository cloudAccountRepository;

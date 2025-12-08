@@ -5,9 +5,9 @@ import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConf
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
-import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationRequest;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationResponse;
+import com.agenticcp.core.domain.cloud.dto.ConnectionTestResponse;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountValidationPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +48,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
      * @return AccountValidationResult 검증 결과
      */
     @Override
-    public AccountValidationResult validateAccount(AccountValidationRequest request) {
+    public AccountValidationResponse validateAccount(AccountValidationRequest request) {
         log.info("[AwsAccountValidationAdapter] validateAccount - providerType={}, region={}", 
                  request.getProviderType(), request.getRegion());
         
@@ -78,7 +78,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
                      maskedAccountScope);
             
             // 검증 성공 결과 반환
-            return AccountValidationResult.builder()
+            return AccountValidationResponse.builder()
                     .valid(true)
                     .message("AWS 계정 검증 성공")
                     .accountScope(response.account())
@@ -92,7 +92,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
             // AWS SDK 예외를 비즈니스 예외로 변환
             String errorMessage = parseAwsErrorMessage(e);
             
-            return AccountValidationResult.builder()
+            return AccountValidationResponse.builder()
                     .valid(false)
                     .message(errorMessage)
                     .build();
@@ -100,7 +100,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
         } catch (Exception e) {
             log.error("[AwsAccountValidationAdapter] validateAccount - unexpected error", e);
             
-            return AccountValidationResult.builder()
+            return AccountValidationResponse.builder()
                     .valid(false)
                     .message("예상치 못한 오류가 발생했습니다: " + e.getMessage())
                     .build();
@@ -125,7 +125,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
      * @return ConnectionTestResult 연결 테스트 결과
      */
     @Override
-    public ConnectionTestResult testConnection(Long accountId, Map<String, String> credentials) {
+    public ConnectionTestResponse testConnection(Long accountId, Map<String, String> credentials) {
         log.info("[AwsAccountValidationAdapter] testConnection - accountId={}", accountId);
         
         String accessKeyId = credentials.get("accessKeyId");
@@ -156,7 +156,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
             log.info("[AwsAccountValidationAdapter] testConnection - success, responseTime={}ms", 
                      responseTime);
             
-            return ConnectionTestResult.builder()
+            return ConnectionTestResponse.builder()
                     .success(true)
                     .message("AWS 계정 연결 성공")
                     .accountId(accountId)
@@ -173,7 +173,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
             details.put("error", errorMessage);
             details.put("region", region);
             
-            return ConnectionTestResult.builder()
+            return ConnectionTestResponse.builder()
                     .success(false)
                     .message("AWS 계정 연결 실패: " + errorMessage)
                     .accountId(accountId)
@@ -187,7 +187,7 @@ public class AwsAccountValidationAdapter implements AccountValidationPort, Provi
             Map<String, Object> details = new HashMap<>();
             details.put("error", e.getMessage());
             
-            return ConnectionTestResult.builder()
+            return ConnectionTestResponse.builder()
                     .success(false)
                     .message("예상치 못한 오류가 발생했습니다: " + e.getMessage())
                     .accountId(accountId)
