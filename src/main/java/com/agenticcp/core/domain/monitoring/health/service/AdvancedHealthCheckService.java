@@ -10,6 +10,7 @@ import com.agenticcp.core.domain.platform.repository.PlatformHealthRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -24,18 +25,28 @@ import java.util.Map;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-09
+ * @since 2025-11-13
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class AdvancedHealthCheckService {
     
     private final List<HealthIndicator> healthIndicators;
     private final PlatformHealthRepository platformHealthRepository;
     
+    /**
+     * 전체 헬스체크 수행
+     * 
+     * <p>모든 헬스 인디케이터를 순회하며 각 컴포넌트의 상태를 확인하고,
+     * 전체 시스템의 상태를 종합하여 반환합니다.</p>
+     * 
+     * @return 헬스 상태 응답
+     * @throws HealthCheckException 헬스체크 수행 중 오류 발생 시
+     */
     public HealthStatusResponse getOverallHealth() {
-        log.info("Performing overall health check");
+        log.info("[AdvancedHealthCheckService] getOverallHealth - performing overall health check");
         long startTime = System.currentTimeMillis();
         
         Map<String, HealthIndicatorResult> components = new HashMap<>();
@@ -58,7 +69,7 @@ public class AdvancedHealthCheckService {
                 saveHealthStatus(indicator.getName(), result);
                 
             } catch (Exception e) {
-                log.error("Error checking health for indicator: {}", indicator.getName(), e);
+                log.error("[AdvancedHealthCheckService] getOverallHealth - error checking health for indicator: {}", indicator.getName(), e);
                 throw new HealthCheckException(MonitoringErrorCode.HEALTH_INDICATOR_ERROR, 
                     "Health indicator error for " + indicator.getName() + ": " + e.getMessage());
             }
@@ -74,12 +85,22 @@ public class AdvancedHealthCheckService {
                 .message("Health check completed")
                 .build();
         
-        log.info("Overall health check completed in {}ms with status: {}", responseTime, overallStatus);
+        log.info("[AdvancedHealthCheckService] getOverallHealth - completed in {}ms with status: {}", responseTime, overallStatus);
         return response;
     }
     
+    /**
+     * 특정 컴포넌트 헬스체크 수행
+     * 
+     * <p>지정된 컴포넌트의 헬스 상태를 확인하고 반환합니다.</p>
+     * 
+     * @param componentName 컴포넌트 이름
+     * @return 컴포넌트 헬스 상태
+     * @throws ComponentNotFoundException 컴포넌트를 찾을 수 없을 때
+     * @throws HealthCheckException 헬스체크 수행 중 오류 발생 시
+     */
     public ComponentHealthStatus getComponentHealth(String componentName) {
-        log.info("Performing health check for component: {}", componentName);
+        log.info("[AdvancedHealthCheckService] getComponentHealth - performing health check for component: {}", componentName);
         long startTime = System.currentTimeMillis();
         
         HealthIndicator indicator = healthIndicators.stream()
@@ -88,7 +109,7 @@ public class AdvancedHealthCheckService {
                 .orElse(null);
         
         if (indicator == null) {
-            log.warn("Component not found: {}", componentName);
+            log.warn("[AdvancedHealthCheckService] getComponentHealth - component not found: {}", componentName);
             throw new ComponentNotFoundException(componentName);
         }
         
@@ -108,24 +129,27 @@ public class AdvancedHealthCheckService {
                     .responseTime(responseTime)
                     .build();
             
-            log.info("Component health check completed for {} in {}ms with status: {}", 
+            log.info("[AdvancedHealthCheckService] getComponentHealth - completed for {} in {}ms with status: {}", 
                     componentName, responseTime, result.getStatus());
             return response;
             
         } catch (Exception e) {
-            log.error("Error checking health for component: {}", componentName, e);
-            return ComponentHealthStatus.builder()
-                    .component(componentName)
-                    .status(PlatformHealth.HealthStatus.CRITICAL)
-                    .message("Health check failed: " + e.getMessage())
-                    .timestamp(LocalDateTime.now())
-                    .responseTime(System.currentTimeMillis() - startTime)
-                    .build();
+            log.error("[AdvancedHealthCheckService] getComponentHealth - error checking health for component: {}", componentName, e);
+            throw new HealthCheckException(MonitoringErrorCode.HEALTH_INDICATOR_ERROR, 
+                "Health indicator error for " + componentName + ": " + e.getMessage());
         }
     }
     
+    /**
+     * 헬스체크 요약 조회
+     * 
+     * <p>데이터베이스에 저장된 최신 헬스 상태를 기반으로
+     * 전체 서비스의 상태 통계를 계산하여 반환합니다.</p>
+     * 
+     * @return 헬스체크 요약 정보
+     */
     public HealthCheckSummary getHealthSummary() {
-        log.info("Generating health check summary");
+        log.info("[AdvancedHealthCheckService] getHealthSummary - generating health check summary");
         
         List<PlatformHealth> latestHealthStatus = platformHealthRepository.findLatestHealthStatus();
         
@@ -152,12 +176,21 @@ public class AdvancedHealthCheckService {
                 .lastUpdated(LocalDateTime.now())
                 .build();
         
-        log.info("Health check summary generated: {} total, {} healthy, {} warning, {} critical, {} unknown",
+        log.info("[AdvancedHealthCheckService] getHealthSummary - generated: {} total, {} healthy, {} warning, {} critical, {} unknown",
                 totalServices, healthyServices, warningServices, criticalServices, unknownServices);
         
         return summary;
     }
     
+    /**
+     * 헬스 상태 저장
+     * 
+     * <p>헬스 인디케이터 결과를 PlatformHealth 엔티티에 저장합니다.</p>
+     * 
+     * @param serviceName 서비스 이름
+     * @param result 헬스 인디케이터 결과
+     */
+    @Transactional
     private void saveHealthStatus(String serviceName, HealthIndicatorResult result) {
         try {
             PlatformHealth existingHealth = platformHealthRepository.findByServiceName(serviceName)
@@ -206,10 +239,10 @@ public class AdvancedHealthCheckService {
             }
             
             platformHealthRepository.save(platformHealth);
-            log.debug("Saved health status for service: {} with status: {}", serviceName, status);
+            log.debug("[AdvancedHealthCheckService] saveHealthStatus - saved health status for service: {} with status: {}", serviceName, status);
             
         } catch (Exception e) {
-            log.error("Error saving health status for service: {}", serviceName, e);
+            log.error("[AdvancedHealthCheckService] saveHealthStatus - error saving health status for service: {}", serviceName, e);
         }
     }
 }

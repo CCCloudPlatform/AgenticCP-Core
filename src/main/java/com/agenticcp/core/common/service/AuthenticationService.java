@@ -39,7 +39,7 @@ import static com.agenticcp.core.common.security.JwtConstants.TOKEN_TYPE_ACCESS;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-10-24
  */
 @Slf4j
 @Service
@@ -94,13 +94,18 @@ public class AuthenticationService {
             String encodedPassword = passwordEncoder.encode(request.getPassword());
 
             // 5. 사용자 생성
+            // 2FA 정책에 따라 초기 상태 결정
+            // TODO: 설정에서 2FA 필수 여부 확인 (SecurityPolicyService 또는 PlatformConfig에서 가져오기)
+            boolean twoFactorRequired = true; // 기본값: 2FA 필수
+            Status initialStatus = twoFactorRequired ? Status.PENDING : Status.ACTIVE;
+            
             User newUser = User.builder()
                     .username(request.getUsername())
                     .email(request.getEmail())
                     .passwordHash(encodedPassword)
                     .name(request.getName())
                     .role(UserRole.VIEWER) // 기본 역할 부여
-                    .status(Status.ACTIVE) // 기본 상태 활성
+                    .status(initialStatus) // 2FA 정책에 따라 PENDING 또는 ACTIVE
                     .tenant(tenant)
                     .build();
 
@@ -142,6 +147,11 @@ public class AuthenticationService {
             if (user.isAccountLocked()) {
                 failureReason = "계정이 잠겨있습니다";
                 log.warn("[AuthenticationService] login - account locked username={}", loginRequest.getUsername());
+                // 계정 잠금 실패 이력 저장
+                if (httpRequest != null) {
+                    authHistoryService.recordAuthHistoryFromRequest(
+                            user, AuthType.LOGIN, false, httpRequest, failureReason);
+                }
                 throw new BusinessException(AuthErrorCode.ACCOUNT_LOCKED);
             }
             
@@ -153,6 +163,11 @@ public class AuthenticationService {
                 failureReason = "비활성 계정입니다";
                 log.warn("[AuthenticationService] login - inactive account status={} username={}", 
                     user.getStatus(), loginRequest.getUsername());
+                // 비활성 계정 실패 이력 저장
+                if (httpRequest != null) {
+                    authHistoryService.recordAuthHistoryFromRequest(
+                            user, AuthType.LOGIN, false, httpRequest, failureReason);
+                }
                 throw new BusinessException(AuthErrorCode.ACCOUNT_INACTIVE);
             }
             
@@ -223,6 +238,8 @@ public class AuthenticationService {
         } catch (ResourceNotFoundException e) {
             failureReason = "사용자를 찾을 수 없습니다";
             log.warn("[AuthenticationService] login - user not found username={}", loginRequest.getUsername());
+            // 사용자 없음 실패 이력 저장 불가 (UserAuthHistory 엔티티에서 user가 필수이므로)
+            // 보안상 사용자명을 노출하지 않기 위해 이력 저장 생략
             throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
         } catch (BusinessException e) {
             // 이미 이력이 저장된 경우는 스킵
@@ -232,6 +249,11 @@ public class AuthenticationService {
 
     /**
      * 토큰 갱신
+     * 리프레시 토큰을 검증하고 새로운 액세스 토큰과 리프레시 토큰을 발급합니다.
+     * 
+     * @param refreshTokenRequest 리프레시 토큰 요청 정보
+     * @return 새로운 액세스 토큰과 리프레시 토큰
+     * @throws BusinessException 리프레시 토큰이 유효하지 않거나, 사용자 상태가 ACTIVE가 아니거나, 계정이 잠긴 경우
      */
     public TokenResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
         log.info("[AuthenticationService] refreshToken");
@@ -263,6 +285,24 @@ public class AuthenticationService {
             
             // 사용자 조회
             User user = userService.getUserByUsernameOrThrow(username);
+            
+            // 사용자 상태 검증
+            if (user.getStatus() != Status.ACTIVE) {
+                if (user.getStatus() == Status.PENDING) {
+                    // 2FA 설정 중인 경우 제한적 허용 검토
+                    log.warn("[AuthenticationService] refreshToken - PENDING user attempted token refresh: {}", username);
+                } else {
+                    log.warn("[AuthenticationService] refreshToken - inactive user attempted token refresh: {} status={}", 
+                        username, user.getStatus());
+                }
+                throw new BusinessException(AuthErrorCode.ACCOUNT_INACTIVE);
+            }
+            
+            // 계정 잠금 확인
+            if (user.isAccountLocked()) {
+                log.warn("[AuthenticationService] refreshToken - locked account attempted token refresh: {}", username);
+                throw new BusinessException(AuthErrorCode.ACCOUNT_LOCKED);
+            }
             
             // 새 토큰 생성
             String newAccessToken = jwtService.generateAccessToken(user);
@@ -343,6 +383,21 @@ public class AuthenticationService {
 
     /**
      * 토큰을 블랙리스트에 추가
+     * 
+     * <p>로그아웃된 토큰을 블랙리스트에 추가하여 재사용을 방지합니다.
+     * 토큰의 만료 시간까지 블랙리스트에 유지됩니다.</p>
+     * 
+     * <p>Redis 비활성화 시 대안:</p>
+     * <ul>
+     *   <li>데이터베이스에 블랙리스트 테이블 생성하여 관리</li>
+     *   <li>인메모리 캐시(Caffeine, Guava Cache) 사용</li>
+     *   <li>JWT 토큰에 버전 번호 추가하여 강제 무효화</li>
+     * </ul>
+     * 
+     * <p>현재 구현: Redis가 없으면 블랙리스트 기능이 작동하지 않음
+     * (로그아웃한 토큰도 만료 전까지 유효하게 됨)</p>
+     * 
+     * @param token 블랙리스트에 추가할 JWT 토큰
      */
     public void blacklistToken(String token) {
         log.info("[AuthenticationService] blacklistToken");
@@ -353,12 +408,37 @@ public class AuthenticationService {
             long expirationTime = jwtService.extractExpiration(token).getTime() - System.currentTimeMillis();
             if (redisTemplate != null && expirationTime > 0) {
                 redisTemplate.opsForValue().set(blacklistKey, "blacklisted", expirationTime, TimeUnit.MILLISECONDS);
+                log.info("[AuthenticationService] blacklistToken - success");
+            } else {
+                log.warn("[AuthenticationService] blacklistToken - Redis not available, token blacklist not applied");
             }
-            
-            log.info("[AuthenticationService] blacklistToken - success");
             
         } catch (Exception e) {
             log.error("[AuthenticationService] blacklistToken - error", e);
+        }
+    }
+
+    /**
+     * 토큰이 블랙리스트에 있는지 확인
+     * 
+     * <p>Redis 비활성화 시:
+     * 블랙리스트 확인이 불가능하므로 false 반환합니다.
+     * 보안상 Redis 사용을 권장하거나 대안 구현이 필요합니다.</p>
+     * 
+     * @param token 확인할 JWT 토큰
+     * @return 블랙리스트에 있으면 true, 없거나 Redis가 비활성화된 경우 false
+     */
+    public boolean isTokenBlacklisted(String token) {
+        try {
+            if (redisTemplate == null) {
+                log.debug("[AuthenticationService] RedisTemplate is not available. Token blacklist check skipped.");
+                return false;
+            }
+            String blacklistKey = "blacklist:" + token;
+            return Boolean.TRUE.equals(redisTemplate.hasKey(blacklistKey));
+        } catch (Exception e) {
+            log.warn("[AuthenticationService] Failed to check token blacklist", e);
+            return false;
         }
     }
 

@@ -28,9 +28,9 @@ public class Tenant extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    // Organization과의 관계 (N:1)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organization_id", nullable = false)
+    // Organization과의 관계 (1:1)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", nullable = false, unique = true)
     private Organization organization;
 
     @Column(name = "status")

@@ -8,7 +8,9 @@ import com.agenticcp.core.common.dto.audit.AuditEventDto;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
 import com.agenticcp.core.common.util.EncryptedValueMasker;
+import com.agenticcp.core.common.context.TenantContextHolder;
  
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,19 +27,11 @@ import java.util.Map;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConfigAuditService {
 
     private final AuditLogger auditLogger;
     private final ApplicationEventPublisher eventPublisher;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    public ConfigAuditService(AuditLogger auditLogger,
-                              ApplicationEventPublisher eventPublisher) {
-        this.auditLogger = auditLogger;
-        this.eventPublisher = eventPublisher;
-    }
-
-    // 테스트에서 직접 new 호출 시에도 동일한 동작을 위해 2-인자 생성자만 유지
 
     /**
      * 설정 변경 감사 기록 (공통 엔트리 포인트)
@@ -63,8 +57,13 @@ public class ConfigAuditService {
         log.info("[ConfigAuditService] logConfigChange called - action={} key={} userId={} reason={} type={}",
                 normalizedAction, configKey, userId, reason, valueType);
 
+        String tenantKey = TenantContextHolder.getCurrentTenantKey();
+
         Map<String, Object> details = new HashMap<>();
         details.put("configKey", configKey);
+        if (tenantKey != null) {
+            details.put("tenantKey", tenantKey);
+        }
         boolean encryptedType = EncryptedValueMasker.isEncryptedType(valueType);
         details.put("oldValue", EncryptedValueMasker.maskForAudit(oldValue, encryptedType));
         details.put("newValue", EncryptedValueMasker.maskForAudit(newValue, encryptedType));
@@ -80,6 +79,9 @@ public class ConfigAuditService {
         metadata.put("eventCategory", "CONFIGURE");
         metadata.put("resourceType", "PlatformConfig");
         metadata.put("resourceId", configKey);
+        if (tenantKey != null) {
+            metadata.put("tenantKey", tenantKey);
+        }
 
         Map<String, Object> oldValueMap = new HashMap<>();
         oldValueMap.put("value", EncryptedValueMasker.maskForAudit(oldValue, encryptedType));
@@ -90,9 +92,11 @@ public class ConfigAuditService {
                 .userId(userId)
                 .action(normalizedAction)
                 .resourceType(AuditResourceType.PLATFORM_CONFIG)
+                .httpMethod("SYSTEM")
+                .requestPath("/internal/platform-config")
                 .operationSummary("Platform Config " + normalizedAction)
-                .controllerName("PlatformConfigController")
-                .methodName("")
+                .controllerName("PlatformConfigService")
+                .methodName("logConfigChange")
                 .severity(AuditSeverity.INFO)
                 .includeRequestData(true)
                 .includeResponseData(false)

@@ -49,6 +49,7 @@ public class FeatureFlagCacheHealthService {
     private final AtomicLong cacheMisses = new AtomicLong(0);
     private final AtomicLong totalResponseTime = new AtomicLong(0);
     private final AtomicLong fallbackCount = new AtomicLong(0);
+    private volatile LocalDateTime metricsStartTime = LocalDateTime.now();
 
     /**
      * Redis 캐시 헬스체크 수행
@@ -195,6 +196,8 @@ public class FeatureFlagCacheHealthService {
                 .hitRate(hitRate)
                 .avgResponseTimeMs(avgResponseTime)
                 .fallbackCount(fallbacks)
+                .metricsStartTime(metricsStartTime)
+                .lastUpdatedTime(LocalDateTime.now())
                 .build();
     }
 
@@ -207,6 +210,7 @@ public class FeatureFlagCacheHealthService {
         cacheMisses.set(0);
         totalResponseTime.set(0);
         fallbackCount.set(0);
+        metricsStartTime = LocalDateTime.now();
         
         log.info("[FeatureFlagCacheHealthService] Metrics reset");
     }

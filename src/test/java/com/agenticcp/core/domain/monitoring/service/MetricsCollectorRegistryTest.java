@@ -17,11 +17,13 @@ import static org.mockito.Mockito.*;
 /**
  * MetricsCollectorRegistry 단위 테스트
  * 
+ * <p>메트릭 수집기 레지스트리의 핵심 비즈니스 로직을 검증합니다.
+ * 
  * <p>Issue #39: Task 6 - 메트릭 수집기 플러그인 시스템 구현
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @DisplayName("MetricsCollectorRegistry 단위 테스트")
 class MetricsCollectorRegistryTest {
@@ -32,7 +34,8 @@ class MetricsCollectorRegistryTest {
     
     @BeforeEach
     void setUp() {
-        registry = new MetricsCollectorRegistry();
+        // 생성자 주입을 위해 빈 리스트 전달
+        registry = new MetricsCollectorRegistry(new ArrayList<>());
         
         // 테스트용 Mock 수집기 생성
         testCollector1 = mock(MetricsCollector.class);
@@ -50,7 +53,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("수집기를 등록할 수 있다")
-        void registerCollector_ShouldRegisterSuccessfully() {
+        void registerCollector_WhenValidName_ShouldRegisterSuccessfully() {
             // When
             registry.registerCollector("test-collector", testCollector1);
             
@@ -61,7 +64,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("동일한 이름으로 수집기를 재등록하면 덮어쓴다")
-        void registerCollector_WithSameName_ShouldOverwrite() {
+        void registerCollector_WhenSameName_ShouldOverwrite() {
             // Given
             registry.registerCollector("test", testCollector1);
             
@@ -77,7 +80,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("null 이름으로 등록 시 예외를 발생시킨다")
-        void registerCollector_WithNullName_ShouldThrowException() {
+        void registerCollector_WhenNullName_ThrowsException() {
             // When & Then
             assertThatThrownBy(() -> registry.registerCollector(null, testCollector1))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -86,7 +89,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("빈 문자열 이름으로 등록 시 예외를 발생시킨다")
-        void registerCollector_WithEmptyName_ShouldThrowException() {
+        void registerCollector_WhenEmptyName_ThrowsException() {
             // When & Then
             assertThatThrownBy(() -> registry.registerCollector("  ", testCollector1))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -95,7 +98,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("null 수집기로 등록 시 예외를 발생시킨다")
-        void registerCollector_WithNullCollector_ShouldThrowException() {
+        void registerCollector_WhenNullCollector_ThrowsException() {
             // When & Then
             assertThatThrownBy(() -> registry.registerCollector("test", null))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -109,7 +112,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("등록된 수집기를 해제할 수 있다")
-        void unregisterCollector_WhenExists_ShouldRemoveSuccessfully() {
+        void unregisterCollector_WhenExists_ReturnsTrue() {
             // Given
             registry.registerCollector("test", testCollector1);
             
@@ -124,7 +127,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("존재하지 않는 수집기 해제 시 false를 반환한다")
-        void unregisterCollector_WhenNotExists_ShouldReturnFalse() {
+        void unregisterCollector_WhenNotExists_ReturnsFalse() {
             // When
             boolean result = registry.unregisterCollector("non-existent");
             
@@ -139,7 +142,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("이름으로 수집기를 조회할 수 있다")
-        void getCollector_WhenExists_ShouldReturnCollector() {
+        void getCollector_WhenExists_ReturnsCollector() {
             // Given
             registry.registerCollector("test", testCollector1);
             
@@ -153,7 +156,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("존재하지 않는 이름으로 조회 시 empty를 반환한다")
-        void getCollector_WhenNotExists_ShouldReturnEmpty() {
+        void getCollector_WhenNotExists_ReturnsEmpty() {
             // When
             Optional<MetricsCollector> collector = registry.getCollector("non-existent");
             
@@ -163,7 +166,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("모든 수집기를 조회할 수 있다")
-        void getAllCollectors_ShouldReturnAllCollectors() {
+        void getAllCollectors_WhenCalled_ReturnsAllCollectors() {
             // Given
             registry.registerCollector("test1", testCollector1);
             registry.registerCollector("test2", testCollector2);
@@ -183,7 +186,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("활성화된 수집기만 조회한다")
-        void getEnabledCollectors_ShouldReturnOnlyEnabled() {
+        void getEnabledCollectors_WhenCalled_ReturnsOnlyEnabled() {
             // Given
             registry.registerCollector("enabled", testCollector1);   // enabled = true
             registry.registerCollector("disabled", testCollector2);  // enabled = false
@@ -198,7 +201,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("활성화된 수집기가 없으면 빈 리스트를 반환한다")
-        void getEnabledCollectors_WhenNoneEnabled_ShouldReturnEmptyList() {
+        void getEnabledCollectors_WhenNoneEnabled_ReturnsEmptyList() {
             // Given
             registry.registerCollector("disabled", testCollector2);  // enabled = false
             
@@ -216,7 +219,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("특정 타입의 수집기만 조회한다")
-        void getCollectorsByType_ShouldReturnMatchingType() {
+        void getCollectorsByType_WhenSystemType_ReturnsMatchingType() {
             // Given
             registry.registerCollector("system", testCollector1);       // SYSTEM
             registry.registerCollector("application", testCollector2);  // APPLICATION
@@ -231,7 +234,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("해당 타입의 수집기가 없으면 빈 리스트를 반환한다")
-        void getCollectorsByType_WhenNoMatch_ShouldReturnEmptyList() {
+        void getCollectorsByType_WhenNoMatch_ReturnsEmptyList() {
             // Given
             registry.registerCollector("system", testCollector1);  // SYSTEM
             
@@ -244,7 +247,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("null 타입으로 조회 시 빈 리스트를 반환한다")
-        void getCollectorsByType_WithNullType_ShouldReturnEmptyList() {
+        void getCollectorsByType_WhenNullType_ReturnsEmptyList() {
             // When
             List<MetricsCollector> collectors = registry.getCollectorsByType(null);
             
@@ -259,7 +262,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("수집기 개수를 조회할 수 있다")
-        void getCollectorCount_ShouldReturnCorrectCount() {
+        void getCollectorCount_WhenCalled_ReturnsCorrectCount() {
             // Given
             registry.registerCollector("test1", testCollector1);
             registry.registerCollector("test2", testCollector2);
@@ -273,7 +276,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("활성화된 수집기 개수를 조회할 수 있다")
-        void getEnabledCollectorCount_ShouldReturnCorrectCount() {
+        void getEnabledCollectorCount_WhenCalled_ReturnsCorrectCount() {
             // Given
             registry.registerCollector("enabled", testCollector1);   // enabled = true
             registry.registerCollector("disabled", testCollector2);  // enabled = false
@@ -287,7 +290,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("수집기 상태 맵을 조회할 수 있다")
-        void getCollectorStatus_ShouldReturnStatusMap() {
+        void getCollectorStatus_WhenCalled_ReturnsStatusMap() {
             // Given
             registry.registerCollector("enabled", testCollector1);
             registry.registerCollector("disabled", testCollector2);
@@ -303,13 +306,17 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("수집기 존재 여부를 확인할 수 있다")
-        void hasCollector_ShouldReturnCorrectResult() {
+        void hasCollector_WhenExists_ReturnsTrue() {
             // Given
             registry.registerCollector("test", testCollector1);
             
-            // When & Then
-            assertThat(registry.hasCollector("test")).isTrue();
-            assertThat(registry.hasCollector("non-existent")).isFalse();
+            // When
+            boolean exists = registry.hasCollector("test");
+            boolean notExists = registry.hasCollector("non-existent");
+            
+            // Then
+            assertThat(exists).isTrue();
+            assertThat(notExists).isFalse();
         }
     }
     
@@ -319,30 +326,32 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("Spring Bean 수집기들을 자동으로 등록한다")
-        void autoRegisterCollectors_ShouldRegisterAllBeans() {
+        void autoRegisterCollectors_WhenCalled_RegistersAllBeans() {
             // Given
             List<MetricsCollector> beans = new ArrayList<>();
             beans.add(testCollector1);
             beans.add(testCollector2);
+            MetricsCollectorRegistry testRegistry = new MetricsCollectorRegistry(beans);
             
             // When
-            registry.autoRegisterCollectors(beans);
+            testRegistry.autoRegisterCollectors();
             
             // Then
-            assertThat(registry.getCollectorCount()).isEqualTo(2);
+            assertThat(testRegistry.getCollectorCount()).isEqualTo(2);
         }
         
         @Test
         @DisplayName("빈 리스트로 자동 등록 시 아무것도 등록되지 않는다")
-        void autoRegisterCollectors_WithEmptyList_ShouldRegisterNothing() {
+        void autoRegisterCollectors_WhenEmptyList_RegistersNothing() {
             // Given
             List<MetricsCollector> beans = new ArrayList<>();
+            MetricsCollectorRegistry testRegistry = new MetricsCollectorRegistry(beans);
             
             // When
-            registry.autoRegisterCollectors(beans);
+            testRegistry.autoRegisterCollectors();
             
             // Then
-            assertThat(registry.getCollectorCount()).isEqualTo(0);
+            assertThat(testRegistry.getCollectorCount()).isEqualTo(0);
         }
     }
     
@@ -352,7 +361,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("수집기 정보 목록을 조회할 수 있다")
-        void getCollectorInfoList_ShouldReturnInfoList() {
+        void getCollectorInfoList_WhenCalled_ReturnsInfoList() {
             // Given
             registry.registerCollector("system", testCollector1);
             registry.registerCollector("application", testCollector2);
@@ -368,7 +377,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("CollectorInfo가 올바른 정보를 담고 있다")
-        void collectorInfo_ShouldContainCorrectData() {
+        void collectorInfo_WhenCreated_ContainsCorrectData() {
             // Given
             registry.registerCollector("test", testCollector1);
             
@@ -389,7 +398,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("모든 수집기를 초기화할 수 있다")
-        void clearAll_ShouldRemoveAllCollectors() {
+        void clearAll_WhenCalled_RemovesAllCollectors() {
             // Given
             registry.registerCollector("test1", testCollector1);
             registry.registerCollector("test2", testCollector2);
@@ -409,7 +418,7 @@ class MetricsCollectorRegistryTest {
         
         @Test
         @DisplayName("여러 스레드에서 동시에 수집기를 등록해도 안전하다")
-        void registerCollector_FromMultipleThreads_ShouldBeThreadSafe() throws InterruptedException {
+        void registerCollector_WhenMultipleThreads_IsThreadSafe() throws InterruptedException {
             // Given
             int threadCount = 10;
             Thread[] threads = new Thread[threadCount];

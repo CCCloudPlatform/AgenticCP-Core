@@ -2,6 +2,8 @@ package com.agenticcp.core.domain.platform.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,16 +12,24 @@ import lombok.NoArgsConstructor;
 
 /**
  * 기능 플래그 타겟팅 규칙 엔티티
- * 
+ * <p>
  * 기능 플래그에 대한 고급 타겟팅 규칙을 정의합니다.
  * 클라우드 프로바이더, 리전, 테넌트 타입, 사용자 역할 등 다양한 조건으로 
  * 기능 플래그를 타겟팅할 수 있습니다.
- * 
+ * </p>
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @Entity
-@Table(name = "feature_flag_target_rules")
+@Table(name = "feature_flag_target_rules", indexes = {
+    @Index(name = "idx_target_rules_feature_flag_id", columnList = "feature_flag_id"),
+    @Index(name = "idx_target_rules_rule_type", columnList = "rule_type"),
+    @Index(name = "idx_target_rules_is_enabled", columnList = "is_enabled"),
+    @Index(name = "idx_target_rules_feature_flag_enabled", columnList = "feature_flag_id,is_enabled"),
+    @Index(name = "idx_target_rules_priority", columnList = "priority")
+})
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Builder
@@ -37,7 +47,9 @@ public class FeatureFlagTargetRule extends BaseEntity {
     /**
      * 규칙 이름
      */
-    @Column(name = "rule_name", nullable = false)
+    @NotBlank(message = "규칙 이름은 필수입니다")
+    @Size(max = 255, message = "규칙 이름은 255자를 초과할 수 없습니다")
+    @Column(name = "rule_name", nullable = false, length = 255)
     private String ruleName;
 
     /**

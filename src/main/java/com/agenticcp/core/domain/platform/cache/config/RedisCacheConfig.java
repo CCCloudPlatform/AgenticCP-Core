@@ -11,6 +11,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -41,6 +42,7 @@ public class RedisCacheConfig {
      */
     @Bean("redisCacheManager")
     @Primary
+    @ConditionalOnMissingBean(org.springframework.cache.CacheManager.class)
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration cacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(5)) // 기본 TTL 5분
@@ -89,6 +91,8 @@ public class RedisCacheConfig {
     /**
      * 캐시 설정 프로퍼티 빈
      * application.yml의 feature-flag.cache 설정을 바인딩
+     *
+     * @return 기능 플래그 캐시 설정 프로퍼티
      */
     @Bean
     @ConfigurationProperties(prefix = "feature-flag.cache")

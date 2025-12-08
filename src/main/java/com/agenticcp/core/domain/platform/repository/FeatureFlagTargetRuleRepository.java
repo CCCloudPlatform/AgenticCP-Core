@@ -11,11 +11,13 @@ import java.util.Optional;
 
 /**
  * 기능 플래그 타겟팅 규칙 Repository
- * 
+ * <p>
  * 기능 플래그 타겟팅 규칙에 대한 데이터 접근 계층을 제공합니다.
- * 
+ * </p>
+ *
  * @author AgenticCP Team
  * @version 1.0.0
+ * @since 2025-11-15
  */
 @Repository
 public interface FeatureFlagTargetRuleRepository extends JpaRepository<FeatureFlagTargetRule, Long> {

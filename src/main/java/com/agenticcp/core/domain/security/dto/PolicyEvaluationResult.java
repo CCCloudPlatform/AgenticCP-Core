@@ -13,13 +13,13 @@ import java.util.Map;
 
 /**
  * 정책 평가 결과 데이터 전송 객체
- * 
+ *
  * <p>정책 엔진이 평가한 결과를 담는 DTO입니다.
  * 정책 평가 결과에 대한 모든 정보를 포함합니다.</p>
- * 
+ *
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-08
  */
 @Data
 @Builder

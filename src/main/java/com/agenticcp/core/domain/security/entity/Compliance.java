@@ -7,16 +7,27 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 컴플라이언스 엔티티
+ *
+ * <p>테넌트별 컴플라이언스 표준 및 준수 상태를 관리합니다.</p>
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-08
+ */
 @Entity
 @Table(name = "compliance")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 public class Compliance extends BaseEntity {
 
     @Column(name = "compliance_key", nullable = false, unique = true)
@@ -34,6 +45,7 @@ public class Compliance extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
+    @Builder.Default
     private Status status = Status.ACTIVE;
 
     @Enumerated(EnumType.STRING)
@@ -48,9 +60,11 @@ public class Compliance extends BaseEntity {
     private String version;
 
     @Column(name = "is_mandatory")
+    @Builder.Default
     private Boolean isMandatory = false;
 
     @Column(name = "is_global")
+    @Builder.Default
     private Boolean isGlobal = false;
 
     @Column(name = "requirements", columnDefinition = "TEXT")

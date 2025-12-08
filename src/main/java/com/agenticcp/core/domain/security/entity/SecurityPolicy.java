@@ -7,16 +7,27 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 보안 정책 엔티티
+ *
+ * <p>테넌트별 보안 정책을 정의하고 관리합니다.</p>
+ *
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-08
+ */
 @Entity
 @Table(name = "security_policies")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 public class SecurityPolicy extends BaseEntity {
 
     @Column(name = "policy_key", nullable = false, unique = true)
@@ -34,6 +45,7 @@ public class SecurityPolicy extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
+    @Builder.Default
     private Status status = Status.ACTIVE;
 
     @Enumerated(EnumType.STRING)
@@ -42,15 +54,19 @@ public class SecurityPolicy extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "severity")
+    @Builder.Default
     private Severity severity = Severity.MEDIUM;
 
     @Column(name = "is_global")
+    @Builder.Default
     private Boolean isGlobal = false;
 
     @Column(name = "is_system")
+    @Builder.Default
     private Boolean isSystem = false;
 
     @Column(name = "is_enabled")
+    @Builder.Default
     private Boolean isEnabled = true;
 
     @Column(name = "rules", columnDefinition = "TEXT")
@@ -75,9 +91,11 @@ public class SecurityPolicy extends BaseEntity {
     private LocalDateTime effectiveUntil;
 
     @Column(name = "priority")
+    @Builder.Default
     private Integer priority = 0;
 
     @Column(name = "version")
+    @Builder.Default
     private String version = "1.0";
 
     @Column(name = "metadata", columnDefinition = "TEXT")

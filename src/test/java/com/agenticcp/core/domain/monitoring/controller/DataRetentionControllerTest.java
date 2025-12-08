@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.Disabled;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -25,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -36,11 +36,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+<<<<<<<<< Temporary merge branch 1
+ * @since 2025-10-20
+=========
+ * @since 2025-11-13
+>>>>>>>>> Temporary merge branch 2
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DataRetentionController 테스트")
-@Disabled("Controller test disabled")
 class DataRetentionControllerTest {
 
     @Mock
@@ -76,7 +79,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("기본 보관 정책 생성 성공 - 201 Created")
-        void createDefaultRetentionPolicy_WithValidTenant_ReturnsCreatedResponse() {
+        void createDefaultRetentionPolicy_WhenValidTenant_ReturnsCreatedResponse() {
             // Given - 유효한 테넌트 컨텍스트가 설정된 상황
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
@@ -101,20 +104,16 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("기본 보관 정책 생성 - 테넌트 컨텍스트 없음")
-        void createDefaultRetentionPolicy_NoTenantContext() {
+        void createDefaultRetentionPolicy_WhenNoTenantContext_ThrowsException() {
             // Given
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow)
                         .thenThrow(new IllegalStateException("테넌트 컨텍스트가 없습니다"));
 
                 // When & Then
-                ResponseEntity<ApiResponse<TenantDataRetentionPolicy>> response = 
-                        controller.createDefaultRetentionPolicy();
-
-                // Then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(response.getBody()).isNotNull();
-                assertThat(response.getBody().isSuccess()).isFalse();
+                assertThatThrownBy(() -> controller.createDefaultRetentionPolicy())
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("테넌트 컨텍스트가 없습니다");
 
                 verify(retentionService, never()).createDefaultRetentionPolicy(anyString());
             }
@@ -127,7 +126,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("보관 정책 목록 조회 성공")
-        void getRetentionPolicies_Success() throws Exception {
+        void getRetentionPolicies_WhenValidRequest_ReturnsPolicyList() throws Exception {
             // Given - 테넌트에 보관 정책이 존재하고 API 호출을 위한 Mock 설정이 완료된 상황
             List<TenantDataRetentionPolicy> policies = Arrays.asList(samplePolicy);  // 테스트용 보관 정책 목록
             
@@ -138,7 +137,7 @@ class DataRetentionControllerTest {
                         .thenReturn(policies);  // 서비스에서 보관 정책 목록을 반환하도록 Mock
 
                 // When & Then - 보관 정책 목록 조회 API를 호출하고 응답을 검증하는 경우
-                mockMvc.perform(get("/api/v1/monitoring/retention/policies")  // GET /policies 엔드포인트 호출
+                mockMvc.perform(get("/api/monitoring/retention/policies")  // GET /policies 엔드포인트 호출
                                 .header("X-Tenant-Id", testTenantId))  // 테넌트 ID 헤더 설정
                         .andExpect(status().isOk())  // HTTP 200 OK 상태코드 확인
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))  // JSON 응답 확인
@@ -153,7 +152,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("활성화된 보관 정책 목록 조회 성공")
-        void getEnabledRetentionPolicies_Success() throws Exception {
+        void getEnabledRetentionPolicies_WhenValidRequest_ReturnsEnabledPolicyList() throws Exception {
             // Given
             List<TenantDataRetentionPolicy> enabledPolicies = Arrays.asList(samplePolicy);
             
@@ -164,7 +163,7 @@ class DataRetentionControllerTest {
                         .thenReturn(enabledPolicies);
 
                 // When & Then
-                mockMvc.perform(get("/api/v1/monitoring/retention/policies/enabled")
+                mockMvc.perform(get("/api/monitoring/retention/policies/enabled")
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -178,7 +177,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("특정 데이터 타입 보관 정책 조회 성공")
-        void getRetentionPolicy_Success() throws Exception {
+        void getRetentionPolicy_WhenValidDataType_ReturnsPolicy() throws Exception {
             // Given
             String dataType = "metrics";
             
@@ -189,7 +188,7 @@ class DataRetentionControllerTest {
                         .thenReturn(samplePolicy);
 
                 // When & Then
-                mockMvc.perform(get("/api/v1/monitoring/retention/policies/{dataType}", dataType)
+                mockMvc.perform(get("/api/monitoring/retention/policies/{dataType}", dataType)
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -203,7 +202,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("보관 정책이 없을 때 조회")
-        void getRetentionPolicy_NotFound() throws Exception {
+        void getRetentionPolicy_WhenPolicyNotFound_ReturnsNull() throws Exception {
             // Given
             String dataType = "metrics";
             
@@ -214,7 +213,7 @@ class DataRetentionControllerTest {
                         .thenReturn(null);
 
                 // When & Then
-                mockMvc.perform(get("/api/v1/monitoring/retention/policies/{dataType}", dataType)
+                mockMvc.perform(get("/api/monitoring/retention/policies/{dataType}", dataType)
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -232,7 +231,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("보관 정책 업데이트 성공")
-        void updateRetentionPolicy_Success() throws Exception {
+        void updateRetentionPolicy_WhenValidRequest_ReturnsUpdatedPolicy() throws Exception {
             // Given
             String dataType = "metrics";
             DataRetentionController.RetentionPolicyUpdateRequest request = 
@@ -256,7 +255,7 @@ class DataRetentionControllerTest {
                         .thenReturn(updatedPolicy);
 
                 // When & Then
-                mockMvc.perform(put("/api/v1/monitoring/retention/policies/{dataType}", dataType)
+                mockMvc.perform(put("/api/monitoring/retention/policies/{dataType}", dataType)
                                 .header("X-Tenant-Id", testTenantId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
@@ -273,7 +272,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("보관 정책 업데이트 - 잘못된 요청 데이터")
-        void updateRetentionPolicy_InvalidRequest() throws Exception {
+        void updateRetentionPolicy_WhenInvalidRequest_ReturnsBadRequest() throws Exception {
             // Given
             String dataType = "metrics";
             DataRetentionController.RetentionPolicyUpdateRequest request = 
@@ -284,7 +283,7 @@ class DataRetentionControllerTest {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
 
                 // When & Then
-                mockMvc.perform(put("/api/v1/monitoring/retention/policies/{dataType}", dataType)
+                mockMvc.perform(put("/api/monitoring/retention/policies/{dataType}", dataType)
                                 .header("X-Tenant-Id", testTenantId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
@@ -301,7 +300,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("보관 정책 활성화 성공")
-        void toggleRetentionPolicy_Enable() throws Exception {
+        void toggleRetentionPolicy_WhenEnabled_ReturnsSuccessMessage() throws Exception {
             // Given
             String dataType = "metrics";
             boolean enabled = true;
@@ -312,7 +311,7 @@ class DataRetentionControllerTest {
                 doNothing().when(retentionService).toggleRetentionPolicy(testTenantId, dataType, enabled);
 
                 // When & Then
-                mockMvc.perform(patch("/api/v1/monitoring/retention/policies/{dataType}/toggle", dataType)
+                mockMvc.perform(patch("/api/monitoring/retention/policies/{dataType}/toggle", dataType)
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("enabled", "true"))
                         .andExpect(status().isOk())
@@ -326,7 +325,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("보관 정책 비활성화 성공")
-        void toggleRetentionPolicy_Disable() throws Exception {
+        void toggleRetentionPolicy_WhenDisabled_ReturnsSuccessMessage() throws Exception {
             // Given
             String dataType = "metrics";
             boolean enabled = false;
@@ -337,7 +336,7 @@ class DataRetentionControllerTest {
                 doNothing().when(retentionService).toggleRetentionPolicy(testTenantId, dataType, enabled);
 
                 // When & Then
-                mockMvc.perform(patch("/api/v1/monitoring/retention/policies/{dataType}/toggle", dataType)
+                mockMvc.perform(patch("/api/monitoring/retention/policies/{dataType}/toggle", dataType)
                                 .header("X-Tenant-Id", testTenantId)
                                 .param("enabled", "false"))
                         .andExpect(status().isOk())
@@ -356,7 +355,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("수동 데이터 정리 성공")
-        void manualCleanup_Success() throws Exception {
+        void manualCleanup_WhenValidRequest_ReturnsCleanedCount() throws Exception {
             // Given - 테넌트에 활성화된 보관 정책이 존재하고 수동 정리 요청을 위한 Mock 설정이 완료된 상황
             String dataType = "metrics";  // 메트릭 데이터 타입
             int cleanedCount = 1000;  // 정리될 예상 데이터 개수
@@ -368,7 +367,7 @@ class DataRetentionControllerTest {
                         .thenReturn(cleanedCount);  // 서비스에서 1000개의 정리된 데이터 개수를 반환하도록 Mock
 
                 // When & Then - 수동 데이터 정리 API를 호출하고 응답을 검증하는 경우
-                mockMvc.perform(post("/api/v1/monitoring/retention/cleanup/{dataType}", dataType)  // POST /cleanup/{dataType} 엔드포인트 호출
+                mockMvc.perform(post("/api/monitoring/retention/cleanup/{dataType}", dataType)  // POST /cleanup/{dataType} 엔드포인트 호출
                                 .header("X-Tenant-Id", testTenantId))  // 테넌트 ID 헤더 설정
                         .andExpect(status().isOk())  // HTTP 200 OK 상태코드 확인
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))  // JSON 응답 확인
@@ -381,7 +380,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("수동 데이터 정리 - 정리된 데이터 없음")
-        void manualCleanup_NoData() throws Exception {
+        void manualCleanup_WhenNoData_ReturnsZeroCount() throws Exception {
             // Given
             String dataType = "metrics";
             int cleanedCount = 0;
@@ -393,7 +392,7 @@ class DataRetentionControllerTest {
                         .thenReturn(cleanedCount);
 
                 // When & Then
-                mockMvc.perform(post("/api/v1/monitoring/retention/cleanup/{dataType}", dataType)
+                mockMvc.perform(post("/api/monitoring/retention/cleanup/{dataType}", dataType)
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -411,7 +410,7 @@ class DataRetentionControllerTest {
 
         @Test
         @DisplayName("보관 정책 통계 조회 성공")
-        void getRetentionStatistics_Success() throws Exception {
+        void getRetentionStatistics_WhenValidRequest_ReturnsStatistics() throws Exception {
             // Given - 통계 조회를 위한 Mock 설정
             try (MockedStatic<TenantContextHolder> mockedStatic = mockStatic(TenantContextHolder.class)) {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(testTenantId);
@@ -421,7 +420,7 @@ class DataRetentionControllerTest {
                         .thenReturn(mock(TenantDataRetentionService.RetentionPolicyStatistics.class));
 
                 // When & Then - 통계 조회 API 호출
-                mockMvc.perform(get("/api/v1/monitoring/retention/statistics")
+                mockMvc.perform(get("/api/monitoring/retention/statistics")
                                 .header("X-Tenant-Id", testTenantId))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))

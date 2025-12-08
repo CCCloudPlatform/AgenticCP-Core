@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025.11.13
  */
 @DisplayName("RetryConfig 단위 테스트")
 class RetryConfigTest {
@@ -38,21 +38,21 @@ class RetryConfigTest {
         
         @Test
         @DisplayName("최대 재시도 횟수는 3회이다")
-        void maxRetryAttempts_ShouldBe3() {
+        void maxRetryAttempts_DefaultValue_Returns3() {
             // Then
             assertThat(RetryConfig.MAX_RETRY_ATTEMPTS).isEqualTo(3);
         }
         
         @Test
         @DisplayName("초기 백오프 지연 시간은 1초이다")
-        void initialBackoffDelay_ShouldBe1Second() {
+        void initialBackoffDelay_DefaultValue_Returns1Second() {
             // Then
             assertThat(RetryConfig.INITIAL_BACKOFF_DELAY).isEqualTo(1000L);
         }
         
         @Test
         @DisplayName("백오프 배수는 2.0이다")
-        void backoffMultiplier_ShouldBe2() {
+        void backoffMultiplier_DefaultValue_Returns2() {
             // Then
             assertThat(RetryConfig.BACKOFF_MULTIPLIER).isEqualTo(2.0);
         }
@@ -64,7 +64,7 @@ class RetryConfigTest {
         
         @Test
         @DisplayName("RetryListener Bean이 생성된다")
-        void retryListener_ShouldBeCreated() {
+        void retryListener_NormalCreation_ReturnsBean() {
             // When
             RetryListener listener = retryConfig.retryListener();
             

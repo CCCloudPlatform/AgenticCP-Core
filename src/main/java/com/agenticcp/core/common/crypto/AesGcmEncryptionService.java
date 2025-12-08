@@ -57,7 +57,7 @@ public class AesGcmEncryptionService implements EncryptionService {
         try {
             byte[] allBytes = Base64.getDecoder().decode(serializedCipher);
             if (allBytes.length <= IV_LENGTH_BYTE) {
-                throw new IllegalArgumentException("암호문 포맷 오류");
+                throw new IllegalArgumentException("암호문 포맷 오류: 디코딩된 길이(" + allBytes.length + ")가 IV 길이(" + IV_LENGTH_BYTE + ") 이하입니다.");
             }
             byte[] iv = new byte[IV_LENGTH_BYTE];
             byte[] cipherAndTag = new byte[allBytes.length - IV_LENGTH_BYTE];
@@ -70,8 +70,10 @@ public class AesGcmEncryptionService implements EncryptionService {
             return new String(plaintext, StandardCharsets.UTF_8);
         } catch (IllegalArgumentException e) {
             throw e;
+        } catch (javax.crypto.AEADBadTagException e) {
+            throw new RuntimeException("복호화 실패: 암호화 키가 일치하지 않거나 암호문이 손상되었습니다.", e);
         } catch (Exception e) {
-            throw new RuntimeException("복호화 실패", e);
+            throw new RuntimeException("복호화 실패: " + e.getClass().getSimpleName() + " - " + e.getMessage(), e);
         }
     }
 }

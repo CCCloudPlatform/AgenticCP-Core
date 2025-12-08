@@ -10,6 +10,15 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 조직 Repository
+ * 
+ * <p>조직 엔티티에 대한 데이터 접근을 제공합니다.</p>
+ * 
+ * @author AgenticCP Team
+ * @version 1.0.0
+ * @since 2025-11-13
+ */
 @Repository
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
     
@@ -62,10 +71,18 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     long count();
     
     /**
-     * 특정 조직에 속한 테넌트들 조회
+     * 특정 조직에 연결된 테넌트 조회 (1:1 관계)
      * @param organizationId 조직 ID
-     * @return 테넌트 목록
+     * @return 테넌트 (Optional)
      */
     @Query("SELECT t FROM Tenant t WHERE t.organization.id = :organizationId")
-    List<Tenant> findTenantsByOrganizationId(@Param("organizationId") Long organizationId);
+    Optional<Tenant> findTenantByOrganizationId(@Param("organizationId") Long organizationId);
+    
+    /**
+     * 조직에 테넌트가 존재하는지 확인
+     * @param organizationId 조직 ID
+     * @return 테넌트 존재 여부
+     */
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Tenant t WHERE t.organization.id = :organizationId")
+    boolean existsTenantByOrganizationId(@Param("organizationId") Long organizationId);
 }

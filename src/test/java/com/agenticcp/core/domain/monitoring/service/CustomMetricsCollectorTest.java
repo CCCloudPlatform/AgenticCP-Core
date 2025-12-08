@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-11-13
  */
 @DisplayName("CustomMetricsCollector 단위 테스트")
 class CustomMetricsCollectorTest {

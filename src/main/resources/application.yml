@@ -27,16 +27,41 @@ spring:
     livereload:
       enabled: true
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    from: ${MAIL_FROM:noreply@agenticcp.com}
+  
+  thymeleaf:
+    mode: HTML
+    encoding: UTF-8
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false  # 개발 환경에서는 캐시 비활성화
+
 app:
   redis:
     enabled: false
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
 
 # AWS S3 설정
 aws:
   s3:
     region: ${AWS_REGION:us-east-1}
     endpoint: ${AWS_S3_ENDPOINT:}
-
 
 security:
   jwt:

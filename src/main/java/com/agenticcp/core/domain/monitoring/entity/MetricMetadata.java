@@ -2,7 +2,10 @@ package com.agenticcp.core.domain.monitoring.entity;
 
 import com.agenticcp.core.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +18,7 @@ import lombok.NoArgsConstructor;
  * 
  * @author AgenticCP Team
  * @version 1.0.0
- * @since 2025-10-02
+ * @since 2025-11-13
  */
 @Entity
 @Table(name = "metric_metadata", indexes = {
@@ -23,7 +26,9 @@ import lombok.NoArgsConstructor;
     @Index(name = "idx_metric_metadata_key", columnList = "`key`")
 })
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class MetricMetadata extends BaseEntity {
 
     /**
@@ -31,11 +36,14 @@ public class MetricMetadata extends BaseEntity {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "metric_id", nullable = false)
+    @NotNull(message = "메트릭은 필수입니다")
     private Metric metric;
 
     /**
      * 메타데이터 키 (예: hostname, region, instance_type)
      */
+    @NotBlank(message = "메타데이터 키는 필수입니다")
+    @Size(max = 100, message = "메타데이터 키는 100자를 초과할 수 없습니다")
     @Column(name = "`key`", nullable = false, length = 100)
     private String key;
 
@@ -49,6 +57,7 @@ public class MetricMetadata extends BaseEntity {
      * 데이터 타입 (string, number, boolean, json)
      */
     @Column(name = "data_type", length = 50)
+    @Builder.Default
     private String dataType = "string";
 
     /**
@@ -56,15 +65,6 @@ public class MetricMetadata extends BaseEntity {
      */
     @Column(name = "description", length = 500)
     private String description;
-
-    @Builder
-    public MetricMetadata(Metric metric, String key, String value, String dataType, String description) {
-        this.metric = metric;
-        this.key = key;
-        this.value = value;
-        this.dataType = dataType;
-        this.description = description;
-    }
 
     /**
      * 메타데이터 값 업데이트

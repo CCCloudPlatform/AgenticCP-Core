@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.springframework.beans.factory.ObjectProvider;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -45,6 +46,9 @@ class PolicyEngineServiceTest {
     
     @Mock
     private RedisTemplate<String, Object> redisTemplate;
+    
+    @Mock
+    private ObjectProvider<RedisTemplate<String, Object>> redisTemplateProvider;
     
     @Mock
     private ValueOperations<String, Object> valueOperations;
@@ -89,6 +93,7 @@ class PolicyEngineServiceTest {
         
         // Redis 템플릿 모킹
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplateProvider.getIfAvailable()).thenReturn(redisTemplate);
         
         // ObjectMapper 모킹
         when(objectMapper.getTypeFactory()).thenReturn(com.fasterxml.jackson.databind.type.TypeFactory.defaultInstance());
