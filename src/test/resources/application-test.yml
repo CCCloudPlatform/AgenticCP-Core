@@ -7,8 +7,8 @@ spring:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
-    password: 
-  
+    password:
+
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -16,14 +16,14 @@ spring:
     properties:
       hibernate:
         format_sql: false
-  
+
   cache:
     type: simple
-  
+
   redis:
     host: ${SPRING_REDIS_HOST:localhost}
     port: ${SPRING_REDIS_PORT:6379}
-    password: 
+    password:
     timeout: 2000ms
     lettuce:
       pool:
@@ -40,9 +40,10 @@ config:
   cipher:
     key: ${CONFIG_CIPHER_KEY:MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=}
 
+# 테스트용 JWT 설정
 security:
   jwt:
-    secret: ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=
+    secret: ${JWT_SECRET:ZmFrZV9zZWNyZXRfZm9yX2Rldl9vbmx5X3VzZV9jaGFuZ2VfbWU=}
     access-token-expiration-ms: 3600000
     refresh-token-expiration-ms: 604800000
 

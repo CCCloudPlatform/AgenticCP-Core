@@ -71,14 +71,15 @@ class MenuAuthorizationServiceTest {
         testPermission = Permission.builder()
                 .permissionKey("MENU_READ")
                 .permissionName("메뉴 조회")
-                .tenant(testTenant)
                 .build();
+        testPermission.setTenant(testTenant);
 
         testRole = Role.builder()
                 .roleKey("ADMIN")
                 .roleName("관리자")
                 .permissions(List.of(testPermission))
                 .build();
+        testRole.setTenant(testTenant);
 
         testUser = User.builder()
                 .username("testuser")
@@ -86,6 +87,7 @@ class MenuAuthorizationServiceTest {
                 .roles(List.of(testRole))
                 .permissions(List.of())
                 .build();
+        testUser.setTenant(testTenant);
 
         testMenu = Menu.builder()
                 .menuKey("TEST_MENU")

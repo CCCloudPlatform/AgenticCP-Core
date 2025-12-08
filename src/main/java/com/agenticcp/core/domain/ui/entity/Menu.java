@@ -2,7 +2,7 @@ package com.agenticcp.core.domain.ui.entity;
 
 import com.agenticcp.core.common.logging.masking.Masked;
 import com.agenticcp.core.common.logging.masking.MaskingType;
-import com.agenticcp.core.common.entity.BaseEntity;
+import com.agenticcp.core.common.entity.TenantAwareEntity;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -29,7 +29,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Menu extends BaseEntity {
+public class Menu extends TenantAwareEntity {
 
     /**
      * 메뉴 키 (테넌트 내에서 유일)

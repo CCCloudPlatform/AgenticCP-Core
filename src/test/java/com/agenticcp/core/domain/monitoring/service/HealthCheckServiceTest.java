@@ -74,10 +74,10 @@ class HealthCheckServiceTest {
                 .username("superadmin")
                 .email("admin@agenticcp.com")
                 .name("플랫폼 운영자")
-                .tenant(testAdminTenant)
                 .role(UserRole.SUPER_ADMIN)
                 .status(Status.ACTIVE)
                 .build();
+        testSuperAdmin.setTenant(testAdminTenant);
         setId(testSuperAdmin, 1L);
         
         // Mock 기본 동작 설정
@@ -91,9 +91,23 @@ class HealthCheckServiceTest {
      * Reflection을 사용하여 BaseEntity의 id 필드 설정
      */
     private void setId(Object entity, Long id) throws Exception {
-        java.lang.reflect.Field idField = entity.getClass().getSuperclass().getDeclaredField("id");
-        idField.setAccessible(true);
-        idField.set(entity, id);
+        Class<?> currentClass = entity.getClass();
+        java.lang.reflect.Field idField = null;
+        
+        // BaseEntity 또는 TenantAwareEntity에서 id 필드 찾기
+        while (currentClass != null && !currentClass.equals(Object.class)) {
+            try {
+                idField = currentClass.getDeclaredField("id");
+                break;
+            } catch (NoSuchFieldException e) {
+                currentClass = currentClass.getSuperclass();
+            }
+        }
+        
+        if (idField != null) {
+            idField.setAccessible(true);
+            idField.set(entity, id);
+        }
     }
 
     @Nested

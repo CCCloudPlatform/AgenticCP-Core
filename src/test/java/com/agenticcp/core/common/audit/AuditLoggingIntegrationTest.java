@@ -1,9 +1,11 @@
 package com.agenticcp.core.common.audit;
 
+import com.agenticcp.core.common.enums.AuditResourceType;
+import com.agenticcp.core.common.enums.AuditSeverity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.Disabled;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -17,7 +19,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * AuditController와 AuditRequired 애노테이션이 함께 작동하는지 검증
  */
 @ExtendWith(MockitoExtension.class)
-@Disabled("Integration test disabled")
 class AuditLoggingIntegrationTest {
 
     private MockMvc mockMvc;

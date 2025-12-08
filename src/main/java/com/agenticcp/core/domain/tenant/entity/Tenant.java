@@ -1,6 +1,5 @@
 package com.agenticcp.core.domain.tenant.entity;
 
-import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.organization.entity.Organization;
 import jakarta.persistence.*;
@@ -8,6 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -17,7 +19,30 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Tenant extends BaseEntity {
+@EntityListeners(AuditingEntityListener.class)
+public class Tenant {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "created_by")
+    private String createdBy;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @Column(name = "tenant_key", nullable = false, unique = true)
     private String tenantKey;
@@ -35,6 +60,7 @@ public class Tenant extends BaseEntity {
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Status status = Status.ACTIVE;
 
     @Column(name = "tenant_type")
@@ -72,6 +98,7 @@ public class Tenant extends BaseEntity {
     private LocalDateTime subscriptionEndDate;
 
     @Column(name = "is_trial")
+    @Builder.Default
     private Boolean isTrial = false;
 
     @Column(name = "trial_end_date")

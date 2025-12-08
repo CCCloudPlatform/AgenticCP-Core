@@ -1,8 +1,11 @@
 package com.agenticcp.core.common.audit;
 
+import com.agenticcp.core.common.enums.AuditResourceType;
+import com.agenticcp.core.common.enums.AuditSeverity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;

@@ -69,8 +69,8 @@ class MenuServiceTest {
                 .sortOrder(1)
                 .isActive(true)
                 .isSystem(false)
-                .tenant(testTenant)
                 .build();
+        testMenu.setTenant(testTenant);
     }
 
     @Test
@@ -232,8 +232,8 @@ class MenuServiceTest {
                 .menuKey("SYSTEM_MENU")
                 .menuName("시스템 메뉴")
                 .isSystem(true)
-                .tenant(testTenant)
                 .build();
+        systemMenu.setTenant(testTenant);
 
         when(menuRepository.findById(1L)).thenReturn(Optional.of(systemMenu));
 
@@ -254,8 +254,8 @@ class MenuServiceTest {
                 .menuKey("CHILD_MENU")
                 .menuName("하위 메뉴")
                 .parentId(1L)
-                .tenant(testTenant)
                 .build();
+        childMenu.setTenant(testTenant);
 
         when(menuRepository.findById(1L)).thenReturn(Optional.of(testMenu));
         when(menuRepository.findByParentIdAndTenant(1L, testTenant))

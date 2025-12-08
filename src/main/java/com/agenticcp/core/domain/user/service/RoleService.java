@@ -1,6 +1,7 @@
 package com.agenticcp.core.domain.user.service;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.util.LogMaskingUtils;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.exception.BusinessException;
@@ -176,7 +177,6 @@ public class RoleService {
                 .roleKey(request.getRoleKey())
                 .roleName(request.getRoleName())
                 .description(request.getDescription())
-                .tenant(currentTenant)
                 .isSystem(Boolean.TRUE.equals(request.getIsSystem()))
                 .isDefault(false)
                 .priority(request.getPriority())
