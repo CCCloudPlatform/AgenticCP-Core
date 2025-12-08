@@ -1,7 +1,7 @@
 package com.agenticcp.core.domain.cloud.port.outbound.storage;
 
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ObjectStorageContainerQueryRequest;
 import org.springframework.data.domain.Page;
 
 import java.util.Optional;

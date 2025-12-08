@@ -4,7 +4,7 @@ import com.agenticcp.core.common.audit.AuditController;
 import com.agenticcp.core.common.audit.AuditRequired;
 import com.agenticcp.core.common.enums.AuditResourceType;
 import com.agenticcp.core.common.enums.AuditSeverity;
-import com.agenticcp.core.domain.cloud.port.model.account.*;
+import com.agenticcp.core.domain.cloud.dto.*;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.service.account.CloudAccountUseCaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -162,12 +162,12 @@ public class CloudAccountController {
      */
     @PostMapping("/validate")
     @Operation(summary = "계정 사전 검증", description = "계정 등록 전 자격증명의 유효성을 검증합니다.")
-    public ResponseEntity<AccountValidationResult> validateAccount(
+    public ResponseEntity<AccountValidationResponse> validateAccount(
             @Valid @RequestBody AccountValidationRequest request) {
         log.info("[CloudAccountController] validateAccount - providerType={}", 
                  request.getProviderType());
         
-        AccountValidationResult result = 
+        AccountValidationResponse result =
             cloudAccountUseCaseService.validateAccountBeforeRegistration(request);
         
         log.info("[CloudAccountController] validateAccount - success, valid={}", 
@@ -183,12 +183,12 @@ public class CloudAccountController {
      */
     @PostMapping("/{accountId}/test-connection")
     @Operation(summary = "연결 테스트", description = "등록된 계정의 연결 상태를 테스트합니다.")
-    public ResponseEntity<ConnectionTestResult> testConnection(
+    public ResponseEntity<ConnectionTestResponse> testConnection(
             @Parameter(description = "계정 ID", required = true)
             @PathVariable Long accountId) {
         log.info("[CloudAccountController] testConnection - accountId={}", accountId);
         
-        ConnectionTestResult result = cloudAccountUseCaseService.testConnection(accountId);
+        ConnectionTestResponse result = cloudAccountUseCaseService.testConnection(accountId);
         
         log.info("[CloudAccountController] testConnection - success, success={}", 
                  result.getSuccess());

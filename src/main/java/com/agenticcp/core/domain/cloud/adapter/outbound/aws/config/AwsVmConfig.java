@@ -1,4 +1,4 @@
-package com.agenticcp.core.common.config;
+package com.agenticcp.core.domain.cloud.adapter.outbound.aws.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

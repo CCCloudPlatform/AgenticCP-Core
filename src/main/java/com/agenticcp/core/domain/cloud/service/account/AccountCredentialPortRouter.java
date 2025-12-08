@@ -6,9 +6,9 @@ import com.agenticcp.core.domain.cloud.entity.CloudAccount;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
-import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationRequest;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationResponse;
+import com.agenticcp.core.domain.cloud.dto.ConnectionTestResponse;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountSyncPort;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountValidationPort;
@@ -86,14 +86,14 @@ public class AccountCredentialPortRouter implements
 
     // AccountValidationPort 구현
     @Override
-    public AccountValidationResult validateAccount(AccountValidationRequest request) {
+    public AccountValidationResponse validateAccount(AccountValidationRequest request) {
         ProviderType providerType = request.getProviderType();
         AccountValidationPort port = getPort(validationPorts, providerType, "AccountValidationPort");
         return port.validateAccount(request);
     }
 
     @Override
-    public ConnectionTestResult testConnection(Long accountId, Map<String, String> credentials) {
+    public ConnectionTestResponse testConnection(Long accountId, Map<String, String> credentials) {
         ProviderType providerType = getProviderType(accountId);
         AccountValidationPort port = getPort(validationPorts, providerType, "AccountValidationPort");
         return port.testConnection(accountId, credentials);

@@ -10,8 +10,6 @@ import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
-import software.amazon.awssdk.services.resourcegroupstaggingapi.ResourceGroupsTaggingApiClient;
-import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sts.StsClient;
 
 /**
@@ -25,8 +23,6 @@ import software.amazon.awssdk.services.sts.StsClient;
  */
 @Component
 public class AwsClientConfig {
-
-    // ==================== Public API: Client 생성 메서드 ====================
 
     /**
      * 동적 자격증명으로 STS Client를 생성합니다.
@@ -64,45 +60,6 @@ public class AwsClientConfig {
                 .region(Region.of(resolveRegion(targetRegion)))
                 .build();
     }
-
-    /**
-     * 세션 자격증명으로 S3 Client를 생성합니다.
-     * * @param session AWS 세션 자격증명
-     * @param region AWS 리전 (S3는 리전이 중요하므로 명시적 전달 권장, null이면 세션 리전 사용)
-     * @return S3Client 인스턴스
-     */
-    public S3Client createS3Client(CloudSessionCredential session, String region) {
-        AwsSessionCredential awsSession = validateAndCastSession(session);
-
-        String targetRegion = region != null ? region : awsSession.getRegion();
-
-        return S3Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(toSdkCredentials(awsSession)))
-                .region(Region.of(resolveRegion(targetRegion)))
-                // .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
-                .build();
-    }
-
-    /**
-     * 세션 자격증명으로 Resource Groups Tagging API Client를 생성합니다.
-     * 태그 기반 리소스 조회 시 사용됩니다.
-     *
-     * @param session AWS 세션 자격증명
-     * @param region AWS 리전 (null이면 세션의 리전 사용)
-     * @return ResourceGroupsTaggingApiClient 인스턴스
-     */
-    public Ec2Client createEc2Client(CloudSessionCredential session, String region) {
-        AwsSessionCredential awsSession = validateAndCastSession(session);
-        AwsSessionCredentials sdkCredentials = toSdkCredentials(awsSession);
-        String resolvedRegion = resolveRegion(region, awsSession.getRegion());
-
-        return Ec2Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(sdkCredentials))
-                .region(Region.of(resolvedRegion))
-                .build();
-    }
-
-    // ==================== Private Helper Methods ====================
 
     /**
      * 세션 검증 및 AWS 세션으로 캐스팅

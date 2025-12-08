@@ -1,8 +1,8 @@
 package com.agenticcp.core.domain.cloud.port.outbound.account;
 
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationRequest;
-import com.agenticcp.core.domain.cloud.port.model.account.ConnectionTestResult;
-import com.agenticcp.core.domain.cloud.port.model.account.AccountValidationResult;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationRequest;
+import com.agenticcp.core.domain.cloud.dto.ConnectionTestResponse;
+import com.agenticcp.core.domain.cloud.dto.AccountValidationResponse;
 
 import java.util.Map;
 
@@ -33,7 +33,7 @@ public interface AccountValidationPort {
      * @throws com.agenticcp.core.common.exception.BusinessException 검증 실패 시 
      *         (잘못된 자격증명, 네트워크 오류 등)
      */
-    AccountValidationResult validateAccount(AccountValidationRequest request);
+    AccountValidationResponse validateAccount(AccountValidationRequest request);
     
     /**
      * 등록된 계정의 연결을 테스트합니다.
@@ -46,6 +46,6 @@ public interface AccountValidationPort {
      * @return ConnectionTestResult 연결 테스트 결과
      * @throws com.agenticcp.core.common.exception.BusinessException 연결 테스트 실패 시
      */
-    ConnectionTestResult testConnection(Long accountId, Map<String, String> credentials);
+    ConnectionTestResponse testConnection(Long accountId, Map<String, String> credentials);
 }
 

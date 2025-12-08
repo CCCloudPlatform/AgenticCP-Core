@@ -3,7 +3,7 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.s3;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsS3Config;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -49,7 +49,7 @@ class AwsS3BucketManagementAdapterTest {
     private CloudProviderRepository cloudProviderRepository;
 
     @Mock
-    private AwsClientConfig awsClientConfig;
+    private AwsS3Config awsS3Config;
 
     @InjectMocks
     private AwsS3BucketManagementAdapter adapter;
@@ -85,7 +85,7 @@ class AwsS3BucketManagementAdapterTest {
         void createContainer_Success() {
             // Given
             when(cloudProviderRepository.findFirstByProviderType(any())).thenReturn(Optional.of(awsProvider));
-            when(awsClientConfig.createS3Client(eq(mockSession), eq("us-east-1"))).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(mockSession), eq("us-east-1"))).thenReturn(s3Client);
 
             CreateObjectStorageContainerCommand command = CreateObjectStorageContainerCommand.builder()
                     .containerName(CONTAINER_NAME)
@@ -110,7 +110,7 @@ class AwsS3BucketManagementAdapterTest {
             assertThat(result).isNotNull();
             assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
 
-            verify(awsClientConfig).createS3Client(eq(mockSession), eq("us-east-1"));
+            verify(awsS3Config).createS3Client(eq(mockSession), eq("us-east-1"));
             verify(s3Client).createBucket(any(CreateBucketRequest.class));
             verify(mapper).toCloudResource(any(Bucket.class), any(CloudProvider.class));
         }
@@ -119,7 +119,7 @@ class AwsS3BucketManagementAdapterTest {
         @DisplayName("이미 존재하는 Container명으로 생성 시 예외 발생 (다른 계정 소유)")
         void createContainer_AlreadyExists_ThrowsException() {
             // Given
-            when(awsClientConfig.createS3Client(eq(mockSession), eq("us-east-1"))).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(mockSession), eq("us-east-1"))).thenReturn(s3Client);
             when(s3Client.createBucket(any(CreateBucketRequest.class)))
                     .thenThrow(BucketAlreadyExistsException.builder().build());
 
@@ -133,7 +133,7 @@ class AwsS3BucketManagementAdapterTest {
             assertThatThrownBy(() -> adapter.createContainer(command))
                     .isInstanceOf(BusinessException.class);
 
-            verify(awsClientConfig).createS3Client(eq(mockSession), eq("us-east-1"));
+            verify(awsS3Config).createS3Client(eq(mockSession), eq("us-east-1"));
             verify(s3Client).createBucket(any(CreateBucketRequest.class));
         }
     }
@@ -146,7 +146,7 @@ class AwsS3BucketManagementAdapterTest {
         @DisplayName("정상적인 Container 삭제")
         void deleteContainer_Success() {
             // Given
-            when(awsClientConfig.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
             when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                     .thenReturn(ListObjectsV2Response.builder()
                             .contents(Collections.emptyList())
@@ -158,7 +158,7 @@ class AwsS3BucketManagementAdapterTest {
             adapter.deleteContainer(mockSession, CONTAINER_NAME);
 
             // Then
-            verify(awsClientConfig).createS3Client(eq(mockSession), isNull());
+            verify(awsS3Config).createS3Client(eq(mockSession), isNull());
             verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
             verify(s3Client).deleteBucket(any(DeleteBucketRequest.class));
         }
@@ -167,7 +167,7 @@ class AwsS3BucketManagementAdapterTest {
         @DisplayName("존재하지 않는 Container 삭제 시 예외 발생")
         void deleteContainer_NotFound_ThrowsException() {
             // Given
-            when(awsClientConfig.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
             when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                     .thenReturn(ListObjectsV2Response.builder()
                             .contents(Collections.emptyList())
@@ -179,7 +179,7 @@ class AwsS3BucketManagementAdapterTest {
             assertThatThrownBy(() -> adapter.deleteContainer(mockSession, CONTAINER_NAME))
                     .isInstanceOf(BusinessException.class);
 
-            verify(awsClientConfig).createS3Client(eq(mockSession), isNull());
+            verify(awsS3Config).createS3Client(eq(mockSession), isNull());
             verify(s3Client).listObjectsV2(any(ListObjectsV2Request.class));
             verify(s3Client).deleteBucket(any(DeleteBucketRequest.class));
         }
@@ -193,7 +193,7 @@ class AwsS3BucketManagementAdapterTest {
         @DisplayName("정상적인 Container 강제 삭제")
         void forceDeleteContainer_Success() {
             // Given
-            when(awsClientConfig.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
             when(s3Client.headBucket(any(HeadBucketRequest.class)))
                     .thenReturn(HeadBucketResponse.builder().build());
 
@@ -211,7 +211,7 @@ class AwsS3BucketManagementAdapterTest {
             adapter.forceDeleteContainer(CONTAINER_NAME, mockSession);
 
             // Then
-            verify(awsClientConfig).createS3Client(eq(mockSession), isNull());
+            verify(awsS3Config).createS3Client(eq(mockSession), isNull());
             verify(s3Client).headBucket(any(HeadBucketRequest.class));
             verify(s3Client).listObjectVersions(any(ListObjectVersionsRequest.class));
             verify(s3Client).deleteBucket(any(DeleteBucketRequest.class));
@@ -227,7 +227,7 @@ class AwsS3BucketManagementAdapterTest {
         void updateContainer_Success() {
             // Given
             when(cloudProviderRepository.findFirstByProviderType(any())).thenReturn(Optional.of(awsProvider));
-            when(awsClientConfig.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
 
             UpdateObjectStorageContainerCommand command = UpdateObjectStorageContainerCommand.builder()
                     .containerName(CONTAINER_NAME)
@@ -253,7 +253,7 @@ class AwsS3BucketManagementAdapterTest {
             assertThat(result).isNotNull();
             assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
 
-            verify(awsClientConfig).createS3Client(eq(mockSession), isNull());
+            verify(awsS3Config).createS3Client(eq(mockSession), isNull());
             verify(s3Client).headBucket(any(HeadBucketRequest.class));
             verify(s3Client).putBucketTagging(any(PutBucketTaggingRequest.class));
             verify(mapper).toCloudResource(any(Bucket.class), any(CloudProvider.class));
@@ -263,7 +263,7 @@ class AwsS3BucketManagementAdapterTest {
         @DisplayName("존재하지 않는 Container 수정 시 예외 발생")
         void updateContainer_NotFound_ThrowsException() {
             // Given
-            when(awsClientConfig.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(mockSession), isNull())).thenReturn(s3Client);
             when(s3Client.headBucket(any(HeadBucketRequest.class)))
                     .thenThrow(NoSuchBucketException.builder().build());
 
@@ -277,7 +277,7 @@ class AwsS3BucketManagementAdapterTest {
             assertThatThrownBy(() -> adapter.updateContainer(command))
                     .isInstanceOf(BusinessException.class);
 
-            verify(awsClientConfig).createS3Client(eq(mockSession), isNull());
+            verify(awsS3Config).createS3Client(eq(mockSession), isNull());
             verify(s3Client).headBucket(any(HeadBucketRequest.class));
         }
     }

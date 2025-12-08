@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model.vpc;
+package com.agenticcp.core.domain.cloud.dto;
 
 import java.util.Map;
 

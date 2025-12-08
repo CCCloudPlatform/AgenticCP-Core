@@ -4,10 +4,10 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsS3Config;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ObjectStorageContainerQueryRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,7 +54,7 @@ class AwsS3BucketDiscoveryAdapterTest {
     private AccountCredentialManagementPort accountCredentialManagementPort;
 
     @Mock
-    private AwsClientConfig awsClientConfig;
+    private AwsS3Config awsS3Config;
 
     @Mock
     private ResourceGroupsTaggingApiClient taggingClient;
@@ -97,7 +97,7 @@ class AwsS3BucketDiscoveryAdapterTest {
             mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
             when(accountCredentialManagementPort.getSession(eq(TENANT_KEY), eq(ACCOUNT_SCOPE), eq(CloudProvider.ProviderType.AWS)))
                     .thenReturn(session);
-            when(awsClientConfig.createResourceGroupsTaggingApiClient(eq(session), isNull()))
+            when(awsS3Config.createResourceGroupsTaggingApiClient(eq(session), isNull()))
                     .thenReturn(taggingClient);
             when(cloudProviderRepository.findFirstByProviderType(CloudProvider.ProviderType.AWS))
                     .thenReturn(Optional.of(awsProvider));
@@ -141,7 +141,7 @@ class AwsS3BucketDiscoveryAdapterTest {
             mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
             when(accountCredentialManagementPort.getSession(eq(TENANT_KEY), eq(ACCOUNT_SCOPE), eq(CloudProvider.ProviderType.AWS)))
                     .thenReturn(session);
-            when(awsClientConfig.createS3Client(eq(session), isNull())).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(session), isNull())).thenReturn(s3Client);
             when(s3Client.headBucket(any(HeadBucketRequest.class))).thenThrow(NoSuchBucketException.builder().build());
 
             Optional<CloudResource> result = adapter.getContainer(ACCOUNT_SCOPE, BUCKET_NAME);
@@ -158,7 +158,7 @@ class AwsS3BucketDiscoveryAdapterTest {
             mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
             when(accountCredentialManagementPort.getSession(eq(TENANT_KEY), eq(ACCOUNT_SCOPE), eq(CloudProvider.ProviderType.AWS)))
                     .thenReturn(session);
-            when(awsClientConfig.createS3Client(eq(session), isNull())).thenReturn(s3Client);
+            when(awsS3Config.createS3Client(eq(session), isNull())).thenReturn(s3Client);
             when(s3Client.headBucket(any(HeadBucketRequest.class))).thenThrow(NoSuchBucketException.builder().build());
 
             boolean exists = adapter.containerExists(ACCOUNT_SCOPE, BUCKET_NAME);

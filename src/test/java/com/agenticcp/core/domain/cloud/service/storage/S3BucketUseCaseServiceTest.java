@@ -1,6 +1,9 @@
 package com.agenticcp.core.domain.cloud.service.storage;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.cloud.dto.CreateObjectStorageContainerRequest;
+import com.agenticcp.core.domain.cloud.dto.ObjectStorageContainerQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.UpdateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;

@@ -3,14 +3,14 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.s3;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
-import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsClientConfig;
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsS3Config;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.port.model.storage.ObjectStorageContainerQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ObjectStorageContainerQueryRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
@@ -52,7 +52,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
     private final CloudProviderRepository cloudProviderRepository;
     private final ObjectMapper objectMapper;
     private final AccountCredentialManagementPort accountCredentialManagementPort;
-    private final AwsClientConfig awsClientConfig;
+    private final AwsS3Config awsS3Config;
     private final AwsS3ErrorTranslator errorTranslator;
 
     /**
@@ -148,7 +148,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
         String resolvedScope = requireAccountScope(accountScope);
         CloudSessionCredential session = acquireSession(resolvedScope);
 
-        try (S3Client client = awsClientConfig.createS3Client(session, null)) {
+        try (S3Client client = awsS3Config.createS3Client(session, null)) {
             return action.apply(client);
         } catch (BusinessException e) {
             throw e;
@@ -162,7 +162,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
         CloudSessionCredential session = acquireSession(resolvedScope);
 
         try (ResourceGroupsTaggingApiClient client =
-                     awsClientConfig.createResourceGroupsTaggingApiClient(session, null)) {
+                     awsS3Config.createResourceGroupsTaggingApiClient(session, null)) {
             return action.apply(client);
         } catch (BusinessException e) {
             throw e;

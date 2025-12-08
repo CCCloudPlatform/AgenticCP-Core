@@ -1,4 +1,4 @@
-package com.agenticcp.core.domain.cloud.port.model.account;
+package com.agenticcp.core.domain.cloud.dto;
 
 import com.agenticcp.core.domain.cloud.enums.AccountStatus;
 import jakarta.validation.constraints.Size;
