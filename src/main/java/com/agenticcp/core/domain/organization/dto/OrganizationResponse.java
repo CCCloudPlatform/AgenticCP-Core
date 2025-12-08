@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
  * <p>조직 정보를 표현하는 응답 DTO입니다.
  * Organization 엔티티를 클라이언트에 전달하기 위한 변환 객체입니다.</p>
  * 
+ * <p>ERD 기준 필드: id, name, created_at + tenant 정보 (1:1)</p>
+ * 
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2025-11-13
@@ -32,64 +34,98 @@ public class OrganizationResponse {
     @Schema(description = "조직 ID", example = "1")
     private Long id;
     
-    /** 조직 키 */
-    @Schema(description = "조직 키", example = "dev-team")
+    /** 조직명 (ERD: name) */
+    @Schema(description = "조직명", example = "개발팀")
+    private String name;
+    
+    // ========== 테넌트 정보 (1:1 관계) ==========
+    
+    /** 테넌트 ID */
+    @Schema(description = "연결된 테넌트 ID", example = "1")
+    private Long tenantId;
+    
+    /** 테넌트 키 */
+    @Schema(description = "연결된 테넌트 키", example = "tenant-dev")
+    private String tenantKey;
+    
+    /** 테넌트 타입 (DEDICATED/SHARED) */
+    @Schema(description = "테넌트 타입", example = "DEDICATED")
+    private String tenantType;
+    
+    // ========== [DEPRECATED] 호환성을 위해 유지 ==========
+    
+    /** @deprecated ERD에 없음 - name 필드 사용 권장 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 조직 키", example = "dev-team")
     private String orgKey;
     
-    /** 조직명 */
-    @Schema(description = "조직명", example = "개발팀")
+    /** @deprecated ERD에 없음 - name 필드 사용 권장 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 조직명", example = "개발팀")
     private String orgName;
     
-    /** 조직 설명 */
-    @Schema(description = "조직 설명", example = "개발 관련 업무를 담당하는 조직")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 조직 설명")
     private String description;
     
-    /** 상위 조직 ID */
-    @Schema(description = "상위 조직 ID", example = "1")
+    /** @deprecated ERD에 계층 구조 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 상위 조직 ID")
     private Long parentOrgId;
     
-    /** 상태 */
-    @Schema(description = "상태", example = "ACTIVE")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 상태")
     private String status;
     
-    /** 조직 타입 */
-    @Schema(description = "조직 타입", example = "DEPARTMENT")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 조직 타입")
     private String orgType;
     
-    /** 연락처 이메일 */
-    @Schema(description = "연락처 이메일", example = "contact@example.com")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 연락처 이메일")
     private String contactEmail;
     
-    /** 연락처 전화번호 */
-    @Schema(description = "연락처 전화번호", example = "02-1234-5678")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 연락처 전화번호")
     private String contactPhone;
     
-    /** 주소 */
-    @Schema(description = "주소", example = "서울시 강남구")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 주소")
     private String address;
     
-    /** 웹사이트 */
-    @Schema(description = "웹사이트", example = "https://example.com")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 웹사이트")
     private String website;
     
-    /** 최대 사용자 수 */
-    @Schema(description = "최대 사용자 수", example = "100")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 최대 사용자 수")
     private Integer maxUsers;
     
-    /** 조직별 설정 (JSON) */
-    @Schema(description = "조직별 설정 (JSON)", example = "{\"theme\": \"dark\"}")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 조직별 설정 (JSON)")
     private String settings;
     
-    /** 설립일 */
-    @Schema(description = "설립일", example = "2024-01-01T00:00:00")
+    /** @deprecated ERD에 없음 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 설립일")
     private LocalDateTime establishedDate;
     
-    /** 생성일시 */
+    /** 생성일시 (ERD: created_at) */
     @Schema(description = "생성일시", example = "2024-01-01T00:00:00")
     private LocalDateTime createdAt;
     
-    /** 수정일시 */
-    @Schema(description = "수정일시", example = "2024-01-01T00:00:00")
+    /** @deprecated ERD에 없음 - BaseEntity 상속으로 존재하지만 ERD에 미포함 */
+    @Deprecated
+    @Schema(description = "[DEPRECATED] 수정일시")
     private LocalDateTime updatedAt;
     
     /**
@@ -99,8 +135,11 @@ public class OrganizationResponse {
      * @return 조직 응답 DTO
      */
     public static OrganizationResponse from(Organization organization) {
-        return OrganizationResponse.builder()
+        OrganizationResponseBuilder builder = OrganizationResponse.builder()
                 .id(organization.getId())
+                // ERD 기준 필드
+                .name(organization.getName() != null ? organization.getName() : organization.getOrgName())
+                // [DEPRECATED] 호환성 유지
                 .orgKey(organization.getOrgKey())
                 .orgName(organization.getOrgName())
                 .description(organization.getDescription())
@@ -116,7 +155,16 @@ public class OrganizationResponse {
                 .settings(organization.getSettings())
                 .establishedDate(organization.getEstablishedDate())
                 .createdAt(organization.getCreatedAt())
-                .updatedAt(organization.getUpdatedAt())
-                .build();
+                .updatedAt(organization.getUpdatedAt());
+        
+        // 테넌트 정보 (1:1 관계)
+        if (organization.getTenant() != null) {
+            builder.tenantId(organization.getTenant().getId())
+                   .tenantKey(organization.getTenant().getTenantKey())
+                   .tenantType(organization.getTenant().getTenantType() != null ? 
+                       organization.getTenant().getTenantType().name() : null);
+        }
+        
+        return builder.build();
     }
 }

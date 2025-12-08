@@ -14,15 +14,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Organization-Tenant 관계 테스트")
+@DisplayName("Organization-Tenant 관계 테스트 (1:1)")
 class OrganizationTenantServiceTest {
 
     @Mock
@@ -35,8 +33,7 @@ class OrganizationTenantServiceTest {
     private OrganizationService organizationService;
 
     private Organization testOrganization;
-    private Tenant testTenant1;
-    private Tenant testTenant2;
+    private Tenant testTenant;
 
     @BeforeEach
     void setUp() {
@@ -53,8 +50,8 @@ class OrganizationTenantServiceTest {
             .build();
         testOrganization.setId(1L);
 
-        // 테스트 테넌트 1 생성
-        testTenant1 = Tenant.builder()
+        // 테스트 테넌트 생성 (1:1 관계)
+        testTenant = Tenant.builder()
             .tenantKey("TENANT_A")
             .tenantName("테넌트 A")
             .description("테스트 테넌트 A")
@@ -62,60 +59,46 @@ class OrganizationTenantServiceTest {
             .maxUsers(50)
             .organization(testOrganization)
             .build();
-        testTenant1.setId(1L);
+        testTenant.setId(1L);
 
-        // 테스트 테넌트 2 생성
-        testTenant2 = Tenant.builder()
-            .tenantKey("TENANT_B")
-            .tenantName("테넌트 B")
-            .description("테스트 테넌트 B")
-            .status(Status.ACTIVE)
-            .maxUsers(30)
-            .organization(testOrganization)
-            .build();
-        testTenant2.setId(2L);
-
-        // 조직에 테넌트들 설정
-        testOrganization.setTenants(Arrays.asList(testTenant1, testTenant2));
+        // 조직에 테넌트 설정 (1:1)
+        testOrganization.setTenant(testTenant);
     }
 
     @Test
-    @DisplayName("조직에 속한 테넌트 목록 조회 성공")
-    void 조직에_속한_테넌트_목록_조회_성공() {
+    @DisplayName("조직에 연결된 테넌트 조회 성공 (1:1)")
+    void 조직에_연결된_테넌트_조회_성공() {
         // Given
         Long organizationId = 1L;
-        List<Tenant> tenants = Arrays.asList(testTenant1, testTenant2);
         
-        when(organizationRepository.findTenantsByOrganizationId(organizationId))
-            .thenReturn(tenants);
+        when(organizationRepository.findTenantByOrganizationId(organizationId))
+            .thenReturn(Optional.of(testTenant));
 
         // When
-        List<Tenant> result = organizationRepository.findTenantsByOrganizationId(organizationId);
+        Optional<Tenant> result = organizationRepository.findTenantByOrganizationId(organizationId);
 
         // Then
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getTenantKey()).isEqualTo("TENANT_A");
-        assertThat(result.get(1).getTenantKey()).isEqualTo("TENANT_B");
+        assertThat(result).isPresent();
+        assertThat(result.get().getTenantKey()).isEqualTo("TENANT_A");
         
-        verify(organizationRepository).findTenantsByOrganizationId(organizationId);
+        verify(organizationRepository).findTenantByOrganizationId(organizationId);
     }
 
     @Test
-    @DisplayName("조직에 속한 테넌트 수 조회 성공")
-    void 조직에_속한_테넌트_수_조회_성공() {
+    @DisplayName("조직에 테넌트가 존재하는지 확인")
+    void 조직에_테넌트_존재_여부_확인() {
         // Given
         Long organizationId = 1L;
-        List<Tenant> tenants = Arrays.asList(testTenant1, testTenant2);
         
-        when(organizationRepository.findTenantsByOrganizationId(organizationId))
-            .thenReturn(tenants);
+        when(organizationRepository.existsTenantByOrganizationId(organizationId))
+            .thenReturn(true);
 
         // When
-        List<Tenant> result = organizationRepository.findTenantsByOrganizationId(organizationId);
+        boolean exists = organizationRepository.existsTenantByOrganizationId(organizationId);
 
         // Then
-        assertThat(result).hasSize(2);
-        verify(organizationRepository).findTenantsByOrganizationId(organizationId);
+        assertThat(exists).isTrue();
+        verify(organizationRepository).existsTenantByOrganizationId(organizationId);
     }
 
     @Test
@@ -123,30 +106,29 @@ class OrganizationTenantServiceTest {
     void 조직에_테넌트가_없는_경우() {
         // Given
         Long organizationId = 999L;
-        List<Tenant> emptyTenants = Arrays.asList();
         
-        when(organizationRepository.findTenantsByOrganizationId(organizationId))
-            .thenReturn(emptyTenants);
+        when(organizationRepository.findTenantByOrganizationId(organizationId))
+            .thenReturn(Optional.empty());
 
         // When
-        List<Tenant> result = organizationRepository.findTenantsByOrganizationId(organizationId);
+        Optional<Tenant> result = organizationRepository.findTenantByOrganizationId(organizationId);
 
         // Then
         assertThat(result).isEmpty();
-        verify(organizationRepository).findTenantsByOrganizationId(organizationId);
+        verify(organizationRepository).findTenantByOrganizationId(organizationId);
     }
 
     @Test
-    @DisplayName("조직-테넌트 관계 검증")
-    void 조직_테넌트_관계_검증() {
+    @DisplayName("조직-테넌트 1:1 관계 검증")
+    void 조직_테넌트_1대1_관계_검증() {
         // Given
         Organization org = testOrganization;
-        Tenant tenant = testTenant1;
+        Tenant tenant = testTenant;
 
         // When & Then
-        // 조직이 테넌트를 포함하는지 확인
-        assertThat(org.getTenants()).contains(tenant);
-        assertThat(org.getTenants()).hasSize(2);
+        // 조직이 테넌트를 포함하는지 확인 (1:1)
+        assertThat(org.getTenant()).isNotNull();
+        assertThat(org.getTenant()).isEqualTo(tenant);
         
         // 테넌트가 조직을 참조하는지 확인
         assertThat(tenant.getOrganization()).isEqualTo(org);
@@ -154,8 +136,8 @@ class OrganizationTenantServiceTest {
     }
 
     @Test
-    @DisplayName("조직 삭제 시 연관된 테넌트들도 삭제되는지 확인")
-    void 조직_삭제_시_연관된_테넌트들_삭제_확인() {
+    @DisplayName("조직 삭제 시 연관된 테넌트도 삭제되는지 확인")
+    void 조직_삭제_시_연관된_테넌트_삭제_확인() {
         // Given
         Long organizationId = 1L;
 
@@ -164,7 +146,7 @@ class OrganizationTenantServiceTest {
 
         // Then
         verify(organizationRepository).deleteById(organizationId);
-        // CascadeType.ALL로 설정되어 있어서 연관된 테넌트들도 삭제됨
+        // CascadeType.ALL로 설정되어 있어서 연관된 테넌트도 삭제됨
     }
 
     @Test
@@ -178,7 +160,7 @@ class OrganizationTenantServiceTest {
             .build();
         newOrganization.setId(2L);
 
-        Tenant tenant = testTenant1;
+        Tenant tenant = testTenant;
 
         // When
         tenant.setOrganization(newOrganization);
@@ -191,31 +173,67 @@ class OrganizationTenantServiceTest {
     }
 
     @Test
-    @DisplayName("조직별 테넌트 통계 조회")
-    void 조직별_테넌트_통계_조회() {
+    @DisplayName("조직별 테넌트 정보 조회 (1:1)")
+    void 조직별_테넌트_정보_조회() {
         // Given
         Long organizationId = 1L;
-        List<Tenant> tenants = Arrays.asList(testTenant1, testTenant2);
         
-        when(organizationRepository.findTenantsByOrganizationId(organizationId))
-            .thenReturn(tenants);
+        when(organizationRepository.findTenantByOrganizationId(organizationId))
+            .thenReturn(Optional.of(testTenant));
 
         // When
-        List<Tenant> result = organizationRepository.findTenantsByOrganizationId(organizationId);
+        Optional<Tenant> result = organizationRepository.findTenantByOrganizationId(organizationId);
         
         // Then
-        assertThat(result).hasSize(2);
+        assertThat(result).isPresent();
         
-        // 통계 계산
-        long activeTenantCount = result.stream()
-            .filter(tenant -> tenant.getStatus() == Status.ACTIVE)
-            .count();
+        Tenant tenant = result.get();
+        assertThat(tenant.getTenantKey()).isEqualTo("TENANT_A");
+        assertThat(tenant.getTenantName()).isEqualTo("테넌트 A");
+        assertThat(tenant.getStatus()).isEqualTo(Status.ACTIVE);
+        assertThat(tenant.getMaxUsers()).isEqualTo(50);
+    }
+    
+    @Test
+    @DisplayName("테넌트 활성 상태 확인")
+    void 테넌트_활성_상태_확인() {
+        // Given
+        Long organizationId = 1L;
         
-        int totalMaxUsers = result.stream()
-            .mapToInt(tenant -> tenant.getMaxUsers() != null ? tenant.getMaxUsers() : 0)
-            .sum();
+        when(organizationRepository.findTenantByOrganizationId(organizationId))
+            .thenReturn(Optional.of(testTenant));
 
-        assertThat(activeTenantCount).isEqualTo(2);
-        assertThat(totalMaxUsers).isEqualTo(80); // 50 + 30
+        // When
+        Optional<Tenant> result = organizationRepository.findTenantByOrganizationId(organizationId);
+        
+        // Then
+        assertThat(result).isPresent();
+        assertThat(result.get().getStatus()).isEqualTo(Status.ACTIVE);
+    }
+    
+    @Test
+    @DisplayName("테넌트 비활성 상태 확인")
+    void 테넌트_비활성_상태_확인() {
+        // Given
+        Long organizationId = 1L;
+        
+        Tenant inactiveTenant = Tenant.builder()
+            .tenantKey("INACTIVE_TENANT")
+            .tenantName("비활성 테넌트")
+            .status(Status.INACTIVE)
+            .maxUsers(30)
+            .organization(testOrganization)
+            .build();
+        inactiveTenant.setId(2L);
+        
+        when(organizationRepository.findTenantByOrganizationId(organizationId))
+            .thenReturn(Optional.of(inactiveTenant));
+
+        // When
+        Optional<Tenant> result = organizationRepository.findTenantByOrganizationId(organizationId);
+        
+        // Then
+        assertThat(result).isPresent();
+        assertThat(result.get().getStatus()).isEqualTo(Status.INACTIVE);
     }
 }

@@ -607,116 +607,110 @@ public class OrganizationService {
             .build();
     }
 
-    // ========== 조직-테넌트 관계 관리 ==========
+    // ========== 조직-테넌트 관계 관리 (1:1) ==========
 
     /**
-     * 조직별 테넌트 목록 조회
+     * 조직의 테넌트 조회 (1:1 관계)
      * 
      * @param organizationId 조직 ID
-     * @return 조직에 속한 테넌트 목록
+     * @return 조직에 연결된 테넌트
      * @throws BusinessException 조직을 찾을 수 없는 경우
      */
-    public List<Tenant> getOrganizationTenants(Long organizationId) {
-        log.info("[OrganizationService] getOrganizationTenants - organizationId={}", organizationId);
+    public Tenant getOrganizationTenant(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationTenant - organizationId={}", organizationId);
 
         // 조직 존재 확인
         organizationRepository.findById(organizationId)
             .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
-        // 조직의 테넌트 목록 조회
-        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
+        // 조직의 테넌트 조회
+        Tenant tenant = organizationRepository.findTenantByOrganizationId(organizationId)
+            .orElse(null);
 
-        log.info("[OrganizationService] getOrganizationTenants - success organizationId={}, count={}", 
-                organizationId, tenants.size());
-        return tenants;
+        log.info("[OrganizationService] getOrganizationTenant - success organizationId={}, hasTenant={}", 
+                organizationId, tenant != null);
+        return tenant;
     }
 
     /**
-     * 조직별 테넌트 수 조회
+     * 조직에 테넌트가 존재하는지 확인
      * 
      * @param organizationId 조직 ID
-     * @return 조직에 속한 테넌트 수
+     * @return 테넌트 존재 여부
      * @throws BusinessException 조직을 찾을 수 없는 경우
      */
-    public long getOrganizationTenantCount(Long organizationId) {
-        log.info("[OrganizationService] getOrganizationTenantCount - organizationId={}", organizationId);
+    public boolean hasTenant(Long organizationId) {
+        log.info("[OrganizationService] hasTenant - organizationId={}", organizationId);
 
         // 조직 존재 확인
         organizationRepository.findById(organizationId)
             .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
-        // 조직의 테넌트 수 조회
-        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
-        long count = tenants.size();
+        // 테넌트 존재 여부 확인
+        boolean exists = organizationRepository.existsTenantByOrganizationId(organizationId);
         
-        log.info("[OrganizationService] getOrganizationTenantCount - success organizationId={}, count={}", 
-                organizationId, count);
-        return count;
+        log.info("[OrganizationService] hasTenant - success organizationId={}, hasTenant={}", 
+                organizationId, exists);
+        return exists;
     }
 
     /**
-     * 조직별 활성 테넌트 수 조회
+     * 조직의 테넌트가 활성 상태인지 확인
      * 
      * @param organizationId 조직 ID
-     * @return 조직에 속한 활성 테넌트 수
+     * @return 활성 테넌트 여부
      * @throws BusinessException 조직을 찾을 수 없는 경우
      */
-    public long getActiveTenantCount(Long organizationId) {
-        log.info("[OrganizationService] getActiveTenantCount - organizationId={}", organizationId);
+    public boolean hasActiveTenant(Long organizationId) {
+        log.info("[OrganizationService] hasActiveTenant - organizationId={}", organizationId);
 
         // 조직 존재 확인
         organizationRepository.findById(organizationId)
             .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
-        // 조직의 활성 테넌트 수 조회
-        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
-        long count = tenants.stream()
-            .filter(tenant -> tenant.getStatus() == Status.ACTIVE)
-            .count();
+        // 테넌트 조회 및 활성 상태 확인
+        Tenant tenant = organizationRepository.findTenantByOrganizationId(organizationId)
+            .orElse(null);
+        boolean isActive = tenant != null && tenant.getStatus() == Status.ACTIVE;
         
-        log.info("[OrganizationService] getActiveTenantCount - success organizationId={}, count={}", 
-                organizationId, count);
-        return count;
+        log.info("[OrganizationService] hasActiveTenant - success organizationId={}, isActive={}", 
+                organizationId, isActive);
+        return isActive;
     }
 
     /**
-     * 조직별 테넌트 통계 조회
+     * 조직별 테넌트 정보 조회 (1:1)
      * 
      * @param organizationId 조직 ID
-     * @return 조직의 테넌트 통계 정보
+     * @return 조직의 테넌트 정보
      * @throws BusinessException 조직을 찾을 수 없는 경우
      */
-    public Map<String, Object> getOrganizationTenantStats(Long organizationId) {
-        log.info("[OrganizationService] getOrganizationTenantStats - organizationId={}", organizationId);
+    public Map<String, Object> getOrganizationTenantInfo(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationTenantInfo - organizationId={}", organizationId);
 
         // 조직 존재 확인
         Organization organization = organizationRepository.findById(organizationId)
             .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
-        // 조직의 테넌트 목록 조회
-        List<Tenant> tenants = organizationRepository.findTenantsByOrganizationId(organizationId);
+        // 조직의 테넌트 조회
+        Tenant tenant = organizationRepository.findTenantByOrganizationId(organizationId)
+            .orElse(null);
 
-        // 통계 계산
-        long totalTenants = tenants.size();
-        long activeTenants = tenants.stream()
-            .filter(tenant -> tenant.getStatus() == Status.ACTIVE)
-            .count();
-        long inactiveTenants = totalTenants - activeTenants;
+        Map<String, Object> info = new HashMap<>();
+        info.put("organizationId", organizationId);
+        info.put("organizationName", organization.getOrgName());
+        info.put("hasTenant", tenant != null);
         
-        int totalMaxUsers = tenants.stream()
-            .mapToInt(tenant -> tenant.getMaxUsers() != null ? tenant.getMaxUsers() : 0)
-            .sum();
+        if (tenant != null) {
+            info.put("tenantId", tenant.getId());
+            info.put("tenantKey", tenant.getTenantKey());
+            info.put("tenantName", tenant.getTenantName());
+            info.put("tenantStatus", tenant.getStatus());
+            info.put("maxUsers", tenant.getMaxUsers());
+        }
 
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalTenants", totalTenants);
-        stats.put("activeTenants", activeTenants);
-        stats.put("inactiveTenants", inactiveTenants);
-        stats.put("totalMaxUsers", totalMaxUsers);
-        stats.put("organizationId", organizationId);
-        stats.put("organizationName", organization.getOrgName());
-
-        log.info("[OrganizationService] getOrganizationTenantStats - success organizationId={}, totalTenants={}, activeTenants={}", 
-                organizationId, totalTenants, activeTenants);
-        return stats;
+        log.info("[OrganizationService] getOrganizationTenantInfo - success organizationId={}, hasTenant={}", 
+                organizationId, tenant != null);
+        return info;
     }
 }
