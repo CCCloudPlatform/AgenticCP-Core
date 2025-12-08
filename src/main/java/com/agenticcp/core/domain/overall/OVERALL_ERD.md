@@ -54,7 +54,7 @@ erDiagram
 
     %% 핵심 관계
     Tenant ||--o{ User : "1:N"
-    Tenant ||--o{ Organization : "1:N"
+    Tenant ||--|| Organization : "1:1"
     Tenant ||--o{ Role : "1:N"
     Tenant ||--o{ Permission : "1:N"
     Tenant ||--o{ CloudResource : "1:N"
