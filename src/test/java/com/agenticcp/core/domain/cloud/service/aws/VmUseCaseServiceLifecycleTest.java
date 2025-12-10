@@ -8,8 +8,13 @@ import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
+import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
+import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
 import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
 import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
+import com.agenticcp.core.domain.tenant.repository.TenantRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +53,20 @@ class VmUseCaseServiceLifecycleTest {
     @Mock
     private AccountCredentialManagementPort credentialProviderPort;
 
+    @Mock
+    private CloudResourceRepository cloudResourceRepository;
+
+    @Mock
+    private CloudProviderRepository cloudProviderRepository;
+
+    @Mock
+    private CloudServiceRepository cloudServiceRepository;
+
+    @Mock
+    private TenantRepository tenantRepository;
+
+    private ObjectMapper objectMapper;
+
     private VmUseCaseService vmUseCaseService;
 
     private CloudSessionCredential mockSession;
@@ -57,7 +76,17 @@ class VmUseCaseServiceLifecycleTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey("tenant-test");
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, capabilityGuard, credentialProviderPort);
+        objectMapper = new ObjectMapper();
+        vmUseCaseService = new VmUseCaseService(
+                vmPortRouter,
+                capabilityGuard,
+                credentialProviderPort,
+                cloudResourceRepository,
+                cloudProviderRepository,
+                cloudServiceRepository,
+                tenantRepository,
+                objectMapper
+        );
         mockSession = mock(CloudSessionCredential.class);
 
         when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);

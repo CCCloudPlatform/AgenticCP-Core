@@ -10,8 +10,13 @@ import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialMa
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
+import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
+import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
+import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
 import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
 import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
+import com.agenticcp.core.domain.tenant.repository.TenantRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -58,6 +63,20 @@ class VmUseCaseServiceTest {
     @Mock
     private AccountCredentialManagementPort credentialProviderPort;
 
+    @Mock
+    private CloudResourceRepository cloudResourceRepository;
+
+    @Mock
+    private CloudProviderRepository cloudProviderRepository;
+
+    @Mock
+    private CloudServiceRepository cloudServiceRepository;
+
+    @Mock
+    private TenantRepository tenantRepository;
+
+    private ObjectMapper objectMapper;
+
     private VmUseCaseService vmUseCaseService;
     private CloudSessionCredential mockSession;
     private static final ProviderType PROVIDER_TYPE = ProviderType.AWS;
@@ -66,7 +85,17 @@ class VmUseCaseServiceTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey("tenant-test");
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, capabilityGuard, credentialProviderPort);
+        objectMapper = new ObjectMapper();
+        vmUseCaseService = new VmUseCaseService(
+                vmPortRouter,
+                capabilityGuard,
+                credentialProviderPort,
+                cloudResourceRepository,
+                cloudProviderRepository,
+                cloudServiceRepository,
+                tenantRepository,
+                objectMapper
+        );
         mockSession = mock(CloudSessionCredential.class);
 
         when(vmPortRouter.discovery(ProviderType.AWS)).thenReturn(vmDiscoveryPort);

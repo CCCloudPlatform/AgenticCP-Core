@@ -1,7 +1,8 @@
 package com.agenticcp.core.domain.cloud.config;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -17,11 +18,27 @@ import java.util.Map;
 public class NoOpCloudPortsConfig {
 
     @Bean
-    @ConditionalOnMissingBean(CredentialProviderPort.class)
-    public CredentialProviderPort credentialProviderPort() {
-        return new CredentialProviderPort() {
+    @ConditionalOnMissingBean(AccountCredentialManagementPort.class)
+    public AccountCredentialManagementPort accountCredentialManagementPort() {
+        return new AccountCredentialManagementPort() {
             @Override
             public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
+                return null; // 기본 No-Op 동작
+            }
+
+            @Override
+            public String storeCredentials(String tenantKey, ProviderType providerType, 
+                                          String accountScope, Map<String, String> credentials) {
+                return null; // 기본 No-Op 동작
+            }
+
+            @Override
+            public void deleteCredentials(ProviderType providerType, String credentialKey) {
+                // 기본 No-Op 동작
+            }
+
+            @Override
+            public CloudSessionCredential getSession(String tenantKey, String accountScope, ProviderType providerType) {
                 return null; // 기본 No-Op 동작
             }
         };
