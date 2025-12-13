@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.dto;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 import java.util.Map;
 
@@ -16,6 +17,7 @@ import java.util.Map;
  */
 @Value
 @Builder
+@Jacksonized
 public class VpcCreateRequest {
     ProviderType providerType;
     String accountScope;
