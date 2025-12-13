@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.s3;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsS3Config;
+import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.ObjectStorageErrorCode;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
@@ -38,7 +39,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort {
+public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort, ProviderScoped {
 
     private final AwsS3Config awsS3Config;
     private final AwsS3BucketMapper mapper;
@@ -350,6 +351,16 @@ public class AwsS3BucketManagementAdapter implements ObjectStorageManagementPort
             log.error("Failed to set tags for bucket {}", bucketName, e);
             throw new BusinessException(CloudErrorCode.CLOUD_TAG_OPERATION_FAILED);
         }
+    }
+
+    /**
+     * 이 어댑터가 지원하는 클라우드 프로바이더 타입을 반환합니다.
+     *
+     * @return AWS 프로바이더 타입
+     */
+    @Override
+    public CloudProvider.ProviderType getProviderType() {
+        return CloudProvider.ProviderType.AWS;
     }
 
     private CloudProvider findAwsProvider() {
