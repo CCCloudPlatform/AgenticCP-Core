@@ -25,6 +25,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LogMaskingAspect 테스트")
+@SuppressWarnings("deprecation") // mask() 메서드는 deprecated이지만 테스트에서 검증을 위해 사용
 class LogMaskingAspectTest {
 
     @Mock
@@ -156,7 +157,7 @@ class LogMaskingAspectTest {
     }
 
     @Test
-    @DisplayName("서비스 메서드 결과 객체 마스킹")
+    @DisplayName("서비스 메서드 결과 객체 마스킹 - 비활성화됨 (원본 객체 보호)")
     void maskServiceMethodLogs() throws Throwable {
         // given
         TestObject resultObject = new TestObject();
@@ -167,12 +168,14 @@ class LogMaskingAspectTest {
         Object result = aspect.maskServiceMethodLogs(joinPoint);
 
         // then
+        // maskServiceMethodLogs는 비활성화되어 원본 객체를 변경하지 않음
         assertThat(result).isEqualTo(resultObject);
-        verify(maskingService).mask(resultObject);
+        assertThat(resultObject.value).isEqualTo("testValue"); // 원본 값이 유지됨
+        verify(maskingService, never()).mask(any()); // 마스킹이 호출되지 않음
     }
 
     @Test
-    @DisplayName("서비스 메서드 null 결과 처리")
+    @DisplayName("서비스 메서드 null 결과 처리 - 비활성화됨")
     void maskServiceMethodLogsWithNullResult() throws Throwable {
         // given
         when(joinPoint.proceed()).thenReturn(null);
@@ -181,18 +184,20 @@ class LogMaskingAspectTest {
         Object result = aspect.maskServiceMethodLogs(joinPoint);
 
         // then
+        // maskServiceMethodLogs는 비활성화되어 null도 그대로 반환
         assertThat(result).isNull();
         verify(maskingService, never()).mask(any());
     }
 
     @Test
-    @DisplayName("서비스 메서드 예외 발생 시에도 마스킹 처리")
+    @DisplayName("서비스 메서드 예외 발생 시 처리 - 비활성화됨")
     void maskServiceMethodLogsWithException() throws Throwable {
         // given
         RuntimeException exception = new RuntimeException("Test exception");
         when(joinPoint.proceed()).thenThrow(exception);
 
         // when & then
+        // maskServiceMethodLogs는 비활성화되어 예외를 그대로 전파
         try {
             aspect.maskServiceMethodLogs(joinPoint);
         } catch (RuntimeException e) {
