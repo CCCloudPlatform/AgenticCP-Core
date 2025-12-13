@@ -60,6 +60,8 @@ public class ObjectStorageUseCaseService {
     private final TenantRepository tenantRepository;
     private final ObjectMapper objectMapper;
 
+    private static final String RESOURCE_TYPE = "BUCKET";
+
     /**
      * Object Storage Container를 생성합니다.
      * CSP에서 컨테이너 생성 후 CloudResource 엔티티를 DB에 저장합니다.
@@ -76,7 +78,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] createContainer - provider={}, accountScope={}, region={}, containerName={}",
                 providerType, accountScope, request.getRegion(), request.getContainerName());
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
@@ -123,7 +127,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] updateContainer - provider={}, accountScope={}, containerName={}",
                 providerType, accountScope, request.getContainerName());
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
@@ -164,7 +170,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] deleteContainer - provider={}, accountScope={}, containerName={}",
                 providerType, accountScope, containerName);
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
@@ -198,7 +206,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] forceDeleteContainer - provider={}, accountScope={}, containerName={}",
                 providerType, accountScope, containerName);
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
