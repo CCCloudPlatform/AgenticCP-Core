@@ -45,7 +45,7 @@ public class VpcController {
      * @return 생성된 VPC 리소스
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('VPC_CREATE') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('VPC_CREATE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "CREATE_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -72,7 +72,7 @@ public class VpcController {
      * @return VPC 리소스
      */
     @GetMapping("/{providerType}/{accountScope}/{region}/{resourceId}")
-    @PreAuthorize("hasAuthority('VPC_READ') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('VPC_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "GET_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -115,7 +115,7 @@ public class VpcController {
      * @return VPC 리소스 목록
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('VPC_READ') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('VPC_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "LIST_VPCS",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -142,7 +142,7 @@ public class VpcController {
      * @return 수정된 VPC 리소스
      */
     @PutMapping("/{providerType}/{accountScope}/{region}/{resourceId}")
-    @PreAuthorize("hasAuthority('VPC_UPDATE') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('VPC_UPDATE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "UPDATE_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
@@ -183,7 +183,7 @@ public class VpcController {
      * @return 삭제 결과
      */
     @DeleteMapping("/{providerType}/{accountScope}/{region}/{resourceId}")
-    @PreAuthorize("hasAuthority('VPC_DELETE') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('VPC_DELETE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "DELETE_VPC",
         resourceType = AuditResourceType.CLOUD_PROVIDER,
