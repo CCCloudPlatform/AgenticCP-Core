@@ -41,7 +41,7 @@ public class AwsCredentialManager {
      * @return 저장된 CloudAccountCredential
      * @throws BusinessException 암호화 또는 저장 실패 시
      */
-    @Transactional
+    @Transactional(readOnly = false)
     public CloudAccountCredential storeCredentials(String tenantKey, String accessKeyId,
                                                    String secretAccessKey, String region) {
         String maskedTenantKey = maskingService.maskTenantKey(tenantKey);
