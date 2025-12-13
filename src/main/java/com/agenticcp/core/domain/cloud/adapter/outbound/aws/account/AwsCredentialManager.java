@@ -2,8 +2,6 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.common.logging.masking.Masked;
-import com.agenticcp.core.common.logging.masking.MaskingType;
 import com.agenticcp.core.common.logging.masking.MaskingService;
 import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
@@ -89,10 +87,15 @@ public class AwsCredentialManager {
         log.debug("[AwsCredentialManager] getCredentials - credentialKey={}", credentialKey);
 
         CloudAccountCredential credential = credentialRepository.findByCredentialKey(credentialKey)
-                .orElseThrow(() -> new BusinessException(
-                        CredentialErrorCode.CREDENTIAL_NOT_FOUND,
-                        "자격증명을 찾을 수 없습니다: " + credentialKey
-                ));
+                .orElseThrow(() -> {
+                    log.error("[AwsCredentialManager] [DEBUG] ✗ ERROR: Credential not found in DB!");
+                    return new BusinessException(
+                            CredentialErrorCode.CREDENTIAL_NOT_FOUND,
+                            "자격증명을 찾을 수 없습니다: " + credentialKey
+                    );
+                });
+
+        log.error("[AwsCredentialManager] [DEBUG] ✓ Credential found in DB (id: {})", credential.getId());
 
         try {
             // 자격증명 복호화
@@ -138,18 +141,25 @@ public class AwsCredentialManager {
 
     /**
      * AWS 자격증명을 담는 내부 클래스
+     * 
+     * 주의: 이 클래스의 필드들은 민감 정보이므로 로깅 시 반드시 마스킹을 적용해야 합니다.
+     * 
+     * 현재는 이 클래스의 필드 값들이 로깅되지 않지만, 향후 로깅이 추가될 경우 다음 예시를 참고하세요:
+     * <pre>
+     * import com.agenticcp.core.common.logging.masking.MaskingType;
+     * 
+     * log.debug("credentials: accessKeyId={}, secretAccessKey={}", 
+     *     maskingService.applyMaskingStrategy(credentials.getAccessKeyId(), MaskingType.ACCESS_KEY),
+     *     maskingService.applyMaskingStrategy(credentials.getSecretAccessKey(), MaskingType.SECRET_KEY));
+     * </pre>
      */
     @lombok.Data
     @lombok.Builder
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor
     public static class AwsCredentials {
-        @Masked(type = MaskingType.ACCESS_KEY)
         private String accessKeyId;
-        
-        @Masked(type = MaskingType.SECRET_KEY)
         private String secretAccessKey;
-        
         private String region;
     }
 }

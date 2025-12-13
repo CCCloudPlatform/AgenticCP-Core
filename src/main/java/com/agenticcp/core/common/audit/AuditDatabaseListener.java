@@ -70,15 +70,16 @@ public class AuditDatabaseListener {
 
     /**
      * 감사 이벤트에 포함된 민감 데이터를 마스킹합니다.
-     *
+     * 
+     * 주의: 원본 객체를 변경하지 않기 위해 마스킹된 JSON을 직접 생성합니다.
+     * 
      * @param auditEventDto 감사 이벤트 DTO
      */
     private void maskSensitiveData(AuditEventDto auditEventDto) {
         try {
-            maskingService.mask(auditEventDto.requestData());
-            maskingService.mask(auditEventDto.oldValue());
-            maskingService.mask(auditEventDto.newValue());
-            maskingService.mask(auditEventDto.responseData());
+            // 원본 객체를 변경하지 않고 마스킹된 JSON 생성
+            // 실제 마스킹은 toJson() 메서드에서 수행됩니다
+            // mask() 메서드는 실제 객체를 변경하므로 사용하지 않음
         } catch (Exception maskingException) {
             log.error("감사 데이터 마스킹 실패 [Action: {}, RequestId: {}]: {}",
                     auditEventDto.action(), auditEventDto.requestId(), maskingException.getMessage(), maskingException);
@@ -119,20 +120,28 @@ public class AuditDatabaseListener {
     }
 
     /**
-     * 객체를 JSON 문자열로 직렬화합니다.
+     * 객체를 마스킹하여 JSON 문자열로 직렬화합니다.
+     * 원본 객체는 변경하지 않고, 마스킹된 복사본을 JSON으로 변환합니다.
      *
      * @param data 직렬화 대상 객체
-     * @return JSON 문자열, 직렬화할 값이 없으면 {@code null}
+     * @return 마스킹된 JSON 문자열, 직렬화할 값이 없으면 {@code null}
      */
     private String toJson(Object data) {
         if (data == null) {
             return null;
         }
         try {
-            return objectMapper.writeValueAsString(data);
-        } catch (JsonProcessingException e) {
+            // 원본을 변경하지 않고 마스킹된 JSON 생성
+            return maskingService.toMaskedJson(data, objectMapper);
+        } catch (Exception e) {
             log.warn("JSON 변환 실패: {}", e.getMessage());
-            return null;
+            // 마스킹 실패 시 원본을 JSON으로 변환 (마스킹되지 않음)
+            try {
+                return objectMapper.writeValueAsString(data);
+            } catch (JsonProcessingException jsonException) {
+                log.warn("원본 JSON 변환도 실패: {}", jsonException.getMessage());
+                return null;
+            }
         }
     }
 }

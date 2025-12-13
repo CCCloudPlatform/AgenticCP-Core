@@ -1,10 +1,10 @@
 package com.agenticcp.core.domain.cloud.config;
 
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,13 +28,13 @@ public class NoOpCloudPortsConfig {
 
             @Override
             public String storeCredentials(String tenantKey, ProviderType providerType, 
-                                          String accountScope, Map<String, String> credentials) {
+                                         String accountScope, Map<String, String> credentials) {
                 return null; // 기본 No-Op 동작
             }
 
             @Override
             public void deleteCredentials(ProviderType providerType, String credentialKey) {
-                // 기본 No-Op 동작
+                // No-Op
             }
 
             @Override

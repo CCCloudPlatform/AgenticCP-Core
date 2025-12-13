@@ -23,9 +23,15 @@ public class MaskingService {
 
     /**
      * 객체의 마스킹이 필요한 필드들을 처리합니다.
-     *
-     * @param object 마스킹 처리할 객체
+     * 
+     * ⚠️ 주의: 이 메서드는 실제 객체의 필드 값을 변경합니다.
+     * 로깅 목적으로만 사용해야 하며, 비즈니스 로직에 사용되는 객체에는 사용하지 마세요.
+     * 
+     * @deprecated 실제 객체를 변경하는 것은 위험합니다. 
+     *             대신 {@link #toMaskedJson(Object)} 또는 로깅 시점에 명시적으로 마스킹을 적용하세요.
+     * @param object 마스킹 처리할 객체 (원본이 변경됨)
      */
+    @Deprecated
     public void mask(Object object) {
         if (object == null) {
             return;
@@ -278,5 +284,55 @@ public class MaskingService {
             sb.append(c);
         }
         return sb.toString();
+    }
+    
+    /**
+     * 객체를 마스킹하여 JSON 문자열로 변환합니다.
+     * 원본 객체는 변경하지 않고, 마스킹된 복사본을 JSON으로 직렬화합니다.
+     * 
+     * @param object 마스킹할 객체
+     * @param objectMapper JSON 직렬화에 사용할 ObjectMapper
+     * @return 마스킹된 JSON 문자열, 객체가 null이면 null
+     */
+    public String toMaskedJson(Object object, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+        if (object == null) {
+            return null;
+        }
+        
+        try {
+            // 객체를 복사한 후 마스킹 (원본 보호)
+            Object maskedCopy = deepCopyAndMask(object, objectMapper);
+            return objectMapper.writeValueAsString(maskedCopy);
+        } catch (Exception e) {
+            log.warn("마스킹된 JSON 변환 실패: {}", e.getMessage());
+            return "{}"; // 오류 시 빈 JSON 반환
+        }
+    }
+    
+    /**
+     * 객체를 깊은 복사한 후 마스킹합니다.
+     * 원본 객체는 변경하지 않습니다.
+     * 
+     * @param object 복사 및 마스킹할 객체
+     * @param objectMapper JSON 직렬화/역직렬화에 사용할 ObjectMapper
+     * @return 마스킹된 복사본
+     */
+    private Object deepCopyAndMask(Object object, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+        if (object == null) {
+            return null;
+        }
+        
+        try {
+            // Jackson을 사용하여 깊은 복사
+            String json = objectMapper.writeValueAsString(object);
+            Object copy = objectMapper.readValue(json, object.getClass());
+            
+            // 복사본에만 마스킹 적용 (원본은 변경되지 않음)
+            mask(copy);
+            return copy;
+        } catch (Exception e) {
+            log.warn("객체 복사 및 마스킹 실패: {}", e.getMessage());
+            return object; // 실패 시 원본 반환 (마스킹되지 않음)
+        }
     }
 }
