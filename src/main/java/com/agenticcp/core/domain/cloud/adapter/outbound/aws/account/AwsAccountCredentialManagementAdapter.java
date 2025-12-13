@@ -116,20 +116,19 @@ public class AwsAccountCredentialManagementAdapter implements AccountCredentialM
         return Math.max(0, (int) minutesUntilExpiry - 5);
     }
 
+    /**
+     * Credential Key를 직접 조회합니다.
+     * LazyInitializationException을 방지하기 위해 Repository의 JOIN 쿼리를 사용합니다.
+     * 
+     * @param tenantKey 테넌트 키
+     * @param providerType 프로바이더 타입
+     * @param accountScope 계정 범위
+     * @return 자격증명 키
+     * @throws BusinessException 계정을 찾을 수 없는 경우
+     */
     private String findCredentialKey(String tenantKey, ProviderType providerType, String accountScope) {
-        return cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType)
-                .stream()
-                .filter(account -> account.getAccountScope() != null && account.getAccountScope().equals(accountScope))
-                .findFirst()
-                .map(account -> {
-                    if (account.getCredential() == null) {
-                        throw new BusinessException(
-                                CloudErrorCode.ACCOUNT_NOT_FOUND,
-                                "계정에 자격증명이 없습니다: " + accountScope
-                        );
-                    }
-                    return account.getCredential().getCredentialKey();
-                })
+        return cloudAccountRepository.findCredentialKeyByTenantKeyAndProviderTypeAndAccountScope(
+                        tenantKey, providerType, accountScope)
                 .orElseThrow(() -> new BusinessException(
                         CloudErrorCode.ACCOUNT_NOT_FOUND,
                         "계정을 찾을 수 없습니다: tenantKey=" + tenantKey + ", providerType=" + providerType + ", accountScope=" + accountScope

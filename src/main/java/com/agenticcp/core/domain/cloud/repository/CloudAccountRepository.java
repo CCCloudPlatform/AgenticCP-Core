@@ -131,12 +131,29 @@ public interface CloudAccountRepository extends JpaRepository<CloudAccount, Long
 
     /**
      * 계정 ID와 테넌트 ID로 계정을 조회합니다.
-     * 
+     *
      * @param id 계정 ID
      * @param tenantId 테넌트 ID
      * @return CloudAccount Optional
      */
     @Query("SELECT ca FROM CloudAccount ca WHERE ca.id = :id AND ca.tenant.id = :tenantId AND ca.isDeleted = false")
     Optional<CloudAccount> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
+
+    /**
+     * 테넌트 키, 프로바이더 타입, 계정 범위로 자격증명 키를 직접 조회합니다.
+     * LazyInitializationException을 방지하기 위해 사용합니다.
+     *
+     * @param tenantKey 테넌트 키
+     * @param providerType 프로바이더 타입
+     * @param accountScope 계정 범위
+     * @return 자격증명 키 Optional
+     */
+    @Query("SELECT cac.credentialKey FROM CloudAccount ca JOIN ca.credential cac WHERE ca.tenant.tenantKey = :tenantKey " +
+           "AND ca.provider.providerType = :providerType AND ca.accountScope = :accountScope AND ca.isDeleted = false")
+    Optional<String> findCredentialKeyByTenantKeyAndProviderTypeAndAccountScope(
+        @Param("tenantKey") String tenantKey,
+        @Param("providerType") ProviderType providerType,
+        @Param("accountScope") String accountScope
+    );
 }
 

@@ -2,8 +2,6 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.account;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.logging.masking.MaskingService;
-import com.agenticcp.core.domain.cloud.entity.CloudAccount;
-import com.agenticcp.core.domain.cloud.entity.CloudAccountCredential;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -105,17 +103,11 @@ class AwsAccountCredentialManagementAdapterTest {
             ProviderType providerType = ProviderType.AWS;
             String credentialKey = "credential-key-123";
 
-            CloudAccount account = CloudAccount.builder()
-                    .accountScope(accountScope)
-                    .credential(CloudAccountCredential.builder()
-                            .credentialKey(credentialKey)
-                            .build())
-                    .build();
-
             when(sessionCachePort.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.empty());
-            when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
-                    .thenReturn(java.util.List.of(account));
+            when(cloudAccountRepository.findCredentialKeyByTenantKeyAndProviderTypeAndAccountScope(
+                    tenantKey, providerType, accountScope))
+                    .thenReturn(Optional.of(credentialKey));
 
             AwsSessionCredential newSession = AwsSessionCredential.builder()
                     .accessKeyId("new-access-key")
@@ -148,8 +140,9 @@ class AwsAccountCredentialManagementAdapterTest {
 
             when(sessionCachePort.getCachedSession(tenantKey, accountScope, providerType))
                     .thenReturn(Optional.empty());
-            when(cloudAccountRepository.findByTenantKeyAndProviderType(tenantKey, providerType))
-                    .thenReturn(java.util.List.of());
+            when(cloudAccountRepository.findCredentialKeyByTenantKeyAndProviderTypeAndAccountScope(
+                    tenantKey, providerType, accountScope))
+                    .thenReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> adapter.getSession(tenantKey, accountScope, providerType))
