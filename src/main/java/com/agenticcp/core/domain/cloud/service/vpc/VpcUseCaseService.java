@@ -34,6 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -334,10 +335,13 @@ public class VpcUseCaseService {
 
     /**
      * CSP에서 생성된 VPC 정보를 CloudResource 엔티티로 저장합니다.
+     * DB 저장 실패해도 CSP 생성은 완료되었으므로 별도 트랜잭션으로 분리하여
+     * 메인 트랜잭션에 영향을 주지 않도록 합니다.
      *
      * @param vpcId 생성된 VPC ID
      * @param request 생성 요청 정보
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     private void saveCloudResource(String vpcId, VpcCreateRequest request) {
         try {
             String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
@@ -348,10 +352,12 @@ public class VpcUseCaseService {
                     .orElseThrow(() -> new IllegalStateException(
                             "CloudProvider not found for type: " + providerType));
             
-            // Service 조회 (VPC용 서비스)
+            // Service 조회 (프로바이더별 서비스 키 사용)
+            String serviceKey = getServiceKeyForProvider(providerType);
             CloudService cloudService = cloudServiceRepository
-                    .findByProviderTypeAndServiceKey(providerType, getServiceKeyForProvider(providerType))
-                    .orElse(null);
+                    .findByProviderTypeAndServiceKey(providerType, serviceKey)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "CloudService not found for provider: " + providerType + ", serviceKey: " + serviceKey));
             
             // Tenant 조회
             Tenant tenant = tenantRepository.findByTenantKey(tenantKey)
@@ -411,11 +417,11 @@ public class VpcUseCaseService {
 
     /**
      * 프로바이더 타입에 따른 서비스 키 반환
-     * AWS: VPC, Azure: VirtualNetwork, GCP: VPCNetwork 등
+     * AWS: EC2 (VPC는 EC2 서비스에 속함), Azure: VirtualNetwork, GCP: VPCNetwork 등
      */
     private String getServiceKeyForProvider(ProviderType providerType) {
         return switch (providerType) {
-            case AWS -> "VPC";
+            case AWS -> "EC2";  // VPC는 EC2 서비스에 속함
             case AZURE -> "VirtualNetwork";
             case GCP -> "VPCNetwork";
             default -> "Network";
