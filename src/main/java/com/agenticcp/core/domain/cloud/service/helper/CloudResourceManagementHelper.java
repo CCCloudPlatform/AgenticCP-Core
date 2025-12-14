@@ -2,12 +2,10 @@ package com.agenticcp.core.domain.cloud.service.helper;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
-import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest.AttributeKeys;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.ResourceType;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
@@ -78,114 +76,6 @@ public class CloudResourceManagementHelper {
         return savedResource;
     }
 
-    // ==================== VM Instance ====================
-
-    /**
-     * VM 인스턴스를 CloudResource로 등록합니다.
-     * 
-     * @deprecated registerResource() 메서드 사용을 권장합니다.
-     * @see #registerResource(ProviderType, String, ResourceRegistrationRequest)
-     *
-     * @param providerType 프로바이더 타입
-     * @param serviceKey   서비스 키 (EC2, VirtualMachines 등)
-     * @param instanceId   인스턴스 ID
-     * @param resourceName 리소스 이름
-     * @param instanceSize 인스턴스 크기
-     * @param tags         태그 맵
-     * @return 저장된 CloudResource 엔티티
-     */
-    @Deprecated
-    @Transactional
-    public CloudResource registerVmInstance(
-            ProviderType providerType,
-            String serviceKey,
-            String instanceId,
-            String resourceName,
-            String instanceSize,
-            Map<String, String> tags
-    ) {
-        ResourceRegistrationRequest request = ResourceRegistrationRequest.builder()
-                .resourceId(instanceId)
-                .resourceName(resourceName)
-                .resourceType(ResourceType.INSTANCE)
-                .tags(tags)
-                .attributes(Map.of(AttributeKeys.INSTANCE_SIZE, instanceSize))
-                .build();
-
-        return registerResource(providerType, serviceKey, request);
-    }
-
-    // ==================== Storage Bucket ====================
-
-    /**
-     * Object Storage 버킷을 CloudResource로 등록합니다.
-     * 
-     * @deprecated registerResource() 메서드 사용을 권장합니다.
-     * @see #registerResource(ProviderType, String, ResourceRegistrationRequest)
-     *
-     * @param providerType  프로바이더 타입
-     * @param serviceKey    서비스 키 (S3, BlobStorage 등)
-     * @param containerName 컨테이너/버킷 이름
-     * @param tags          태그 맵
-     */
-    @Deprecated
-    @Transactional
-    public void registerStorageBucket(
-            ProviderType providerType,
-            String serviceKey,
-            String containerName,
-            Map<String, String> tags
-    ) {
-        ResourceRegistrationRequest request = ResourceRegistrationRequest.builder()
-                .resourceId(containerName)
-                .resourceName(containerName)
-                .resourceType(ResourceType.BUCKET)
-                .tags(tags)
-                .build();
-
-        registerResource(providerType, serviceKey, request);
-    }
-
-    // ==================== VPC ====================
-
-    /**
-     * VPC를 CloudResource로 등록합니다.
-     * 
-     * @deprecated registerResource() 메서드 사용을 권장합니다.
-     * @see #registerResource(ProviderType, String, ResourceRegistrationRequest)
-     *
-     * @param providerType 프로바이더 타입
-     * @param serviceKey   서비스 키 (EC2, VirtualNetwork 등)
-     * @param vpcId        VPC ID
-     * @param resourceName 리소스 이름 (VPC 이름 또는 vpcId)
-     * @param cidrBlock    CIDR 블록
-     * @param tags         태그 맵
-     * @throws IllegalStateException CloudService가 존재하지 않을 경우
-     */
-    @Deprecated
-    @Transactional
-    public void registerVpc(
-            ProviderType providerType,
-            String serviceKey,
-            String vpcId,
-            String resourceName,
-            String cidrBlock,
-            Map<String, String> tags
-    ) {
-        // VPC는 CloudService가 필수 (기존 동작 유지)
-        findServiceOrThrow(providerType, serviceKey);
-
-        ResourceRegistrationRequest request = ResourceRegistrationRequest.builder()
-                .resourceId(vpcId)
-                .resourceName(resourceName)
-                .resourceType(ResourceType.NETWORK)
-                .tags(tags)
-                .attributes(Map.of(AttributeKeys.CONFIGURATION, cidrBlock))
-                .build();
-
-        registerResource(providerType, serviceKey, request);
-    }
-
     // ==================== 공통 작업 ====================
 
     /**
@@ -243,13 +133,6 @@ public class CloudResourceManagementHelper {
         return cloudServiceRepository
                 .findByProviderTypeAndServiceKey(providerType, serviceKey)
                 .orElse(null);
-    }
-
-    private CloudService findServiceOrThrow(ProviderType providerType, String serviceKey) {
-        return cloudServiceRepository
-                .findByProviderTypeAndServiceKey(providerType, serviceKey)
-                .orElseThrow(() -> new IllegalStateException(
-                        "CloudService not found for provider: " + providerType + ", serviceKey: " + serviceKey));
     }
 
     private Tenant findCurrentTenant() {

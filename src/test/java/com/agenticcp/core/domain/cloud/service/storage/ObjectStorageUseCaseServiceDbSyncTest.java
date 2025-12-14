@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.service.storage;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.CreateObjectStorageContainerRequest;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
@@ -125,11 +126,10 @@ class ObjectStorageUseCaseServiceDbSyncTest {
             // Then
             assertThat(result).isNotNull();
             
-            verify(resourceHelper).registerStorageBucket(
+            verify(resourceHelper).registerResource(
                     eq(PROVIDER_TYPE),
                     eq("S3"),
-                    eq(CONTAINER_NAME),
-                    eq(tags)
+                    any(ResourceRegistrationRequest.class)
             );
         }
 
@@ -152,7 +152,7 @@ class ObjectStorageUseCaseServiceDbSyncTest {
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
             // DB 저장 실패
             doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
-                    .registerStorageBucket(any(), any(), any(), any());
+                    .registerResource(any(), any(), any());
 
             // When & Then
             assertThatThrownBy(() -> objectStorageUseCaseService.createContainer(request))
@@ -185,7 +185,7 @@ class ObjectStorageUseCaseServiceDbSyncTest {
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
             // DB 저장 실패
             doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
-                    .registerStorageBucket(any(), any(), any(), any());
+                    .registerResource(any(), any(), any());
             // 보상 트랜잭션(CSP 삭제)도 실패
             doThrow(new RuntimeException("CSP 삭제 실패")).when(managementPort)
                     .deleteContainer(any(), eq(CONTAINER_NAME));

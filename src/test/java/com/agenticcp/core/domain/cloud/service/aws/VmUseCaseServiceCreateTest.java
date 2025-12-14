@@ -96,8 +96,8 @@ class VmUseCaseServiceCreateTest {
 
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
         when(resourceHelper.extractResourceName(any(), eq(expectedInstanceId))).thenReturn(expectedInstanceId);
-        when(resourceHelper.registerVmInstance(
-                any(), anyString(), anyString(), anyString(), anyString(), any()
+        when(resourceHelper.registerResource(
+                any(), anyString(), any()
         )).thenReturn(expectedCloudResource);
 
         // When
@@ -131,8 +131,8 @@ class VmUseCaseServiceCreateTest {
 
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
         when(resourceHelper.extractResourceName(any(), eq(expectedInstanceId))).thenReturn(expectedInstanceId);
-        when(resourceHelper.registerVmInstance(
-                any(), anyString(), anyString(), anyString(), anyString(), any()
+        when(resourceHelper.registerResource(
+                any(), anyString(), any()
         )).thenReturn(expectedCloudResource);
 
         // When
@@ -198,8 +198,8 @@ class VmUseCaseServiceCreateTest {
 
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
         when(resourceHelper.extractResourceName(any(), eq(expectedInstanceId))).thenReturn("test-instance");
-        when(resourceHelper.registerVmInstance(
-                any(), anyString(), anyString(), anyString(), anyString(), any()
+        when(resourceHelper.registerResource(
+                any(), anyString(), any()
         )).thenReturn(expectedCloudResource);
 
         // When

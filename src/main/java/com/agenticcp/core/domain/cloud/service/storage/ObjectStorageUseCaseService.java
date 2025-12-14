@@ -5,6 +5,7 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.CreateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.dto.ObjectStorageContainerQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
 import com.agenticcp.core.domain.cloud.dto.UpdateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -91,11 +93,17 @@ public class ObjectStorageUseCaseService {
 
         // DB에 CloudResource 저장 (실패 시 보상 트랜잭션 실행)
         try {
-            resourceHelper.registerStorageBucket(
+            ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
+                    .resourceId(request.getContainerName())
+                    .resourceName(request.getContainerName())
+                    .resourceType(CloudResource.ResourceType.BUCKET)
+                    .tags(request.getTags())
+                    .build();
+            
+            resourceHelper.registerResource(
                     providerType,
                     serviceKey,
-                    request.getContainerName(),
-                    request.getTags()
+                    registrationRequest
             );
         } catch (Exception e) {
             log.error("[ObjectStorageUseCaseService] DB 저장 실패, 보상 트랜잭션 실행: containerName={}, error={}",

@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.service.vpc;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
 import com.agenticcp.core.domain.cloud.dto.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
@@ -125,13 +126,10 @@ class VpcUseCaseServiceDbSyncTest {
             assertThat(result).isNotNull();
             assertThat(result.getResourceId()).isEqualTo(VPC_ID);
             
-            verify(resourceHelper).registerVpc(
+            verify(resourceHelper).registerResource(
                     eq(PROVIDER_TYPE),
                     eq("EC2"),
-                    eq(VPC_ID),
-                    eq(VPC_NAME),
-                    eq(CIDR_BLOCK),
-                    eq(tags)
+                    any(ResourceRegistrationRequest.class)
             );
         }
 
@@ -155,7 +153,7 @@ class VpcUseCaseServiceDbSyncTest {
             when(vpcManagementPort.createVpc(any())).thenReturn(mockCreatedVpc);
             // DB 저장 실패
             doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
-                    .registerVpc(any(), any(), any(), any(), any(), any());
+                    .registerResource(any(), any(), any());
 
             // When & Then
             assertThatThrownBy(() -> vpcUseCaseService.createVpc(request))
@@ -192,13 +190,10 @@ class VpcUseCaseServiceDbSyncTest {
             vpcUseCaseService.createVpc(request);
 
             // Then
-            verify(resourceHelper).registerVpc(
+            verify(resourceHelper).registerResource(
                     eq(PROVIDER_TYPE),
                     eq("EC2"),
-                    eq(VPC_ID),
-                    eq(VPC_ID),  // VPC ID가 이름으로 사용됨
-                    eq(CIDR_BLOCK),
-                    any()
+                    any(ResourceRegistrationRequest.class)
             );
         }
     }

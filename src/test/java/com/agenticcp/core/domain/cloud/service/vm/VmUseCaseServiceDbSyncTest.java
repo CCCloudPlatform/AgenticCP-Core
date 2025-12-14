@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.cloud.service.vm;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
@@ -126,13 +127,10 @@ class VmUseCaseServiceDbSyncTest {
 
             when(vmLifecyclePort.createInstance(any())).thenReturn(INSTANCE_ID);
             when(resourceHelper.extractResourceName(tags, INSTANCE_ID)).thenReturn("test-instance");
-            when(resourceHelper.registerVmInstance(
+            when(resourceHelper.registerResource(
                     eq(PROVIDER_TYPE),
                     eq("EC2"),
-                    eq(INSTANCE_ID),
-                    eq("test-instance"),
-                    eq("t3.micro"),
-                    eq(tags)
+                    any(ResourceRegistrationRequest.class)
             )).thenReturn(mockCloudResource);
 
             // When
@@ -143,13 +141,10 @@ class VmUseCaseServiceDbSyncTest {
             assertThat(result.getResourceId()).isEqualTo(INSTANCE_ID);
             assertThat(result.getResourceName()).isEqualTo("test-instance");
             
-            verify(resourceHelper).registerVmInstance(
+            verify(resourceHelper).registerResource(
                     eq(PROVIDER_TYPE),
                     eq("EC2"),
-                    eq(INSTANCE_ID),
-                    eq("test-instance"),
-                    eq("t3.micro"),
-                    eq(tags)
+                    any(ResourceRegistrationRequest.class)
             );
         }
 
@@ -168,7 +163,7 @@ class VmUseCaseServiceDbSyncTest {
             when(resourceHelper.extractResourceName(any(), eq(INSTANCE_ID))).thenReturn(INSTANCE_ID);
             // DB 저장 실패
             doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
-                    .registerVmInstance(any(), any(), any(), any(), any(), any());
+                    .registerResource(any(), any(), any());
 
             // When & Then
             assertThatThrownBy(() -> vmUseCaseService.createInstance(request))

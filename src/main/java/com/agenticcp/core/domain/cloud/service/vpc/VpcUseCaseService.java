@@ -4,6 +4,8 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.ListVpcsQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest.AttributeKeys;
 import com.agenticcp.core.domain.cloud.dto.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VpcQueryRequest;
 import com.agenticcp.core.domain.cloud.dto.VpcUpdateRequest;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -108,13 +111,18 @@ public class VpcUseCaseService {
         // DB에 CloudResource 저장 (실패 시 보상 트랜잭션 실행)
         try {
             String resourceName = request.getVpcName() != null ? request.getVpcName() : vpc.getResourceId();
-            resourceHelper.registerVpc(
+            ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
+                    .resourceId(vpc.getResourceId())
+                    .resourceName(resourceName)
+                    .resourceType(CloudResource.ResourceType.NETWORK)
+                    .tags(request.getTags())
+                    .attributes(Map.of(AttributeKeys.CONFIGURATION, request.getCidrBlock()))
+                    .build();
+            
+            resourceHelper.registerResource(
                     request.getProviderType(),
                     getServiceKeyForProvider(request.getProviderType()),
-                    vpc.getResourceId(),
-                    resourceName,
-                    request.getCidrBlock(),
-                    request.getTags()
+                    registrationRequest
             );
         } catch (Exception e) {
             log.error("[VpcUseCaseService] DB 저장 실패, 보상 트랜잭션 실행: vpcId={}, error={}",

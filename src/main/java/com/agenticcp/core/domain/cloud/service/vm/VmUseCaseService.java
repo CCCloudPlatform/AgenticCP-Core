@@ -2,6 +2,8 @@ package com.agenticcp.core.domain.cloud.service.vm;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest.AttributeKeys;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.dto.VmUpdateRequest;
@@ -142,13 +144,18 @@ public class VmUseCaseService {
         CloudResource cloudResource;
         try {
             String resourceName = resourceHelper.extractResourceName(request.getTags(), instanceId);
-            cloudResource = resourceHelper.registerVmInstance(
+            ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
+                    .resourceId(instanceId)
+                    .resourceName(resourceName)
+                    .resourceType(CloudResource.ResourceType.INSTANCE)
+                    .tags(request.getTags())
+                    .attributes(Map.of(AttributeKeys.INSTANCE_SIZE, request.getInstanceSize()))
+                    .build();
+            
+            cloudResource = resourceHelper.registerResource(
                     providerType,
                     getServiceKeyForProvider(providerType),
-                    instanceId,
-                    resourceName,
-                    request.getInstanceSize(),
-                    request.getTags()
+                    registrationRequest
             );
         } catch (Exception e) {
             log.error("[VmUseCaseService] DB 저장 실패, 보상 트랜잭션 실행: instanceId={}, error={}",

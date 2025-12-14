@@ -128,7 +128,7 @@ class S3BucketUseCaseServiceTest {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
                 when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
                 when(managementPort.createContainer(any(CreateObjectStorageContainerCommand.class))).thenReturn(expectedContainer);
-                doNothing().when(resourceHelper).registerStorageBucket(any(), any(), any(), any());
+                when(resourceHelper.registerResource(any(), any(), any())).thenReturn(expectedContainer);
 
                 // When
                 CloudResource result = objectStorageUseCaseService.createContainer(request);
@@ -141,7 +141,7 @@ class S3BucketUseCaseServiceTest {
                 verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TAGGING);
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(managementPort).createContainer(any(CreateObjectStorageContainerCommand.class));
-                verify(resourceHelper).registerStorageBucket(eq(AWS), eq("S3"), eq(CONTAINER_NAME), any());
+                verify(resourceHelper).registerResource(eq(AWS), eq("S3"), any());
             }
         }
 
