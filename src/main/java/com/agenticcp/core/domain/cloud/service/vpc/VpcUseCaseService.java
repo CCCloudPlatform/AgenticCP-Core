@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.cloud.service.vpc;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.ListVpcsQueryRequest;
@@ -11,8 +10,6 @@ import com.agenticcp.core.domain.cloud.dto.VpcUpdateRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.ResourceType;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
@@ -37,7 +34,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -367,23 +363,16 @@ public class VpcUseCaseService {
             // 리소스 이름 결정
             String resourceName = request.getVpcName() != null ? request.getVpcName() : vpcId;
             
-            // CloudResource 엔티티 생성
-            CloudResource cloudResource = CloudResource.builder()
-                    .resourceId(vpcId)
-                    .resourceName(resourceName)
-                    .displayName(resourceName)
-                    .provider(provider)
-                    .service(cloudService)
-                    .tenant(tenant)
-                    .status(Status.ACTIVE)
-                    .resourceType(ResourceType.NETWORK)
-                    .lifecycleState(LifecycleState.RUNNING)
-                    .tags(serializeTagsToJson(request.getTags()))
-                    .configuration(request.getCidrBlock()) // CIDR 정보 저장
-                    .createdInCloud(LocalDateTime.now())
-                    .lastModifiedInCloud(LocalDateTime.now())
-                    .lastSync(LocalDateTime.now())
-                    .build();
+            // Factory Method를 사용한 CloudResource 엔티티 생성
+            CloudResource cloudResource = CloudResource.createVpc(
+                    vpcId,
+                    resourceName,
+                    provider,
+                    cloudService,
+                    tenant,
+                    request.getCidrBlock(),
+                    serializeTagsToJson(request.getTags())
+            );
             
             cloudResourceRepository.save(cloudResource);
             log.debug("[VpcUseCaseService] CloudResource 저장 완료: vpcId={}", vpcId);

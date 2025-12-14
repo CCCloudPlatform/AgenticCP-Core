@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.cloud.service.vm;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
@@ -10,7 +9,6 @@ import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.ResourceType;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -512,23 +510,16 @@ public class VmUseCaseService {
             // 리소스 이름 생성 (태그에서 Name 추출 또는 instanceId 사용)
             String resourceName = extractResourceName(request.getTags(), instanceId);
             
-            // CloudResource 엔티티 생성
-            CloudResource cloudResource = CloudResource.builder()
-                    .resourceId(instanceId)
-                    .resourceName(resourceName)
-                    .displayName(resourceName)
-                    .provider(provider)
-                    .service(cloudService)
-                    .tenant(tenant)
-                    .status(Status.ACTIVE)
-                    .resourceType(ResourceType.INSTANCE)
-                    .lifecycleState(LifecycleState.PENDING)
-                    .instanceSize(request.getInstanceSize())
-                    .tags(serializeTagsToJson(request.getTags()))
-                    .createdInCloud(LocalDateTime.now())
-                    .lastModifiedInCloud(LocalDateTime.now())
-                    .lastSync(LocalDateTime.now())
-                    .build();
+            // Factory Method를 사용한 CloudResource 엔티티 생성
+            CloudResource cloudResource = CloudResource.createVmInstance(
+                    instanceId,
+                    resourceName,
+                    provider,
+                    cloudService,
+                    tenant,
+                    request.getInstanceSize(),
+                    serializeTagsToJson(request.getTags())
+            );
             
             cloudResourceRepository.save(cloudResource);
             log.debug("[VmUseCaseService] CloudResource 저장 완료: instanceId={}", instanceId);

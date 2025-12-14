@@ -108,6 +108,126 @@ public class CloudResource extends BaseEntity {
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata; // JSON for additional resource metadata
 
+    // ==================== Factory Methods ====================
+
+    /**
+     * VM 인스턴스용 CloudResource 생성
+     * CSP에서 생성된 VM 인스턴스 정보를 CloudResource 엔티티로 변환합니다.
+     *
+     * @param resourceId   인스턴스 ID (CSP에서 부여한 ID)
+     * @param resourceName 리소스 이름 (태그에서 추출 또는 resourceId)
+     * @param provider     클라우드 프로바이더
+     * @param service      클라우드 서비스 (EC2, Compute Engine 등)
+     * @param tenant       테넌트
+     * @param instanceSize 인스턴스 크기
+     * @param tagsJson     태그 (JSON 형식)
+     * @return CloudResource 엔티티
+     */
+    public static CloudResource createVmInstance(
+            String resourceId,
+            String resourceName,
+            CloudProvider provider,
+            CloudService service,
+            Tenant tenant,
+            String instanceSize,
+            String tagsJson
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+        return CloudResource.builder()
+                .resourceId(resourceId)
+                .resourceName(resourceName)
+                .displayName(resourceName)
+                .provider(provider)
+                .service(service)
+                .tenant(tenant)
+                .status(Status.ACTIVE)
+                .resourceType(ResourceType.INSTANCE)
+                .lifecycleState(LifecycleState.PENDING)
+                .instanceSize(instanceSize)
+                .tags(tagsJson)
+                .createdInCloud(now)
+                .lastModifiedInCloud(now)
+                .lastSync(now)
+                .build();
+    }
+
+    /**
+     * Object Storage (버킷/컨테이너)용 CloudResource 생성
+     * CSP에서 생성된 스토리지 컨테이너 정보를 CloudResource 엔티티로 변환합니다.
+     *
+     * @param containerName 컨테이너 이름 (S3 버킷명, Azure Blob 컨테이너명 등)
+     * @param provider      클라우드 프로바이더
+     * @param service       클라우드 서비스 (S3, BlobStorage 등)
+     * @param tenant        테넌트
+     * @param tagsJson      태그 (JSON 형식)
+     * @return CloudResource 엔티티
+     */
+    public static CloudResource createStorageBucket(
+            String containerName,
+            CloudProvider provider,
+            CloudService service,
+            Tenant tenant,
+            String tagsJson
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+        return CloudResource.builder()
+                .resourceId(containerName)
+                .resourceName(containerName)
+                .displayName(containerName)
+                .provider(provider)
+                .service(service)
+                .tenant(tenant)
+                .status(Status.ACTIVE)
+                .resourceType(ResourceType.BUCKET)
+                .lifecycleState(LifecycleState.RUNNING)
+                .tags(tagsJson)
+                .createdInCloud(now)
+                .lastModifiedInCloud(now)
+                .lastSync(now)
+                .build();
+    }
+
+    /**
+     * VPC 네트워크용 CloudResource 생성
+     * CSP에서 생성된 VPC 정보를 CloudResource 엔티티로 변환합니다.
+     *
+     * @param vpcId        VPC ID (CSP에서 부여한 ID)
+     * @param resourceName 리소스 이름 (VPC 이름 또는 vpcId)
+     * @param provider     클라우드 프로바이더
+     * @param service      클라우드 서비스 (EC2, VirtualNetwork 등)
+     * @param tenant       테넌트
+     * @param cidrBlock    CIDR 블록 (configuration에 저장)
+     * @param tagsJson     태그 (JSON 형식)
+     * @return CloudResource 엔티티
+     */
+    public static CloudResource createVpc(
+            String vpcId,
+            String resourceName,
+            CloudProvider provider,
+            CloudService service,
+            Tenant tenant,
+            String cidrBlock,
+            String tagsJson
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+        return CloudResource.builder()
+                .resourceId(vpcId)
+                .resourceName(resourceName)
+                .displayName(resourceName)
+                .provider(provider)
+                .service(service)
+                .tenant(tenant)
+                .status(Status.ACTIVE)
+                .resourceType(ResourceType.NETWORK)
+                .lifecycleState(LifecycleState.RUNNING)
+                .tags(tagsJson)
+                .configuration(cidrBlock)
+                .createdInCloud(now)
+                .lastModifiedInCloud(now)
+                .lastSync(now)
+                .build();
+    }
+
     public enum ResourceType {
         INSTANCE,
         VOLUME,

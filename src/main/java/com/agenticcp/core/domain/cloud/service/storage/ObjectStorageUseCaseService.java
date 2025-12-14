@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.cloud.service.storage;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
-import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.CreateObjectStorageContainerRequest;
@@ -10,8 +9,6 @@ import com.agenticcp.core.domain.cloud.dto.UpdateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.ResourceType;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -31,7 +28,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
 
@@ -333,22 +329,14 @@ public class ObjectStorageUseCaseService {
                     .orElseThrow(() -> new IllegalStateException(
                             "Tenant not found for key: " + tenantKey));
             
-            // CloudResource 엔티티 생성
-            CloudResource cloudResource = CloudResource.builder()
-                    .resourceId(containerName)
-                    .resourceName(containerName)
-                    .displayName(containerName)
-                    .provider(provider)
-                    .service(cloudService)
-                    .tenant(tenant)
-                    .status(Status.ACTIVE)
-                    .resourceType(ResourceType.BUCKET)
-                    .lifecycleState(LifecycleState.RUNNING)
-                    .tags(serializeTagsToJson(request.getTags()))
-                    .createdInCloud(LocalDateTime.now())
-                    .lastModifiedInCloud(LocalDateTime.now())
-                    .lastSync(LocalDateTime.now())
-                    .build();
+            // Factory Method를 사용한 CloudResource 엔티티 생성
+            CloudResource cloudResource = CloudResource.createStorageBucket(
+                    containerName,
+                    provider,
+                    cloudService,
+                    tenant,
+                    serializeTagsToJson(request.getTags())
+            );
             
             cloudResourceRepository.save(cloudResource);
             log.debug("[ObjectStorageUseCaseService] CloudResource 저장 완료: containerName={}", containerName);
