@@ -26,8 +26,6 @@ import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.tenant.repository.TenantRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,7 +33,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -52,7 +49,6 @@ public class VpcUseCaseService {
     private final CloudProviderRepository cloudProviderRepository;
     private final CloudServiceRepository cloudServiceRepository;
     private final TenantRepository tenantRepository;
-    private final ObjectMapper objectMapper;
 
     @Transactional
     public CloudResource createVpc(VpcCreateRequest request) {
@@ -371,7 +367,7 @@ public class VpcUseCaseService {
                     cloudService,
                     tenant,
                     request.getCidrBlock(),
-                    serializeTagsToJson(request.getTags())
+                    request.getTags()
             );
             
             cloudResourceRepository.save(cloudResource);
@@ -415,20 +411,5 @@ public class VpcUseCaseService {
             case GCP -> "VPCNetwork";
             default -> "Network";
         };
-    }
-
-    /**
-     * 태그 맵을 JSON 문자열로 직렬화
-     */
-    private String serializeTagsToJson(Map<String, String> tags) {
-        if (tags == null || tags.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(tags);
-        } catch (JsonProcessingException e) {
-            log.warn("[VpcUseCaseService] 태그 JSON 직렬화 실패: {}", e.getMessage());
-            return null;
-        }
     }
 }

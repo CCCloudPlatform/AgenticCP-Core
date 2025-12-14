@@ -1,5 +1,6 @@
 package com.agenticcp.core.domain.cloud.entity;
 
+import com.agenticcp.core.common.config.TagMapConverter;
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
@@ -11,6 +12,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "cloud_resources")
@@ -84,8 +86,9 @@ public class CloudResource extends BaseEntity {
     @Column(name = "public_ip_address")
     private String publicIpAddress;
 
+    @Convert(converter = TagMapConverter.class)
     @Column(name = "tags", columnDefinition = "TEXT")
-    private String tags; // JSON for resource tags
+    private Map<String, String> tags;
 
     @Column(name = "configuration", columnDefinition = "TEXT")
     private String configuration; // JSON for resource configuration
@@ -120,7 +123,7 @@ public class CloudResource extends BaseEntity {
      * @param service      클라우드 서비스 (EC2, Compute Engine 등)
      * @param tenant       테넌트
      * @param instanceSize 인스턴스 크기
-     * @param tagsJson     태그 (JSON 형식)
+     * @param tags         태그 맵
      * @return CloudResource 엔티티
      */
     public static CloudResource createVmInstance(
@@ -130,7 +133,7 @@ public class CloudResource extends BaseEntity {
             CloudService service,
             Tenant tenant,
             String instanceSize,
-            String tagsJson
+            Map<String, String> tags
     ) {
         LocalDateTime now = LocalDateTime.now();
         return CloudResource.builder()
@@ -144,7 +147,7 @@ public class CloudResource extends BaseEntity {
                 .resourceType(ResourceType.INSTANCE)
                 .lifecycleState(LifecycleState.PENDING)
                 .instanceSize(instanceSize)
-                .tags(tagsJson)
+                .tags(tags)
                 .createdInCloud(now)
                 .lastModifiedInCloud(now)
                 .lastSync(now)
@@ -159,7 +162,7 @@ public class CloudResource extends BaseEntity {
      * @param provider      클라우드 프로바이더
      * @param service       클라우드 서비스 (S3, BlobStorage 등)
      * @param tenant        테넌트
-     * @param tagsJson      태그 (JSON 형식)
+     * @param tags          태그 맵
      * @return CloudResource 엔티티
      */
     public static CloudResource createStorageBucket(
@@ -167,7 +170,7 @@ public class CloudResource extends BaseEntity {
             CloudProvider provider,
             CloudService service,
             Tenant tenant,
-            String tagsJson
+            Map<String, String> tags
     ) {
         LocalDateTime now = LocalDateTime.now();
         return CloudResource.builder()
@@ -180,7 +183,7 @@ public class CloudResource extends BaseEntity {
                 .status(Status.ACTIVE)
                 .resourceType(ResourceType.BUCKET)
                 .lifecycleState(LifecycleState.RUNNING)
-                .tags(tagsJson)
+                .tags(tags)
                 .createdInCloud(now)
                 .lastModifiedInCloud(now)
                 .lastSync(now)
@@ -197,7 +200,7 @@ public class CloudResource extends BaseEntity {
      * @param service      클라우드 서비스 (EC2, VirtualNetwork 등)
      * @param tenant       테넌트
      * @param cidrBlock    CIDR 블록 (configuration에 저장)
-     * @param tagsJson     태그 (JSON 형식)
+     * @param tags         태그 맵
      * @return CloudResource 엔티티
      */
     public static CloudResource createVpc(
@@ -207,7 +210,7 @@ public class CloudResource extends BaseEntity {
             CloudService service,
             Tenant tenant,
             String cidrBlock,
-            String tagsJson
+            Map<String, String> tags
     ) {
         LocalDateTime now = LocalDateTime.now();
         return CloudResource.builder()
@@ -220,7 +223,7 @@ public class CloudResource extends BaseEntity {
                 .status(Status.ACTIVE)
                 .resourceType(ResourceType.NETWORK)
                 .lifecycleState(LifecycleState.RUNNING)
-                .tags(tagsJson)
+                .tags(tags)
                 .configuration(cidrBlock)
                 .createdInCloud(now)
                 .lastModifiedInCloud(now)

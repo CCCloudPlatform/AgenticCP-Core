@@ -99,16 +99,6 @@ public class AwsVpcMapper {
             }
         }
         
-        // 태그를 JSON 문자열로 변환
-        String tagsJson = null;
-        if (tags != null && !tags.isEmpty()) {
-            try {
-                tagsJson = objectMapper.writeValueAsString(tags);
-            } catch (JsonProcessingException e) {
-                // 로깅은 생략 (필요시 추가)
-            }
-        }
-        
         // 메타데이터 구성
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("vpcId", vpc.vpcId());
@@ -151,7 +141,7 @@ public class AwsVpcMapper {
             .region(cloudRegion)
             .resourceType(CloudResource.ResourceType.NETWORK)
             .lifecycleState(mapStateToLifecycleState(vpc.stateAsString()))
-            .tags(tagsJson)
+            .tags(tags)
             .metadata(metadataJson)
             .createdInCloud(LocalDateTime.now()) // AWS VPC는 생성 시간 정보를 직접 제공하지 않으므로 현재 시간 사용
             .build();
