@@ -118,11 +118,11 @@ public class VmUseCaseService {
      * 데이터 정합성(Ghost Resource 방지)을 보장합니다.
      *
      * @param request 생성 요청 정보 (providerType, accountScope 포함)
-     * @return 생성된 인스턴스 ID
+     * @return 생성된 CloudResource 엔티티
      * @throws BusinessException DB 저장 실패 및 보상 트랜잭션 실행 시
      */
     @Transactional
-    public String createInstance(VmCreateRequest request) {
+    public CloudResource createInstance(VmCreateRequest request) {
         ProviderType providerType = request.getProviderType();
         String accountScope = request.getAccountScope();
         
@@ -139,9 +139,10 @@ public class VmUseCaseService {
             .createInstance(toCreateCommand(request, session));
 
         // DB에 CloudResource 저장 (실패 시 보상 트랜잭션 실행)
+        CloudResource cloudResource;
         try {
             String resourceName = resourceHelper.extractResourceName(request.getTags(), instanceId);
-            resourceHelper.registerVmInstance(
+            cloudResource = resourceHelper.registerVmInstance(
                     providerType,
                     getServiceKeyForProvider(providerType),
                     instanceId,
@@ -162,8 +163,9 @@ public class VmUseCaseService {
             );
         }
 
-        log.info("VM 인스턴스 생성 완료: provider={}, instanceId={}", providerType, instanceId);
-        return instanceId;
+        log.info("VM 인스턴스 생성 완료: provider={}, instanceId={}, resourceId={}", 
+                providerType, instanceId, cloudResource.getResourceId());
+        return cloudResource;
     }
 
     /**

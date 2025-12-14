@@ -136,7 +136,7 @@ public class VmController {
      * @param provider 클라우드 프로바이더 타입
      * @param accountScope 계정 스코프
      * @param request 생성 요청 정보
-     * @return 생성된 인스턴스 ID
+     * @return 생성된 CloudResource 엔티티
      */
     @PostMapping
     @Operation(summary = "VM 인스턴스 생성", description = "새로운 VM 인스턴스를 생성합니다.")
@@ -145,7 +145,7 @@ public class VmController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<ApiResponse<String>> createInstance(
+    public ResponseEntity<ApiResponse<CloudResource>> createInstance(
             @Parameter(description = "클라우드 프로바이더 타입", required = true, example = "AWS")
             @PathVariable CloudProvider.ProviderType provider,
             @Parameter(description = "계정 스코프", required = true, example = "123456789012")
@@ -160,10 +160,11 @@ public class VmController {
         log.info("[VmController] createInstance - provider={}, accountScope={}, image={}, instanceSize={}", 
                 provider, accountScope, request.getImage(), request.getInstanceSize());
         
-        String instanceId = vmUseCaseService.createInstance(request);
-        log.info("[VmController] createInstance - success provider={}, instanceId={}", provider, instanceId);
+        CloudResource cloudResource = vmUseCaseService.createInstance(request);
+        log.info("[VmController] createInstance - success provider={}, instanceId={}, resourceId={}", 
+                provider, cloudResource.getResourceId(), cloudResource.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(instanceId, "VM 인스턴스 생성에 성공했습니다."));
+                .body(ApiResponse.success(cloudResource, "VM 인스턴스 생성에 성공했습니다."));
     }
 
     // ==================== 인스턴스 생명주기 관리 ====================

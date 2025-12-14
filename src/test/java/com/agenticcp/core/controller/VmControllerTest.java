@@ -123,14 +123,15 @@ class VmControllerTest {
             .build();
 
         when(vmUseCaseService.createInstance(any(VmCreateRequest.class)))
-            .thenReturn("i-1234567890abcdef0");
+            .thenReturn(testInstance);
 
         // When & Then
         mockMvc.perform(post(BASE_URL, "AWS", "123456789012")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data").value("i-1234567890abcdef0"));
+                .andExpect(jsonPath("$.data.resourceId").value("i-1234567890abcdef0"))
+                .andExpect(jsonPath("$.data.resourceName").value("test-instance"));
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -118,14 +119,29 @@ class VmUseCaseServiceDbSyncTest {
                     .tags(tags)
                     .build();
 
+            CloudResource mockCloudResource = CloudResource.builder()
+                    .resourceId(INSTANCE_ID)
+                    .resourceName("test-instance")
+                    .build();
+
             when(vmLifecyclePort.createInstance(any())).thenReturn(INSTANCE_ID);
             when(resourceHelper.extractResourceName(tags, INSTANCE_ID)).thenReturn("test-instance");
+            when(resourceHelper.registerVmInstance(
+                    eq(PROVIDER_TYPE),
+                    eq("EC2"),
+                    eq(INSTANCE_ID),
+                    eq("test-instance"),
+                    eq("t3.micro"),
+                    eq(tags)
+            )).thenReturn(mockCloudResource);
 
             // When
-            String result = vmUseCaseService.createInstance(request);
+            CloudResource result = vmUseCaseService.createInstance(request);
 
             // Then
-            assertThat(result).isEqualTo(INSTANCE_ID);
+            assertThat(result).isNotNull();
+            assertThat(result.getResourceId()).isEqualTo(INSTANCE_ID);
+            assertThat(result.getResourceName()).isEqualTo("test-instance");
             
             verify(resourceHelper).registerVmInstance(
                     eq(PROVIDER_TYPE),

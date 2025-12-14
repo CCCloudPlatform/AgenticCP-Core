@@ -55,10 +55,11 @@ public class CloudResourceManagementHelper {
      * @param resourceName 리소스 이름
      * @param instanceSize 인스턴스 크기
      * @param tags         태그 맵
+     * @return 저장된 CloudResource 엔티티
      * @throws CloudResourceRegistrationException DB 저장 실패 시
      */
     @Transactional
-    public void registerVmInstance(
+    public CloudResource registerVmInstance(
             ProviderType providerType,
             String serviceKey,
             String instanceId,
@@ -80,8 +81,10 @@ public class CloudResourceManagementHelper {
                 tags
         );
 
-        cloudResourceRepository.save(cloudResource);
-        log.debug("[CloudResourceManagementHelper] VM 인스턴스 등록 완료: instanceId={}", instanceId);
+        CloudResource savedResource = cloudResourceRepository.save(cloudResource);
+        log.debug("[CloudResourceManagementHelper] VM 인스턴스 등록 완료: instanceId={}, resourceId={}", 
+                instanceId, savedResource.getResourceId());
+        return savedResource;
     }
 
     // ==================== Storage Bucket ====================
