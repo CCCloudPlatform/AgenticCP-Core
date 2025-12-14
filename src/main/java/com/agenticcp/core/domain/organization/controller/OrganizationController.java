@@ -292,10 +292,10 @@ public class OrganizationController {
     }
     
     // ========== [DEPRECATED] 조직-사용자 관계 API ==========
-    // TODO: #163 ERD에 따라 OrganizationMember를 통해 관리되도록 변경 예정
-    // - User → Worker 엔티티로 변경
-    // - OrganizationMember 테이블을 통한 관계 관리
-    // - #163 구현 완료 후 아래 API들 제거 예정
+    // ✅ 완료: #172에 따라 OrganizationMember API로 대체 완료
+    // - OrganizationMemberController: /api/v1/organizations/{organizationId}/members
+    // - UserOrganizationController: /api/v1/users/{userId}/organizations
+    // - 아래 API들은 주석 처리되어 있으며, OrganizationMember API 사용 권장
 
     /*
     @GetMapping("/{id}/users")
