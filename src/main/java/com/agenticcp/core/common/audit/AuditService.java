@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
@@ -45,6 +46,7 @@ public class AuditService {
      * @return 원본 메서드 실행 결과
      * @throws Throwable 원본 메서드 또는 감사 처리 중 발생한 예외
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Object audit(ProceedingJoinPoint joinPoint, AuditContextDto auditInfo) throws Throwable {
         var mdcContext = auditContextProvider.getCurrentContext();
         AuditContextDto finalContext = auditInfo.toBuilder()

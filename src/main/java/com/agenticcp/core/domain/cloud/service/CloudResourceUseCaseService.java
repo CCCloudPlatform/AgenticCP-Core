@@ -1,11 +1,13 @@
 package com.agenticcp.core.domain.cloud.service;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.ResourceQuery;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,7 +23,7 @@ public class CloudResourceUseCaseService {
 
     private final ResourcePortRouter router;
     private final CapabilityGuard capabilityGuard;
-    private final CredentialProviderPort credentialProviderPort;
+    private final AccountCredentialManagementPort accountCredentialManagementPort;
     private final AuditEventPort auditEventPort;
     private final TracingPort tracingPort;
 
@@ -46,24 +48,39 @@ public class CloudResourceUseCaseService {
     @Transactional
     public void start(ResourceIdentity id, String serviceKey, String resourceType) {
         capabilityGuard.ensureSupported(id.getProviderType(), serviceKey, resourceType, CapabilityGuard.Operation.START);
-        credentialProviderPort.resolveCredentials(null, id.getProviderType(), id.getAccountScope());
-        router.lifecycle(id.getProviderType()).start(id);
+        
+        // JIT 세션 획득
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        CloudSessionCredential session = accountCredentialManagementPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
+        
+        // 세션을 Adapter에 전달
+        router.lifecycle(id.getProviderType()).start(id, session);
         auditEventPort.record("START", "CloudResource", "SUCCESS", Map.of("id", id.getProviderResourceId()));
     }
 
     @Transactional
     public void stop(ResourceIdentity id, String serviceKey, String resourceType) {
         capabilityGuard.ensureSupported(id.getProviderType(), serviceKey, resourceType, CapabilityGuard.Operation.STOP);
-        credentialProviderPort.resolveCredentials(null, id.getProviderType(), id.getAccountScope());
-        router.lifecycle(id.getProviderType()).stop(id);
+        
+        // JIT 세션 획득
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        CloudSessionCredential session = accountCredentialManagementPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
+        
+        // 세션을 Adapter에 전달
+        router.lifecycle(id.getProviderType()).stop(id, session);
         auditEventPort.record("STOP", "CloudResource", "SUCCESS", Map.of("id", id.getProviderResourceId()));
     }
 
     @Transactional
     public void terminate(ResourceIdentity id, String serviceKey, String resourceType) {
         capabilityGuard.ensureSupported(id.getProviderType(), serviceKey, resourceType, CapabilityGuard.Operation.TERMINATE);
-        credentialProviderPort.resolveCredentials(null, id.getProviderType(), id.getAccountScope());
-        router.lifecycle(id.getProviderType()).terminate(id);
+        
+        // JIT 세션 획득
+        String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
+        CloudSessionCredential session = accountCredentialManagementPort.getSession(tenantKey, id.getAccountScope(), id.getProviderType());
+        
+        // 세션을 Adapter에 전달
+        router.lifecycle(id.getProviderType()).terminate(id, session);
         auditEventPort.record("TERMINATE", "CloudResource", "SUCCESS", Map.of("id", id.getProviderResourceId()));
     }
 }

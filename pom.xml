@@ -22,6 +22,7 @@
         <java.version>17</java.version>
         <mysql.version>8.0.33</mysql.version>
         <docker.image.prefix>agenticcp</docker.image.prefix>
+        <aws.sdk.version>2.21.29</aws.sdk.version>
     </properties>
 
     <dependencyManagement>
@@ -280,6 +281,27 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>resourcegroupstaggingapi</artifactId>
+        </dependency>
+
+        <!-- AWS SDK v2 for Java - EC2 only -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>ec2</artifactId>
+            <version>2.21.29</version>
+        </dependency>
+        
+        <!-- AWS SDK Core -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>aws-core</artifactId>
+            <version>2.21.29</version>
+        </dependency>
+        
+        <!-- AWS SDK Auth -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>auth</artifactId>
+            <version>2.21.29</version>
         </dependency>
 
     </dependencies>

@@ -5,9 +5,8 @@ import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.cloud.entity.CloudRegion;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
-import com.agenticcp.core.domain.cloud.exception.AwsErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
-import com.agenticcp.core.domain.cloud.exception.S3ErrorCode;
+import com.agenticcp.core.domain.cloud.exception.ObjectStorageErrorCode;
 import com.agenticcp.core.domain.cloud.repository.CloudRegionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -74,7 +73,7 @@ public class AwsS3BucketMapper {
                     .instanceType("S3_BUCKET")
                     .instanceSize("STANDARD")
                     .storageGb(0L) // S3 버킷은 스토리지 용량이 동적이므로 0으로 설정
-                    .tags(buildTagsJson(tags))
+                    .tags(toTagMap(tags))
                     .configuration(buildConfigurationJson(bucket, versioningStatus, lifecycleConfig))
                     .createdInCloud(toLocalDateTime(bucket.creationDate()))
                     .lastModifiedInCloud(toLocalDateTime(bucket.creationDate()))
@@ -121,7 +120,7 @@ public class AwsS3BucketMapper {
         // 리전 ID 형식 검증
         if (!isValidRegionId(effectiveRegionId)) {
             log.error("Invalid region ID format: {}", effectiveRegionId);
-            throw new BusinessException(AwsErrorCode.AWS_REGION_INVALID, 
+            throw new BusinessException(CloudErrorCode.INVALID_REGION,
                     "유효하지 않은 AWS 리전 ID입니다: " + effectiveRegionId);
         }
 
@@ -163,27 +162,6 @@ public class AwsS3BucketMapper {
             log.error("Failed to convert S3 bucket list to CloudResource list", e);
             throw new BusinessException(CloudErrorCode.MAPPING_FAILED, 
                     "S3 버킷 목록을 CloudResource로 변환하는 중 오류가 발생했습니다: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 태그 리스트를 JSON 문자열로 변환
-     * 
-     * @param tags AWS S3 태그 리스트
-     * @return 태그 JSON 문자열
-     */
-    private String buildTagsJson(List<Tag> tags) {
-        if (tags == null || tags.isEmpty()) {
-            return "{}";
-        }
-        
-        try {
-            Map<String, String> tagMap = toTagMap(tags);
-            return objectMapper.writeValueAsString(tagMap);
-        } catch (Exception e) {
-            log.warn("Failed to serialize tags for bucket", e);
-            throw new BusinessException(CloudErrorCode.CLOUD_TAG_OPERATION_FAILED, 
-                    "S3 버킷 태그 직렬화에 실패했습니다: " + e.getMessage());
         }
     }
 
@@ -333,12 +311,12 @@ public class AwsS3BucketMapper {
     private void validateBucketInput(Bucket bucket, CloudProvider provider) {
         if (bucket == null) {
             log.error("Bucket is null");
-            throw new BusinessException(S3ErrorCode.S3_BUCKET_NOT_FOUND, "S3 버킷 정보가 없습니다.");
+            throw new BusinessException(ObjectStorageErrorCode.BUCKET_NOT_FOUND, "S3 버킷 정보가 없습니다.");
         }
         
         if (bucket.name() == null || bucket.name().trim().isEmpty()) {
             log.error("Bucket name is null or empty");
-            throw new BusinessException(S3ErrorCode.S3_BUCKET_INVALID_NAME, "S3 버킷 이름이 유효하지 않습니다.");
+            throw new BusinessException(ObjectStorageErrorCode.INVALID_BUCKET_NAME, "S3 버킷 이름이 유효하지 않습니다.");
         }
         
         if (provider == null) {
@@ -349,7 +327,7 @@ public class AwsS3BucketMapper {
         // S3 버킷 이름 형식 검증
         if (!isValidBucketName(bucket.name())) {
             log.error("Invalid S3 bucket name format: {}", bucket.name());
-            throw new BusinessException(S3ErrorCode.S3_BUCKET_INVALID_NAME, 
+            throw new BusinessException(ObjectStorageErrorCode.INVALID_BUCKET_NAME,
                     "유효하지 않은 S3 버킷 이름 형식입니다: " + bucket.name());
         }
     }

@@ -96,13 +96,13 @@ management:
 resilience4j:
   circuitbreaker:
     instances:
-      cloud.aws.ec2.list:
+      cloud.aws.vm.list:
         slidingWindowSize: 50
         failureRateThreshold: 50
         waitDurationInOpenState: 10s
   retry:
     instances:
-      cloud.aws.ec2.list:
+      cloud.aws.vm.list:
         maxAttempts: 3
         waitDuration: 200ms
   ratelimiter:

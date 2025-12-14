@@ -760,13 +760,13 @@ public final class CloudErrorTranslator {
         String msg = t.getMessage() == null ? "" : t.getMessage().toLowerCase();
         
         if (msg.contains("rate") && msg.contains("limit")) {
-            return new BusinessException(CloudErrorCode.RATE_LIMIT_EXCEEDED);
+            return new BusinessException(CloudErrorCode.API_RATE_LIMIT_EXCEEDED);
         }
         if (msg.contains("timeout")) {
             return new BusinessException(CloudErrorCode.API_TIMEOUT);
         }
         
-        return new BusinessException(CloudErrorCode.PROVIDER_UNAVAILABLE);
+        return new BusinessException(CloudErrorCode.CLOUD_PROVIDER_UNAVAILABLE);
     }
 }
 ```

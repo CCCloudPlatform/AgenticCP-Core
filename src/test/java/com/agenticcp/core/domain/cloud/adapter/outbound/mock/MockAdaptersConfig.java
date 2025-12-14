@@ -1,16 +1,20 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.mock;
 
+import com.agenticcp.core.domain.cloud.adapter.outbound.aws.vm.AwsVmMapper;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.port.outbound.AuditEventPort;
-import com.agenticcp.core.domain.cloud.port.outbound.CredentialProviderPort;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.OutboxEventPort;
 import com.agenticcp.core.domain.cloud.port.outbound.TracingPort;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import software.amazon.awssdk.services.ec2.Ec2Client;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -32,18 +36,44 @@ import static org.mockito.Mockito.*;
 @Slf4j
 public class MockAdaptersConfig {
 
-    @Bean
-    @Primary
-    public CredentialProviderPort mockCredentialProviderPort() {
-        return new CredentialProviderPort() {
-            @Override
-            public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
-                log.debug("Mock credential resolution for tenant: {}, provider: {}, account: {}", 
-                         tenantKey, providerType, accountScope);
-                return "mock-credentials";
-            }
-        };
-    }
+    // @Bean
+    // public AccountCredentialManagementPort mockCredentialProviderPort() {
+    //     return new AccountCredentialManagementPort() {
+    //         @Override
+    //         public Object resolveCredentials(String tenantKey, ProviderType providerType, String accountScope) {
+    //             log.debug("Mock credential resolution for tenant: {}, provider: {}, account: {}", 
+    //                      tenantKey, providerType, accountScope);
+    //             return "mock-credentials";
+    //         }
+
+    //         @Override
+    //         public String storeCredentials(String tenantKey, ProviderType providerType, 
+    //                                       String accountScope, Map<String, String> credentials) {
+    //             log.debug("Mock credential storage for tenant: {}, provider: {}, account: {}",
+    //                      tenantKey, providerType, accountScope);
+    //             return "mock-credential-key";
+    //         }
+
+    //         @Override
+    //         public void deleteCredentials(ProviderType providerType, String credentialKey) {
+    //             log.debug("Mock credential deletion: providerType={}, credentialKey={}", providerType, credentialKey);
+    //         }
+
+    //         @Override
+    //         public CloudSessionCredential getSession(
+    //                 String tenantKey, String accountScope, ProviderType providerType) {
+    //             log.debug("Mock session retrieval: tenantKey={}, accountScope={}, providerType={}",
+    //                     tenantKey, accountScope, providerType);
+    //             return com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential.builder()
+    //                     .accessKeyId("mock-access-key")
+    //                     .secretAccessKey("mock-secret-key")
+    //                     .sessionToken("mock-session-token")
+    //                     .region("us-east-1")
+    //                     .expiresAt(java.time.LocalDateTime.now().plusHours(1))
+    //                     .build();
+    //         }
+    //     };
+    // }
 
     @Bean
     @Primary
@@ -125,5 +155,19 @@ public class MockAdaptersConfig {
 
         log.debug("Mock RedisTemplate configured - will use in-memory Map for caching");
         return mockRedis;
+    }
+
+    @Bean
+    @Primary
+    public Ec2Client mockEc2Client() {
+        log.debug("Creating mock Ec2Client for test environment");
+        return Mockito.mock(Ec2Client.class);
+    }
+
+    @Bean
+    @Primary
+    public AwsVmMapper mockAwsVmMapper() {
+        log.debug("Creating mock AwsVmMapper for test environment");
+        return Mockito.mock(AwsVmMapper.class);
     }
 }
