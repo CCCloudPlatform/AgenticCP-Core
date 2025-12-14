@@ -28,10 +28,10 @@ public class Tenant extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    // Organization과의 관계 (1:1)
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organization_id", nullable = false, unique = true)
-    private Organization organization;
+    /** Dedicated일 때 주인 조직 (nullable) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_org_id")
+    private Organization ownerOrganization;
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
@@ -78,9 +78,7 @@ public class Tenant extends BaseEntity {
     private LocalDateTime trialEndDate;
 
     public enum TenantType {
-        INDIVIDUAL,
-        SMALL_BUSINESS,
-        ENTERPRISE,
-        GOVERNMENT
+        DEDICATED,  // 전용 테넌트
+        SHARED      // 공유 테넌트
     }
 }
