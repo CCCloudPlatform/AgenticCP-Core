@@ -2,22 +2,27 @@ package com.agenticcp.core.domain.cloud.service.storage;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.CreateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.dto.ObjectStorageContainerQueryRequest;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
 import com.agenticcp.core.domain.cloud.dto.UpdateObjectStorageContainerRequest;
-import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
+import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
-import com.agenticcp.core.domain.cloud.port.model.storage.*;
-import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
+import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
+import com.agenticcp.core.domain.cloud.port.model.storage.CreateObjectStorageContainerCommand;
+import com.agenticcp.core.domain.cloud.port.model.storage.UpdateObjectStorageContainerCommand;
+import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -37,12 +42,20 @@ public class ObjectStorageUseCaseService {
     private final ObjectStoragePortRouter router;
     private final CapabilityGuard capabilityGuard;
     private final AccountCredentialManagementPort accountCredentialManagementPort;
+    private final CloudResourceManagementHelper resourceHelper;
+
+    private static final String RESOURCE_TYPE = "BUCKET";
 
     /**
      * Object Storage Container를 생성합니다.
+     * CSP에서 컨테이너 생성 후 CloudResource 엔티티를 DB에 저장합니다.
+     * 
+     * 보상 트랜잭션: DB 저장 실패 시 CSP에 생성된 컨테이너를 삭제하여
+     * 데이터 정합성(Ghost Resource 방지)을 보장합니다.
      *
      * @param request 생성 요청 정보
      * @return 생성된 Object Storage Container 정보
+     * @throws BusinessException DB 저장 실패 및 보상 트랜잭션 실행 시
      */
     @Transactional
     public CloudResource createContainer(CreateObjectStorageContainerRequest request) {
@@ -53,7 +66,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] createContainer - provider={}, accountScope={}, region={}, containerName={}",
                 providerType, accountScope, request.getRegion(), request.getContainerName());
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
@@ -73,12 +88,67 @@ public class ObjectStorageUseCaseService {
                 .session(session)
                 .build();
 
+        // CSP에서 Container 생성
         CloudResource container = router.management(providerType).createContainer(command);
+
+        // DB에 CloudResource 저장 (실패 시 보상 트랜잭션 실행)
+        try {
+            ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
+                    .resourceId(request.getContainerName())
+                    .resourceName(request.getContainerName())
+                    .resourceType(CloudResource.ResourceType.BUCKET)
+                    .tags(request.getTags())
+                    .build();
+            
+            resourceHelper.registerResource(
+                    providerType,
+                    serviceKey,
+                    registrationRequest
+            );
+        } catch (Exception e) {
+            log.error("[ObjectStorageUseCaseService] DB 저장 실패, 보상 트랜잭션 실행: containerName={}, error={}",
+                    request.getContainerName(), e.getMessage());
+            
+            // 보상 트랜잭션: CSP에 생성된 컨테이너 삭제
+            executeCompensatingTransaction(providerType, session, request.getContainerName());
+            
+            throw new BusinessException(
+                    CloudErrorCode.RESOURCE_CREATION_FAILED,
+                    "컨테이너 생성 후 DB 저장 실패로 인해 롤백되었습니다: " + request.getContainerName()
+            );
+        }
 
         log.info("[ObjectStorageUseCaseService] createContainer - success provider={}, containerName={}",
                 providerType, request.getContainerName());
 
         return container;
+    }
+
+    /**
+     * 보상 트랜잭션: CSP에 생성된 컨테이너를 삭제합니다.
+     * Ghost Resource 방지를 위해 DB 저장 실패 시 호출됩니다.
+     *
+     * @param providerType  프로바이더 타입
+     * @param session       세션 자격증명
+     * @param containerName 삭제할 컨테이너 이름
+     */
+    private void executeCompensatingTransaction(
+            ProviderType providerType,
+            CloudSessionCredential session,
+            String containerName
+    ) {
+        try {
+            log.warn("[ObjectStorageUseCaseService] 보상 트랜잭션 실행: CSP 컨테이너 삭제 시도 - containerName={}", 
+                    containerName);
+            router.management(providerType).deleteContainer(session, containerName);
+            log.info("[ObjectStorageUseCaseService] 보상 트랜잭션 완료: CSP 컨테이너 삭제 성공 - containerName={}", 
+                    containerName);
+        } catch (Exception compensationError) {
+            // 보상 트랜잭션도 실패한 경우 - Ghost Resource 발생
+            // 이 경우 별도의 모니터링/알림 시스템이나 배치 동기화로 처리 필요
+            log.error("[ObjectStorageUseCaseService] 보상 트랜잭션 실패: Ghost Resource 발생 가능 - containerName={}, error={}",
+                    containerName, compensationError.getMessage());
+        }
     }
 
     /**
@@ -96,7 +166,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] updateContainer - provider={}, accountScope={}, containerName={}",
                 providerType, accountScope, request.getContainerName());
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TAGGING);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
@@ -124,8 +196,10 @@ public class ObjectStorageUseCaseService {
 
     /**
      * Object Storage Container를 삭제합니다.
+     * CSP에서 컨테이너 삭제 후 DB에서 소프트 삭제 처리합니다.
      *
      * @param providerType 클라우드 프로바이더 타입
+     * @param accountScope 계정 스코프
      * @param containerName Container 이름
      */
     @Transactional
@@ -135,7 +209,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] deleteContainer - provider={}, accountScope={}, containerName={}",
                 providerType, accountScope, containerName);
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
@@ -144,7 +220,11 @@ public class ObjectStorageUseCaseService {
         log.debug("[ObjectStorageUseCaseService] deleteContainer - session acquired, expiresAt={}",
                 session.getExpiresAt());
 
+        // CSP에서 Container 삭제
         router.management(providerType).deleteContainer(session, containerName);
+
+        // DB 소프트 삭제
+        resourceHelper.softDeleteResource(containerName);
 
         log.info("[ObjectStorageUseCaseService] deleteContainer - success provider={}, containerName={}",
                 providerType, containerName);
@@ -152,8 +232,10 @@ public class ObjectStorageUseCaseService {
 
     /**
      * Object Storage Container를 강제 삭제합니다 (내용물 포함).
+     * CSP에서 컨테이너 강제 삭제 후 DB에서 소프트 삭제 처리합니다.
      *
      * @param providerType 클라우드 프로바이더 타입
+     * @param accountScope 계정 스코프
      * @param containerName Container 이름
      */
     @Transactional
@@ -163,7 +245,9 @@ public class ObjectStorageUseCaseService {
         log.info("[ObjectStorageUseCaseService] forceDeleteContainer - provider={}, accountScope={}, containerName={}",
                 providerType, accountScope, containerName);
 
-        capabilityGuard.ensureSupported(providerType, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+        // getServiceKeyForProvider를 사용하여 일관성 유지
+        String serviceKey = getServiceKeyForProvider(providerType);
+        capabilityGuard.ensureSupported(providerType, serviceKey, RESOURCE_TYPE, CapabilityGuard.Operation.TERMINATE);
 
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         CloudSessionCredential session = accountCredentialManagementPort.getSession(
@@ -172,7 +256,11 @@ public class ObjectStorageUseCaseService {
         log.debug("[ObjectStorageUseCaseService] forceDeleteContainer - session acquired, expiresAt={}",
                 session.getExpiresAt());
 
+        // CSP에서 Container 강제 삭제
         router.management(providerType).forceDeleteContainer(containerName, session);
+
+        // DB 소프트 삭제
+        resourceHelper.softDeleteResource(containerName);
 
         log.info("[ObjectStorageUseCaseService] forceDeleteContainer - success provider={}, containerName={}",
                 providerType, containerName);
@@ -253,5 +341,20 @@ public class ObjectStorageUseCaseService {
                     "AccountScope가 필요합니다."
             );
         }
+    }
+
+    // ==================== Private Helper Methods ====================
+
+    /**
+     * 프로바이더 타입에 따른 서비스 키 반환
+     * AWS: S3, Azure: BlobStorage, GCP: CloudStorage 등
+     */
+    private String getServiceKeyForProvider(ProviderType providerType) {
+        return switch (providerType) {
+            case AWS -> "S3";
+            case AZURE -> "BlobStorage";
+            case GCP -> "CloudStorage";
+            default -> "ObjectStorage";
+        };
     }
 }

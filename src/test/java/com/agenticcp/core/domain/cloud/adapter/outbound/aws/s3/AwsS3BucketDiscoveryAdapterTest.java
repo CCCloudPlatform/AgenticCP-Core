@@ -107,7 +107,6 @@ class AwsS3BucketDiscoveryAdapterTest {
                     .resourceName(BUCKET_NAME)
                     .build();
             when(mapper.toCloudResource(any(), any())).thenReturn(mockResource);
-            when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
             ResourceTagMapping mapping = ResourceTagMapping.builder()
                     .resourceARN("arn:aws:s3:::" + BUCKET_NAME)

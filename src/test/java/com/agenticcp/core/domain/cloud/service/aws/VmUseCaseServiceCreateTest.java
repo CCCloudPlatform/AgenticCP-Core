@@ -3,10 +3,12 @@ package com.agenticcp.core.domain.cloud.service.aws;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
+import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
 import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
 import java.util.Map;
@@ -20,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,12 +48,20 @@ class VmUseCaseServiceCreateTest {
     @Mock
     private AccountCredentialManagementPort credentialProviderPort;
 
+    @Mock
+    private CloudResourceManagementHelper resourceHelper;
+
     private VmUseCaseService vmUseCaseService;
 
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey("tenant-test");
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, capabilityGuard, credentialProviderPort);
+        vmUseCaseService = new VmUseCaseService(
+                vmPortRouter,
+                capabilityGuard,
+                credentialProviderPort,
+                resourceHelper
+        );
 
         when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);
         when(credentialProviderPort.getSession(anyString(), anyString(), any())).thenReturn(null);
@@ -78,13 +89,23 @@ class VmUseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-1234567890abcdef0";
+        CloudResource expectedCloudResource = CloudResource.builder()
+                .resourceId(expectedInstanceId)
+                .resourceName(expectedInstanceId)
+                .build();
+
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
+        when(resourceHelper.extractResourceName(any(), eq(expectedInstanceId))).thenReturn(expectedInstanceId);
+        when(resourceHelper.registerResource(
+                any(), anyString(), any()
+        )).thenReturn(expectedCloudResource);
 
         // When
-        String result = vmUseCaseService.createInstance(request);
+        CloudResource result = vmUseCaseService.createInstance(request);
 
         // Then
-        assertThat(result).isEqualTo(expectedInstanceId);
+        assertThat(result).isNotNull();
+        assertThat(result.getResourceId()).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
         verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
@@ -103,13 +124,23 @@ class VmUseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-abcdef1234567890";
+        CloudResource expectedCloudResource = CloudResource.builder()
+                .resourceId(expectedInstanceId)
+                .resourceName(expectedInstanceId)
+                .build();
+
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
+        when(resourceHelper.extractResourceName(any(), eq(expectedInstanceId))).thenReturn(expectedInstanceId);
+        when(resourceHelper.registerResource(
+                any(), anyString(), any()
+        )).thenReturn(expectedCloudResource);
 
         // When
-        String result = vmUseCaseService.createInstance(request);
+        CloudResource result = vmUseCaseService.createInstance(request);
 
         // Then
-        assertThat(result).isEqualTo(expectedInstanceId);
+        assertThat(result).isNotNull();
+        assertThat(result.getResourceId()).isEqualTo(expectedInstanceId);
 
         // 포트 호출 확인
         verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));
@@ -160,13 +191,24 @@ class VmUseCaseServiceCreateTest {
             .build();
 
         String expectedInstanceId = "i-tagged1234567890";
+        CloudResource expectedCloudResource = CloudResource.builder()
+                .resourceId(expectedInstanceId)
+                .resourceName("test-instance")
+                .build();
+
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
+        when(resourceHelper.extractResourceName(any(), eq(expectedInstanceId))).thenReturn("test-instance");
+        when(resourceHelper.registerResource(
+                any(), anyString(), any()
+        )).thenReturn(expectedCloudResource);
 
         // When
-        String result = vmUseCaseService.createInstance(request);
+        CloudResource result = vmUseCaseService.createInstance(request);
 
         // Then
-        assertThat(result).isEqualTo(expectedInstanceId);
+        assertThat(result).isNotNull();
+        assertThat(result.getResourceId()).isEqualTo(expectedInstanceId);
+        assertThat(result.getResourceName()).isEqualTo("test-instance");
 
         // 포트 호출 확인
         verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));

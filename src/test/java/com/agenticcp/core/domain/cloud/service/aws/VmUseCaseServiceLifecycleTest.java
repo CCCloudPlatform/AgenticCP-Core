@@ -8,6 +8,7 @@ import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
 import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
 import org.junit.jupiter.api.AfterEach;
@@ -48,6 +49,9 @@ class VmUseCaseServiceLifecycleTest {
     @Mock
     private AccountCredentialManagementPort credentialProviderPort;
 
+    @Mock
+    private CloudResourceManagementHelper resourceHelper;
+
     private VmUseCaseService vmUseCaseService;
 
     private CloudSessionCredential mockSession;
@@ -57,7 +61,12 @@ class VmUseCaseServiceLifecycleTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey("tenant-test");
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, capabilityGuard, credentialProviderPort);
+        vmUseCaseService = new VmUseCaseService(
+                vmPortRouter,
+                capabilityGuard,
+                credentialProviderPort,
+                resourceHelper
+        );
         mockSession = mock(CloudSessionCredential.class);
 
         when(vmPortRouter.lifecycle(ProviderType.AWS)).thenReturn(vmLifecyclePort);

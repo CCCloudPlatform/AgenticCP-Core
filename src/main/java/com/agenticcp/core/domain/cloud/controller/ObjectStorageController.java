@@ -40,7 +40,7 @@ public class ObjectStorageController {
     private final ObjectStorageUseCaseService objectStorageUseCaseService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_CREATE') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_CREATE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
             action = "CREATE_CONTAINER",
             resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
@@ -84,7 +84,7 @@ public class ObjectStorageController {
 
 
     @PutMapping("/{containerName}")
-    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_UPDATE') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_UPDATE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
             action = "UPDATE_CONTAINER",
             resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
@@ -131,7 +131,7 @@ public class ObjectStorageController {
 
 
     @GetMapping
-    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "LIST_CONTAINERS",
         resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
@@ -180,7 +180,7 @@ public class ObjectStorageController {
 
 
     @GetMapping("/{containerName}")
-    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "GET_CONTAINER",
         resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
@@ -219,7 +219,7 @@ public class ObjectStorageController {
 
 
     @RequestMapping(value = "/{containerName}", method = RequestMethod.HEAD)
-    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "CHECK_CONTAINER_EXISTS",
         resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
@@ -262,7 +262,7 @@ public class ObjectStorageController {
 
 
     @DeleteMapping("/{containerName}")
-    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_DELETE') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_DELETE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
             action = "DELETE_CONTAINER",
             resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,

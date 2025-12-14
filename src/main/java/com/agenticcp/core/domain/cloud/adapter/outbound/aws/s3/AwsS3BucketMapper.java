@@ -73,7 +73,7 @@ public class AwsS3BucketMapper {
                     .instanceType("S3_BUCKET")
                     .instanceSize("STANDARD")
                     .storageGb(0L) // S3 버킷은 스토리지 용량이 동적이므로 0으로 설정
-                    .tags(buildTagsJson(tags))
+                    .tags(toTagMap(tags))
                     .configuration(buildConfigurationJson(bucket, versioningStatus, lifecycleConfig))
                     .createdInCloud(toLocalDateTime(bucket.creationDate()))
                     .lastModifiedInCloud(toLocalDateTime(bucket.creationDate()))
@@ -162,27 +162,6 @@ public class AwsS3BucketMapper {
             log.error("Failed to convert S3 bucket list to CloudResource list", e);
             throw new BusinessException(CloudErrorCode.MAPPING_FAILED, 
                     "S3 버킷 목록을 CloudResource로 변환하는 중 오류가 발생했습니다: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 태그 리스트를 JSON 문자열로 변환
-     * 
-     * @param tags AWS S3 태그 리스트
-     * @return 태그 JSON 문자열
-     */
-    private String buildTagsJson(List<Tag> tags) {
-        if (tags == null || tags.isEmpty()) {
-            return "{}";
-        }
-        
-        try {
-            Map<String, String> tagMap = toTagMap(tags);
-            return objectMapper.writeValueAsString(tagMap);
-        } catch (Exception e) {
-            log.warn("Failed to serialize tags for bucket", e);
-            throw new BusinessException(CloudErrorCode.CLOUD_TAG_OPERATION_FAILED, 
-                    "S3 버킷 태그 직렬화에 실패했습니다: " + e.getMessage());
         }
     }
 

@@ -10,6 +10,7 @@ import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialMa
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import com.agenticcp.core.domain.cloud.service.vm.VmPortRouter;
 import com.agenticcp.core.domain.cloud.service.vm.VmUseCaseService;
 import java.util.List;
@@ -58,6 +59,9 @@ class VmUseCaseServiceTest {
     @Mock
     private AccountCredentialManagementPort credentialProviderPort;
 
+    @Mock
+    private CloudResourceManagementHelper resourceHelper;
+
     private VmUseCaseService vmUseCaseService;
     private CloudSessionCredential mockSession;
     private static final ProviderType PROVIDER_TYPE = ProviderType.AWS;
@@ -66,7 +70,12 @@ class VmUseCaseServiceTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey("tenant-test");
-        vmUseCaseService = new VmUseCaseService(vmPortRouter, capabilityGuard, credentialProviderPort);
+        vmUseCaseService = new VmUseCaseService(
+                vmPortRouter,
+                capabilityGuard,
+                credentialProviderPort,
+                resourceHelper
+        );
         mockSession = mock(CloudSessionCredential.class);
 
         when(vmPortRouter.discovery(ProviderType.AWS)).thenReturn(vmDiscoveryPort);

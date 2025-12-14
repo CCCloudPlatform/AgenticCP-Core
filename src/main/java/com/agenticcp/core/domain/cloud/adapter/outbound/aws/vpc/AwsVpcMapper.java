@@ -50,9 +50,12 @@ public class AwsVpcMapper {
     
     /**
      * Vpc를 CloudResource로 변환 (CreateVpcCommand 사용)
+     * 
+     * 주의: VPC 생성 직후에는 태그가 아직 VPC 객체에 반영되지 않으므로,
+     * command.vpcName()을 직접 사용하여 resourceName을 설정합니다.
      */
     public CloudResource toCloudResource(Vpc vpc, CreateVpcCommand command) {
-        return buildCloudResource(vpc, command.providerType(), command.serviceKey(), command.region(), command.tenantKey(), command.tags());
+        return buildCloudResourceForCreate(vpc, command);
     }
     
     /**
@@ -77,6 +80,67 @@ public class AwsVpcMapper {
         return buildCloudResource(vpc, command.providerType(), "EC2", command.region(), command.tenantKey(), tags);
     }
     
+    /**
+     * VPC 생성 시 사용하는 CloudResource 빌더
+     * 
+     * VPC 생성 직후에는 태그가 VPC 응답 객체에 반영되지 않으므로,
+     * command.vpcName()을 직접 사용하여 resourceName을 설정합니다.
+     */
+    private CloudResource buildCloudResourceForCreate(Vpc vpc, CreateVpcCommand command) {
+        String resourceId = vpc.vpcId();
+        // command.vpcName()을 직접 사용 (VPC 생성 직후에는 태그가 반영되지 않음)
+        String resourceName = (command.vpcName() != null && !command.vpcName().isEmpty()) 
+                ? command.vpcName() 
+                : vpc.vpcId();
+        
+        // 메타데이터 구성
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("vpcId", vpc.vpcId());
+        metadata.put("cidrBlock", vpc.cidrBlock());
+        metadata.put("state", vpc.stateAsString());
+        metadata.put("isDefault", vpc.isDefault());
+        metadata.put("dhcpOptionsId", vpc.dhcpOptionsId());
+        metadata.put("instanceTenancy", vpc.instanceTenancyAsString());
+        
+        String metadataJson = null;
+        try {
+            metadataJson = objectMapper.writeValueAsString(metadata);
+        } catch (JsonProcessingException e) {
+            log.warn("[AwsVpcMapper] Failed to serialize metadata: {}", e.getMessage());
+        }
+        
+        // 엔티티 조회
+        CloudProvider provider = cloudProviderRepository.findFirstByProviderType(command.providerType())
+                .orElseThrow(() -> new IllegalStateException("CloudProvider not found for type: " + command.providerType()));
+        
+        CloudService service = cloudServiceRepository.findByProviderTypeAndServiceKey(command.providerType(), command.serviceKey())
+                .orElseThrow(() -> new IllegalStateException("CloudService not found for providerType: " + command.providerType() + ", serviceKey: " + command.serviceKey()));
+        
+        // region은 optional이므로 null일 수 있음
+        CloudRegion cloudRegion = null;
+        if (command.region() != null && !command.region().isEmpty()) {
+            cloudRegion = cloudRegionRepository.findByProviderTypeAndRegionKey(command.providerType(), command.region())
+                    .orElse(null);
+            if (cloudRegion == null) {
+                log.warn("[AwsVpcMapper] CloudRegion not found for providerType: {}, regionKey: {}", command.providerType(), command.region());
+            }
+        }
+        
+        return CloudResource.builder()
+            .resourceId(resourceId)
+            .resourceName(resourceName)
+            .displayName(resourceName)
+            .provider(provider)
+            .service(service)
+            .region(cloudRegion)
+            .resourceType(CloudResource.ResourceType.NETWORK)
+            .lifecycleState(mapStateToLifecycleState(vpc.stateAsString()))
+            .tags(command.tags())
+            .metadata(metadataJson)
+            .createdInCloud(LocalDateTime.now())
+            .build();
+    }
+
     private CloudResource buildCloudResource(
             Vpc vpc, 
             CloudProvider.ProviderType providerType, 
@@ -96,16 +160,6 @@ public class AwsVpcMapper {
                 .orElse(null);
             if (nameTag != null && !nameTag.isEmpty()) {
                 resourceName = nameTag;
-            }
-        }
-        
-        // 태그를 JSON 문자열로 변환
-        String tagsJson = null;
-        if (tags != null && !tags.isEmpty()) {
-            try {
-                tagsJson = objectMapper.writeValueAsString(tags);
-            } catch (JsonProcessingException e) {
-                // 로깅은 생략 (필요시 추가)
             }
         }
         
@@ -151,7 +205,7 @@ public class AwsVpcMapper {
             .region(cloudRegion)
             .resourceType(CloudResource.ResourceType.NETWORK)
             .lifecycleState(mapStateToLifecycleState(vpc.stateAsString()))
-            .tags(tagsJson)
+            .tags(tags)
             .metadata(metadataJson)
             .createdInCloud(LocalDateTime.now()) // AWS VPC는 생성 시간 정보를 직접 제공하지 않으므로 현재 시간 사용
             .build();

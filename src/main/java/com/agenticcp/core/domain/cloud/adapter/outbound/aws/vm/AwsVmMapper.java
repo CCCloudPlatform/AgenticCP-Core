@@ -57,7 +57,7 @@ public class AwsVmMapper {
                 .memoryGb(getMemoryGb(awsInstance.instanceTypeAsString()))
                 .publicIpAddress(awsInstance.publicIpAddress())
                 .privateIpAddress(awsInstance.privateIpAddress())
-                .tags(toJson(mapTags(awsInstance.tags())))
+                .tags(mapTags(awsInstance.tags()))
                 .configuration(toJson(awsInstance))
                 .metadata(buildMetadata(awsInstance))
                 .build();

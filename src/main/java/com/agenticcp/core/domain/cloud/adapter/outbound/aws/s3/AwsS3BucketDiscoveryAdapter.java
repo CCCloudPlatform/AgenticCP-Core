@@ -14,8 +14,6 @@ import com.agenticcp.core.domain.cloud.dto.ObjectStorageContainerQueryRequest;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -50,7 +48,6 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
 
     private final AwsS3BucketMapper mapper;
     private final CloudProviderRepository cloudProviderRepository;
-    private final ObjectMapper objectMapper;
     private final AccountCredentialManagementPort accountCredentialManagementPort;
     private final AwsS3Config awsS3Config;
     private final AwsS3ErrorTranslator errorTranslator;
@@ -210,7 +207,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
                         software.amazon.awssdk.services.resourcegroupstaggingapi.model.Tag::key,
                         software.amazon.awssdk.services.resourcegroupstaggingapi.model.Tag::value
                 ));
-        setTagsJson(resource, tagsMap);
+        setTags(resource, tagsMap);
         return resource;
     }
 
@@ -230,24 +227,19 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
             GetBucketTaggingResponse tagsResponse = client.getBucketTagging(r -> r.bucket(bucketName));
             Map<String, String> tagsMap = tagsResponse.tagSet().stream()
                     .collect(Collectors.toMap(Tag::key, Tag::value));
-            setTagsJson(resource, tagsMap);
+            setTags(resource, tagsMap);
         } catch (S3Exception e) {
             if ("NoSuchTagSet".equals(e.awsErrorDetails().errorCode())) {
                 log.debug("Bucket {} has no tags.", bucketName);
             } else {
                 log.warn("Could not retrieve tags for bucket {}: {}", bucketName, e.getMessage());
             }
-            resource.setTags("{}");
+            resource.setTags(null);
         }
     }
 
-    private void setTagsJson(CloudResource resource, Map<String, String> tags) {
-        try {
-            resource.setTags(objectMapper.writeValueAsString(tags));
-        } catch (JsonProcessingException e) {
-            log.warn("Failed to serialize tags: {}", e.getMessage());
-            resource.setTags("{}");
-        }
+    private void setTags(CloudResource resource, Map<String, String> tags) {
+        resource.setTags(tags);
     }
 
     private Page<CloudResource> applyMemoryOperations(List<CloudResource> resources,
