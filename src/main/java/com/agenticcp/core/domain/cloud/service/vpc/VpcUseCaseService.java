@@ -7,10 +7,8 @@ import com.agenticcp.core.domain.cloud.dto.ListVpcsQueryRequest;
 import com.agenticcp.core.domain.cloud.dto.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VpcQueryRequest;
 import com.agenticcp.core.domain.cloud.dto.VpcUpdateRequest;
-import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.exception.CredentialErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
@@ -21,15 +19,10 @@ import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
-import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -43,12 +36,7 @@ public class VpcUseCaseService {
     private final VpcPortRouter vpcPortRouter;
     private final CapabilityGuard capabilityGuard;
     private final AccountCredentialManagementPort accountCredentialManagementPort;
-    
-    // DB 저장을 위한 Repository
-    private final CloudResourceRepository cloudResourceRepository;
-    private final CloudProviderRepository cloudProviderRepository;
-    private final CloudServiceRepository cloudServiceRepository;
-    private final TenantRepository tenantRepository;
+    private final CloudResourceManagementHelper resourceHelper;
 
     @Transactional
     public CloudResource createVpc(VpcCreateRequest request) {
@@ -107,7 +95,15 @@ public class VpcUseCaseService {
         CloudResource vpc = vpcPort.createVpc(command);
         
         // DB에 CloudResource 저장
-        saveCloudResource(vpc.getResourceId(), request);
+        String resourceName = request.getVpcName() != null ? request.getVpcName() : vpc.getResourceId();
+        resourceHelper.registerVpc(
+                request.getProviderType(),
+                getServiceKeyForProvider(request.getProviderType()),
+                vpc.getResourceId(),
+                resourceName,
+                request.getCidrBlock(),
+                request.getTags()
+        );
         
         return vpc;
     }
@@ -305,7 +301,7 @@ public class VpcUseCaseService {
         vpcPort.deleteVpc(command);
         
         // DB 소프트 삭제
-        softDeleteResourceIfExists(vpcId.getProviderResourceId());
+        resourceHelper.softDeleteResource(vpcId.getProviderResourceId());
     }
     
     /**
@@ -323,82 +319,7 @@ public class VpcUseCaseService {
         }
     }
 
-    // ==================== DB 저장 헬퍼 메서드 ====================
-
-    /**
-     * CSP에서 생성된 VPC 정보를 CloudResource 엔티티로 저장합니다.
-     * DB 저장 실패해도 CSP 생성은 완료되었으므로 별도 트랜잭션으로 분리하여
-     * 메인 트랜잭션에 영향을 주지 않도록 합니다.
-     *
-     * @param vpcId 생성된 VPC ID
-     * @param request 생성 요청 정보
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    private void saveCloudResource(String vpcId, VpcCreateRequest request) {
-        try {
-            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            ProviderType providerType = request.getProviderType();
-            
-            // Provider 조회
-            CloudProvider provider = cloudProviderRepository.findFirstByProviderType(providerType)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "CloudProvider not found for type: " + providerType));
-            
-            // Service 조회 (프로바이더별 서비스 키 사용)
-            String serviceKey = getServiceKeyForProvider(providerType);
-            CloudService cloudService = cloudServiceRepository
-                    .findByProviderTypeAndServiceKey(providerType, serviceKey)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "CloudService not found for provider: " + providerType + ", serviceKey: " + serviceKey));
-            
-            // Tenant 조회
-            Tenant tenant = tenantRepository.findByTenantKey(tenantKey)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Tenant not found for key: " + tenantKey));
-            
-            // 리소스 이름 결정
-            String resourceName = request.getVpcName() != null ? request.getVpcName() : vpcId;
-            
-            // Factory Method를 사용한 CloudResource 엔티티 생성
-            CloudResource cloudResource = CloudResource.createVpc(
-                    vpcId,
-                    resourceName,
-                    provider,
-                    cloudService,
-                    tenant,
-                    request.getCidrBlock(),
-                    request.getTags()
-            );
-            
-            cloudResourceRepository.save(cloudResource);
-            log.debug("[VpcUseCaseService] CloudResource 저장 완료: vpcId={}", vpcId);
-            
-        } catch (Exception e) {
-            // DB 저장 실패해도 CSP 생성은 완료되었으므로 경고 로그만 출력
-            log.warn("[VpcUseCaseService] CloudResource 저장 실패 (CSP 생성은 완료됨): vpcId={}, error={}", 
-                    vpcId, e.getMessage());
-        }
-    }
-
-    /**
-     * 리소스가 존재하면 소프트 삭제 처리합니다.
-     *
-     * @param resourceId 리소스 ID (VPC ID)
-     */
-    private void softDeleteResourceIfExists(String resourceId) {
-        try {
-            int deletedCount = cloudResourceRepository.softDeleteByResourceId(resourceId);
-            
-            if (deletedCount > 0) {
-                log.debug("[VpcUseCaseService] 리소스 소프트 삭제 완료: resourceId={}", resourceId);
-            } else {
-                log.debug("[VpcUseCaseService] DB에 리소스가 없어 삭제 스킵: resourceId={}", resourceId);
-            }
-        } catch (Exception e) {
-            log.warn("[VpcUseCaseService] 리소스 소프트 삭제 실패: resourceId={}, error={}", 
-                    resourceId, e.getMessage());
-        }
-    }
+    // ==================== Private Helper Methods ====================
 
     /**
      * 프로바이더 타입에 따른 서비스 키 반환

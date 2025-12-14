@@ -4,35 +4,25 @@ import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
-import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
-import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmLifecyclePort;
 import com.agenticcp.core.domain.cloud.port.outbound.vm.VmTaggingPort;
-import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -70,18 +60,7 @@ class VmUseCaseServiceDbSyncTest {
     private AccountCredentialManagementPort credentialProviderPort;
 
     @Mock
-    private CloudResourceRepository cloudResourceRepository;
-
-    @Mock
-    private CloudProviderRepository cloudProviderRepository;
-
-    @Mock
-    private CloudServiceRepository cloudServiceRepository;
-
-    @Mock
-    private TenantRepository tenantRepository;
-
-    private ObjectMapper objectMapper;
+    private CloudResourceManagementHelper resourceHelper;
 
     private VmUseCaseService vmUseCaseService;
     private CloudSessionCredential mockSession;
@@ -94,17 +73,12 @@ class VmUseCaseServiceDbSyncTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey(TENANT_KEY);
-        objectMapper = new ObjectMapper();
         
         vmUseCaseService = new VmUseCaseService(
                 vmPortRouter,
                 capabilityGuard,
                 credentialProviderPort,
-                cloudResourceRepository,
-                cloudProviderRepository,
-                cloudServiceRepository,
-                tenantRepository,
-                objectMapper
+                resourceHelper
         );
         
         mockSession = mock(CloudSessionCredential.class);
@@ -132,36 +106,17 @@ class VmUseCaseServiceDbSyncTest {
         @DisplayName("인스턴스 생성 성공 시 CloudResource가 DB에 저장된다")
         void createInstance_Success_SavesCloudResource() {
             // Given
+            Map<String, String> tags = Map.of("Name", "test-instance", "Environment", "test");
             VmCreateRequest request = VmCreateRequest.builder()
                     .providerType(PROVIDER_TYPE)
                     .accountScope(ACCOUNT_SCOPE)
                     .image("ami-12345678")
                     .instanceSize("t3.micro")
-                    .tags(Map.of("Name", "test-instance", "Environment", "test"))
-                    .build();
-
-            CloudProvider mockProvider = CloudProvider.builder()
-                    .providerType(PROVIDER_TYPE)
-                    .providerName("AWS")
-                    .build();
-
-            CloudService mockService = CloudService.builder()
-                    .serviceKey("EC2")
-                    .build();
-
-            Tenant mockTenant = Tenant.builder()
-                    .tenantKey(TENANT_KEY)
+                    .tags(tags)
                     .build();
 
             when(vmLifecyclePort.createInstance(any())).thenReturn(INSTANCE_ID);
-            when(cloudProviderRepository.findFirstByProviderType(PROVIDER_TYPE))
-                    .thenReturn(Optional.of(mockProvider));
-            when(cloudServiceRepository.findByProviderTypeAndServiceKey(eq(PROVIDER_TYPE), eq("EC2")))
-                    .thenReturn(Optional.of(mockService));
-            when(tenantRepository.findByTenantKey(TENANT_KEY))
-                    .thenReturn(Optional.of(mockTenant));
-            when(cloudResourceRepository.save(any(CloudResource.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(resourceHelper.extractResourceName(tags, INSTANCE_ID)).thenReturn("test-instance");
 
             // When
             String result = vmUseCaseService.createInstance(request);
@@ -169,16 +124,14 @@ class VmUseCaseServiceDbSyncTest {
             // Then
             assertThat(result).isEqualTo(INSTANCE_ID);
             
-            ArgumentCaptor<CloudResource> captor = ArgumentCaptor.forClass(CloudResource.class);
-            verify(cloudResourceRepository).save(captor.capture());
-            
-            CloudResource savedResource = captor.getValue();
-            assertThat(savedResource.getResourceId()).isEqualTo(INSTANCE_ID);
-            assertThat(savedResource.getResourceName()).isEqualTo("test-instance");
-            assertThat(savedResource.getResourceType()).isEqualTo(CloudResource.ResourceType.INSTANCE);
-            assertThat(savedResource.getLifecycleState()).isEqualTo(LifecycleState.PENDING);
-            assertThat(savedResource.getProvider()).isEqualTo(mockProvider);
-            assertThat(savedResource.getTenant()).isEqualTo(mockTenant);
+            verify(resourceHelper).registerVmInstance(
+                    eq(PROVIDER_TYPE),
+                    eq("EC2"),
+                    eq(INSTANCE_ID),
+                    eq("test-instance"),
+                    eq("t3.micro"),
+                    eq(tags)
+            );
         }
 
         @Test
@@ -193,15 +146,17 @@ class VmUseCaseServiceDbSyncTest {
                     .build();
 
             when(vmLifecyclePort.createInstance(any())).thenReturn(INSTANCE_ID);
-            when(cloudProviderRepository.findFirstByProviderType(PROVIDER_TYPE))
-                    .thenReturn(Optional.empty()); // Provider 없음 -> DB 저장 실패
+            when(resourceHelper.extractResourceName(any(), eq(INSTANCE_ID))).thenReturn(INSTANCE_ID);
+            // Helper 내부에서 예외 발생해도 경고 로그만 출력되고 계속 진행됨
+            doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
+                    .registerVmInstance(any(), any(), any(), any(), any(), any());
 
             // When
             String result = vmUseCaseService.createInstance(request);
 
             // Then
             assertThat(result).isEqualTo(INSTANCE_ID); // CSP 생성은 성공
-            verify(cloudResourceRepository, never()).save(any()); // DB 저장은 스킵됨
+            verify(resourceHelper).registerVmInstance(any(), any(), any(), any(), any(), any());
         }
     }
 
@@ -214,17 +169,13 @@ class VmUseCaseServiceDbSyncTest {
         void startInstance_Success_UpdatesLifecycleStateToRunning() {
             // Given
             doNothing().when(vmLifecyclePort).startInstance(eq(INSTANCE_ID), any());
-            when(cloudResourceRepository.updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.RUNNING), any(LocalDateTime.class)))
-                    .thenReturn(1);
 
             // When
             vmUseCaseService.startInstance(PROVIDER_TYPE, ACCOUNT_SCOPE, INSTANCE_ID);
 
             // Then
             verify(vmLifecyclePort).startInstance(eq(INSTANCE_ID), any());
-            verify(cloudResourceRepository).updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.RUNNING), any(LocalDateTime.class));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.RUNNING));
         }
 
         @Test
@@ -232,17 +183,13 @@ class VmUseCaseServiceDbSyncTest {
         void stopInstance_Success_UpdatesLifecycleStateToStopped() {
             // Given
             doNothing().when(vmLifecyclePort).stopInstance(eq(INSTANCE_ID), any());
-            when(cloudResourceRepository.updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.STOPPED), any(LocalDateTime.class)))
-                    .thenReturn(1);
 
             // When
             vmUseCaseService.stopInstance(PROVIDER_TYPE, ACCOUNT_SCOPE, INSTANCE_ID);
 
             // Then
             verify(vmLifecyclePort).stopInstance(eq(INSTANCE_ID), any());
-            verify(cloudResourceRepository).updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.STOPPED), any(LocalDateTime.class));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.STOPPED));
         }
 
         @Test
@@ -250,17 +197,13 @@ class VmUseCaseServiceDbSyncTest {
         void rebootInstance_Success_KeepsLifecycleStateRunning() {
             // Given
             doNothing().when(vmLifecyclePort).rebootInstance(eq(INSTANCE_ID), any());
-            when(cloudResourceRepository.updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.RUNNING), any(LocalDateTime.class)))
-                    .thenReturn(1);
 
             // When
             vmUseCaseService.rebootInstance(PROVIDER_TYPE, ACCOUNT_SCOPE, INSTANCE_ID);
 
             // Then
             verify(vmLifecyclePort).rebootInstance(eq(INSTANCE_ID), any());
-            verify(cloudResourceRepository).updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.RUNNING), any(LocalDateTime.class));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.RUNNING));
         }
 
         @Test
@@ -268,17 +211,13 @@ class VmUseCaseServiceDbSyncTest {
         void terminateInstance_Success_UpdatesLifecycleStateToTerminated() {
             // Given
             doNothing().when(vmLifecyclePort).terminateInstance(eq(INSTANCE_ID), any());
-            when(cloudResourceRepository.updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.TERMINATED), any(LocalDateTime.class)))
-                    .thenReturn(1);
 
             // When
             vmUseCaseService.terminateInstance(PROVIDER_TYPE, ACCOUNT_SCOPE, INSTANCE_ID);
 
             // Then
             verify(vmLifecyclePort).terminateInstance(eq(INSTANCE_ID), any());
-            verify(cloudResourceRepository).updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.TERMINATED), any(LocalDateTime.class));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.TERMINATED));
         }
 
         @Test
@@ -286,15 +225,14 @@ class VmUseCaseServiceDbSyncTest {
         void startInstance_ResourceNotInDb_CspOperationSucceeds() {
             // Given
             doNothing().when(vmLifecyclePort).startInstance(eq(INSTANCE_ID), any());
-            when(cloudResourceRepository.updateLifecycleState(
-                    eq(INSTANCE_ID), eq(LifecycleState.RUNNING), any(LocalDateTime.class)))
-                    .thenReturn(0); // DB에 리소스 없음
+            // Helper 내부에서 리소스가 없으면 로그만 출력하고 예외 발생 안함
 
             // When
             vmUseCaseService.startInstance(PROVIDER_TYPE, ACCOUNT_SCOPE, INSTANCE_ID);
 
             // Then
             verify(vmLifecyclePort).startInstance(eq(INSTANCE_ID), any()); // CSP 작업 성공
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.RUNNING));
         }
     }
 
@@ -314,14 +252,13 @@ class VmUseCaseServiceDbSyncTest {
                     .build();
 
             doNothing().when(vmLifecyclePort).deleteInstance(any());
-            when(cloudResourceRepository.softDeleteByResourceId(INSTANCE_ID)).thenReturn(1);
 
             // When
             vmUseCaseService.deleteInstance(request);
 
             // Then
             verify(vmLifecyclePort).deleteInstance(any());
-            verify(cloudResourceRepository).softDeleteByResourceId(INSTANCE_ID);
+            verify(resourceHelper).softDeleteResource(INSTANCE_ID);
         }
 
         @Test
@@ -336,13 +273,14 @@ class VmUseCaseServiceDbSyncTest {
                     .build();
 
             doNothing().when(vmLifecyclePort).deleteInstance(any());
-            when(cloudResourceRepository.softDeleteByResourceId(INSTANCE_ID)).thenReturn(0); // DB에 없음
+            // Helper 내부에서 리소스가 없으면 로그만 출력하고 예외 발생 안함
 
             // When
             vmUseCaseService.deleteInstance(request);
 
             // Then
             verify(vmLifecyclePort).deleteInstance(any()); // CSP 작업 성공
+            verify(resourceHelper).softDeleteResource(INSTANCE_ID);
         }
     }
 }

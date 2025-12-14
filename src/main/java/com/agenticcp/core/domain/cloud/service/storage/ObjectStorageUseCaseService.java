@@ -9,17 +9,12 @@ import com.agenticcp.core.domain.cloud.dto.UpdateObjectStorageContainerRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.storage.CreateObjectStorageContainerCommand;
 import com.agenticcp.core.domain.cloud.port.model.storage.UpdateObjectStorageContainerCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
-import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -45,12 +40,7 @@ public class ObjectStorageUseCaseService {
     private final ObjectStoragePortRouter router;
     private final CapabilityGuard capabilityGuard;
     private final AccountCredentialManagementPort accountCredentialManagementPort;
-    
-    // DB 저장을 위한 Repository
-    private final CloudResourceRepository cloudResourceRepository;
-    private final CloudProviderRepository cloudProviderRepository;
-    private final CloudServiceRepository cloudServiceRepository;
-    private final TenantRepository tenantRepository;
+    private final CloudResourceManagementHelper resourceHelper;
 
     private static final String RESOURCE_TYPE = "BUCKET";
 
@@ -96,7 +86,12 @@ public class ObjectStorageUseCaseService {
         CloudResource container = router.management(providerType).createContainer(command);
 
         // DB에 CloudResource 저장
-        saveCloudResource(request.getContainerName(), request, providerType);
+        resourceHelper.registerStorageBucket(
+                providerType,
+                getServiceKeyForProvider(providerType),
+                request.getContainerName(),
+                request.getTags()
+        );
 
         log.info("[ObjectStorageUseCaseService] createContainer - success provider={}, containerName={}",
                 providerType, request.getContainerName());
@@ -177,7 +172,7 @@ public class ObjectStorageUseCaseService {
         router.management(providerType).deleteContainer(session, containerName);
 
         // DB 소프트 삭제
-        softDeleteResourceIfExists(containerName);
+        resourceHelper.softDeleteResource(containerName);
 
         log.info("[ObjectStorageUseCaseService] deleteContainer - success provider={}, containerName={}",
                 providerType, containerName);
@@ -213,7 +208,7 @@ public class ObjectStorageUseCaseService {
         router.management(providerType).forceDeleteContainer(containerName, session);
 
         // DB 소프트 삭제
-        softDeleteResourceIfExists(containerName);
+        resourceHelper.softDeleteResource(containerName);
 
         log.info("[ObjectStorageUseCaseService] forceDeleteContainer - success provider={}, containerName={}",
                 providerType, containerName);
@@ -296,73 +291,7 @@ public class ObjectStorageUseCaseService {
         }
     }
 
-    // ==================== DB 저장 헬퍼 메서드 ====================
-
-    /**
-     * CSP에서 생성된 Object Storage Container 정보를 CloudResource 엔티티로 저장합니다.
-     *
-     * @param containerName 생성된 컨테이너 이름 (S3 버킷명, Azure Blob 컨테이너명 등)
-     * @param request 생성 요청 정보
-     * @param providerType 프로바이더 타입
-     */
-    private void saveCloudResource(String containerName, CreateObjectStorageContainerRequest request, 
-                                   ProviderType providerType) {
-        try {
-            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            
-            // Provider 조회
-            CloudProvider provider = cloudProviderRepository.findFirstByProviderType(providerType)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "CloudProvider not found for type: " + providerType));
-            
-            // Service 조회 (Storage용 서비스 - S3, BlobStorage, CloudStorage 등)
-            CloudService cloudService = cloudServiceRepository
-                    .findByProviderTypeAndServiceKey(providerType, getServiceKeyForProvider(providerType))
-                    .orElse(null);
-            
-            // Tenant 조회
-            Tenant tenant = tenantRepository.findByTenantKey(tenantKey)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Tenant not found for key: " + tenantKey));
-            
-            // Factory Method를 사용한 CloudResource 엔티티 생성
-            CloudResource cloudResource = CloudResource.createStorageBucket(
-                    containerName,
-                    provider,
-                    cloudService,
-                    tenant,
-                    request.getTags()
-            );
-            
-            cloudResourceRepository.save(cloudResource);
-            log.debug("[ObjectStorageUseCaseService] CloudResource 저장 완료: containerName={}", containerName);
-            
-        } catch (Exception e) {
-            // DB 저장 실패해도 CSP 생성은 완료되었으므로 경고 로그만 출력
-            log.warn("[ObjectStorageUseCaseService] CloudResource 저장 실패 (CSP 생성은 완료됨): containerName={}, error={}", 
-                    containerName, e.getMessage());
-        }
-    }
-
-    /**
-     * 리소스가 존재하면 소프트 삭제 처리합니다.
-     *
-     * @param resourceId 리소스 ID (containerName)
-     */
-    private void softDeleteResourceIfExists(String resourceId) {
-        try {
-            int deletedCount = cloudResourceRepository.softDeleteByResourceId(resourceId);
-            
-            if (deletedCount > 0) {
-                log.debug("[ObjectStorageUseCaseService] 리소스 소프트 삭제 완료: resourceId={}", resourceId);
-            } else {
-                log.debug("[ObjectStorageUseCaseService] DB에 리소스가 없어 삭제 스킵: resourceId={}", resourceId);
-            }
-        } catch (Exception e) {
-            log.warn("[ObjectStorageUseCaseService] 리소스 소프트 삭제 실패: resourceId={}, error={}", 
-                    resourceId, e.getMessage());
-        }
-    }
+    // ==================== Private Helper Methods ====================
 
     /**
      * 프로바이더 타입에 따른 서비스 키 반환

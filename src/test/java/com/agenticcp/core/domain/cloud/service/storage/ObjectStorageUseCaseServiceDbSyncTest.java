@@ -3,35 +3,24 @@ package com.agenticcp.core.domain.cloud.service.storage;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.CreateObjectStorageContainerRequest;
-import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.ResourceType;
-import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageManagementPort;
-import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -66,18 +55,7 @@ class ObjectStorageUseCaseServiceDbSyncTest {
     private AccountCredentialManagementPort accountCredentialManagementPort;
 
     @Mock
-    private CloudResourceRepository cloudResourceRepository;
-
-    @Mock
-    private CloudProviderRepository cloudProviderRepository;
-
-    @Mock
-    private CloudServiceRepository cloudServiceRepository;
-
-    @Mock
-    private TenantRepository tenantRepository;
-
-    private ObjectMapper objectMapper;
+    private CloudResourceManagementHelper resourceHelper;
 
     private ObjectStorageUseCaseService objectStorageUseCaseService;
     private CloudSessionCredential mockSession;
@@ -90,17 +68,12 @@ class ObjectStorageUseCaseServiceDbSyncTest {
     @BeforeEach
     void setUp() {
         TenantContextHolder.setTenantKey(TENANT_KEY);
-        objectMapper = new ObjectMapper();
         
         objectStorageUseCaseService = new ObjectStorageUseCaseService(
                 router,
                 capabilityGuard,
                 accountCredentialManagementPort,
-                cloudResourceRepository,
-                cloudProviderRepository,
-                cloudServiceRepository,
-                tenantRepository,
-                objectMapper
+                resourceHelper
         );
         
         mockSession = mock(CloudSessionCredential.class);
@@ -127,12 +100,13 @@ class ObjectStorageUseCaseServiceDbSyncTest {
         @DisplayName("컨테이너 생성 성공 시 CloudResource가 DB에 저장된다")
         void createContainer_Success_SavesCloudResource() {
             // Given
+            Map<String, String> tags = Map.of("Environment", "test");
             CreateObjectStorageContainerRequest request = CreateObjectStorageContainerRequest.builder()
                     .providerType(PROVIDER_TYPE)
                     .accountScope(ACCOUNT_SCOPE)
                     .containerName(CONTAINER_NAME)
                     .region("us-east-1")
-                    .tags(Map.of("Environment", "test"))
+                    .tags(tags)
                     .build();
 
             CloudResource mockCreatedContainer = CloudResource.builder()
@@ -140,28 +114,7 @@ class ObjectStorageUseCaseServiceDbSyncTest {
                     .resourceName(CONTAINER_NAME)
                     .build();
 
-            CloudProvider mockProvider = CloudProvider.builder()
-                    .providerType(PROVIDER_TYPE)
-                    .providerName("AWS")
-                    .build();
-
-            CloudService mockService = CloudService.builder()
-                    .serviceKey("S3")
-                    .build();
-
-            Tenant mockTenant = Tenant.builder()
-                    .tenantKey(TENANT_KEY)
-                    .build();
-
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
-            when(cloudProviderRepository.findFirstByProviderType(PROVIDER_TYPE))
-                    .thenReturn(Optional.of(mockProvider));
-            when(cloudServiceRepository.findByProviderTypeAndServiceKey(eq(PROVIDER_TYPE), eq("S3")))
-                    .thenReturn(Optional.of(mockService));
-            when(tenantRepository.findByTenantKey(TENANT_KEY))
-                    .thenReturn(Optional.of(mockTenant));
-            when(cloudResourceRepository.save(any(CloudResource.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
 
             // When
             CloudResource result = objectStorageUseCaseService.createContainer(request);
@@ -169,16 +122,12 @@ class ObjectStorageUseCaseServiceDbSyncTest {
             // Then
             assertThat(result).isNotNull();
             
-            ArgumentCaptor<CloudResource> captor = ArgumentCaptor.forClass(CloudResource.class);
-            verify(cloudResourceRepository).save(captor.capture());
-            
-            CloudResource savedResource = captor.getValue();
-            assertThat(savedResource.getResourceId()).isEqualTo(CONTAINER_NAME);
-            assertThat(savedResource.getResourceName()).isEqualTo(CONTAINER_NAME);
-            assertThat(savedResource.getResourceType()).isEqualTo(ResourceType.BUCKET);
-            assertThat(savedResource.getLifecycleState()).isEqualTo(LifecycleState.RUNNING);
-            assertThat(savedResource.getProvider()).isEqualTo(mockProvider);
-            assertThat(savedResource.getTenant()).isEqualTo(mockTenant);
+            verify(resourceHelper).registerStorageBucket(
+                    eq(PROVIDER_TYPE),
+                    eq("S3"),
+                    eq(CONTAINER_NAME),
+                    eq(tags)
+            );
         }
 
         @Test
@@ -198,15 +147,16 @@ class ObjectStorageUseCaseServiceDbSyncTest {
                     .build();
 
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
-            when(cloudProviderRepository.findFirstByProviderType(PROVIDER_TYPE))
-                    .thenReturn(Optional.empty()); // Provider 없음 -> DB 저장 실패
+            // Helper 내부에서 예외 발생해도 경고 로그만 출력되고 계속 진행됨
+            doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
+                    .registerStorageBucket(any(), any(), any(), any());
 
             // When
             CloudResource result = objectStorageUseCaseService.createContainer(request);
 
             // Then
             assertThat(result).isNotNull(); // CSP 생성은 성공
-            verify(cloudResourceRepository, never()).save(any()); // DB 저장은 스킵됨
+            verify(resourceHelper).registerStorageBucket(any(), any(), any(), any());
         }
     }
 
@@ -219,14 +169,13 @@ class ObjectStorageUseCaseServiceDbSyncTest {
         void deleteContainer_Success_SoftDeletesResource() {
             // Given
             doNothing().when(managementPort).deleteContainer(any(), eq(CONTAINER_NAME));
-            when(cloudResourceRepository.softDeleteByResourceId(CONTAINER_NAME)).thenReturn(1);
 
             // When
             objectStorageUseCaseService.deleteContainer(PROVIDER_TYPE, ACCOUNT_SCOPE, CONTAINER_NAME);
 
             // Then
             verify(managementPort).deleteContainer(any(), eq(CONTAINER_NAME));
-            verify(cloudResourceRepository).softDeleteByResourceId(CONTAINER_NAME);
+            verify(resourceHelper).softDeleteResource(CONTAINER_NAME);
         }
 
         @Test
@@ -234,14 +183,13 @@ class ObjectStorageUseCaseServiceDbSyncTest {
         void forceDeleteContainer_Success_SoftDeletesResource() {
             // Given
             doNothing().when(managementPort).forceDeleteContainer(eq(CONTAINER_NAME), any());
-            when(cloudResourceRepository.softDeleteByResourceId(CONTAINER_NAME)).thenReturn(1);
 
             // When
             objectStorageUseCaseService.forceDeleteContainer(PROVIDER_TYPE, ACCOUNT_SCOPE, CONTAINER_NAME);
 
             // Then
             verify(managementPort).forceDeleteContainer(eq(CONTAINER_NAME), any());
-            verify(cloudResourceRepository).softDeleteByResourceId(CONTAINER_NAME);
+            verify(resourceHelper).softDeleteResource(CONTAINER_NAME);
         }
 
         @Test
@@ -249,13 +197,14 @@ class ObjectStorageUseCaseServiceDbSyncTest {
         void deleteContainer_ResourceNotInDb_CspDeletionSucceeds() {
             // Given
             doNothing().when(managementPort).deleteContainer(any(), eq(CONTAINER_NAME));
-            when(cloudResourceRepository.softDeleteByResourceId(CONTAINER_NAME)).thenReturn(0); // DB에 없음
+            // Helper 내부에서 리소스가 없으면 로그만 출력하고 예외 발생 안함
 
             // When
             objectStorageUseCaseService.deleteContainer(PROVIDER_TYPE, ACCOUNT_SCOPE, CONTAINER_NAME);
 
             // Then
             verify(managementPort).deleteContainer(any(), eq(CONTAINER_NAME)); // CSP 작업 성공
+            verify(resourceHelper).softDeleteResource(CONTAINER_NAME);
         }
     }
 }

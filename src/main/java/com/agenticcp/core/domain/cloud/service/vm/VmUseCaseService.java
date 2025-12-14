@@ -5,29 +5,22 @@ import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.dto.VmUpdateRequest;
-import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmUpdateCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
-import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 
@@ -55,12 +48,7 @@ public class VmUseCaseService {
     private final VmPortRouter vmPortRouter;
     private final CapabilityGuard capabilityGuard;
     private final AccountCredentialManagementPort credentialProviderPort;
-    
-    // DB 저장을 위한 Repository
-    private final CloudResourceRepository cloudResourceRepository;
-    private final CloudProviderRepository cloudProviderRepository;
-    private final CloudServiceRepository cloudServiceRepository;
-    private final TenantRepository tenantRepository;
+    private final CloudResourceManagementHelper resourceHelper;
 
     /**
      * 세션 자격증명을 획득합니다.
@@ -145,7 +133,15 @@ public class VmUseCaseService {
             .createInstance(toCreateCommand(request, session));
 
         // DB에 CloudResource 저장
-        saveCloudResource(instanceId, request, providerType);
+        String resourceName = resourceHelper.extractResourceName(request.getTags(), instanceId);
+        resourceHelper.registerVmInstance(
+                providerType,
+                getServiceKeyForProvider(providerType),
+                instanceId,
+                resourceName,
+                request.getInstanceSize(),
+                request.getTags()
+        );
 
         log.info("VM 인스턴스 생성 완료: provider={}, instanceId={}", providerType, instanceId);
         return instanceId;
@@ -175,7 +171,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).startInstance(instanceId, session);
 
         // DB 상태 업데이트: RUNNING
-        updateLifecycleStateIfExists(instanceId, LifecycleState.RUNNING);
+        resourceHelper.updateLifecycleState(instanceId, LifecycleState.RUNNING);
 
         log.info("VM 인스턴스 시작 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -202,7 +198,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).stopInstance(instanceId, session);
 
         // DB 상태 업데이트: STOPPED
-        updateLifecycleStateIfExists(instanceId, LifecycleState.STOPPED);
+        resourceHelper.updateLifecycleState(instanceId, LifecycleState.STOPPED);
 
         log.info("VM 인스턴스 중지 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -230,7 +226,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).rebootInstance(instanceId, session);
 
         // DB 상태 업데이트: 재부팅 후 RUNNING 상태 유지 (lastModifiedInCloud만 업데이트)
-        updateLifecycleStateIfExists(instanceId, LifecycleState.RUNNING);
+        resourceHelper.updateLifecycleState(instanceId, LifecycleState.RUNNING);
 
         log.info("VM 인스턴스 재부팅 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -257,7 +253,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).terminateInstance(instanceId, session);
 
         // DB 상태 업데이트: TERMINATED
-        updateLifecycleStateIfExists(instanceId, LifecycleState.TERMINATED);
+        resourceHelper.updateLifecycleState(instanceId, LifecycleState.TERMINATED);
 
         log.info("VM 인스턴스 종료 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -286,7 +282,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).deleteInstance(toDeleteCommand(request, session));
 
         // DB 소프트 삭제
-        softDeleteResourceIfExists(instanceId);
+        resourceHelper.softDeleteResource(instanceId);
 
         log.info("VM 인스턴스 삭제 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -476,100 +472,7 @@ public class VmUseCaseService {
                 .build();
     }
 
-    // ==================== DB 저장 헬퍼 메서드 ====================
-
-    /**
-     * CSP에서 생성된 VM 인스턴스 정보를 CloudResource 엔티티로 저장합니다.
-     *
-     * @param instanceId 생성된 인스턴스 ID
-     * @param request 생성 요청 정보
-     * @param providerType 프로바이더 타입
-     */
-    private void saveCloudResource(String instanceId, VmCreateRequest request, ProviderType providerType) {
-        try {
-            String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
-            
-            // Provider 조회
-            CloudProvider provider = cloudProviderRepository.findFirstByProviderType(providerType)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "CloudProvider not found for type: " + providerType));
-            
-            // Service 조회 (VM용 서비스 - EC2, Compute Engine 등)
-            CloudService cloudService = cloudServiceRepository
-                    .findByProviderTypeAndServiceKey(providerType, getServiceKeyForProvider(providerType))
-                    .orElse(null);
-            
-            // Tenant 조회
-            Tenant tenant = tenantRepository.findByTenantKey(tenantKey)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "Tenant not found for key: " + tenantKey));
-            
-            // 리소스 이름 생성 (태그에서 Name 추출 또는 instanceId 사용)
-            String resourceName = extractResourceName(request.getTags(), instanceId);
-            
-            // Factory Method를 사용한 CloudResource 엔티티 생성
-            CloudResource cloudResource = CloudResource.createVmInstance(
-                    instanceId,
-                    resourceName,
-                    provider,
-                    cloudService,
-                    tenant,
-                    request.getInstanceSize(),
-                    request.getTags()
-            );
-            
-            cloudResourceRepository.save(cloudResource);
-            log.debug("[VmUseCaseService] CloudResource 저장 완료: instanceId={}", instanceId);
-            
-        } catch (Exception e) {
-            // DB 저장 실패해도 CSP 생성은 완료되었으므로 경고 로그만 출력
-            log.warn("[VmUseCaseService] CloudResource 저장 실패 (CSP 생성은 완료됨): instanceId={}, error={}", 
-                    instanceId, e.getMessage());
-        }
-    }
-
-    /**
-     * 리소스가 존재하면 생명주기 상태를 업데이트합니다.
-     *
-     * @param resourceId 리소스 ID
-     * @param lifecycleState 새로운 생명주기 상태
-     */
-    private void updateLifecycleStateIfExists(String resourceId, LifecycleState lifecycleState) {
-        try {
-            int updatedCount = cloudResourceRepository.updateLifecycleState(
-                    resourceId, lifecycleState, LocalDateTime.now());
-            
-            if (updatedCount > 0) {
-                log.debug("[VmUseCaseService] 생명주기 상태 업데이트 완료: resourceId={}, state={}", 
-                        resourceId, lifecycleState);
-            } else {
-                log.debug("[VmUseCaseService] DB에 리소스가 없어 상태 업데이트 스킵: resourceId={}", resourceId);
-            }
-        } catch (Exception e) {
-            log.warn("[VmUseCaseService] 생명주기 상태 업데이트 실패: resourceId={}, error={}", 
-                    resourceId, e.getMessage());
-        }
-    }
-
-    /**
-     * 리소스가 존재하면 소프트 삭제 처리합니다.
-     *
-     * @param resourceId 리소스 ID
-     */
-    private void softDeleteResourceIfExists(String resourceId) {
-        try {
-            int deletedCount = cloudResourceRepository.softDeleteByResourceId(resourceId);
-            
-            if (deletedCount > 0) {
-                log.debug("[VmUseCaseService] 리소스 소프트 삭제 완료: resourceId={}", resourceId);
-            } else {
-                log.debug("[VmUseCaseService] DB에 리소스가 없어 삭제 스킵: resourceId={}", resourceId);
-            }
-        } catch (Exception e) {
-            log.warn("[VmUseCaseService] 리소스 소프트 삭제 실패: resourceId={}, error={}", 
-                    resourceId, e.getMessage());
-        }
-    }
+    // ==================== Private Helper Methods ====================
 
     /**
      * 프로바이더 타입에 따른 서비스 키 반환
@@ -582,15 +485,5 @@ public class VmUseCaseService {
             case GCP -> "ComputeEngine";
             default -> "VM";
         };
-    }
-
-    /**
-     * 태그에서 리소스 이름 추출 (Name 태그 또는 instanceId 사용)
-     */
-    private String extractResourceName(Map<String, String> tags, String instanceId) {
-        if (tags != null && tags.containsKey("Name")) {
-            return tags.get("Name");
-        }
-        return instanceId;
     }
 }
