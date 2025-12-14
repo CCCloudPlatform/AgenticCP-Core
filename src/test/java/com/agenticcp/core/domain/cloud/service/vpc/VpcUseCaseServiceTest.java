@@ -16,7 +16,7 @@ import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential
 import com.agenticcp.core.domain.cloud.port.model.vpc.*;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
-
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import com.agenticcp.core.domain.cloud.port.outbound.vpc.VpcManagementPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +63,9 @@ class VpcUseCaseServiceTest {
 
     @Mock
     private VpcManagementPort vpcManagementPort;
+
+    @Mock
+    private CloudResourceManagementHelper resourceHelper;
 
     @InjectMocks
     private VpcUseCaseService vpcUseCaseService;
@@ -119,6 +122,8 @@ class VpcUseCaseServiceTest {
 
             given(vpcManagementPort.createVpc(any(CreateVpcCommand.class)))
                 .willReturn(mockVpcResource);
+            
+            doNothing().when(resourceHelper).registerVpc(any(), any(), any(), any(), any(), any());
 
             // When
             CloudResource result = vpcUseCaseService.createVpc(request);
@@ -640,6 +645,7 @@ class VpcUseCaseServiceTest {
             )).willReturn(mockSession);
 
             doNothing().when(vpcManagementPort).deleteVpc(any(DeleteVpcCommand.class));
+            doNothing().when(resourceHelper).softDeleteResource(anyString());
 
             // When
             vpcUseCaseService.deleteVpc(vpcId);
@@ -746,6 +752,8 @@ class VpcUseCaseServiceTest {
 
             given(vpcManagementPort.createVpc(any(CreateVpcCommand.class)))
                 .willReturn(mockVpcResource);
+            
+            doNothing().when(resourceHelper).registerVpc(any(), any(), any(), any(), any(), any());
 
             // When
             vpcUseCaseService.createVpc(request);
@@ -776,6 +784,8 @@ class VpcUseCaseServiceTest {
 
             given(vpcManagementPort.createVpc(any(CreateVpcCommand.class)))
                 .willReturn(mockVpcResource);
+            
+            doNothing().when(resourceHelper).registerVpc(any(), any(), any(), any(), any(), any());
 
             // When
             vpcUseCaseService.createVpc(request);
@@ -807,6 +817,8 @@ class VpcUseCaseServiceTest {
 
             given(vpcManagementPort.createVpc(any(CreateVpcCommand.class)))
                 .willReturn(mockVpcResource);
+            
+            doNothing().when(resourceHelper).registerVpc(any(), any(), any(), any(), any(), any());
 
             // When
             vpcUseCaseService.createVpc(request);

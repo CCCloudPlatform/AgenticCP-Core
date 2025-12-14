@@ -13,6 +13,7 @@ import com.agenticcp.core.domain.cloud.port.model.storage.*;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageManagementPort;
+import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -60,6 +61,9 @@ class S3BucketUseCaseServiceTest {
 
     @Mock
     private ObjectStorageDiscoveryPort discoveryPort;
+
+    @Mock
+    private CloudResourceManagementHelper resourceHelper;
 
     @InjectMocks
     private ObjectStorageUseCaseService objectStorageUseCaseService;
@@ -124,6 +128,7 @@ class S3BucketUseCaseServiceTest {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
                 when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
                 when(managementPort.createContainer(any(CreateObjectStorageContainerCommand.class))).thenReturn(expectedContainer);
+                doNothing().when(resourceHelper).registerStorageBucket(any(), any(), any(), any());
 
                 // When
                 CloudResource result = objectStorageUseCaseService.createContainer(request);
@@ -133,9 +138,10 @@ class S3BucketUseCaseServiceTest {
                 assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
                 assertThat(result.getResourceId()).isEqualTo("container-" + CONTAINER_NAME);
 
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+                verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TAGGING);
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(managementPort).createContainer(any(CreateObjectStorageContainerCommand.class));
+                verify(resourceHelper).registerStorageBucket(eq(AWS), eq("S3"), eq(CONTAINER_NAME), any());
             }
         }
 
@@ -151,7 +157,7 @@ class S3BucketUseCaseServiceTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Capability not supported");
 
-            verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+            verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TAGGING);
             verify(accountCredentialManagementPort, never()).getSession(any(), any(), any());
             verify(managementPort, never()).createContainer(any());
         }
@@ -171,7 +177,7 @@ class S3BucketUseCaseServiceTest {
                         .hasMessageContaining("Invalid credentials");
 
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+                verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TAGGING);
                 verify(managementPort, never()).createContainer(any());
             }
         }
@@ -223,7 +229,7 @@ class S3BucketUseCaseServiceTest {
                 assertThat(result.getDisplayName()).isEqualTo("Updated Test Container");
 
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TAGGING);
+                verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TAGGING);
                 verify(managementPort).updateContainer(any(UpdateObjectStorageContainerCommand.class));
             }
         }
@@ -392,14 +398,16 @@ class S3BucketUseCaseServiceTest {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
                 when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
                 doNothing().when(managementPort).deleteContainer(any(CloudSessionCredential.class), eq(CONTAINER_NAME));
+                doNothing().when(resourceHelper).softDeleteResource(eq(CONTAINER_NAME));
 
                 // When
                 objectStorageUseCaseService.deleteContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME);
 
                 // Then
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+                verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TERMINATE);
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(managementPort).deleteContainer(mockSession, CONTAINER_NAME);
+                verify(resourceHelper).softDeleteResource(CONTAINER_NAME);
             }
         }
 
@@ -415,7 +423,7 @@ class S3BucketUseCaseServiceTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Delete capability not supported");
 
-            verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+            verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TERMINATE);
             verify(accountCredentialManagementPort, never()).getSession(any(), any(), any());
             verify(managementPort, never()).deleteContainer(any(), any());
         }
@@ -433,14 +441,16 @@ class S3BucketUseCaseServiceTest {
                 mockedStatic.when(TenantContextHolder::getCurrentTenantKeyOrThrow).thenReturn(TENANT_KEY);
                 when(accountCredentialManagementPort.getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS)).thenReturn(mockSession);
                 doNothing().when(managementPort).forceDeleteContainer(eq(CONTAINER_NAME), any(CloudSessionCredential.class));
+                doNothing().when(resourceHelper).softDeleteResource(eq(CONTAINER_NAME));
 
                 // When
                 objectStorageUseCaseService.forceDeleteContainer(AWS, ACCOUNT_SCOPE, CONTAINER_NAME);
 
                 // Then
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+                verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TERMINATE);
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(managementPort).forceDeleteContainer(CONTAINER_NAME, mockSession);
+                verify(resourceHelper).softDeleteResource(CONTAINER_NAME);
             }
         }
 
@@ -458,7 +468,7 @@ class S3BucketUseCaseServiceTest {
                         .isInstanceOf(RuntimeException.class)
                         .hasMessageContaining("Invalid credentials for force delete");
 
-                verify(capabilityGuard).ensureSupported(AWS, "OBJECT_STORAGE", "CONTAINER", CapabilityGuard.Operation.TERMINATE);
+                verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TERMINATE);
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(managementPort, never()).forceDeleteContainer(any(), any());
             }

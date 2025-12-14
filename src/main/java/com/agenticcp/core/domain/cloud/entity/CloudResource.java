@@ -10,6 +10,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -112,6 +114,111 @@ public class CloudResource extends BaseEntity {
     private String metadata; // JSON for additional resource metadata
 
     // ==================== Factory Methods ====================
+
+    /**
+     * 통합 CloudResource 생성 팩토리 메서드
+     * 
+     * 모든 리소스 타입(VM, Storage, VPC, RDS 등)을 하나의 메서드로 생성합니다.
+     * 도메인별 상세 속성은 ResourceRegistrationRequest의 attributes에서 추출합니다.
+     *
+     * @param request  리소스 등록 요청 DTO
+     * @param provider 클라우드 프로바이더
+     * @param service  클라우드 서비스
+     * @param tenant   테넌트
+     * @return CloudResource 엔티티
+     */
+    public static CloudResource create(
+            ResourceRegistrationRequest request,
+            CloudProvider provider,
+            CloudService service,
+            Tenant tenant
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+        
+        CloudResource resource = CloudResource.builder()
+                .resourceId(request.getResourceId())
+                .resourceName(request.getResourceName())
+                .displayName(request.getResourceName())
+                .provider(provider)
+                .service(service)
+                .tenant(tenant)
+                .status(Status.ACTIVE)
+                .resourceType(request.getResourceType())
+                .lifecycleState(determineInitialLifecycleState(request))
+                .tags(request.getTags())
+                .createdInCloud(now)
+                .lastModifiedInCloud(now)
+                .lastSync(now)
+                .build();
+        
+        // 도메인별 속성 적용
+        applyAttributes(resource, request);
+        
+        return resource;
+    }
+
+    /**
+     * 초기 생명주기 상태 결정
+     * 요청에 명시된 상태가 있으면 사용, 없으면 리소스 타입에 따라 기본값 적용
+     */
+    private static LifecycleState determineInitialLifecycleState(ResourceRegistrationRequest request) {
+        if (request.getInitialLifecycleState() != null) {
+            return request.getInitialLifecycleState();
+        }
+        
+        // 리소스 타입별 기본 생명주기 상태
+        return switch (request.getResourceType()) {
+            case INSTANCE -> LifecycleState.PENDING;
+            default -> LifecycleState.RUNNING;
+        };
+    }
+
+    /**
+     * 도메인별 속성을 CloudResource에 적용
+     */
+    private static void applyAttributes(CloudResource resource, ResourceRegistrationRequest request) {
+        // instanceSize
+        String instanceSize = request.getAttributeAsString(
+                ResourceRegistrationRequest.AttributeKeys.INSTANCE_SIZE);
+        if (instanceSize != null) {
+            resource.setInstanceSize(instanceSize);
+        }
+        
+        // configuration (cidrBlock, JSON 설정 등)
+        String configuration = request.getAttributeAsString(
+                ResourceRegistrationRequest.AttributeKeys.CONFIGURATION);
+        if (configuration != null) {
+            resource.setConfiguration(configuration);
+        }
+        
+        // cpuCores
+        Integer cpuCores = request.getAttributeAsInteger(
+                ResourceRegistrationRequest.AttributeKeys.CPU_CORES);
+        if (cpuCores != null) {
+            resource.setCpuCores(cpuCores);
+        }
+        
+        // memoryGb
+        Integer memoryGb = request.getAttributeAsInteger(
+                ResourceRegistrationRequest.AttributeKeys.MEMORY_GB);
+        if (memoryGb != null) {
+            resource.setMemoryGb(memoryGb);
+        }
+        
+        // storageGb
+        Long storageGb = request.getAttributeAsLong(
+                ResourceRegistrationRequest.AttributeKeys.STORAGE_GB);
+        if (storageGb != null) {
+            resource.setStorageGb(storageGb);
+        }
+        
+        // instanceType
+        String instanceType = request.getAttributeAsString(
+                ResourceRegistrationRequest.AttributeKeys.INSTANCE_TYPE);
+        if (instanceType != null) {
+            resource.setInstanceType(instanceType);
+        }
+    }
 
     /**
      * VM 인스턴스용 CloudResource 생성

@@ -1,10 +1,13 @@
 package com.agenticcp.core.domain.cloud.service.helper;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest.AttributeKeys;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
+import com.agenticcp.core.domain.cloud.entity.CloudResource.ResourceType;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
@@ -41,13 +44,47 @@ public class CloudResourceManagementHelper {
     private final CloudServiceRepository cloudServiceRepository;
     private final TenantRepository tenantRepository;
 
+    // ==================== 통합 리소스 등록 ====================
+
+    /**
+     * CloudResource를 통합적으로 등록합니다.
+     * 
+     * 모든 리소스 타입(VM, Storage, VPC, RDS 등)을 하나의 메서드로 등록할 수 있습니다.
+     * 도메인별 상세 속성은 ResourceRegistrationRequest의 attributes에 담아 전달합니다.
+     * 
+     * <p><b>주의:</b> 실패 시 예외를 던집니다. 
+     * 호출하는 서비스에서 보상 트랜잭션을 처리해야 합니다.</p>
+     *
+     * @param providerType 프로바이더 타입
+     * @param serviceKey   서비스 키 (EC2, S3, VirtualMachines 등)
+     * @param request      리소스 등록 요청 DTO
+     * @return 저장된 CloudResource 엔티티
+     */
+    @Transactional
+    public CloudResource registerResource(
+            ProviderType providerType,
+            String serviceKey,
+            ResourceRegistrationRequest request
+    ) {
+        CloudProvider provider = findProvider(providerType);
+        CloudService service = findServiceOrNull(providerType, serviceKey);
+        Tenant tenant = findCurrentTenant();
+
+        CloudResource cloudResource = CloudResource.create(request, provider, service, tenant);
+
+        CloudResource savedResource = cloudResourceRepository.save(cloudResource);
+        log.debug("[CloudResourceManagementHelper] 리소스 등록 완료: resourceType={}, resourceId={}", 
+                request.getResourceType(), savedResource.getResourceId());
+        return savedResource;
+    }
+
     // ==================== VM Instance ====================
 
     /**
      * VM 인스턴스를 CloudResource로 등록합니다.
      * 
-     * 주의: 실패 시 CloudResourceRegistrationException을 던집니다. 
-     * 호출하는 서비스에서 보상 트랜잭션을 처리해야 합니다.
+     * @deprecated registerResource() 메서드 사용을 권장합니다.
+     * @see #registerResource(ProviderType, String, ResourceRegistrationRequest)
      *
      * @param providerType 프로바이더 타입
      * @param serviceKey   서비스 키 (EC2, VirtualMachines 등)
@@ -56,8 +93,8 @@ public class CloudResourceManagementHelper {
      * @param instanceSize 인스턴스 크기
      * @param tags         태그 맵
      * @return 저장된 CloudResource 엔티티
-     * @throws CloudResourceRegistrationException DB 저장 실패 시
      */
+    @Deprecated
     @Transactional
     public CloudResource registerVmInstance(
             ProviderType providerType,
@@ -67,24 +104,15 @@ public class CloudResourceManagementHelper {
             String instanceSize,
             Map<String, String> tags
     ) {
-        CloudProvider provider = findProvider(providerType);
-        CloudService service = findServiceOrNull(providerType, serviceKey);
-        Tenant tenant = findCurrentTenant();
+        ResourceRegistrationRequest request = ResourceRegistrationRequest.builder()
+                .resourceId(instanceId)
+                .resourceName(resourceName)
+                .resourceType(ResourceType.INSTANCE)
+                .tags(tags)
+                .attributes(Map.of(AttributeKeys.INSTANCE_SIZE, instanceSize))
+                .build();
 
-        CloudResource cloudResource = CloudResource.createVmInstance(
-                instanceId,
-                resourceName,
-                provider,
-                service,
-                tenant,
-                instanceSize,
-                tags
-        );
-
-        CloudResource savedResource = cloudResourceRepository.save(cloudResource);
-        log.debug("[CloudResourceManagementHelper] VM 인스턴스 등록 완료: instanceId={}, resourceId={}", 
-                instanceId, savedResource.getResourceId());
-        return savedResource;
+        return registerResource(providerType, serviceKey, request);
     }
 
     // ==================== Storage Bucket ====================
@@ -92,15 +120,15 @@ public class CloudResourceManagementHelper {
     /**
      * Object Storage 버킷을 CloudResource로 등록합니다.
      * 
-     * <p><b>주의:</b> 실패 시 RuntimeException을 던집니다. 
-     * 호출하는 서비스에서 보상 트랜잭션을 처리해야 합니다.</p>
+     * @deprecated registerResource() 메서드 사용을 권장합니다.
+     * @see #registerResource(ProviderType, String, ResourceRegistrationRequest)
      *
      * @param providerType  프로바이더 타입
      * @param serviceKey    서비스 키 (S3, BlobStorage 등)
      * @param containerName 컨테이너/버킷 이름
      * @param tags          태그 맵
-     * @throws CloudResourceRegistrationException DB 저장 실패 시
      */
+    @Deprecated
     @Transactional
     public void registerStorageBucket(
             ProviderType providerType,
@@ -108,20 +136,14 @@ public class CloudResourceManagementHelper {
             String containerName,
             Map<String, String> tags
     ) {
-        CloudProvider provider = findProvider(providerType);
-        CloudService service = findServiceOrNull(providerType, serviceKey);
-        Tenant tenant = findCurrentTenant();
+        ResourceRegistrationRequest request = ResourceRegistrationRequest.builder()
+                .resourceId(containerName)
+                .resourceName(containerName)
+                .resourceType(ResourceType.BUCKET)
+                .tags(tags)
+                .build();
 
-        CloudResource cloudResource = CloudResource.createStorageBucket(
-                containerName,
-                provider,
-                service,
-                tenant,
-                tags
-        );
-
-        cloudResourceRepository.save(cloudResource);
-        log.debug("[CloudResourceManagementHelper] 스토리지 버킷 등록 완료: containerName={}", containerName);
+        registerResource(providerType, serviceKey, request);
     }
 
     // ==================== VPC ====================
@@ -129,8 +151,8 @@ public class CloudResourceManagementHelper {
     /**
      * VPC를 CloudResource로 등록합니다.
      * 
-     * 주의: 실패 시 CloudResourceRegistrationException을 던집니다. 
-     * 호출하는 서비스에서 보상 트랜잭션을 처리해야 합니다.
+     * @deprecated registerResource() 메서드 사용을 권장합니다.
+     * @see #registerResource(ProviderType, String, ResourceRegistrationRequest)
      *
      * @param providerType 프로바이더 타입
      * @param serviceKey   서비스 키 (EC2, VirtualNetwork 등)
@@ -138,8 +160,9 @@ public class CloudResourceManagementHelper {
      * @param resourceName 리소스 이름 (VPC 이름 또는 vpcId)
      * @param cidrBlock    CIDR 블록
      * @param tags         태그 맵
-     * @throws CloudResourceRegistrationException DB 저장 실패 시
+     * @throws IllegalStateException CloudService가 존재하지 않을 경우
      */
+    @Deprecated
     @Transactional
     public void registerVpc(
             ProviderType providerType,
@@ -149,22 +172,18 @@ public class CloudResourceManagementHelper {
             String cidrBlock,
             Map<String, String> tags
     ) {
-        CloudProvider provider = findProvider(providerType);
-        CloudService service = findServiceOrThrow(providerType, serviceKey);
-        Tenant tenant = findCurrentTenant();
+        // VPC는 CloudService가 필수 (기존 동작 유지)
+        findServiceOrThrow(providerType, serviceKey);
 
-        CloudResource cloudResource = CloudResource.createVpc(
-                vpcId,
-                resourceName,
-                provider,
-                service,
-                tenant,
-                cidrBlock,
-                tags
-        );
+        ResourceRegistrationRequest request = ResourceRegistrationRequest.builder()
+                .resourceId(vpcId)
+                .resourceName(resourceName)
+                .resourceType(ResourceType.NETWORK)
+                .tags(tags)
+                .attributes(Map.of(AttributeKeys.CONFIGURATION, cidrBlock))
+                .build();
 
-        cloudResourceRepository.save(cloudResource);
-        log.debug("[CloudResourceManagementHelper] VPC 등록 완료: vpcId={}", vpcId);
+        registerResource(providerType, serviceKey, request);
     }
 
     // ==================== 공통 작업 ====================
