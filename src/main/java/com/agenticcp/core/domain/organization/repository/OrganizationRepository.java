@@ -84,18 +84,18 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     long count();
     
     /**
-     * 특정 조직에 연결된 테넌트 조회 (Deprecated - 설계 B: Tenant에 organization 필드 없음)
-     * @deprecated 설계 B: Tenant는 ownerOrganization만 사용
+     * 특정 조직에 연결된 테넌트 조회 (1:1 관계)
+     * @param organizationId 조직 ID
+     * @return 테넌트 (Optional)
      */
-    @Deprecated
-    @Query("SELECT t FROM Tenant t WHERE t.ownerOrganization.id = :organizationId")
+    @Query("SELECT t FROM Tenant t WHERE t.organization.id = :organizationId")
     Optional<Tenant> findTenantByOrganizationId(@Param("organizationId") Long organizationId);
     
     /**
-     * 조직에 테넌트가 존재하는지 확인 (Deprecated - 설계 B: Tenant에 organization 필드 없음)
-     * @deprecated 설계 B: Tenant는 ownerOrganization만 사용
+     * 조직에 테넌트가 존재하는지 확인 (1:1 관계)
+     * @param organizationId 조직 ID
+     * @return 테넌트 존재 여부
      */
-    @Deprecated
-    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Tenant t WHERE t.ownerOrganization.id = :organizationId")
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Tenant t WHERE t.organization.id = :organizationId")
     boolean existsTenantByOrganizationId(@Param("organizationId") Long organizationId);
 }

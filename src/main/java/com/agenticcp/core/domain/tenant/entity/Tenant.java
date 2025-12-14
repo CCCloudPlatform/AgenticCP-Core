@@ -28,10 +28,10 @@ public class Tenant extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    /** Dedicated일 때 주인 조직 (nullable) */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_org_id")
-    private Organization ownerOrganization;
+    /** 조직 (1:1 관계) */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", nullable = false, unique = true)
+    private Organization organization;
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)

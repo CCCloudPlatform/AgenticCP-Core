@@ -100,20 +100,21 @@ class WorkerServiceIntegrationTest {
 
         testOrganization = dedicatedOrg; // 기본 조직으로 사용
 
-        // 설계 B: Tenant는 organization 필드가 없고 ownerOrganization만 사용
+        // 설계 B: Tenant는 organization 필드로 1:1 관계
         dedicatedTenant = Tenant.builder()
                 .tenantKey("dedicated-tenant")
                 .tenantName("전용 테넌트")
-                .ownerOrganization(dedicatedOrg) // Dedicated Tenant는 ownerOrganization 사용
+                .organization(dedicatedOrg) // Dedicated Tenant는 organization 사용 (1:1 관계)
                 .tenantType(Tenant.TenantType.DEDICATED)
                 .status(Status.ACTIVE)
                 .build();
         dedicatedTenant = tenantRepository.save(dedicatedTenant);
 
-        // Shared Tenant는 ownerOrganization이 없을 수 있음
+        // Shared Tenant도 organization을 가짐 (1:1 관계)
         sharedTenant = Tenant.builder()
                 .tenantKey("shared-tenant")
                 .tenantName("공유 테넌트")
+                .organization(sharedOrg) // Shared Tenant도 organization 필요 (1:1 관계)
                 .tenantType(Tenant.TenantType.SHARED)
                 .status(Status.ACTIVE)
                 .build();

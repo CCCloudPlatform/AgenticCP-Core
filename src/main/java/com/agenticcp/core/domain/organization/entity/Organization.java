@@ -37,4 +37,8 @@ public class Organization extends BaseEntity {
     @Size(max = 255, message = "조직명은 255자를 초과할 수 없습니다")
     @Column(name = "name", nullable = false, length = 255)
     private String name;
+
+    /** 테넌트 (1:1 관계) */
+    @OneToOne(mappedBy = "organization", fetch = FetchType.LAZY)
+    private com.agenticcp.core.domain.tenant.entity.Tenant tenant;
 }
