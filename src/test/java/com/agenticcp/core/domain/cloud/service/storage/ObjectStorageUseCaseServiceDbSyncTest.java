@@ -3,8 +3,10 @@ package com.agenticcp.core.domain.cloud.service.storage;
 import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.CreateObjectStorageContainerRequest;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.port.outbound.storage.ObjectStorageDiscoveryPort;
@@ -23,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -131,8 +134,8 @@ class ObjectStorageUseCaseServiceDbSyncTest {
         }
 
         @Test
-        @DisplayName("DB 저장 실패 시에도 CSP 생성은 성공한다")
-        void createContainer_DbSaveFails_CspCreationSucceeds() {
+        @DisplayName("DB 저장 실패 시 보상 트랜잭션이 실행되고 예외가 발생한다")
+        void createContainer_DbSaveFails_CompensatingTransactionExecuted() {
             // Given
             CreateObjectStorageContainerRequest request = CreateObjectStorageContainerRequest.builder()
                     .providerType(PROVIDER_TYPE)
@@ -147,16 +150,53 @@ class ObjectStorageUseCaseServiceDbSyncTest {
                     .build();
 
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
-            // Helper 내부에서 예외 발생해도 경고 로그만 출력되고 계속 진행됨
+            // DB 저장 실패
             doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
                     .registerStorageBucket(any(), any(), any(), any());
 
-            // When
-            CloudResource result = objectStorageUseCaseService.createContainer(request);
+            // When & Then
+            assertThatThrownBy(() -> objectStorageUseCaseService.createContainer(request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(exception -> {
+                        BusinessException be = (BusinessException) exception;
+                        assertThat(be.getErrorCode()).isEqualTo(CloudErrorCode.RESOURCE_CREATION_FAILED);
+                    });
 
-            // Then
-            assertThat(result).isNotNull(); // CSP 생성은 성공
-            verify(resourceHelper).registerStorageBucket(any(), any(), any(), any());
+            // 보상 트랜잭션 실행 검증: CSP 컨테이너 삭제 호출됨
+            verify(managementPort).deleteContainer(any(), eq(CONTAINER_NAME));
+        }
+
+        @Test
+        @DisplayName("보상 트랜잭션도 실패하면 Ghost Resource 경고 로그가 출력된다")
+        void createContainer_CompensationFails_GhostResourceWarningLogged() {
+            // Given
+            CreateObjectStorageContainerRequest request = CreateObjectStorageContainerRequest.builder()
+                    .providerType(PROVIDER_TYPE)
+                    .accountScope(ACCOUNT_SCOPE)
+                    .containerName(CONTAINER_NAME)
+                    .region("us-east-1")
+                    .build();
+
+            CloudResource mockCreatedContainer = CloudResource.builder()
+                    .resourceId(CONTAINER_NAME)
+                    .resourceName(CONTAINER_NAME)
+                    .build();
+
+            when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
+            // DB 저장 실패
+            doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
+                    .registerStorageBucket(any(), any(), any(), any());
+            // 보상 트랜잭션(CSP 삭제)도 실패
+            doThrow(new RuntimeException("CSP 삭제 실패")).when(managementPort)
+                    .deleteContainer(any(), eq(CONTAINER_NAME));
+
+            // When & Then
+            assertThatThrownBy(() -> objectStorageUseCaseService.createContainer(request))
+                    .isInstanceOf(BusinessException.class);
+
+            // 보상 트랜잭션 시도 검증
+            verify(managementPort).deleteContainer(any(), eq(CONTAINER_NAME));
+            // Ghost Resource 발생 - 실제로는 모니터링/배치로 처리 필요
         }
     }
 

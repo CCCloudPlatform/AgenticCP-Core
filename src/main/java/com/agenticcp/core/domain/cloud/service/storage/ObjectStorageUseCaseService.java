@@ -47,9 +47,13 @@ public class ObjectStorageUseCaseService {
     /**
      * Object Storage Container를 생성합니다.
      * CSP에서 컨테이너 생성 후 CloudResource 엔티티를 DB에 저장합니다.
+     * 
+     * 보상 트랜잭션: DB 저장 실패 시 CSP에 생성된 컨테이너를 삭제하여
+     * 데이터 정합성(Ghost Resource 방지)을 보장합니다.
      *
      * @param request 생성 요청 정보
      * @return 생성된 Object Storage Container 정보
+     * @throws BusinessException DB 저장 실패 및 보상 트랜잭션 실행 시
      */
     @Transactional
     public CloudResource createContainer(CreateObjectStorageContainerRequest request) {
@@ -85,18 +89,58 @@ public class ObjectStorageUseCaseService {
         // CSP에서 Container 생성
         CloudResource container = router.management(providerType).createContainer(command);
 
-        // DB에 CloudResource 저장
-        resourceHelper.registerStorageBucket(
-                providerType,
-                getServiceKeyForProvider(providerType),
-                request.getContainerName(),
-                request.getTags()
-        );
+        // DB에 CloudResource 저장 (실패 시 보상 트랜잭션 실행)
+        try {
+            resourceHelper.registerStorageBucket(
+                    providerType,
+                    serviceKey,
+                    request.getContainerName(),
+                    request.getTags()
+            );
+        } catch (Exception e) {
+            log.error("[ObjectStorageUseCaseService] DB 저장 실패, 보상 트랜잭션 실행: containerName={}, error={}",
+                    request.getContainerName(), e.getMessage());
+            
+            // 보상 트랜잭션: CSP에 생성된 컨테이너 삭제
+            executeCompensatingTransaction(providerType, session, request.getContainerName());
+            
+            throw new BusinessException(
+                    CloudErrorCode.RESOURCE_CREATION_FAILED,
+                    "컨테이너 생성 후 DB 저장 실패로 인해 롤백되었습니다: " + request.getContainerName()
+            );
+        }
 
         log.info("[ObjectStorageUseCaseService] createContainer - success provider={}, containerName={}",
                 providerType, request.getContainerName());
 
         return container;
+    }
+
+    /**
+     * 보상 트랜잭션: CSP에 생성된 컨테이너를 삭제합니다.
+     * Ghost Resource 방지를 위해 DB 저장 실패 시 호출됩니다.
+     *
+     * @param providerType  프로바이더 타입
+     * @param session       세션 자격증명
+     * @param containerName 삭제할 컨테이너 이름
+     */
+    private void executeCompensatingTransaction(
+            ProviderType providerType,
+            CloudSessionCredential session,
+            String containerName
+    ) {
+        try {
+            log.warn("[ObjectStorageUseCaseService] 보상 트랜잭션 실행: CSP 컨테이너 삭제 시도 - containerName={}", 
+                    containerName);
+            router.management(providerType).deleteContainer(session, containerName);
+            log.info("[ObjectStorageUseCaseService] 보상 트랜잭션 완료: CSP 컨테이너 삭제 성공 - containerName={}", 
+                    containerName);
+        } catch (Exception compensationError) {
+            // 보상 트랜잭션도 실패한 경우 - Ghost Resource 발생
+            // 이 경우 별도의 모니터링/알림 시스템이나 배치 동기화로 처리 필요
+            log.error("[ObjectStorageUseCaseService] 보상 트랜잭션 실패: Ghost Resource 발생 가능 - containerName={}, error={}",
+                    containerName, compensationError.getMessage());
+        }
     }
 
     /**

@@ -5,9 +5,11 @@ import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.dto.VmUpdateRequest;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.model.vm.VmCreateCommand;
@@ -111,9 +113,13 @@ public class VmUseCaseService {
     /**
      * 새로운 VM 인스턴스를 생성합니다.
      * CSP에서 인스턴스 생성 후 CloudResource 엔티티를 DB에 저장합니다.
+     * 
+     * 보상 트랜잭션: DB 저장 실패 시 CSP에 생성된 인스턴스를 종료(terminate)하여
+     * 데이터 정합성(Ghost Resource 방지)을 보장합니다.
      *
      * @param request 생성 요청 정보 (providerType, accountScope 포함)
      * @return 생성된 인스턴스 ID
+     * @throws BusinessException DB 저장 실패 및 보상 트랜잭션 실행 시
      */
     @Transactional
     public String createInstance(VmCreateRequest request) {
@@ -132,19 +138,57 @@ public class VmUseCaseService {
         String instanceId = vmPortRouter.lifecycle(providerType)
             .createInstance(toCreateCommand(request, session));
 
-        // DB에 CloudResource 저장
-        String resourceName = resourceHelper.extractResourceName(request.getTags(), instanceId);
-        resourceHelper.registerVmInstance(
-                providerType,
-                getServiceKeyForProvider(providerType),
-                instanceId,
-                resourceName,
-                request.getInstanceSize(),
-                request.getTags()
-        );
+        // DB에 CloudResource 저장 (실패 시 보상 트랜잭션 실행)
+        try {
+            String resourceName = resourceHelper.extractResourceName(request.getTags(), instanceId);
+            resourceHelper.registerVmInstance(
+                    providerType,
+                    getServiceKeyForProvider(providerType),
+                    instanceId,
+                    resourceName,
+                    request.getInstanceSize(),
+                    request.getTags()
+            );
+        } catch (Exception e) {
+            log.error("[VmUseCaseService] DB 저장 실패, 보상 트랜잭션 실행: instanceId={}, error={}",
+                    instanceId, e.getMessage());
+            
+            // 보상 트랜잭션: CSP에 생성된 인스턴스 종료
+            executeCompensatingTransaction(providerType, session, instanceId);
+            
+            throw new BusinessException(
+                    CloudErrorCode.RESOURCE_CREATION_FAILED,
+                    "VM 인스턴스 생성 후 DB 저장 실패로 인해 롤백되었습니다: " + instanceId
+            );
+        }
 
         log.info("VM 인스턴스 생성 완료: provider={}, instanceId={}", providerType, instanceId);
         return instanceId;
+    }
+
+    /**
+     * 보상 트랜잭션: CSP에 생성된 VM 인스턴스를 종료합니다.
+     * Ghost Resource 방지를 위해 DB 저장 실패 시 호출됩니다.
+     *
+     * @param providerType 프로바이더 타입
+     * @param session      세션 자격증명
+     * @param instanceId   종료할 인스턴스 ID
+     */
+    private void executeCompensatingTransaction(
+            ProviderType providerType,
+            CloudSessionCredential session,
+            String instanceId
+    ) {
+        try {
+            log.warn("[VmUseCaseService] 보상 트랜잭션 실행: CSP 인스턴스 종료 시도 - instanceId={}", instanceId);
+            vmPortRouter.lifecycle(providerType).terminateInstance(instanceId, session);
+            log.info("[VmUseCaseService] 보상 트랜잭션 완료: CSP 인스턴스 종료 성공 - instanceId={}", instanceId);
+        } catch (Exception compensationError) {
+            // 보상 트랜잭션도 실패한 경우 - Ghost Resource 발생
+            // 이 경우 별도의 모니터링/알림 시스템이나 배치 동기화로 처리 필요
+            log.error("[VmUseCaseService] 보상 트랜잭션 실패: Ghost Resource 발생 가능 - instanceId={}, error={}",
+                    instanceId, compensationError.getMessage());
+        }
     }
 
     // ==================== 인스턴스 생명주기 관리 ====================

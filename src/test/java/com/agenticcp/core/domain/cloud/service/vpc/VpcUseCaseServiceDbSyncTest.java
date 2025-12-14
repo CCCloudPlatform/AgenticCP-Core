@@ -1,10 +1,12 @@
 package com.agenticcp.core.domain.cloud.service.vpc;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.VpcCreateRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
@@ -23,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -133,8 +136,8 @@ class VpcUseCaseServiceDbSyncTest {
         }
 
         @Test
-        @DisplayName("DB 저장 실패 시에도 CSP 생성은 성공한다")
-        void createVpc_DbSaveFails_CspCreationSucceeds() {
+        @DisplayName("DB 저장 실패 시 보상 트랜잭션이 실행되고 예외가 발생한다")
+        void createVpc_DbSaveFails_CompensatingTransactionExecuted() {
             // Given
             VpcCreateRequest request = VpcCreateRequest.builder()
                     .providerType(PROVIDER_TYPE)
@@ -150,17 +153,20 @@ class VpcUseCaseServiceDbSyncTest {
                     .build();
 
             when(vpcManagementPort.createVpc(any())).thenReturn(mockCreatedVpc);
-            // Helper 내부에서 예외 발생해도 경고 로그만 출력되고 계속 진행됨
+            // DB 저장 실패
             doThrow(new RuntimeException("DB 저장 실패")).when(resourceHelper)
                     .registerVpc(any(), any(), any(), any(), any(), any());
 
-            // When
-            CloudResource result = vpcUseCaseService.createVpc(request);
+            // When & Then
+            assertThatThrownBy(() -> vpcUseCaseService.createVpc(request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(exception -> {
+                        BusinessException be = (BusinessException) exception;
+                        assertThat(be.getErrorCode()).isEqualTo(CloudErrorCode.RESOURCE_CREATION_FAILED);
+                    });
 
-            // Then
-            assertThat(result).isNotNull(); // CSP 생성은 성공
-            assertThat(result.getResourceId()).isEqualTo(VPC_ID);
-            verify(resourceHelper).registerVpc(any(), any(), any(), any(), any(), any());
+            // 보상 트랜잭션 실행 검증: CSP VPC 삭제 호출됨
+            verify(vpcManagementPort).deleteVpc(any());
         }
 
         @Test
