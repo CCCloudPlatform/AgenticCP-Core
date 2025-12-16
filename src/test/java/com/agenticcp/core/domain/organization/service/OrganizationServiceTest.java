@@ -3,15 +3,16 @@ package com.agenticcp.core.domain.organization.service;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.common.exception.BusinessException;
-import com.agenticcp.core.domain.organization.dto.AddUserToOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
-import com.agenticcp.core.domain.organization.dto.UserResponse;
 import com.agenticcp.core.domain.organization.entity.Organization;
 import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.repository.UserRepository;
+// [DEPRECATED] OrganizationMember로 대체 예정
+// import com.agenticcp.core.domain.organization.dto.AddUserToOrganizationRequest;
+// import com.agenticcp.core.domain.organization.dto.UserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -250,167 +251,124 @@ class OrganizationServiceTest {
         }
     }
     
+    // ========== [DEPRECATED] 사용자 관련 테스트 - OrganizationMember로 대체 예정 ==========
+    /*
     @Nested
-    @DisplayName("getOrganizationUsers 테스트")
+    @DisplayName("[DEPRECATED] getOrganizationUsers 테스트")
     class GetOrganizationUsersTest {
-        @Test
-        @DisplayName("존재하는 조직 ID → 사용자 목록 반환")
-        void getOrganizationUsers_존재하는조직ID_사용자목록반환() {
-            // Given
-            Long organizationId = 1L;
-            User user1 = createTestUser(1L, "user1", "user1@test.com");
-            User user2 = createTestUser(2L, "user2", "user2@test.com");
-            List<User> users = Arrays.asList(user1, user2);
-            
-            when(organizationRepository.findById(organizationId))
-                .thenReturn(Optional.of(testOrganization));
-            when(userRepository.findByOrganizationId(organizationId))
-                .thenReturn(users);
-            
-            // When
-            List<UserResponse> result = organizationService.getOrganizationUsers(organizationId);
-            
-            // Then
-            assertThat(result).hasSize(2);
-            assertThat(result.get(0).getUsername()).isEqualTo("user1");
-            assertThat(result.get(1).getUsername()).isEqualTo("user2");
-            
-            verify(organizationRepository).findById(organizationId);
-            verify(userRepository).findByOrganizationId(organizationId);
-        }
-        
-        @Test
-        @DisplayName("존재하지 않는 조직 ID → BusinessException 발생")
-        void getOrganizationUsers_존재하지않는조직ID_BusinessException발생() {
-            // Given
-            Long organizationId = 999L;
-            when(organizationRepository.findById(organizationId))
-                .thenReturn(Optional.empty());
-            
-            // When & Then
-            assertThatThrownBy(() -> organizationService.getOrganizationUsers(organizationId))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("존재하지 않는 조직입니다");
-            
-            verify(organizationRepository).findById(organizationId);
-            verify(userRepository, never()).findByOrganizationId(any());
-        }
+        // OrganizationMember로 대체 예정
     }
     
     @Nested
-    @DisplayName("addUserToOrganization 테스트")
+    @DisplayName("[DEPRECATED] addUserToOrganization 테스트")
     class AddUserToOrganizationTest {
-        @Test
-        @DisplayName("정상 요청 → 사용자 추가 성공")
-        void addUserToOrganization_정상요청_사용자추가성공() {
-            // Given
-            Long organizationId = 1L;
-            Long userId = 1L;
-            User testUser = createTestUser(userId, "testuser", "test@test.com");
-            AddUserToOrganizationRequest request = new AddUserToOrganizationRequest();
-            request.setUserId(userId);
-            
-            when(organizationRepository.findById(organizationId))
-                .thenReturn(Optional.of(testOrganization));
-            when(userRepository.findById(userId))
-                .thenReturn(Optional.of(testUser));
-            when(userRepository.save(any(User.class)))
-                .thenReturn(testUser);
-            
-            // When
-            UserResponse result = organizationService.addUserToOrganization(organizationId, request);
-            
-            // Then
-            assertThat(result).isNotNull();
-            assertThat(result.getUsername()).isEqualTo("testuser");
-            
-            verify(organizationRepository).findById(organizationId);
-            verify(userRepository).findById(userId);
-            verify(userRepository).save(testUser);
-        }
-        
-        @Test
-        @DisplayName("이미 조직에 속한 사용자 → BusinessException 발생")
-        void addUserToOrganization_이미조직에속한사용자_BusinessException발생() {
-            // Given
-            Long organizationId = 1L;
-            Long userId = 1L;
-            User testUser = createTestUser(userId, "testuser", "test@test.com");
-            testUser.setOrganization(testOrganization); // 이미 조직에 속함
-            AddUserToOrganizationRequest request = new AddUserToOrganizationRequest();
-            request.setUserId(userId);
-            
-            when(organizationRepository.findById(organizationId))
-                .thenReturn(Optional.of(testOrganization));
-            when(userRepository.findById(userId))
-                .thenReturn(Optional.of(testUser));
-            
-            // When & Then
-            assertThatThrownBy(() -> organizationService.addUserToOrganization(organizationId, request))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("이미 해당 조직에 속한 사용자입니다");
-            
-            verify(organizationRepository).findById(organizationId);
-            verify(userRepository).findById(userId);
-            verify(userRepository, never()).save(any());
-        }
+        // OrganizationMember로 대체 예정
     }
     
     @Nested
-    @DisplayName("removeUserFromOrganization 테스트")
+    @DisplayName("[DEPRECATED] removeUserFromOrganization 테스트")
     class RemoveUserFromOrganizationTest {
+        // OrganizationMember로 대체 예정
+    }
+    */
+
+    // ========== 테넌트 관련 테스트 (1:1 관계) ==========
+
+    @Nested
+    @DisplayName("hasTenant 테스트")
+    class HasTenantTest {
         @Test
-        @DisplayName("정상 요청 → 사용자 제거 성공")
-        void removeUserFromOrganization_정상요청_사용자제거성공() {
+        @DisplayName("테넌트 존재 시 true 반환")
+        void hasTenant_테넌트존재시_true반환() {
             // Given
-            Long 
-            organizationId = 1L;
-            Long userId = 1L;
-            User testUser = createTestUser(userId, "testuser", "test@test.com");
-            testUser.setOrganization(testOrganization);
-            
+            Long organizationId = 1L;
             when(organizationRepository.findById(organizationId))
                 .thenReturn(Optional.of(testOrganization));
-            when(userRepository.findById(userId))
-                .thenReturn(Optional.of(testUser));
-            when(userRepository.save(any(User.class)))
-                .thenReturn(testUser);
+            when(organizationRepository.existsTenantByOrganizationId(organizationId))
+                .thenReturn(true);
             
             // When
-            organizationService.removeUserFromOrganization(organizationId, userId);
+            boolean result = organizationService.hasTenant(organizationId);
             
             // Then
-            verify(organizationRepository).findById(organizationId);
-            verify(userRepository).findById(userId);
-            verify(userRepository).save(testUser);
+            assertThat(result).isTrue();
+            verify(organizationRepository).existsTenantByOrganizationId(organizationId);
         }
         
         @Test
-        @DisplayName("조직에 속하지 않은 사용자 → BusinessException 발생")
-        void removeUserFromOrganization_조직에속하지않은사용자_BusinessException발생() {
+        @DisplayName("테넌트 없을 시 false 반환")
+        void hasTenant_테넌트없을시_false반환() {
             // Given
             Long organizationId = 1L;
-            Long userId = 1L;
-            User testUser = createTestUser(userId, "testuser", "test@test.com");
-            // testUser.setOrganization(null); // 조직에 속하지 않음
+            when(organizationRepository.findById(organizationId))
+                .thenReturn(Optional.of(testOrganization));
+            when(organizationRepository.existsTenantByOrganizationId(organizationId))
+                .thenReturn(false);
+            
+            // When
+            boolean result = organizationService.hasTenant(organizationId);
+            
+            // Then
+            assertThat(result).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("hasActiveTenant 테스트")
+    class HasActiveTenantTest {
+        @Test
+        @DisplayName("활성 테넌트 존재 시 true 반환")
+        void hasActiveTenant_활성테넌트존재시_true반환() {
+            // Given
+            Long organizationId = 1L;
+            com.agenticcp.core.domain.tenant.entity.Tenant activeTenant = 
+                com.agenticcp.core.domain.tenant.entity.Tenant.builder()
+                    .tenantKey("TEST_TENANT")
+                    .tenantName("Test Tenant")
+                    .status(Status.ACTIVE)
+                    .build();
+            activeTenant.setId(1L);
             
             when(organizationRepository.findById(organizationId))
                 .thenReturn(Optional.of(testOrganization));
-            when(userRepository.findById(userId))
-                .thenReturn(Optional.of(testUser));
+            when(organizationRepository.findTenantByOrganizationId(organizationId))
+                .thenReturn(Optional.of(activeTenant));
             
-            // When & Then
-            assertThatThrownBy(() -> organizationService.removeUserFromOrganization(organizationId, userId))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("사용자가 해당 조직에 속하지 않습니다");
+            // When
+            boolean result = organizationService.hasActiveTenant(organizationId);
             
-            verify(organizationRepository).findById(organizationId);
-            verify(userRepository).findById(userId);
-            verify(userRepository, never()).save(any());
+            // Then
+            assertThat(result).isTrue();
+        }
+        
+        @Test
+        @DisplayName("비활성 테넌트 시 false 반환")
+        void hasActiveTenant_비활성테넌트시_false반환() {
+            // Given
+            Long organizationId = 1L;
+            com.agenticcp.core.domain.tenant.entity.Tenant inactiveTenant = 
+                com.agenticcp.core.domain.tenant.entity.Tenant.builder()
+                    .tenantKey("TEST_TENANT")
+                    .tenantName("Test Tenant")
+                    .status(Status.INACTIVE)
+                    .build();
+            inactiveTenant.setId(1L);
+            
+            when(organizationRepository.findById(organizationId))
+                .thenReturn(Optional.of(testOrganization));
+            when(organizationRepository.findTenantByOrganizationId(organizationId))
+                .thenReturn(Optional.of(inactiveTenant));
+            
+            // When
+            boolean result = organizationService.hasActiveTenant(organizationId);
+            
+            // Then
+            assertThat(result).isFalse();
         }
     }
     
-    // Helper method
+    // [DEPRECATED] Helper method - 사용자 관련 테스트 제거됨
+    /*
     private User createTestUser(Long id, String username, String email) {
         User user = User.builder()
             .username(username)
@@ -422,4 +380,5 @@ class OrganizationServiceTest {
         user.setId(id);
         return user;
     }
+    */
 }

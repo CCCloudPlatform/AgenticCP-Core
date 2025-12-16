@@ -612,24 +612,25 @@ public class OrganizationService {
     // ========== 조직-테넌트 관계 관리 (1:1) ==========
 
     /**
-     * 조직에 속한 테넌트 조회 (1:1 관계)
+     * 조직의 테넌트 조회 (1:1 관계)
      * 
      * @param organizationId 조직 ID
-     * @return 조직에 속한 테넌트 (Optional)
-     * @throws ResourceNotFoundException 조직을 찾을 수 없는 경우
+     * @return 조직에 연결된 테넌트
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
-    public Optional<Tenant> getOrganizationTenant(Long organizationId) {
+    public Tenant getOrganizationTenant(Long organizationId) {
         log.info("[OrganizationService] getOrganizationTenant - organizationId={}", organizationId);
 
         // 조직 존재 확인
         organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId.toString()));
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
 
-        // 조직의 테넌트 조회 (1:1 관계)
-        Optional<Tenant> tenant = organizationRepository.findTenantByOrganizationId(organizationId);
+        // 조직의 테넌트 조회
+        Tenant tenant = organizationRepository.findTenantByOrganizationId(organizationId)
+            .orElse(null);
 
-        log.info("[OrganizationService] getOrganizationTenant - success organizationId={}, tenantPresent={}", 
-                organizationId, tenant.isPresent());
+        log.info("[OrganizationService] getOrganizationTenant - success organizationId={}, hasTenant={}", 
+                organizationId, tenant != null);
         return tenant;
     }
 
@@ -654,5 +655,87 @@ public class OrganizationService {
         log.info("[OrganizationService] getOrganizationTenantOrThrow - success organizationId={}, tenantId={}", 
                 organizationId, tenant.getId());
         return tenant;
+    }
+
+    /**
+     * 조직에 테넌트가 존재하는지 확인
+     * 
+     * @param organizationId 조직 ID
+     * @return 테넌트 존재 여부
+     * @throws BusinessException 조직을 찾을 수 없는 경우
+     */
+    public boolean hasTenant(Long organizationId) {
+        log.info("[OrganizationService] hasTenant - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
+
+        // 테넌트 존재 여부 확인
+        boolean exists = organizationRepository.existsTenantByOrganizationId(organizationId);
+        
+        log.info("[OrganizationService] hasTenant - success organizationId={}, hasTenant={}", 
+                organizationId, exists);
+        return exists;
+    }
+
+    /**
+     * 조직의 테넌트가 활성 상태인지 확인
+     * 
+     * @param organizationId 조직 ID
+     * @return 활성 테넌트 여부
+     * @throws BusinessException 조직을 찾을 수 없는 경우
+     */
+    public boolean hasActiveTenant(Long organizationId) {
+        log.info("[OrganizationService] hasActiveTenant - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
+
+        // 테넌트 조회 및 활성 상태 확인
+        Tenant tenant = organizationRepository.findTenantByOrganizationId(organizationId)
+            .orElse(null);
+        boolean isActive = tenant != null && tenant.getStatus() == Status.ACTIVE;
+        
+        log.info("[OrganizationService] hasActiveTenant - success organizationId={}, isActive={}", 
+                organizationId, isActive);
+        return isActive;
+    }
+
+    /**
+     * 조직별 테넌트 정보 조회 (1:1)
+     * 
+     * @param organizationId 조직 ID
+     * @return 조직의 테넌트 정보
+     * @throws BusinessException 조직을 찾을 수 없는 경우
+     */
+    public Map<String, Object> getOrganizationTenantInfo(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationTenantInfo - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        Organization organization = organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
+
+        // 조직의 테넌트 조회
+        Tenant tenant = organizationRepository.findTenantByOrganizationId(organizationId)
+            .orElse(null);
+
+        Map<String, Object> info = new HashMap<>();
+        info.put("organizationId", organizationId);
+        info.put("organizationName", organization.getOrgName());
+        info.put("hasTenant", tenant != null);
+        
+        if (tenant != null) {
+            info.put("tenantId", tenant.getId());
+            info.put("tenantKey", tenant.getTenantKey());
+            info.put("tenantName", tenant.getTenantName());
+            info.put("tenantStatus", tenant.getStatus());
+            info.put("maxUsers", tenant.getMaxUsers());
+        }
+
+        log.info("[OrganizationService] getOrganizationTenantInfo - success organizationId={}, hasTenant={}", 
+                organizationId, tenant != null);
+        return info;
     }
 }

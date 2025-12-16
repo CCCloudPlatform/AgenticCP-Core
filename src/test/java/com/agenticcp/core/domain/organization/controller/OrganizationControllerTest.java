@@ -2,7 +2,8 @@ package com.agenticcp.core.domain.organization.controller;
 
 import com.agenticcp.core.common.dto.exception.ApiResponse;
 import com.agenticcp.core.common.enums.Status;
-import com.agenticcp.core.common.enums.UserRole;
+// [DEPRECATED] 사용자 관련 테스트 제거됨
+// import com.agenticcp.core.common.enums.UserRole;
 import com.agenticcp.core.domain.organization.dto.*;
 import com.agenticcp.core.domain.organization.service.OrganizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,25 +43,12 @@ class OrganizationControllerTest {
     @InjectMocks
     private OrganizationController organizationController;
 
-    private UserResponse testUserResponse;
+    // [DEPRECATED] 사용자 관련 테스트 제거됨
+    // private UserResponse testUserResponse;
     private OrganizationResponse testOrganizationResponse;
 
     @BeforeEach
     void setUp() {
-        testUserResponse = UserResponse.builder()
-            .id(1L)
-            .username("testuser")
-            .email("test@test.com")
-            .name("Test User")
-            .role(UserRole.VIEWER)
-            .status(Status.ACTIVE)
-            .department("개발팀")
-            .jobTitle("개발자")
-            .phoneNumber("010-1234-5678")
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
-
         testOrganizationResponse = OrganizationResponse.builder()
             .id(1L)
             .orgName("테스트 조직")
@@ -198,106 +186,47 @@ class OrganizationControllerTest {
         }
     }
 
+    // ========== [DEPRECATED] 계층 구조 API 테스트 - ERD에 없음 ==========
+    /*
     @Nested
-    @DisplayName("조직 트리 조회 테스트")
+    @DisplayName("[DEPRECATED] 조직 트리 조회 테스트")
     class GetOrganizationTreeTest {
         @Test
-        @DisplayName("정상 조회 시 200 반환")
         void getOrganizationTree_WhenValid_ReturnsOk() {
-            // Given
-            List<OrganizationHierarchyResponse> tree = Arrays.asList();
-            
-            when(organizationService.getOrganizationTree())
-                .thenReturn(tree);
-
-            // When
-            ResponseEntity<ApiResponse<List<OrganizationHierarchyResponse>>> response = 
-                organizationController.getOrganizationTree();
-
-            // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getMessage()).isEqualTo("조직 트리를 성공적으로 조회했습니다.");
-
-            verify(organizationService).getOrganizationTree();
+            // API 주석처리됨 - 계층 구조 없음
         }
     }
+    */
 
+    // ========== [DEPRECATED] 사용자 관련 API 테스트 - OrganizationMember로 대체 예정 ==========
+    /*
     @Nested
-    @DisplayName("사용자 추가 테스트")
+    @DisplayName("[DEPRECATED] 사용자 추가 테스트")
     class AddUserToOrganizationTest {
         @Test
-        @DisplayName("정상 추가 시 200 반환")
         void addUserToOrganization_WhenValidRequest_ReturnsOk() {
-            // Given
-            Long organizationId = 1L;
-            AddUserToOrganizationRequest request = new AddUserToOrganizationRequest();
-            request.setUserId(1L);
-            
-            when(organizationService.addUserToOrganization(organizationId, request))
-                .thenReturn(testUserResponse);
-
-            // When
-            ResponseEntity<ApiResponse<UserResponse>> response = 
-                organizationController.addUserToOrganization(organizationId, request);
-
-            // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getData().getUsername()).isEqualTo("testuser");
-            assertThat(response.getBody().getData().getEmail()).isEqualTo("test@test.com");
-
-            verify(organizationService).addUserToOrganization(organizationId, request);
+            // API 주석처리됨 - OrganizationMember로 대체 예정
         }
     }
 
     @Nested
-    @DisplayName("사용자 제거 테스트")
+    @DisplayName("[DEPRECATED] 사용자 제거 테스트")
     class RemoveUserFromOrganizationTest {
         @Test
-        @DisplayName("정상 제거 시 200 반환")
         void removeUserFromOrganization_WhenValidIds_ReturnsOk() {
-            // Given
-            Long organizationId = 1L;
-            Long userId = 1L;
-            
-            doNothing().when(organizationService).removeUserFromOrganization(organizationId, userId);
-
-            // When
-            ResponseEntity<ApiResponse<Void>> response = 
-                organizationController.removeUserFromOrganization(organizationId, userId);
-
-            // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-            verify(organizationService).removeUserFromOrganization(organizationId, userId);
+            // API 주석처리됨 - OrganizationMember로 대체 예정
         }
     }
 
     @Nested
-    @DisplayName("조직별 사용자 목록 조회 테스트")
+    @DisplayName("[DEPRECATED] 조직별 사용자 목록 조회 테스트")
     class GetOrganizationUsersTest {
         @Test
-        @DisplayName("정상 조회 시 200 반환")
         void getOrganizationUsers_WhenValidId_ReturnsOk() {
-            // Given
-            Long organizationId = 1L;
-            List<UserResponse> users = Arrays.asList(testUserResponse);
-            
-            when(organizationService.getOrganizationUsers(organizationId))
-                .thenReturn(users);
-
-            // When
-            ResponseEntity<ApiResponse<List<UserResponse>>> response = 
-                organizationController.getOrganizationUsers(organizationId);
-
-            // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getData()).hasSize(1);
-            assertThat(response.getBody().getData().get(0).getUsername()).isEqualTo("testuser");
-            assertThat(response.getBody().getData().get(0).getEmail()).isEqualTo("test@test.com");
-
-            verify(organizationService).getOrganizationUsers(organizationId);
+            // API 주석처리됨 - OrganizationMember로 대체 예정
         }
     }
+    */
 
     @Nested
     @DisplayName("조직 수 조회 테스트")
@@ -320,6 +249,84 @@ class OrganizationControllerTest {
             assertThat(response.getBody().getMessage()).isEqualTo("조직 수를 성공적으로 조회했습니다.");
 
             verify(organizationService).getOrganizationCount();
+        }
+    }
+
+    // ========== 테넌트 관련 테스트 (1:1 관계) ==========
+
+    @Nested
+    @DisplayName("조직 테넌트 존재 여부 조회 테스트")
+    class CheckOrganizationTenantTest {
+        @Test
+        @DisplayName("테넌트 존재 시 200 반환")
+        void checkOrganizationTenant_WhenTenantExists_ReturnsOk() {
+            // Given
+            Long organizationId = 1L;
+            
+            when(organizationService.hasTenant(organizationId)).thenReturn(true);
+            when(organizationService.hasActiveTenant(organizationId)).thenReturn(true);
+
+            // When
+            ResponseEntity<ApiResponse<java.util.Map<String, Object>>> response = 
+                organizationController.checkOrganizationTenant(organizationId);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().get("hasTenant")).isEqualTo(true);
+            assertThat(response.getBody().getData().get("hasActiveTenant")).isEqualTo(true);
+
+            verify(organizationService).hasTenant(organizationId);
+            verify(organizationService).hasActiveTenant(organizationId);
+        }
+
+        @Test
+        @DisplayName("테넌트 없을 시 false 반환")
+        void checkOrganizationTenant_WhenNoTenant_ReturnsFalse() {
+            // Given
+            Long organizationId = 1L;
+            
+            when(organizationService.hasTenant(organizationId)).thenReturn(false);
+            when(organizationService.hasActiveTenant(organizationId)).thenReturn(false);
+
+            // When
+            ResponseEntity<ApiResponse<java.util.Map<String, Object>>> response = 
+                organizationController.checkOrganizationTenant(organizationId);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().get("hasTenant")).isEqualTo(false);
+            assertThat(response.getBody().getData().get("hasActiveTenant")).isEqualTo(false);
+        }
+    }
+
+    @Nested
+    @DisplayName("조직 테넌트 정보 조회 테스트")
+    class GetOrganizationTenantInfoTest {
+        @Test
+        @DisplayName("정상 조회 시 200 반환")
+        void getOrganizationTenantInfo_WhenValid_ReturnsOk() {
+            // Given
+            Long organizationId = 1L;
+            java.util.Map<String, Object> tenantInfo = new java.util.HashMap<>();
+            tenantInfo.put("organizationId", 1L);
+            tenantInfo.put("organizationName", "테스트 조직");
+            tenantInfo.put("hasTenant", true);
+            tenantInfo.put("tenantId", 1L);
+            tenantInfo.put("tenantKey", "tenant-test");
+            
+            when(organizationService.getOrganizationTenantInfo(organizationId))
+                .thenReturn(tenantInfo);
+
+            // When
+            ResponseEntity<ApiResponse<java.util.Map<String, Object>>> response = 
+                organizationController.getOrganizationTenantInfo(organizationId);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().get("hasTenant")).isEqualTo(true);
+            assertThat(response.getBody().getData().get("tenantKey")).isEqualTo("tenant-test");
+
+            verify(organizationService).getOrganizationTenantInfo(organizationId);
         }
     }
 }

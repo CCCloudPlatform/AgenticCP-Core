@@ -181,7 +181,7 @@ public class CloudResourceService {
         log.info("[CloudResourceService] getResourcesByTenant - tenantKey={}", 
                 LogMaskingUtils.maskTenantKey(tenantKey));
         
-        List<CloudResource> resources = cloudResourceRepository.findByTenantId(tenantKey);
+        List<CloudResource> resources = cloudResourceRepository.findByTenantKey(tenantKey);
         
         log.info("[CloudResourceService] getResourcesByTenant - success count={} tenantKey={}", 
                 resources.size(), LogMaskingUtils.maskTenantKey(tenantKey));
