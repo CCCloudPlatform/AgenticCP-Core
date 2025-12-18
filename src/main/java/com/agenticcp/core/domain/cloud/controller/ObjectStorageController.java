@@ -43,7 +43,7 @@ public class ObjectStorageController {
     @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_CREATE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
             action = "CREATE_CONTAINER",
-            resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
+            resourceType = AuditResourceType.CLOUD_PROVIDER,
             description = "Object Storage Container 생성",
             severity = AuditSeverity.HIGH,
             includeRequestData = true,
@@ -87,7 +87,7 @@ public class ObjectStorageController {
     @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_UPDATE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
             action = "UPDATE_CONTAINER",
-            resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
+            resourceType = AuditResourceType.CLOUD_PROVIDER,
             description = "Object Storage Container 설정 업데이트",
             severity = AuditSeverity.HIGH,
             includeRequestData = true,
@@ -134,7 +134,7 @@ public class ObjectStorageController {
     @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "LIST_CONTAINERS",
-        resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
+        resourceType = AuditResourceType.CLOUD_PROVIDER,
         description = "Object Storage Container 목록 조회",
         severity = AuditSeverity.LOW,
         includeRequestData = true,
@@ -183,7 +183,7 @@ public class ObjectStorageController {
     @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "GET_CONTAINER",
-        resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
+        resourceType = AuditResourceType.CLOUD_PROVIDER,
         description = "Object Storage Container 상세 조회",
         severity = AuditSeverity.LOW,
         includeRequestData = true,
@@ -222,7 +222,7 @@ public class ObjectStorageController {
     @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_READ') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
         action = "CHECK_CONTAINER_EXISTS",
-        resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
+        resourceType = AuditResourceType.CLOUD_PROVIDER,
         description = "Object Storage Container 존재 확인 (HEAD)",
         severity = AuditSeverity.LOW,
         includeRequestData = true,
@@ -265,7 +265,7 @@ public class ObjectStorageController {
     @PreAuthorize("hasAuthority('OBJECT_STORAGE_CONTAINER_DELETE') or hasRole('SUPER_ADMIN')")
     @AuditRequired(
             action = "DELETE_CONTAINER",
-            resourceType = AuditResourceType.OBJECT_STORAGE_CONTAINER,
+            resourceType = AuditResourceType.CLOUD_PROVIDER,
             description = "Object Storage Container 삭제",
             severity = AuditSeverity.CRITICAL,
             includeRequestData = true,
