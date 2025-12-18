@@ -349,6 +349,7 @@ public class CloudResource extends BaseEntity {
         LOAD_BALANCER,
         DATABASE,
         BUCKET,
+        CDN_DISTRIBUTION,
         FUNCTION,
         CONTAINER,
         CLUSTER,
