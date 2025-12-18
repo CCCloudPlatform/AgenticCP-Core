@@ -96,6 +96,10 @@ class RdbmsUseCaseServiceEncryptionTest {
             .thenReturn(session);
         lenient().when(portRouter.management(any(CloudProvider.ProviderType.class)))
             .thenReturn(managementPort);
+        lenient().when(mockResource.getResourceId())
+            .thenReturn("test-instance-123");
+        lenient().when(resourceHelper.registerResource(any(), any(), any()))
+            .thenReturn(mockResource);
     }
 
     @AfterEach
