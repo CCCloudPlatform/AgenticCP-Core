@@ -48,7 +48,16 @@ public enum CloudErrorCode implements BaseErrorCode {
     
     // 리소스 생성/동기화 관련 (4040-4049)
     RESOURCE_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4040, "클라우드 리소스 생성 후 DB 저장에 실패하여 롤백되었습니다."),
-    RESOURCE_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4041, "클라우드 리소스 동기화에 실패했습니다.");
+    RESOURCE_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4041, "클라우드 리소스 동기화에 실패했습니다."),
+
+    // NoSQL / DynamoDB 등 테이블형 리소스 관련 (4042-4049 예약)
+    NOSQL_TABLE_ALREADY_EXISTS(HttpStatus.CONFLICT, 4042, "NoSQL 테이블이 이미 존재합니다."),
+    NOSQL_TABLE_NOT_FOUND(HttpStatus.NOT_FOUND, 4043, "NoSQL 테이블을 찾을 수 없습니다."),
+    NOSQL_INDEX_OPERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4044, "NoSQL 인덱스 작업이 실패했습니다."),
+    NOSQL_BACKUP_OPERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4045, "NoSQL 백업/복원 작업이 실패했습니다."),
+    NOSQL_STREAM_OPERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4046, "NoSQL 스트림 작업이 실패했습니다."),
+    NOSQL_THROTTLED(HttpStatus.TOO_MANY_REQUESTS, 4047, "NoSQL 요청이 스로틀링되었습니다."),
+    NOSQL_VALIDATION_ERROR(HttpStatus.BAD_REQUEST, 4048, "NoSQL 스키마/요청이 유효하지 않습니다.");
     
     private final HttpStatus httpStatus;
     private final int codeNumber;
