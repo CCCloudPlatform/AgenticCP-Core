@@ -2,15 +2,13 @@ package com.agenticcp.core.domain.cloud.adapter.outbound.aws.config;
 
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.account.AwsSessionCredential;
-import com.agenticcp.core.domain.cloud.adapter.outbound.common.ThreadLocalCredentialCache;
-import com.agenticcp.core.common.context.TenantContextHolder;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -18,45 +16,22 @@ import software.amazon.awssdk.services.resourcegroupstaggingapi.ResourceGroupsTa
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sts.StsClient;
 
-import java.net.URI;
-
 /**
  * AWS S3 설정 클래스
  * 
- * S3Client, ResourceGroupsTaggingApiClient, StsClient Bean을 생성합니다.
- * ThreadLocal 기반 자격증명을 사용하여 멀티 테넌트 환경을 지원합니다.
+ * 세션 자격증명 기반으로 S3Client, ResourceGroupsTaggingApiClient를 생성합니다.
+ * StsClient Bean을 생성합니다.
  * 
  * @author AgenticCP Team
  * @version 1.0.0
  */
 @Slf4j
 @Configuration
+@ConditionalOnProperty(name = "aws.enabled", havingValue = "true", matchIfMissing = true)
 public class AwsS3Config {
 
     @Value("${aws.s3.region:us-east-1}")
     private String defaultRegion;
-
-    @Value("${aws.s3.endpoint:}")
-    private String endpoint;
-
-    /**
-     * S3Client Bean을 생성합니다.
-     * ThreadLocal 기반 자격증명을 사용하여 동적 자격증명을 지원합니다.
-     * 
-     * @return S3Client 인스턴스
-     */
-    @Bean
-    public S3Client s3Client() {
-        var builder = S3Client.builder()
-                .region(Region.of(resolveRegion(defaultRegion)))
-                .credentialsProvider(createThreadLocalCredentialsProvider());
-        
-        // 커스텀 엔드포인트 설정 (LocalStack 등 테스트 환경용)
-        if (endpoint != null && !endpoint.isEmpty()) {
-            builder.endpointOverride(URI.create(endpoint));
-        }
-        return builder.build();
-    }
 
     /**
      * 세션 자격증명으로 S3 Client를 생성합니다.
@@ -73,26 +48,6 @@ public class AwsS3Config {
                 .credentialsProvider(StaticCredentialsProvider.create(toSdkCredentials(awsSession)))
                 .region(Region.of(resolveRegion(targetRegion)))
                 .build();
-    }
-
-    /**
-     * ResourceGroupsTaggingApiClient Bean을 생성합니다.
-     * 태그 기반 리소스 조회에 사용됩니다.
-     * ThreadLocal 기반 자격증명을 사용하여 동적 자격증명을 지원합니다.
-     * 
-     * @return ResourceGroupsTaggingApiClient 인스턴스
-     */
-    @Bean
-    public ResourceGroupsTaggingApiClient resourceGroupsTaggingApiClient() {
-        var builder = ResourceGroupsTaggingApiClient.builder()
-                .region(Region.of(resolveRegion(defaultRegion)))
-                .credentialsProvider(createThreadLocalCredentialsProvider());
-
-        // 커스텀 엔드포인트 설정 (LocalStack 등 테스트 환경용)
-        if (endpoint != null && !endpoint.isEmpty()) {
-            builder.endpointOverride(URI.create(endpoint));
-        }
-        return builder.build();
     }
 
     /**
@@ -134,35 +89,6 @@ public class AwsS3Config {
      */
     private String resolveRegion(String region) {
         return (region != null && !region.isBlank()) ? region : "us-east-1";
-    }
-    
-    /**
-     * ThreadLocal 기반 자격증명 제공자 생성
-     * 
-     * 현재 스레드의 ThreadLocal 캐시에서 자격증명을 조회하여 제공합니다.
-     * 멀티 테넌트 환경에서 각 요청별로 다른 자격증명을 사용할 수 있도록 합니다.
-     */
-    private AwsCredentialsProvider createThreadLocalCredentialsProvider() {
-        return () -> {
-            try {
-                // 현재 테넌트 키 조회
-                String tenantKey = TenantContextHolder.getCurrentTenantKey();
-                
-                if (tenantKey == null) {
-                    log.warn("테넌트 컨텍스트가 설정되지 않음 - 기본 자격증명 사용");
-                    return null; // 기본 자격증명 사용
-                }
-                
-                // ThreadLocal 캐시에서 자격증명 조회
-                // 현재는 첫 번째 캐시된 자격증명을 반환
-                // TODO: 실제로는 요청 컨텍스트에서 프로바이더 타입과 계정 스코프를 가져와야 함
-                return ThreadLocalCredentialCache.getFirstCredentials();
-                
-            } catch (Exception e) {
-                log.error("ThreadLocal 자격증명 조회 실패: {}", e.getMessage(), e);
-                return null; // 기본 자격증명 사용
-            }
-        };
     }
 
     /**
