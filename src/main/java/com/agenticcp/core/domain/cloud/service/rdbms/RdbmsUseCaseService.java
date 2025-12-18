@@ -21,12 +21,15 @@ import com.agenticcp.core.domain.cloud.port.model.ResourceIdentity;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
 import com.agenticcp.core.domain.cloud.service.helper.CloudResourceManagementHelper;
+import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -161,12 +164,34 @@ public class RdbmsUseCaseService {
         // DB에 CloudResource 저장 (실패 시 보상 트랜잭션 실행)
         CloudResource savedResource;
         try {
-            // Adapter에서 이미 CloudResource를 반환하므로, ID로 조회하여 저장
-            // 또는 Adapter에서 이미 저장된 경우 그대로 반환
-            savedResource = resource;
+            // ResourceRegistrationRequest 생성
+            Map<String, Object> attributes = new HashMap<>();
+            attributes.put(ResourceRegistrationRequest.AttributeKeys.INSTANCE_SIZE, request.getInstanceSize());
+            attributes.put(ResourceRegistrationRequest.AttributeKeys.STORAGE_GB, request.getAllocatedStorage());
+            if (request.getEngine() != null) {
+                attributes.put("engine", request.getEngine());
+            }
+            if (request.getEngineVersion() != null) {
+                attributes.put("engineVersion", request.getEngineVersion());
+            }
+            
+            ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
+                    .resourceId(resource.getResourceId())
+                    .resourceName(resource.getResourceName() != null ? resource.getResourceName() : request.getInstanceName())
+                    .resourceType(CloudResource.ResourceType.DATABASE)
+                    .tags(request.getTags() != null ? request.getTags() : resource.getTags())
+                    .attributes(attributes)
+                    .build();
+            
+            // DB에 CloudResource 저장
+            savedResource = resourceHelper.registerResource(
+                    providerType,
+                    serviceKey,
+                    registrationRequest
+            );
             
             log.info("RDBMS 인스턴스 생성 완료: provider={}, instanceId={}, resourceId={}", 
-                    providerType, resource.getResourceId(), resource.getId());
+                    providerType, resource.getResourceId(), savedResource.getId());
         } catch (Exception e) {
             log.error("[RdbmsUseCaseService] DB 저장 실패, 보상 트랜잭션 실행: instanceId={}, error={}",
                     resource.getResourceId(), e.getMessage());
@@ -254,6 +279,26 @@ public class RdbmsUseCaseService {
 
         // RDBMS 인스턴스 수정
         CloudResource resource = portRouter.management(providerType).updateRdbms(command);
+
+        // DB에 수정된 정보 반영 (instanceSize, allocatedStorage 등)
+        try {
+            // 수정된 리소스 정보를 DB에 동기화
+            // Adapter에서 반환된 CloudResource의 정보를 DB에 업데이트
+            if (request.getInstanceSize() != null || request.getAllocatedStorage() != null) {
+                // DB에서 기존 리소스 조회 후 업데이트하거나, 
+                // Adapter에서 반환된 resource의 정보를 기반으로 DB 업데이트
+                // 현재는 Adapter가 이미 CloudResource를 반환하므로, 
+                // 생명주기 상태만 업데이트 (실제 속성 업데이트는 별도 동기화 작업에서 처리)
+                resourceHelper.updateLifecycleState(
+                    request.getInstanceId(), 
+                    resource.getLifecycleState() != null ? resource.getLifecycleState() : LifecycleState.RUNNING
+                );
+            }
+        } catch (Exception e) {
+            log.warn("[RdbmsUseCaseService] DB 업데이트 실패 (수정은 완료됨): instanceId={}, error={}",
+                    request.getInstanceId(), e.getMessage());
+            // DB 업데이트 실패해도 CSP 수정은 완료되었으므로 예외를 던지지 않음
+        }
 
         log.info("RDBMS 인스턴스 수정 완료: provider={}, instanceId={}", providerType, request.getInstanceId());
         return resource;
