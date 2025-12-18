@@ -87,4 +87,26 @@ public class AwsCapabilityConfig {
 
         log.info("AWS S3 Bucket capabilities registered successfully - AWS|S3|BUCKET");
     }
+
+    @PostConstruct
+    public void initializeCloudFrontCapabilities() {
+        log.info("Registering AWS CloudFront capabilities...");
+
+        CspCapability awsCloudFrontCapability = CspCapability.builder()
+                .supportsStart(false)      // CloudFront Distribution은 start/stop 개념이 없음
+                .supportsStop(false)
+                .supportsTerminate(true)   // Distribution 삭제 지원
+                .supportsTagging(true)     // AWS CloudFront Distribution 태그 지원
+                .supportsListByTag(true)   // 태그 기반 목록 조회 지원
+                .build();
+
+        capabilityRegistry.register(
+                CloudProvider.ProviderType.AWS,
+                "CloudFront",           // 서비스 타입
+                "CDN_DISTRIBUTION",     // 리소스 타입
+                awsCloudFrontCapability
+        );
+
+        log.info("AWS CloudFront capabilities registered successfully - AWS|CloudFront|CDN_DISTRIBUTION");
+    }
 }
