@@ -1,14 +1,17 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.rds;
 
+import com.agenticcp.core.common.crypto.EncryptionService;
 import com.agenticcp.core.domain.cloud.adapter.outbound.aws.config.AwsRdsConfig;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.CloudErrorTranslator;
 import com.agenticcp.core.domain.cloud.adapter.outbound.common.ProviderScoped;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.rdbms.RdbmsCreateCommand;
 import com.agenticcp.core.domain.cloud.port.model.rdbms.RdbmsDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.model.rdbms.RdbmsUpdateCommand;
 import com.agenticcp.core.domain.cloud.port.outbound.rdbms.RdbmsManagementPort;
+import com.agenticcp.core.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -38,6 +41,7 @@ public class AwsRdsManagementAdapter implements RdbmsManagementPort, ProviderSco
 
     private final AwsRdsConfig awsRdsConfig;
     private final AwsRdsMapper mapper;
+    private final EncryptionService encryptionService;
 
     @Override
     public CloudProvider.ProviderType getProviderType() {
@@ -222,13 +226,28 @@ public class AwsRdsManagementAdapter implements RdbmsManagementPort, ProviderSco
         log.debug("[AwsRdsManagementAdapter] Building CreateDbInstanceRequest: instanceName={}, engine={}", 
             command.instanceName(), command.engine());
         
+        // adminPassword 복호화
+        String decryptedPassword = null;
+        if (command.adminPassword() != null) {
+            try {
+                decryptedPassword = encryptionService.decrypt(command.adminPassword());
+                log.debug("[AwsRdsManagementAdapter] adminPassword 복호화 완료");
+            } catch (Exception e) {
+                log.error("[AwsRdsManagementAdapter] adminPassword 복호화 실패", e);
+                throw new BusinessException(
+                    CloudErrorCode.DECRYPTION_FAILED,
+                    "관리자 패스워드 복호화에 실패했습니다: " + e.getMessage()
+                );
+            }
+        }
+        
         CreateDbInstanceRequest.Builder builder = CreateDbInstanceRequest.builder()
             .dbInstanceIdentifier(command.instanceName())  // instanceName → dbInstanceIdentifier
             .engine(command.engine())
             .dbInstanceClass(command.instanceSize())  // instanceSize → dbInstanceClass
             .allocatedStorage(command.allocatedStorage())
             .masterUsername(command.adminUsername())
-            .masterUserPassword(command.adminPassword())
+            .masterUserPassword(decryptedPassword)  // 복호화된 패스워드 사용
             .publiclyAccessible(command.publiclyAccessible() != null ? command.publiclyAccessible() : false);
         
         // engineVersion
@@ -295,9 +314,19 @@ public class AwsRdsManagementAdapter implements RdbmsManagementPort, ProviderSco
             builder.allocatedStorage(command.allocatedStorage());
         }
         
-        // adminPassword
+        // adminPassword 복호화
         if (command.adminPassword() != null) {
-            builder.masterUserPassword(command.adminPassword());
+            try {
+                String decryptedPassword = encryptionService.decrypt(command.adminPassword());
+                builder.masterUserPassword(decryptedPassword);
+                log.debug("[AwsRdsManagementAdapter] adminPassword 복호화 완료 (수정)");
+            } catch (Exception e) {
+                log.error("[AwsRdsManagementAdapter] adminPassword 복호화 실패 (수정)", e);
+                throw new BusinessException(
+                    CloudErrorCode.DECRYPTION_FAILED,
+                    "관리자 패스워드 복호화에 실패했습니다: " + e.getMessage()
+                );
+            }
         }
         
         // applyImmediately

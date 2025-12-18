@@ -1,6 +1,9 @@
 package com.agenticcp.core.domain.cloud.service.rdbms;
 
 import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.crypto.EncryptionService;
+import com.agenticcp.core.common.logging.LogMaskingUtils;
+import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.capability.CapabilityGuard;
 import com.agenticcp.core.domain.cloud.dto.RdbmsCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.RdbmsDeleteRequest;
@@ -10,7 +13,6 @@ import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
 import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.rdbms.RdbmsCreateCommand;
 import com.agenticcp.core.domain.cloud.port.model.rdbms.RdbmsDeleteCommand;
 import com.agenticcp.core.domain.cloud.port.model.rdbms.RdbmsQuery;
@@ -54,6 +56,7 @@ public class RdbmsUseCaseService {
     private final CapabilityGuard capabilityGuard;
     private final AccountCredentialManagementPort credentialPort;
     private final CloudResourceManagementHelper resourceHelper;
+    private final EncryptionService encryptionService;
 
     /**
      * 세션 자격증명을 획득합니다.
@@ -137,8 +140,10 @@ public class RdbmsUseCaseService {
         ProviderType providerType = request.getProviderType();
         String accountScope = request.getAccountScope();
         
+        // 로깅용 마스킹된 요청 (원본 데이터는 변경하지 않음)
+        String maskedRequest = LogMaskingUtils.maskSensitiveData(request.toString());
         log.debug("RDBMS 인스턴스 생성 시작: provider={}, accountScope={}, request={}", 
-                providerType, accountScope, request);
+                providerType, accountScope, maskedRequest);
 
         // Capability 검증 (CSP별 실제 서비스 키 사용)
         String serviceKey = getServiceKeyForProvider(providerType);
@@ -232,8 +237,10 @@ public class RdbmsUseCaseService {
         ProviderType providerType = request.getProviderType();
         String accountScope = request.getAccountScope();
         
+        // 로깅용 마스킹된 요청 (원본 데이터는 변경하지 않음)
+        String maskedRequest = LogMaskingUtils.maskSensitiveData(request.toString());
         log.debug("RDBMS 인스턴스 수정: provider={}, accountScope={}, request={}", 
-                providerType, accountScope, request);
+                providerType, accountScope, maskedRequest);
 
         // Capability 검증 (CSP별 실제 서비스 키 사용)
         String serviceKey = getServiceKeyForProvider(providerType);
@@ -479,6 +486,19 @@ public class RdbmsUseCaseService {
         String tenantKey = TenantContextHolder.getCurrentTenantKeyOrThrow();
         String serviceKey = getServiceKeyForProvider(request.getProviderType());
         
+        // adminPassword 암호화
+        String encryptedPassword;
+        try {
+            encryptedPassword = encryptionService.encrypt(request.getMasterPassword());
+            log.debug("RDBMS adminPassword 암호화 완료");
+        } catch (Exception e) {
+            log.error("RDBMS adminPassword 암호화 실패", e);
+            throw new BusinessException(
+                CloudErrorCode.ENCRYPTION_FAILED,
+                "관리자 패스워드 암호화에 실패했습니다: " + e.getMessage()
+            );
+        }
+        
         return RdbmsCreateCommand.builder()
                 .providerType(request.getProviderType())
                 .accountScope(request.getAccountScope())
@@ -491,7 +511,7 @@ public class RdbmsUseCaseService {
                 .instanceSize(request.getInstanceSize())
                 .allocatedStorage(request.getAllocatedStorage())
                 .adminUsername(request.getMasterUsername())
-                .adminPassword(request.getMasterPassword())
+                .adminPassword(encryptedPassword)  // 암호화된 패스워드 전달
                 .dbName(request.getDbName())
                 .networkSecurityId(request.getNetworkSecurityId())
                 .subnetId(request.getSubnetId())
@@ -515,6 +535,21 @@ public class RdbmsUseCaseService {
                 ? new java.util.HashMap<>(request.getTagsToAdd()) 
                 : new java.util.HashMap<>();
         
+        // adminPassword 암호화 (수정 시 선택적 - 패스워드 변경하지 않을 수도 있음)
+        String encryptedPassword = null;
+        if (request.getMasterPassword() != null) {
+            try {
+                encryptedPassword = encryptionService.encrypt(request.getMasterPassword());
+                log.debug("RDBMS adminPassword 암호화 완료 (수정)");
+            } catch (Exception e) {
+                log.error("RDBMS adminPassword 암호화 실패 (수정)", e);
+                throw new BusinessException(
+                    CloudErrorCode.ENCRYPTION_FAILED,
+                    "관리자 패스워드 암호화에 실패했습니다: " + e.getMessage()
+                );
+            }
+        }
+        
         return RdbmsUpdateCommand.builder()
                 .providerType(request.getProviderType())
                 .accountScope(request.getAccountScope())
@@ -522,7 +557,7 @@ public class RdbmsUseCaseService {
                 .providerResourceId(request.getInstanceId())
                 .instanceSize(request.getInstanceSize())
                 .allocatedStorage(request.getAllocatedStorage())
-                .adminPassword(request.getMasterPassword())
+                .adminPassword(encryptedPassword)  // 암호화된 패스워드 전달 (null 가능)
                 .applyImmediately(request.getApplyImmediately())
                 .tags(tags)
                 .tenantKey(tenantKey)
