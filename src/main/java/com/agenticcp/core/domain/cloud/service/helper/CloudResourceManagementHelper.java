@@ -65,7 +65,7 @@ public class CloudResourceManagementHelper {
             ResourceRegistrationRequest request
     ) {
         CloudProvider provider = findProvider(providerType);
-        CloudService service = findServiceOrNull(providerType, serviceKey);
+        CloudService service = findServiceOrCreate(providerType, serviceKey, provider);
         Tenant tenant = findCurrentTenant();
 
         CloudResource cloudResource = CloudResource.create(request, provider, service, tenant);
@@ -129,10 +129,28 @@ public class CloudResourceManagementHelper {
                         "CloudProvider not found for type: " + providerType));
     }
 
-    private CloudService findServiceOrNull(ProviderType providerType, String serviceKey) {
+    private CloudService findServiceOrCreate(ProviderType providerType, String serviceKey, CloudProvider provider) {
         return cloudServiceRepository
                 .findByProviderTypeAndServiceKey(providerType, serviceKey)
-                .orElse(null);
+                .orElseGet(() -> {
+                    log.info("[CloudResourceManagementHelper] CloudService not found, creating: providerType={}, serviceKey={}", 
+                            providerType, serviceKey);
+                    CloudService newService = createDefaultService(providerType, serviceKey, provider);
+                    return cloudServiceRepository.save(newService);
+                });
+    }
+
+    private CloudService createDefaultService(ProviderType providerType, String serviceKey, CloudProvider provider) {
+        return CloudService.builder()
+                .serviceKey(serviceKey)
+                .serviceName(serviceKey)
+                .displayName(null)
+                .provider(provider)
+                .status(com.agenticcp.core.common.enums.Status.ACTIVE)
+                .serviceType(null)
+                .serviceCategory(null)
+                .isRegionSpecific(true)
+                .build();
     }
 
     private Tenant findCurrentTenant() {

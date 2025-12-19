@@ -31,16 +31,13 @@ import static com.agenticcp.core.common.security.JwtConstants.*;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     
     @Autowired(required = false) // RedisTemplate이 필수가 아님을 명시
     private RedisTemplate<String, Object> redisTemplate;
-    
-    public JwtAuthenticationFilter(JwtService jwtService) {
-        this.jwtService = jwtService;
-    }
 
     /**
      * 필터 내부 로직 처리

@@ -1,8 +1,14 @@
 package com.agenticcp.core.domain.user.service;
 
+import com.agenticcp.core.common.context.TenantContextHolder;
+import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.common.exception.ResourceNotFoundException;
+import com.agenticcp.core.common.util.LogMaskingUtils;
+import com.agenticcp.core.domain.user.enums.RoleErrorCode;
 import com.agenticcp.core.domain.user.enums.UserErrorCode;
+import com.agenticcp.core.domain.user.entity.Role;
 import com.agenticcp.core.domain.user.entity.User;
+import com.agenticcp.core.domain.user.repository.RoleRepository;
 import com.agenticcp.core.domain.user.repository.UserRepository;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
@@ -34,6 +40,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final MaskingService maskingService;
 
@@ -315,5 +322,77 @@ public class UserService {
             .collect(Collectors.toList());
         log.info("[UserService] getUsersByStatus - found {} users", users.size());
         return users;
+    }
+
+    /**
+     * 사용자에게 역할 할당
+     * 
+     * @param username 사용자명
+     * @param roleKeys 역할 키 목록
+     */
+    @Transactional
+    public void assignRolesToUser(String username, List<String> roleKeys) {
+        Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
+        log.info("[UserService] assignRolesToUser - username={} roleKeys={} tenantKey={}",
+                LogMaskingUtils.mask(username, 2, 2),
+                roleKeys == null ? 0 : roleKeys.size(),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        
+        User user = getUserByUsernameOrThrow(username);
+        
+        // 테넌트 확인
+        if (!user.getTenant().getId().equals(currentTenant.getId())) {
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND, "다른 테넌트의 사용자입니다.");
+        }
+        
+        // 역할 조회 및 테넌트 확인
+        List<Role> roles = roleRepository.findByRoleKeyInAndTenant(roleKeys, currentTenant);
+        
+        if (roles.size() != roleKeys.size()) {
+            throw new BusinessException(RoleErrorCode.ROLE_NOT_FOUND, "일부 역할을 찾을 수 없습니다.");
+        }
+        
+        // 사용자에게 역할 할당
+        user.setRoles(roles);
+        userRepository.save(user);
+        
+        log.info("[UserService] assignRolesToUser - success username={} tenantKey={}",
+                LogMaskingUtils.mask(username, 2, 2),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+    }
+
+    /**
+     * 사용자에서 역할 제거
+     * 
+     * @param username 사용자명
+     * @param roleKey 역할 키
+     */
+    @Transactional
+    public void removeRoleFromUser(String username, String roleKey) {
+        Tenant currentTenant = TenantContextHolder.getCurrentTenantOrThrow();
+        log.info("[UserService] removeRoleFromUser - username={} roleKey={} tenantKey={}",
+                LogMaskingUtils.mask(username, 2, 2),
+                LogMaskingUtils.mask(roleKey, 2, 2),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
+        
+        User user = getUserByUsernameOrThrow(username);
+        
+        // 테넌트 확인
+        if (!user.getTenant().getId().equals(currentTenant.getId())) {
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND, "다른 테넌트의 사용자입니다.");
+        }
+        
+        // 역할 제거
+        List<Role> roles = user.getRoles();
+        if (roles != null) {
+            roles.removeIf(role -> role.getRoleKey().equals(roleKey));
+            user.setRoles(roles);
+            userRepository.save(user);
+        }
+        
+        log.info("[UserService] removeRoleFromUser - success username={} roleKey={} tenantKey={}",
+                LogMaskingUtils.mask(username, 2, 2),
+                LogMaskingUtils.mask(roleKey, 2, 2),
+                LogMaskingUtils.maskTenantKey(currentTenant.getTenantKey()));
     }
 }
