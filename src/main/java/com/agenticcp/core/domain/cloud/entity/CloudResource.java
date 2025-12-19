@@ -359,7 +359,8 @@ public class CloudResource extends BaseEntity {
         CONFIG_MAP,
         SECRET,
         PERSISTENT_VOLUME,
-        PERSISTENT_VOLUME_CLAIM
+        PERSISTENT_VOLUME_CLAIM,
+        DNS_ZONE
     }
 
     public enum LifecycleState {
