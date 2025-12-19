@@ -283,6 +283,11 @@
             <artifactId>resourcegroupstaggingapi</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>route53</artifactId>
+        </dependency>
+
         <!-- AWS SDK v2 for Java - EC2 only -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
