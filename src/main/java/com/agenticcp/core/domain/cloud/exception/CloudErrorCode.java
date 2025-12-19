@@ -45,6 +45,7 @@ public enum CloudErrorCode implements BaseErrorCode {
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, 4037, "유효하지 않은 클라우드 API 요청입니다."),
     CLOUD_NETWORK_ERROR(HttpStatus.SERVICE_UNAVAILABLE, 4038, "클라우드 네트워크 통신에 실패했습니다."),
     CLOUD_CONFIGURATION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 4039, "클라우드 설정이 잘못되었습니다."),
+    CLOUD_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, 4042, "지원하지 않는 클라우드 프로바이더입니다."),
     
     // 리소스 생성/동기화 관련 (4040-4049)
     RESOURCE_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4040, "클라우드 리소스 생성 후 DB 저장에 실패하여 롤백되었습니다."),
