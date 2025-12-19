@@ -40,6 +40,11 @@ public class FunctionUpdateRequest {
     private String functionId;
 
     /**
+     * 리전
+     */
+    private String region;
+
+    /**
      * 런타임 변경
      */
     private String runtime;

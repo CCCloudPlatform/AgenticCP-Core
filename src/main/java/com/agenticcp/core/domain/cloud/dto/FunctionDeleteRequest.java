@@ -38,6 +38,11 @@ public class FunctionDeleteRequest {
     private String functionId;
 
     /**
+     * 리전
+     */
+    private String region;
+
+    /**
      * 삭제 이유 (감사 로그용)
      */
     private String reason;

@@ -200,7 +200,7 @@ public class FunctionUseCaseService {
         FunctionUpdateCommand command = FunctionUpdateCommand.builder()
                 .providerType(request.getProviderType())
                 .accountScope(accountScope)
-                .region(null)  // DTO에 region이 없으면 기존 조회에서 가져와야 함
+                .region(request.getRegion())
                 .providerResourceId(request.getFunctionId())
                 .runtime(request.getRuntime())
                 .handler(request.getHandler())
@@ -239,7 +239,7 @@ public class FunctionUseCaseService {
         FunctionDeleteCommand command = FunctionDeleteCommand.builder()
                 .providerType(request.getProviderType())
                 .accountScope(accountScope)
-                .region(null)  // DTO에 region이 없으면 기존 조회에서 가져와야 함
+                .region(request.getRegion())
                 .providerResourceId(request.getFunctionId())
                 .serviceKey(serviceKey)
                 .resourceType(RESOURCE_TYPE)
