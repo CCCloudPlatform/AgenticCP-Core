@@ -10,6 +10,9 @@ import java.util.Objects;
 /**
  * WorkerRole 복합 PK 클래스
  * 
+ * <p>설계 C 기준: (worker_id, role_id) 복합 PK
+ * tenant_id는 제거되었습니다 (Role이 이미 tenant_id를 가짐)</p>
+ * 
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2025-12-14
@@ -19,10 +22,9 @@ import java.util.Objects;
 @AllArgsConstructor
 public class WorkerRoleId implements Serializable {
     
-    // JPA @IdClass 사용 시 엔티티의 필드명과 일치해야 함 (worker, role, tenant)
+    // JPA @IdClass 사용 시 엔티티의 필드명과 일치해야 함 (worker, role)
     private Long worker;
     private Long role;
-    private Long tenant;
     
     @Override
     public boolean equals(Object o) {
@@ -30,13 +32,12 @@ public class WorkerRoleId implements Serializable {
         if (o == null || getClass() != o.getClass()) return false;
         WorkerRoleId that = (WorkerRoleId) o;
         return Objects.equals(worker, that.worker) &&
-               Objects.equals(role, that.role) &&
-               Objects.equals(tenant, that.tenant);
+               Objects.equals(role, that.role);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(worker, role, tenant);
+        return Objects.hash(worker, role);
     }
 }
 

@@ -42,13 +42,12 @@ public class WorkerRoleController {
      * Worker의 역할 목록 조회
      * 
      * @param workerId Worker ID
-     * @param tenantId 테넌트 ID (선택적, 필터링용)
      * @return WorkerRole 목록
      */
     @GetMapping
     @Operation(
         summary = "Worker의 역할 목록 조회",
-        description = "특정 Worker의 역할 목록을 조회합니다. tenantId를 제공하면 해당 테넌트의 역할만 필터링됩니다."
+        description = "특정 Worker의 역할 목록을 조회합니다. 설계 C 기준: Role이 이미 tenant_id를 가지므로 WorkerRole에는 tenant_id가 없습니다."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공",
@@ -57,23 +56,13 @@ public class WorkerRoleController {
     })
     public ResponseEntity<ApiResponse<List<WorkerRoleResponse>>> getRoles(
             @Parameter(description = "Worker ID", required = true, example = "1")
-            @PathVariable @Positive Long workerId,
-            @Parameter(description = "테넌트 ID (선택적)", example = "1")
-            @RequestParam(required = false) Long tenantId) {
-        log.info("[WorkerRoleController] getRoles - workerId={}, tenantId={}", workerId, tenantId);
+            @PathVariable @Positive Long workerId) {
+        log.info("[WorkerRoleController] getRoles - workerId={}", workerId);
         
-        List<WorkerRoleResponse> responses;
-        if (tenantId != null) {
-            responses = workerRoleService.findByWorkerIdAndTenantId(workerId, tenantId)
-                    .stream()
-                    .map(WorkerRoleResponse::from)
-                    .collect(Collectors.toList());
-        } else {
-            responses = workerRoleService.findByWorkerId(workerId)
-                    .stream()
-                    .map(WorkerRoleResponse::from)
-                    .collect(Collectors.toList());
-        }
+        List<WorkerRoleResponse> responses = workerRoleService.findByWorkerId(workerId)
+                .stream()
+                .map(WorkerRoleResponse::from)
+                .collect(Collectors.toList());
         
         return ResponseEntity.ok(ApiResponse.success(responses, "역할 목록을 성공적으로 조회했습니다."));
     }
@@ -88,13 +77,13 @@ public class WorkerRoleController {
     @PutMapping
     @Operation(
         summary = "Worker에게 역할 부여",
-        description = "Worker에게 특정 테넌트의 역할을 부여합니다."
+        description = "Worker에게 역할을 부여합니다. 설계 C 기준: Role이 이미 tenant_id를 가지므로 별도로 tenant_id를 지정할 필요가 없습니다."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "역할 부여 성공",
                      content = @Content(schema = @Schema(implementation = WorkerRoleResponse.class))),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Worker, Role 또는 Tenant를 찾을 수 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Worker 또는 Role을 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "이미 부여된 역할")
     })
     public ResponseEntity<ApiResponse<WorkerRoleResponse>> assignRole(
@@ -106,11 +95,11 @@ public class WorkerRoleController {
                 content = @Content(schema = @Schema(implementation = AssignRoleRequest.class))
             )
             @Valid @RequestBody AssignRoleRequest request) {
-        log.info("[WorkerRoleController] assignRole - workerId={}, roleId={}, tenantId={}", 
-                workerId, request.getRoleId(), request.getTenantId());
+        log.info("[WorkerRoleController] assignRole - workerId={}, roleId={}", 
+                workerId, request.getRoleId());
         
         WorkerRoleResponse response = WorkerRoleResponse.from(
-                workerRoleService.assignRole(workerId, request.getRoleId(), request.getTenantId()));
+                workerRoleService.assignRole(workerId, request.getRoleId()));
         
         return ResponseEntity.ok(ApiResponse.success(response, "역할이 성공적으로 부여되었습니다."));
     }
@@ -120,12 +109,11 @@ public class WorkerRoleController {
      * 
      * @param workerId Worker ID
      * @param roleId Role ID
-     * @param tenantId 테넌트 ID
      */
     @DeleteMapping
     @Operation(
         summary = "Worker에서 역할 제거",
-        description = "Worker에서 특정 테넌트의 역할을 제거합니다."
+        description = "Worker에서 역할을 제거합니다. 설계 C 기준: Role이 이미 tenant_id를 가지므로 별도로 tenant_id를 지정할 필요가 없습니다."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "역할 제거 성공"),
@@ -135,13 +123,11 @@ public class WorkerRoleController {
             @Parameter(description = "Worker ID", required = true, example = "1")
             @PathVariable @Positive Long workerId,
             @Parameter(description = "Role ID", required = true, example = "1")
-            @RequestParam @Positive Long roleId,
-            @Parameter(description = "테넌트 ID", required = true, example = "1")
-            @RequestParam @Positive Long tenantId) {
-        log.info("[WorkerRoleController] removeRole - workerId={}, roleId={}, tenantId={}", 
-                workerId, roleId, tenantId);
+            @RequestParam @Positive Long roleId) {
+        log.info("[WorkerRoleController] removeRole - workerId={}, roleId={}", 
+                workerId, roleId);
         
-        workerRoleService.removeRole(workerId, roleId, tenantId);
+        workerRoleService.removeRole(workerId, roleId);
         
         return ResponseEntity.noContent().build();
     }

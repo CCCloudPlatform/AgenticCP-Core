@@ -1,6 +1,5 @@
 package com.agenticcp.core.domain.organization.entity;
 
-import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.user.entity.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -19,7 +18,8 @@ import java.time.LocalDateTime;
  * WorkerRole 엔티티
  * 
  * <p>Worker가 테넌트 내에서 수행할 역할을 정의하는 엔티티입니다.
- * 설계 B 기준: 복합 PK (worker_id, role_id, tenant_id)를 사용합니다.</p>
+ * 설계 C 기준: 복합 PK (worker_id, role_id)를 사용합니다.
+ * tenant_id는 제거되었으며, Role이 이미 tenant_id를 가지므로 중복입니다.</p>
  * 
  * @author AgenticCP Team
  * @version 1.0.0
@@ -27,10 +27,9 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "worker_role", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_worker_role", columnNames = {"worker_id", "role_id", "tenant_id"})
+    @UniqueConstraint(name = "uk_worker_role", columnNames = {"worker_id", "role_id"})
 }, indexes = {
     @Index(name = "idx_worker_role_worker", columnList = "worker_id"),
-    @Index(name = "idx_worker_role_tenant", columnList = "tenant_id"),
     @Index(name = "idx_worker_role_role", columnList = "role_id")
 })
 @IdClass(WorkerRoleId.class)
@@ -54,12 +53,6 @@ public class WorkerRole {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
-    
-    @Id
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
     
     /**
      * 생성일시

@@ -6,8 +6,6 @@ import com.agenticcp.core.domain.organization.entity.WorkerRole;
 import com.agenticcp.core.domain.organization.enums.WorkerErrorCode;
 import com.agenticcp.core.domain.organization.repository.WorkerRepository;
 import com.agenticcp.core.domain.organization.repository.WorkerRoleRepository;
-import com.agenticcp.core.domain.tenant.entity.Tenant;
-import com.agenticcp.core.domain.tenant.repository.TenantRepository;
 import com.agenticcp.core.domain.user.entity.Role;
 import com.agenticcp.core.domain.user.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,21 +33,19 @@ public class WorkerRoleService {
     private final WorkerRoleRepository workerRoleRepository;
     private final WorkerRepository workerRepository;
     private final RoleRepository roleRepository;
-    private final TenantRepository tenantRepository;
     
     /**
      * Worker에게 역할 부여
      * 
      * @param workerId Worker ID
-     * @param roleId Role ID
-     * @param tenantId 테넌트 ID
+     * @param roleId Role ID (Role이 이미 tenant_id를 가짐)
      * @return 생성된 WorkerRole
-     * @throws BusinessException Worker, Role, Tenant를 찾을 수 없거나 이미 부여된 역할인 경우
+     * @throws BusinessException Worker, Role을 찾을 수 없거나 이미 부여된 역할인 경우
      */
     @Transactional
-    public WorkerRole assignRole(Long workerId, Long roleId, Long tenantId) {
-        log.info("[WorkerRoleService] assignRole - workerId={}, roleId={}, tenantId={}", 
-                workerId, roleId, tenantId);
+    public WorkerRole assignRole(Long workerId, Long roleId) {
+        log.info("[WorkerRoleService] assignRole - workerId={}, roleId={}", 
+                workerId, roleId);
         
         // Worker 존재 확인
         Worker worker = workerRepository.findById(workerId)
@@ -60,27 +56,22 @@ public class WorkerRoleService {
                 .orElseThrow(() -> new BusinessException(
                         com.agenticcp.core.domain.user.enums.RoleErrorCode.ROLE_NOT_FOUND));
         
-        // Tenant 존재 확인
-        Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new BusinessException(WorkerErrorCode.TENANT_NOT_FOUND));
-        
         // 이미 부여된 역할인지 확인
-        if (workerRoleRepository.existsByWorkerIdAndTenantIdAndRoleId(workerId, tenantId, roleId)) {
+        if (workerRoleRepository.existsByWorkerIdAndRoleId(workerId, roleId)) {
             throw new BusinessException(WorkerErrorCode.WORKER_ROLE_ALREADY_EXISTS, 
                     "이미 부여된 역할입니다.");
         }
         
-        // WorkerRole 생성
+        // WorkerRole 생성 (tenant는 Role에서 가져옴)
         WorkerRole workerRole = WorkerRole.builder()
                 .worker(worker)
                 .role(role)
-                .tenant(tenant)
                 .build();
         
         WorkerRole savedWorkerRole = workerRoleRepository.save(workerRole);
         
-        log.info("[WorkerRoleService] assignRole - success workerId={}, roleId={}, tenantId={}", 
-                workerId, roleId, tenantId);
+        log.info("[WorkerRoleService] assignRole - success workerId={}, roleId={}", 
+                workerId, roleId);
         
         return savedWorkerRole;
     }
@@ -90,22 +81,21 @@ public class WorkerRoleService {
      * 
      * @param workerId Worker ID
      * @param roleId Role ID
-     * @param tenantId 테넌트 ID
      * @throws BusinessException WorkerRole을 찾을 수 없는 경우
      */
     @Transactional
-    public void removeRole(Long workerId, Long roleId, Long tenantId) {
-        log.info("[WorkerRoleService] removeRole - workerId={}, roleId={}, tenantId={}", 
-                workerId, roleId, tenantId);
+    public void removeRole(Long workerId, Long roleId) {
+        log.info("[WorkerRoleService] removeRole - workerId={}, roleId={}", 
+                workerId, roleId);
         
         WorkerRole workerRole = workerRoleRepository
-                .findByWorkerIdAndTenantIdAndRoleId(workerId, tenantId, roleId)
+                .findByWorkerIdAndRoleId(workerId, roleId)
                 .orElseThrow(() -> new BusinessException(WorkerErrorCode.WORKER_ROLE_NOT_FOUND));
         
-        workerRoleRepository.delete(workerRole);
+        workerRoleRepository.deleteByWorkerIdAndRoleId(workerId, roleId);
         
-        log.info("[WorkerRoleService] removeRole - success workerId={}, roleId={}, tenantId={}", 
-                workerId, roleId, tenantId);
+        log.info("[WorkerRoleService] removeRole - success workerId={}, roleId={}", 
+                workerId, roleId);
     }
     
     /**
@@ -119,28 +109,5 @@ public class WorkerRoleService {
         return workerRoleRepository.findByWorkerId(workerId);
     }
     
-    /**
-     * Worker ID와 테넌트 ID로 WorkerRole 목록 조회
-     * 
-     * @param workerId Worker ID
-     * @param tenantId 테넌트 ID
-     * @return WorkerRole 목록
-     */
-    public List<WorkerRole> findByWorkerIdAndTenantId(Long workerId, Long tenantId) {
-        log.info("[WorkerRoleService] findByWorkerIdAndTenantId - workerId={}, tenantId={}", 
-                workerId, tenantId);
-        return workerRoleRepository.findByWorkerIdAndTenantId(workerId, tenantId);
-    }
-    
-    /**
-     * 테넌트 ID로 WorkerRole 목록 조회
-     * 
-     * @param tenantId 테넌트 ID
-     * @return WorkerRole 목록
-     */
-    public List<WorkerRole> findByTenantId(Long tenantId) {
-        log.info("[WorkerRoleService] findByTenantId - tenantId={}", tenantId);
-        return workerRoleRepository.findByTenantId(tenantId);
-    }
 }
 

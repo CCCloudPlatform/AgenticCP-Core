@@ -26,16 +26,10 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Worker 역할 부여 요청")
 public class AssignRoleRequest {
     
-    /** 역할 ID */
+    /** 역할 ID (Role이 이미 tenant_id를 가짐) */
     @NotNull(message = "역할 ID는 필수입니다")
     @Positive(message = "역할 ID는 양수여야 합니다")
     @Schema(description = "역할 ID", example = "1", required = true)
     private Long roleId;
-    
-    /** 테넌트 ID */
-    @NotNull(message = "테넌트 ID는 필수입니다")
-    @Positive(message = "테넌트 ID는 양수여야 합니다")
-    @Schema(description = "테넌트 ID", example = "1", required = true)
-    private Long tenantId;
 }
 

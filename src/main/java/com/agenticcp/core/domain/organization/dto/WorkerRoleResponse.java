@@ -91,9 +91,12 @@ public class WorkerRoleResponse {
                 .roleId(workerRole.getRole() != null ? workerRole.getRole().getId() : null)
                 .roleKey(workerRole.getRole() != null ? workerRole.getRole().getRoleKey() : null)
                 .roleName(workerRole.getRole() != null ? workerRole.getRole().getRoleName() : null)
-                .tenantId(workerRole.getTenant() != null ? workerRole.getTenant().getId() : null)
-                .tenantKey(workerRole.getTenant() != null ? workerRole.getTenant().getTenantKey() : null)
-                .tenantName(workerRole.getTenant() != null ? workerRole.getTenant().getTenantName() : null)
+                .tenantId(workerRole.getRole() != null && workerRole.getRole().getTenant() != null 
+                        ? workerRole.getRole().getTenant().getId() : null)
+                .tenantKey(workerRole.getRole() != null && workerRole.getRole().getTenant() != null 
+                        ? workerRole.getRole().getTenant().getTenantKey() : null)
+                .tenantName(workerRole.getRole() != null && workerRole.getRole().getTenant() != null 
+                        ? workerRole.getRole().getTenant().getTenantName() : null)
                 .createdAt(workerRole.getCreatedAt())
                 .updatedAt(workerRole.getUpdatedAt())
                 .build();
