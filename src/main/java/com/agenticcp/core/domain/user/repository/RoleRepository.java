@@ -216,4 +216,14 @@ public interface RoleRepository extends TenantAwareRepository<Role, Long> {
     @Query("SELECT r FROM Role r WHERE r.tenant.tenantKey = :tenantKey AND r.isDeleted = false AND " +
            "(r.roleKey LIKE %:keyword% OR r.roleName LIKE %:keyword% OR r.description LIKE %:keyword%)")
     List<Role> searchRolesByTenantKey(@Param("keyword") String keyword, @Param("tenantKey") String tenantKey);
+    
+    /**
+     * 역할 키 목록과 테넌트로 역할 목록 조회
+     * 
+     * @param roleKeys 역할 키 목록
+     * @param tenant 테넌트
+     * @return 역할 목록
+     */
+    @Query("SELECT r FROM Role r WHERE r.roleKey IN :roleKeys AND r.tenant = :tenant AND r.isDeleted = false")
+    List<Role> findByRoleKeyInAndTenant(@Param("roleKeys") List<String> roleKeys, @Param("tenant") Tenant tenant);
 }
