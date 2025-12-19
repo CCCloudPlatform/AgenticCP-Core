@@ -298,8 +298,8 @@ public class RoleService {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException(RoleErrorCode.ROLE_NOT_FOUND));
         
-        // 테넌트 확인
-        if (!role.getTenant().equals(currentTenant)) {
+        // 테넌트 확인 (ID 비교로 변경하여 lazy loading 문제 방지)
+        if (!role.getTenant().getId().equals(currentTenant.getId())) {
             throw new BusinessException(RoleErrorCode.INVALID_TENANT_ACCESS);
         }
         
@@ -346,16 +346,16 @@ public class RoleService {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException(RoleErrorCode.ROLE_NOT_FOUND));
         
-        // 테넌트 확인
-        if (!role.getTenant().equals(currentTenant)) {
+        // 테넌트 확인 (ID 비교로 변경하여 lazy loading 문제 방지)
+        if (!role.getTenant().getId().equals(currentTenant.getId())) {
             throw new BusinessException(RoleErrorCode.INVALID_TENANT_ACCESS);
         }
         
         Permission permission = permissionRepository.findByPermissionKey(permissionKey)
                 .orElseThrow(() -> new ResourceNotFoundException(PermissionErrorCode.PERMISSION_NOT_FOUND));
         
-        // 테넌트 확인
-        if (!permission.getTenant().equals(currentTenant)) {
+        // 테넌트 확인 (ID 비교로 변경하여 lazy loading 문제 방지)
+        if (!permission.getTenant().getId().equals(currentTenant.getId())) {
             throw new BusinessException(RoleErrorCode.INVALID_TENANT_PERMISSION_ACCESS);
         }
         
