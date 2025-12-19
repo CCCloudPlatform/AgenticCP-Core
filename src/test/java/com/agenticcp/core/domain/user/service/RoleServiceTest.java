@@ -47,6 +47,7 @@ class RoleServiceTest {
                 .tenantKey("tenant-001")
                 .tenantName("테넌트001")
                 .build();
+        tenant.setId(1L);
         TenantContextHolder.setTenant(tenant);
     }
 
