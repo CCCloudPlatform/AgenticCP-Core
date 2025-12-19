@@ -47,17 +47,13 @@ public class WorkerResponse {
     @Schema(description = "사용자 이름", example = "John Doe")
     private String userName;
     
-    /** 테넌트 ID */
-    @Schema(description = "테넌트 ID", example = "1")
-    private Long tenantId;
+    /** 조직 ID (Organization 기반 Worker인 경우) */
+    @Schema(description = "조직 ID", example = "1")
+    private Long organizationId;
     
-    /** 테넌트 키 */
-    @Schema(description = "테넌트 키", example = "tenant-dev")
-    private String tenantKey;
-    
-    /** 테넌트명 */
-    @Schema(description = "테넌트명", example = "개발 테넌트")
-    private String tenantName;
+    /** 조직명 (Organization 기반 Worker인 경우) */
+    @Schema(description = "조직명", example = "개발팀")
+    private String organizationName;
     
     /** 생성일시 */
     @Schema(description = "생성일시", example = "2024-01-01T00:00:00")
@@ -84,9 +80,8 @@ public class WorkerResponse {
                 .username(worker.getUser() != null ? worker.getUser().getUsername() : null)
                 .userEmail(worker.getUser() != null ? worker.getUser().getEmail() : null)
                 .userName(worker.getUser() != null ? worker.getUser().getName() : null)
-                .tenantId(worker.getTenant() != null ? worker.getTenant().getId() : null)
-                .tenantKey(worker.getTenant() != null ? worker.getTenant().getTenantKey() : null)
-                .tenantName(worker.getTenant() != null ? worker.getTenant().getTenantName() : null)
+                .organizationId(worker.getOrganization() != null ? worker.getOrganization().getId() : null)
+                .organizationName(worker.getOrganization() != null ? worker.getOrganization().getName() : null)
                 .createdAt(worker.getCreatedAt())
                 .updatedAt(worker.getUpdatedAt())
                 .build();

@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * Worker 관리 컨트롤러
  * 
  * <p>Worker의 생성 및 조회를 제공하는 API입니다.
- * 설계 B 기준: Worker는 오직 User 기반으로만 생성됩니다.</p>
+ * 설계 C 기준: Worker는 User 또는 Organization 기반으로 생성되며, 테넌트 독립적입니다.</p>
  * 
  * @author AgenticCP Team
  * @version 1.0.0
@@ -43,34 +43,27 @@ public class WorkerController {
      * Worker 생성 (User 기반)
      * 
      * @param userId 사용자 ID
-     * @param request Worker 생성 요청 정보
      * @return 생성된 Worker 정보
      */
     @PostMapping
     @Operation(
-        summary = "Worker 생성",
-        description = "User 기반으로 Worker를 생성합니다."
+        summary = "Worker 생성 (User 기반)",
+        description = "User 기반으로 Worker를 생성합니다. 설계 C 기준: Worker는 테넌트 독립적입니다."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Worker 생성 성공",
                      content = @Content(schema = @Schema(implementation = WorkerResponse.class))),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자 또는 테넌트를 찾을 수 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "이미 존재하는 Worker")
     })
-    public ResponseEntity<ApiResponse<WorkerResponse>> createWorker(
+    public ResponseEntity<ApiResponse<WorkerResponse>> createWorkerFromUser(
             @Parameter(description = "사용자 ID", required = true, example = "1")
-            @PathVariable @Positive Long userId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                description = "Worker 생성 요청 정보",
-                required = true,
-                content = @Content(schema = @Schema(implementation = CreateWorkerRequest.class))
-            )
-            @Valid @RequestBody CreateWorkerRequest request) {
-        log.info("[WorkerController] createWorker - userId={}, tenantId={}", userId, request.getTenantId());
+            @PathVariable @Positive Long userId) {
+        log.info("[WorkerController] createWorkerFromUser - userId={}", userId);
         
         WorkerResponse response = WorkerResponse.from(
-                workerService.createWorker(userId, request.getTenantId()));
+                workerService.createWorkerFromUser(userId));
         
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Worker가 성공적으로 생성되었습니다."));
