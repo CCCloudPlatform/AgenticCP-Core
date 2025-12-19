@@ -65,7 +65,7 @@ class TenantWorkerControllerTest {
 
         Worker testWorker = Worker.builder()
                 .user(testUser)
-                .tenant(testTenant)
+                .organization(null)
                 .build();
         testWorker.setId(1L);
 

@@ -63,7 +63,7 @@ class WorkerControllerTest {
 
         testWorker = Worker.builder()
                 .user(testUser)
-                .tenant(testTenant)
+                .organization(null)
                 .build();
         testWorker.setId(1L);
         testWorker.setCreatedAt(LocalDateTime.now());
@@ -75,9 +75,6 @@ class WorkerControllerTest {
                 .username("testuser")
                 .userEmail("test@example.com")
                 .userName("테스트 사용자")
-                .tenantId(1L)
-                .tenantKey("tenant-dev")
-                .tenantName("개발 테넌트")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -88,28 +85,24 @@ class WorkerControllerTest {
     class CreateWorkerTest {
         @Test
         @DisplayName("정상 생성 시 201 반환")
-        void createWorker_WhenValidRequest_ReturnsCreated() {
+        void createWorkerFromUser_WhenValidRequest_ReturnsCreated() {
             // Given
             Long userId = 1L;
-            CreateWorkerRequest request = CreateWorkerRequest.builder()
-                    .tenantId(1L)
-                    .build();
 
-            when(workerService.createWorker(anyLong(), anyLong()))
+            when(workerService.createWorkerFromUser(anyLong()))
                     .thenReturn(testWorker);
 
             // When
             ResponseEntity<ApiResponse<WorkerResponse>> response =
-                    workerController.createWorker(userId, request);
+                    workerController.createWorkerFromUser(userId);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(response.getBody().isSuccess()).isTrue();
             assertThat(response.getBody().getMessage()).isEqualTo("Worker가 성공적으로 생성되었습니다.");
             assertThat(response.getBody().getData().getUserId()).isEqualTo(1L);
-            assertThat(response.getBody().getData().getTenantId()).isEqualTo(1L);
 
-            verify(workerService).createWorker(userId, request.getTenantId());
+            verify(workerService).createWorkerFromUser(userId);
         }
     }
 

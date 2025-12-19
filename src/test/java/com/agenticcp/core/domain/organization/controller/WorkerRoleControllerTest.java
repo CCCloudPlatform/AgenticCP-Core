@@ -65,20 +65,20 @@ class WorkerRoleControllerTest {
 
         Worker testWorker = Worker.builder()
                 .user(testUser)
-                .tenant(testTenant)
+                .organization(null)
                 .build();
         testWorker.setId(1L);
 
         Role testRole = Role.builder()
                 .roleKey("ADMIN")
                 .roleName("관리자")
+                .tenant(testTenant)
                 .build();
         testRole.setId(1L);
 
         testWorkerRole = WorkerRole.builder()
                 .worker(testWorker)
                 .role(testRole)
-                .tenant(testTenant)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -90,9 +90,6 @@ class WorkerRoleControllerTest {
                 .roleId(1L)
                 .roleKey("ADMIN")
                 .roleName("관리자")
-                .tenantId(1L)
-                .tenantKey("tenant-dev")
-                .tenantName("개발 테넌트")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -102,8 +99,8 @@ class WorkerRoleControllerTest {
     @DisplayName("Worker의 역할 목록 조회 테스트")
     class GetRolesTest {
         @Test
-        @DisplayName("tenantId 없이 조회 시 200 반환")
-        void getRoles_WhenNoTenantId_ReturnsOk() {
+        @DisplayName("정상 조회 시 200 반환")
+        void getRoles_WhenValidId_ReturnsOk() {
             // Given
             Long workerId = 1L;
             List<WorkerRole> roles = Arrays.asList(testWorkerRole);
@@ -113,7 +110,7 @@ class WorkerRoleControllerTest {
 
             // When
             ResponseEntity<ApiResponse<List<WorkerRoleResponse>>> response =
-                    workerRoleController.getRoles(workerId, null);
+                    workerRoleController.getRoles(workerId);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -122,32 +119,6 @@ class WorkerRoleControllerTest {
             assertThat(response.getBody().getData()).hasSize(1);
 
             verify(workerRoleService).findByWorkerId(workerId);
-            verify(workerRoleService, never()).findByWorkerIdAndTenantId(anyLong(), anyLong());
-        }
-
-        @Test
-        @DisplayName("tenantId와 함께 조회 시 200 반환")
-        void getRoles_WhenWithTenantId_ReturnsOk() {
-            // Given
-            Long workerId = 1L;
-            Long tenantId = 1L;
-            List<WorkerRole> roles = Arrays.asList(testWorkerRole);
-
-            when(workerRoleService.findByWorkerIdAndTenantId(workerId, tenantId))
-                    .thenReturn(roles);
-
-            // When
-            ResponseEntity<ApiResponse<List<WorkerRoleResponse>>> response =
-                    workerRoleController.getRoles(workerId, tenantId);
-
-            // Then
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().isSuccess()).isTrue();
-            assertThat(response.getBody().getMessage()).isEqualTo("역할 목록을 성공적으로 조회했습니다.");
-            assertThat(response.getBody().getData()).hasSize(1);
-
-            verify(workerRoleService).findByWorkerIdAndTenantId(workerId, tenantId);
-            verify(workerRoleService, never()).findByWorkerId(anyLong());
         }
     }
 
@@ -161,10 +132,9 @@ class WorkerRoleControllerTest {
             Long workerId = 1L;
             AssignRoleRequest request = AssignRoleRequest.builder()
                     .roleId(1L)
-                    .tenantId(1L)
                     .build();
 
-            when(workerRoleService.assignRole(anyLong(), anyLong(), anyLong()))
+            when(workerRoleService.assignRole(anyLong(), anyLong()))
                     .thenReturn(testWorkerRole);
 
             // When
@@ -178,7 +148,7 @@ class WorkerRoleControllerTest {
             assertThat(response.getBody().getData().getWorkerId()).isEqualTo(1L);
             assertThat(response.getBody().getData().getRoleId()).isEqualTo(1L);
 
-            verify(workerRoleService).assignRole(workerId, request.getRoleId(), request.getTenantId());
+            verify(workerRoleService).assignRole(workerId, request.getRoleId());
         }
     }
 
@@ -191,19 +161,18 @@ class WorkerRoleControllerTest {
             // Given
             Long workerId = 1L;
             Long roleId = 1L;
-            Long tenantId = 1L;
 
-            doNothing().when(workerRoleService).removeRole(anyLong(), anyLong(), anyLong());
+            doNothing().when(workerRoleService).removeRole(anyLong(), anyLong());
 
             // When
             ResponseEntity<Void> response =
-                    workerRoleController.removeRole(workerId, roleId, tenantId);
+                    workerRoleController.removeRole(workerId, roleId);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
             assertThat(response.getBody()).isNull();
 
-            verify(workerRoleService).removeRole(workerId, roleId, tenantId);
+            verify(workerRoleService).removeRole(workerId, roleId);
         }
     }
 }
