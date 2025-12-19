@@ -26,10 +26,12 @@ import java.util.stream.Collectors;
  * <p>테넌트와 Worker 간의 관계를 관리하는 API입니다.
  * Shared Tenant에 Worker를 할당하고 관리합니다.</p>
  * 
+ * @deprecated 설계 C 기준: TenantWorkerMap은 제거되었으며, CloudResourceWorkerController를 사용합니다.
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2025-12-14
  */
+@Deprecated
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/tenants/{tenantId}/workers")

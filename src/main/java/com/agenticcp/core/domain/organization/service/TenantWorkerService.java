@@ -6,6 +6,7 @@ import com.agenticcp.core.domain.organization.entity.Worker;
 import com.agenticcp.core.domain.organization.enums.WorkerErrorCode;
 import com.agenticcp.core.domain.organization.repository.TenantWorkerMapRepository;
 import com.agenticcp.core.domain.organization.repository.WorkerRepository;
+import com.agenticcp.core.domain.organization.repository.WorkerRoleRepository;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.tenant.repository.TenantRepository;
 import com.agenticcp.core.domain.user.entity.Role;
@@ -23,10 +24,12 @@ import java.util.List;
  * <p>테넌트와 Worker 간의 관계를 관리하는 서비스입니다.
  * Shared Tenant에 Worker를 할당하고, 접근 권한을 검증합니다.</p>
  * 
+ * @deprecated 설계 C 기준: TenantWorkerMap은 제거되었으며, CloudResourceWorkerMap을 사용합니다.
  * @author AgenticCP Team
  * @version 1.0.0
  * @since 2025-12-14
  */
+@Deprecated
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -36,7 +39,7 @@ public class TenantWorkerService {
     private final TenantWorkerMapRepository tenantWorkerMapRepository;
     private final WorkerRepository workerRepository;
     private final TenantRepository tenantRepository;
-    private final WorkerRoleService workerRoleService;
+    private final WorkerRoleRepository workerRoleRepository;
     private final RoleRepository roleRepository;
     
     /**
@@ -139,8 +142,10 @@ public class TenantWorkerService {
         log.info("[TenantWorkerService] hasAccessToTenant - userId={}, tenantId={}, roleKey={}", 
                 userId, tenantId, roleKey);
         
-        // 1. Worker 존재 확인
-        Worker worker = workerRepository.findByUserIdAndTenantId(userId, tenantId)
+        // 1. Worker 존재 확인 (User 기반 Worker 조회)
+        List<Worker> userWorkers = workerRepository.findByUserId(userId);
+        Worker worker = userWorkers.stream()
+                .findFirst()
                 .orElse(null);
         
         if (worker == null) {
@@ -166,9 +171,9 @@ public class TenantWorkerService {
             }
         }
         
-        // 3. 역할 확인
+        // 3. 역할 확인 (C안에서는 Role을 통해 테넌트 필터링)
         List<com.agenticcp.core.domain.organization.entity.WorkerRole> workerRoles = 
-                workerRoleService.findByWorkerIdAndTenantId(worker.getId(), tenantId);
+                workerRoleRepository.findByWorkerIdAndTenantId(worker.getId(), tenantId);
         
         if (workerRoles.isEmpty()) {
             log.debug("[TenantWorkerService] hasAccessToTenant - No roles assigned");

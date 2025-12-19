@@ -22,15 +22,25 @@ public enum WorkerErrorCode implements BaseErrorCode {
 
     // Worker 관련 (12001-12020)
     WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, 12001, "Worker를 찾을 수 없습니다."),
-    WORKER_DUPLICATE_USER_TENANT(HttpStatus.CONFLICT, 12002, "같은 User와 Tenant로 이미 Worker가 생성되었습니다."),
+    WORKER_DUPLICATE_USER(HttpStatus.CONFLICT, 12002, "해당 User로 이미 Worker가 생성되었습니다."),
+    WORKER_DUPLICATE_ORGANIZATION(HttpStatus.CONFLICT, 12003, "해당 Organization으로 이미 Worker가 생성되었습니다."),
+    WORKER_DUPLICATE_USER_TENANT(HttpStatus.CONFLICT, 12004, "[DEPRECATED] 같은 User와 Tenant로 이미 Worker가 생성되었습니다."),
+    
+    // Organization 관련 (Worker 도메인에서 사용)
+    ORGANIZATION_NOT_FOUND(HttpStatus.NOT_FOUND, 12005, "조직을 찾을 수 없습니다."),
     
     // Tenant 관련 (Worker 도메인에서 사용)
-    TENANT_NOT_FOUND(HttpStatus.NOT_FOUND, 12003, "테넌트를 찾을 수 없습니다."),
+    TENANT_NOT_FOUND(HttpStatus.NOT_FOUND, 12006, "테넌트를 찾을 수 없습니다."),
     
-    // TenantWorkerMap 관련 (12021-12040)
-    TENANT_WORKER_MAP_NOT_FOUND(HttpStatus.NOT_FOUND, 12021, "TenantWorkerMap을 찾을 수 없습니다."),
-    TENANT_WORKER_MAP_ALREADY_EXISTS(HttpStatus.CONFLICT, 12022, "이미 할당된 Worker입니다."),
-    TENANT_WORKER_ACCESS_DENIED(HttpStatus.FORBIDDEN, 12023, "테넌트 접근 권한이 없습니다."),
+    // TenantWorkerMap 관련 (12021-12040) [DEPRECATED]
+    TENANT_WORKER_MAP_NOT_FOUND(HttpStatus.NOT_FOUND, 12021, "[DEPRECATED] TenantWorkerMap을 찾을 수 없습니다."),
+    TENANT_WORKER_MAP_ALREADY_EXISTS(HttpStatus.CONFLICT, 12022, "[DEPRECATED] 이미 할당된 Worker입니다."),
+    TENANT_WORKER_ACCESS_DENIED(HttpStatus.FORBIDDEN, 12023, "[DEPRECATED] 테넌트 접근 권한이 없습니다."),
+    
+    // CloudResourceWorkerMap 관련 (12031-12040)
+    CLOUD_RESOURCE_WORKER_MAP_NOT_FOUND(HttpStatus.NOT_FOUND, 12031, "CloudResourceWorkerMap을 찾을 수 없습니다."),
+    CLOUD_RESOURCE_WORKER_MAP_ALREADY_EXISTS(HttpStatus.CONFLICT, 12032, "이미 할당된 Worker입니다."),
+    CLOUD_RESOURCE_ACCESS_DENIED(HttpStatus.FORBIDDEN, 12033, "클라우드 리소스 접근 권한이 없습니다."),
     
     // WorkerRole 관련 (12041-12060)
     WORKER_ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, 12041, "WorkerRole을 찾을 수 없습니다."),
