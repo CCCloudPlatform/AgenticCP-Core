@@ -9,7 +9,10 @@ public class AwsResourceMapper {
         // Canonical 매핑 스켈레톤: 필수만 매핑, 나머지는 configuration/metadata에 보존
         return CloudResource.builder()
                 .resourceId("i-unknown")
-                .resourceName("unknown")
+                .name("unknown")
+                .provider("AWS")
+                .region("us-east-1")
+                .type("INSTANCE")
                 .build();
     }
 }

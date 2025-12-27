@@ -10,7 +10,6 @@ import com.agenticcp.core.domain.cloud.dto.VmUpdateRequest;
 import com.agenticcp.core.common.exception.BusinessException;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.VmQuery;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
@@ -147,7 +146,7 @@ public class VmUseCaseService {
             ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
                     .resourceId(instanceId)
                     .resourceName(resourceName)
-                    .resourceType(CloudResource.ResourceType.INSTANCE)
+                    .resourceType("INSTANCE")
                     .tags(request.getTags())
                     .attributes(Map.of(AttributeKeys.INSTANCE_SIZE, request.getInstanceSize()))
                     .build();
@@ -224,7 +223,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).startInstance(instanceId, session);
 
         // DB 상태 업데이트: RUNNING
-        resourceHelper.updateLifecycleState(instanceId, LifecycleState.RUNNING);
+        resourceHelper.updateLifecycleState(instanceId, "running");
 
         log.info("VM 인스턴스 시작 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -251,7 +250,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).stopInstance(instanceId, session);
 
         // DB 상태 업데이트: STOPPED
-        resourceHelper.updateLifecycleState(instanceId, LifecycleState.STOPPED);
+        resourceHelper.updateLifecycleState(instanceId, "stopped");
 
         log.info("VM 인스턴스 중지 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -279,7 +278,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).rebootInstance(instanceId, session);
 
         // DB 상태 업데이트: 재부팅 후 RUNNING 상태 유지 (lastModifiedInCloud만 업데이트)
-        resourceHelper.updateLifecycleState(instanceId, LifecycleState.RUNNING);
+        resourceHelper.updateLifecycleState(instanceId, "running");
 
         log.info("VM 인스턴스 재부팅 완료: provider={}, instanceId={}", providerType, instanceId);
     }
@@ -306,7 +305,7 @@ public class VmUseCaseService {
         vmPortRouter.lifecycle(providerType).terminateInstance(instanceId, session);
 
         // DB 상태 업데이트: TERMINATED
-        resourceHelper.updateLifecycleState(instanceId, LifecycleState.TERMINATED);
+        resourceHelper.updateLifecycleState(instanceId, "terminated");
 
         log.info("VM 인스턴스 종료 완료: provider={}, instanceId={}", providerType, instanceId);
     }

@@ -149,6 +149,16 @@ public class CloudResourceManagementHelper {
     }
 
     /**
+     * 리소스의 상태를 업데이트합니다 (LifecycleState enum 사용).
+     * 
+     * @param resourceId 리소스 ID
+     * @param lifecycleState 생명주기 상태 enum
+     */
+    public void updateLifecycleState(String resourceId, CloudResource.LifecycleState lifecycleState) {
+        updateLifecycleState(resourceId, lifecycleState.toLowerCase());
+    }
+
+    /**
      * 리소스를 소프트 삭제합니다.
      *
      * @param resourceId 리소스 ID

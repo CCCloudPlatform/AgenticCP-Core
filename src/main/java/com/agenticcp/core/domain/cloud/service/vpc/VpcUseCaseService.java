@@ -114,7 +114,7 @@ public class VpcUseCaseService {
             ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
                     .resourceId(vpc.getResourceId())
                     .resourceName(resourceName)
-                    .resourceType(CloudResource.ResourceType.NETWORK)
+                    .resourceType("NETWORK")
                     .tags(request.getTags())
                     .attributes(Map.of(AttributeKeys.CONFIGURATION, request.getCidrBlock()))
                     .build();

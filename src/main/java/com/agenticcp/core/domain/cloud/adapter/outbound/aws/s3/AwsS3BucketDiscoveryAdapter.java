@@ -28,6 +28,7 @@ import software.amazon.awssdk.services.resourcegroupstaggingapi.model.ResourceTa
 import software.amazon.awssdk.services.resourcegroupstaggingapi.model.TagFilter;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
 import java.util.function.Function;
@@ -51,6 +52,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
     private final AccountCredentialManagementPort accountCredentialManagementPort;
     private final AwsS3Config awsS3Config;
     private final AwsS3ErrorTranslator errorTranslator;
+    private final ObjectMapper objectMapper;
 
     /**
      * AWS S3 버킷 목록을 조회합니다.
@@ -218,7 +220,8 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
             if (regionId == null || regionId.isEmpty()) {
                 regionId = "us-east-1";
             }
-            resource.setRegion(mapper.toCloudRegion(regionId));
+            // region은 String으로 저장되므로 직접 설정
+            resource.setRegion(regionId);
         } catch (S3Exception e) {
             log.warn("Could not retrieve location for bucket {}: {}", bucketName, e.getMessage());
         }
@@ -234,12 +237,18 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
             } else {
                 log.warn("Could not retrieve tags for bucket {}: {}", bucketName, e.getMessage());
             }
-            resource.setTags(null);
+            // tags는 labels 필드에 JSON으로 저장되므로 null 처리 불필요
         }
     }
 
     private void setTags(CloudResource resource, Map<String, String> tags) {
-        resource.setTags(tags);
+        // tags는 labels 필드에 JSON으로 저장
+        try {
+            String labelsJson = objectMapper.writeValueAsString(tags);
+            resource.setLabels(labelsJson);
+        } catch (Exception e) {
+            log.warn("Failed to serialize tags to labels JSON: {}", e.getMessage());
+        }
     }
 
     private Page<CloudResource> applyMemoryOperations(List<CloudResource> resources,
@@ -247,7 +256,7 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
         List<CloudResource> filtered = resources;
         if (query.getNameContains() != null && !query.getNameContains().isEmpty()) {
             filtered = filtered.stream()
-                    .filter(resource -> resource.getResourceName().contains(query.getNameContains()))
+                    .filter(resource -> resource.getName() != null && resource.getName().contains(query.getNameContains()))
                     .collect(Collectors.toList());
         }
 
@@ -276,10 +285,10 @@ public class AwsS3BucketDiscoveryAdapter implements ObjectStorageDiscoveryPort, 
 
         Comparator<CloudResource> comparator;
         if ("name".equalsIgnoreCase(sortBy)) {
-            comparator = Comparator.comparing(CloudResource::getResourceName);
+            comparator = Comparator.comparing(CloudResource::getName);
         } else {
             log.warn("Unsupported sort key: {}. Defaulting to name sort.", sortBy);
-            comparator = Comparator.comparing(CloudResource::getResourceName);
+            comparator = Comparator.comparing(CloudResource::getName);
         }
 
         if ("desc".equalsIgnoreCase(sortDirection)) {

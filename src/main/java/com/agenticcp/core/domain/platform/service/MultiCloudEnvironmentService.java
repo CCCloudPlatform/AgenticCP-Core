@@ -62,7 +62,7 @@ public class MultiCloudEnvironmentService {
                         }
                         return true;
                     })
-                    .map(r -> r.getProvider().getProviderType().name())
+                    .map(r -> r.getProvider()) // provider는 이미 String
                     .collect(Collectors.toSet());
             
             if (providers.isEmpty()) {

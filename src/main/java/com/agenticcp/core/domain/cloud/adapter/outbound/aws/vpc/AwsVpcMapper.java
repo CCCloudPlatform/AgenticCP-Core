@@ -1,23 +1,16 @@
 package com.agenticcp.core.domain.cloud.adapter.outbound.aws.vpc;
 
-import com.agenticcp.core.domain.cloud.entity.CloudProvider;
-import com.agenticcp.core.domain.cloud.entity.CloudRegion;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudService;
 import com.agenticcp.core.domain.cloud.port.model.vpc.CreateVpcCommand;
 import com.agenticcp.core.domain.cloud.port.model.vpc.GetVpcCommand;
 import com.agenticcp.core.domain.cloud.dto.ListVpcsQueryRequest;
 import com.agenticcp.core.domain.cloud.port.model.vpc.UpdateVpcCommand;
-import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudRegionRepository;
-import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.ec2.model.Vpc;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,19 +26,9 @@ import java.util.stream.Collectors;
 public class AwsVpcMapper {
     
     private final ObjectMapper objectMapper;
-    private final CloudProviderRepository cloudProviderRepository;
-    private final CloudServiceRepository cloudServiceRepository;
-    private final CloudRegionRepository cloudRegionRepository;
     
-    public AwsVpcMapper(
-            ObjectMapper objectMapper,
-            CloudProviderRepository cloudProviderRepository,
-            CloudServiceRepository cloudServiceRepository,
-            CloudRegionRepository cloudRegionRepository) {
+    public AwsVpcMapper(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        this.cloudProviderRepository = cloudProviderRepository;
-        this.cloudServiceRepository = cloudServiceRepository;
-        this.cloudRegionRepository = cloudRegionRepository;
     }
     
     /**
@@ -93,57 +76,34 @@ public class AwsVpcMapper {
                 ? command.vpcName() 
                 : vpc.vpcId();
         
-        // 메타데이터 구성
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("vpcId", vpc.vpcId());
-        metadata.put("cidrBlock", vpc.cidrBlock());
-        metadata.put("state", vpc.stateAsString());
-        metadata.put("isDefault", vpc.isDefault());
-        metadata.put("dhcpOptionsId", vpc.dhcpOptionsId());
-        metadata.put("instanceTenancy", vpc.instanceTenancyAsString());
+        // 쿠버네티스 스타일: properties (Spec) 구성
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("vpcId", vpc.vpcId());
+        properties.put("cidrBlock", vpc.cidrBlock());
+        properties.put("isDefault", vpc.isDefault());
+        properties.put("dhcpOptionsId", vpc.dhcpOptionsId());
+        properties.put("instanceTenancy", vpc.instanceTenancyAsString());
         
-        String metadataJson = null;
-        try {
-            metadataJson = objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException e) {
-            log.warn("[AwsVpcMapper] Failed to serialize metadata: {}", e.getMessage());
-        }
-        
-        // 엔티티 조회
-        CloudProvider provider = cloudProviderRepository.findFirstByProviderType(command.providerType())
-                .orElseThrow(() -> new IllegalStateException("CloudProvider not found for type: " + command.providerType()));
-        
-        CloudService service = cloudServiceRepository.findByProviderTypeAndServiceKey(command.providerType(), command.serviceKey())
-                .orElseThrow(() -> new IllegalStateException("CloudService not found for providerType: " + command.providerType() + ", serviceKey: " + command.serviceKey()));
-        
-        // region은 optional이므로 null일 수 있음
-        CloudRegion cloudRegion = null;
-        if (command.region() != null && !command.region().isEmpty()) {
-            cloudRegion = cloudRegionRepository.findByProviderTypeAndRegionKey(command.providerType(), command.region())
-                    .orElse(null);
-            if (cloudRegion == null) {
-                log.warn("[AwsVpcMapper] CloudRegion not found for providerType: {}, regionKey: {}", command.providerType(), command.region());
-            }
-        }
+        // 쿠버네티스 스타일: status (Status) 구성
+        Map<String, Object> status = new HashMap<>();
+        status.put("state", mapStateToLifecycleState(vpc.stateAsString()));
+        status.put("stateRaw", vpc.stateAsString());
         
         return CloudResource.builder()
             .resourceId(resourceId)
-            .resourceName(resourceName)
-            .displayName(resourceName)
-            .provider(provider)
-            .service(service)
-            .region(cloudRegion)
-            .resourceType(CloudResource.ResourceType.NETWORK)
-            .lifecycleState(mapStateToLifecycleState(vpc.stateAsString()))
-            .tags(command.tags())
-            .metadata(metadataJson)
-            .createdInCloud(LocalDateTime.now())
+            .name(resourceName)
+            .provider(command.providerType().name())
+            .region(command.region() != null ? command.region() : "us-east-1")
+            .type("NETWORK")
+            .properties(toJson(properties))
+            .status(toJson(status))
+            .labels(toJson(command.tags() != null ? command.tags() : new HashMap<>()))
             .build();
     }
 
     private CloudResource buildCloudResource(
             Vpc vpc, 
-            CloudProvider.ProviderType providerType, 
+            com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType providerType, 
             String serviceKey, 
             String region, 
             String tenantKey, 
@@ -163,51 +123,28 @@ public class AwsVpcMapper {
             }
         }
         
-        // 메타데이터 구성
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("vpcId", vpc.vpcId());
-        metadata.put("cidrBlock", vpc.cidrBlock());
-        metadata.put("state", vpc.stateAsString());
-        metadata.put("isDefault", vpc.isDefault());
-        metadata.put("dhcpOptionsId", vpc.dhcpOptionsId());
-        metadata.put("instanceTenancy", vpc.instanceTenancyAsString());
+        // 쿠버네티스 스타일: properties (Spec) 구성
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("vpcId", vpc.vpcId());
+        properties.put("cidrBlock", vpc.cidrBlock());
+        properties.put("isDefault", vpc.isDefault());
+        properties.put("dhcpOptionsId", vpc.dhcpOptionsId());
+        properties.put("instanceTenancy", vpc.instanceTenancyAsString());
         
-        String metadataJson = null;
-        try {
-            metadataJson = objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException e) {
-            // 로깅은 생략
-        }
-        
-        // 엔티티 조회
-        CloudProvider provider = cloudProviderRepository.findFirstByProviderType(providerType)
-                .orElseThrow(() -> new IllegalStateException("CloudProvider not found for type: " + providerType));
-        
-        CloudService service = cloudServiceRepository.findByProviderTypeAndServiceKey(providerType, serviceKey)
-                .orElseThrow(() -> new IllegalStateException("CloudService not found for providerType: " + providerType + ", serviceKey: " + serviceKey));
-        
-        // region은 optional이므로 null일 수 있음
-        CloudRegion cloudRegion = null;
-        if (region != null && !region.isEmpty()) {
-            cloudRegion = cloudRegionRepository.findByProviderTypeAndRegionKey(providerType, region)
-                    .orElse(null); // region이 없어도 CloudResource는 생성 가능
-            if (cloudRegion == null) {
-                log.warn("[AwsVpcMapper] CloudRegion not found for providerType: {}, regionKey: {}", providerType, region);
-            }
-        }
+        // 쿠버네티스 스타일: status (Status) 구성
+        Map<String, Object> status = new HashMap<>();
+        status.put("state", mapStateToLifecycleState(vpc.stateAsString()));
+        status.put("stateRaw", vpc.stateAsString());
         
         return CloudResource.builder()
             .resourceId(resourceId)
-            .resourceName(resourceName)
-            .displayName(resourceName)
-            .provider(provider)
-            .service(service)
-            .region(cloudRegion)
-            .resourceType(CloudResource.ResourceType.NETWORK)
-            .lifecycleState(mapStateToLifecycleState(vpc.stateAsString()))
-            .tags(tags)
-            .metadata(metadataJson)
-            .createdInCloud(LocalDateTime.now()) // AWS VPC는 생성 시간 정보를 직접 제공하지 않으므로 현재 시간 사용
+            .name(resourceName)
+            .provider(providerType.name())
+            .region(region != null ? region : "us-east-1")
+            .type("NETWORK")
+            .properties(toJson(properties))
+            .status(toJson(status))
+            .labels(toJson(tags != null ? tags : new HashMap<>()))
             .build();
     }
     
@@ -222,14 +159,32 @@ public class AwsVpcMapper {
             ));
     }
     
-    private CloudResource.LifecycleState mapStateToLifecycleState(String state) {
+    private String mapStateToLifecycleState(String state) {
         if (state == null) {
-            return CloudResource.LifecycleState.UNKNOWN;
+            return "unknown";
         }
         return switch (state.toUpperCase()) {
-            case "PENDING" -> CloudResource.LifecycleState.PENDING;
-            case "AVAILABLE" -> CloudResource.LifecycleState.RUNNING;
-            default -> CloudResource.LifecycleState.UNKNOWN;
+            case "PENDING" -> "pending";
+            case "AVAILABLE" -> "running";
+            default -> "unknown";
         };
+    }
+    
+    /**
+     * Map을 JSON 문자열로 변환합니다.
+     * 
+     * @param map 변환할 Map
+     * @return JSON 문자열 (실패 시 null)
+     */
+    private String toJson(Map<String, ?> map) {
+        if (map == null || map.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(map);
+        } catch (JsonProcessingException e) {
+            log.warn("[AwsVpcMapper] Failed to serialize to JSON: {}", e.getMessage());
+            return null;
+        }
     }
 }

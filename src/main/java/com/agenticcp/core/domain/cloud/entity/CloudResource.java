@@ -97,4 +97,45 @@ public class CloudResource extends BaseEntity {
      */
     @Column(name = "labels", columnDefinition = "JSON")
     private String labels;
+
+    // ==================== 내부 Enum ====================
+
+    /**
+     * 리소스 타입
+     */
+    public enum ResourceType {
+        INSTANCE,
+        NETWORK,
+        BUCKET,
+        CLUSTER,
+        DATABASE,
+        LOAD_BALANCER,
+        SECURITY_GROUP,
+        SUBNET,
+        ROUTE_TABLE,
+        INTERNET_GATEWAY,
+        NAT_GATEWAY,
+        VPC_ENDPOINT,
+        OTHER
+    }
+
+    /**
+     * 리소스 생명주기 상태
+     */
+    public enum LifecycleState {
+        UNKNOWN,
+        PENDING,
+        RUNNING,
+        STOPPED,
+        TERMINATED;
+
+        /**
+         * LifecycleState를 소문자 문자열로 변환합니다.
+         * 
+         * @return 소문자 상태 문자열 (예: "running", "stopped")
+         */
+        public String toLowerCase() {
+            return name().toLowerCase();
+        }
+    }
 }
