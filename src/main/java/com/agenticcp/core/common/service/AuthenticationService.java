@@ -1,5 +1,6 @@
 package com.agenticcp.core.common.service;
 
+import com.agenticcp.core.common.context.TenantContextService;
 import com.agenticcp.core.common.dto.auth.LoginRequest;
 import com.agenticcp.core.common.dto.auth.RefreshTokenRequest;
 import com.agenticcp.core.common.dto.auth.RegisterRequest;
@@ -48,6 +49,7 @@ import static com.agenticcp.core.common.security.JwtConstants.TOKEN_TYPE_ACCESS;
 public class AuthenticationService {
 
     private final UserService userService;
+    private final TenantContextService tenantContextService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final TenantService tenantService;
@@ -231,7 +233,12 @@ public class AuthenticationService {
             // 토큰 생성
             TokenResponse tokenResponse = generateTokens(user.getUsername());
             
-            log.info("[AuthenticationService] login - success username={}", loginRequest.getUsername());
+            // User가 속한 Tenant 목록 조회 (User ↔ Worker 1:N 시나리오)
+            List<Long> availableTenants = tenantContextService.getAvailableTenantIds(user.getId());
+            tokenResponse.setAvailableTenants(availableTenants);
+            
+            log.info("[AuthenticationService] login - success username={}, availableTenants={}", 
+                loginRequest.getUsername(), availableTenants.size());
             
             return tokenResponse;
                     
