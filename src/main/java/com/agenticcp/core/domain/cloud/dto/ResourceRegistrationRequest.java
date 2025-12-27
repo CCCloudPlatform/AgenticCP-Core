@@ -1,7 +1,5 @@
 package com.agenticcp.core.domain.cloud.dto;
 
-import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.ResourceType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,7 +13,7 @@ import java.util.Map;
  * 도메인별 상세 속성(instanceSize, cidrBlock 등)은 attributes에 담아 전달합니다.
  * 
  * @author AgenticCP Team
- * @version 1.0.0
+ * @version 2.0.0 (쿠버네티스 스타일)
  */
 @Getter
 @Builder
@@ -33,10 +31,10 @@ public class ResourceRegistrationRequest {
     private final String resourceName;
 
     /**
-     * 리소스 타입
-     * @see ResourceType
+     * 리소스 타입 (쿠버네티스 스타일: String)
+     * 예: "INSTANCE", "BUCKET", "NETWORK" 등
      */
-    private final ResourceType resourceType;
+    private final String resourceType;
 
     /**
      * 리소스 태그 (CSP의 태그 정보)
@@ -54,15 +52,19 @@ public class ResourceRegistrationRequest {
      *   <li>Storage: storageGb</li>
      *   <li>RDS: engineVersion, storageType</li>
      * </ul>
+     * 
+     * <p>이 속성들은 CloudResource의 properties (JSON) 필드에 저장됩니다.</p>
      */
     @Builder.Default
     private final Map<String, Object> attributes = new HashMap<>();
 
     /**
-     * 초기 생명주기 상태 (선택적)
-     * null인 경우 resourceType에 따라 기본값이 적용됩니다.
+     * 초기 상태 정보 (선택적, JSON 형태)
+     * 쿠버네티스 스타일: status 필드에 JSON으로 저장됩니다.
+     * 예: {"state": "running", "ipAddress": "10.0.0.1"}
      */
-    private final LifecycleState initialLifecycleState;
+    @Builder.Default
+    private final Map<String, Object> initialStatus = new HashMap<>();
 
     // ==================== 편의 메서드 ====================
 
