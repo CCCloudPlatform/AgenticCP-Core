@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * 토큰 응답 DTO
  * 
@@ -23,4 +25,9 @@ public class TokenResponse {
     private String tokenType;
     private Long expiresIn;
     private Long refreshExpiresIn;
+    
+    /**
+     * 사용자가 속한 Tenant ID 목록 (User ↔ Worker 1:N 시나리오)
+     */
+    private List<Long> availableTenants;
 }

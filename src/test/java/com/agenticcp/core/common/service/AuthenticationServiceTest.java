@@ -13,6 +13,7 @@ import com.agenticcp.core.domain.tenant.entity.Tenant;
 import com.agenticcp.core.domain.tenant.service.TenantService;
 import com.agenticcp.core.domain.user.service.UserAuthHistoryService;
 import com.agenticcp.core.common.service.TwoFactorService;
+import com.agenticcp.core.common.context.TenantContextService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +56,9 @@ class AuthenticationServiceTest {
     private TwoFactorService twoFactorService;
     
     @Mock
+    private TenantContextService tenantContextService;
+    
+    @Mock
     private HttpServletRequest httpRequest;
 
     private AuthenticationService authenticationService;
@@ -62,7 +66,7 @@ class AuthenticationServiceTest {
     @BeforeEach
     void setUp() {
         authenticationService = new AuthenticationService(
-                userService, jwtService, passwordEncoder, tenantService, 
+                userService, tenantContextService, jwtService, passwordEncoder, tenantService, 
                 twoFactorService, authHistoryService
         );
     }

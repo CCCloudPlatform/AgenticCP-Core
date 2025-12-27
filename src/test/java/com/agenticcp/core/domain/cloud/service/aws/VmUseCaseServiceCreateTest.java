@@ -91,7 +91,10 @@ class VmUseCaseServiceCreateTest {
         String expectedInstanceId = "i-1234567890abcdef0";
         CloudResource expectedCloudResource = CloudResource.builder()
                 .resourceId(expectedInstanceId)
-                .resourceName(expectedInstanceId)
+                .name(expectedInstanceId)
+                .provider("AWS")
+                .region("us-east-1")
+                .type("INSTANCE")
                 .build();
 
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
@@ -126,7 +129,10 @@ class VmUseCaseServiceCreateTest {
         String expectedInstanceId = "i-abcdef1234567890";
         CloudResource expectedCloudResource = CloudResource.builder()
                 .resourceId(expectedInstanceId)
-                .resourceName(expectedInstanceId)
+                .name(expectedInstanceId)
+                .provider("AWS")
+                .region("us-east-1")
+                .type("INSTANCE")
                 .build();
 
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
@@ -193,7 +199,10 @@ class VmUseCaseServiceCreateTest {
         String expectedInstanceId = "i-tagged1234567890";
         CloudResource expectedCloudResource = CloudResource.builder()
                 .resourceId(expectedInstanceId)
-                .resourceName("test-instance")
+                .name("test-instance")
+                .provider("AWS")
+                .region("us-east-1")
+                .type("INSTANCE")
                 .build();
 
         when(vmLifecyclePort.createInstance(any(VmCreateCommand.class))).thenReturn(expectedInstanceId);
@@ -208,7 +217,7 @@ class VmUseCaseServiceCreateTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getResourceId()).isEqualTo(expectedInstanceId);
-        assertThat(result.getResourceName()).isEqualTo("test-instance");
+        assertThat(result.getName()).isEqualTo("test-instance");
 
         // 포트 호출 확인
         verify(vmLifecyclePort).createInstance(any(VmCreateCommand.class));

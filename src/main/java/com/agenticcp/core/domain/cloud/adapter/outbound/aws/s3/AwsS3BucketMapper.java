@@ -63,22 +63,56 @@ public class AwsS3BucketMapper {
             // 입력 검증
             validateBucketInput(bucket, provider);
             
+            // 쿠버네티스 스타일: properties (Spec) 구성
+            Map<String, Object> properties = new HashMap<>();
+            properties.put("instanceType", "S3_BUCKET");
+            properties.put("instanceSize", "STANDARD");
+            properties.put("storageGb", 0L); // S3 버킷은 스토리지 용량이 동적이므로 0으로 설정
+            properties.put("bucketName", bucket.name());
+            if (bucket.creationDate() != null) {
+                properties.put("creationDate", bucket.creationDate().toString());
+            }
+            
+            // 버전 관리 설정
+            if (versioningStatus != null) {
+                properties.put("versioning", Map.of(
+                    "status", versioningStatus.status() != null ? versioningStatus.status().toString() : "Disabled",
+                    "mfaDelete", versioningStatus.mfaDelete() != null ? versioningStatus.mfaDelete().toString() : "Disabled"
+                ));
+            }
+            
+            // 라이프사이클 설정
+            if (lifecycleConfig != null && lifecycleConfig.rules() != null) {
+                properties.put("lifecycle", Map.of(
+                    "rulesCount", lifecycleConfig.rules().size(),
+                    "hasRules", !lifecycleConfig.rules().isEmpty()
+                ));
+            }
+            
+            // 쿠버네티스 스타일: status (Status) 구성
+            Map<String, Object> status = new HashMap<>();
+            status.put("state", "running");
+            if (bucket.creationDate() != null) {
+                LocalDateTime createdDate = toLocalDateTime(bucket.creationDate());
+                status.put("createdInCloud", createdDate != null ? createdDate.toString() : null);
+                status.put("lastModifiedInCloud", createdDate != null ? createdDate.toString() : null);
+            }
+            status.put("lastSync", LocalDateTime.now().toString());
+            status.put("serviceType", "S3");
+            status.put("storageClass", "STANDARD");
+            
+            // 쿠버네티스 스타일: labels (태그)
+            Map<String, String> labelsMap = toTagMap(tags);
+            
             return CloudResource.builder()
                     .resourceId(bucket.name())
-                    .resourceName(bucket.name())
-                    .displayName(bucket.name())
-                    .provider(provider)
-                    .resourceType(CloudResource.ResourceType.BUCKET)
-                    .lifecycleState(CloudResource.LifecycleState.RUNNING)
-                    .instanceType("S3_BUCKET")
-                    .instanceSize("STANDARD")
-                    .storageGb(0L) // S3 버킷은 스토리지 용량이 동적이므로 0으로 설정
-                    .tags(toTagMap(tags))
-                    .configuration(buildConfigurationJson(bucket, versioningStatus, lifecycleConfig))
-                    .createdInCloud(toLocalDateTime(bucket.creationDate()))
-                    .lastModifiedInCloud(toLocalDateTime(bucket.creationDate()))
-                    .lastSync(LocalDateTime.now())
-                    .metadata(buildMetadata(bucket, versioningStatus, lifecycleConfig, tags))
+                    .name(bucket.name())
+                    .provider(provider.getProviderKey())
+                    .region("us-east-1") // S3는 글로벌 서비스이지만 기본 리전 사용
+                    .type("BUCKET")
+                    .properties(toJson(properties))
+                    .status(toJson(status))
+                    .labels(toJson(labelsMap))
                     .build();
         } catch (Exception e) {
             log.error("Failed to convert AWS S3 bucket to CloudResource: {}", bucket.name(), e);
@@ -165,107 +199,22 @@ public class AwsS3BucketMapper {
         }
     }
 
-    /**
-     * 버킷 설정 정보를 JSON 문자열로 구성
-     * 
-     * @param bucket AWS S3 버킷
-     * @param versioningStatus 버전 관리 상태
-     * @param lifecycleConfig 라이프사이클 설정
-     * @return 설정 JSON 문자열
-     */
-    private String buildConfigurationJson(Bucket bucket, 
-                                        GetBucketVersioningResponse versioningStatus,
-                                        BucketLifecycleConfiguration lifecycleConfig) {
-        
-        try {
-            Map<String, Object> config = new HashMap<>();
-            
-            // 기본 버킷 설정
-            config.put("bucketName", bucket.name());
-            config.put("creationDate", bucket.creationDate());
-            
-            // 버전 관리 설정
-            if (versioningStatus != null) {
-                config.put("versioning", Map.of(
-                    "status", versioningStatus.status() != null ? versioningStatus.status().toString() : "Disabled",
-                    "mfaDelete", versioningStatus.mfaDelete() != null ? versioningStatus.mfaDelete().toString() : "Disabled"
-                ));
-            }
-            
-            // 라이프사이클 설정
-            if (lifecycleConfig != null && lifecycleConfig.rules() != null) {
-                config.put("lifecycle", Map.of(
-                    "rulesCount", lifecycleConfig.rules().size(),
-                    "hasRules", !lifecycleConfig.rules().isEmpty()
-                ));
-            }
-            
-            return objectMapper.writeValueAsString(config);
-        } catch (Exception e) {
-            log.warn("Failed to serialize configuration for bucket: {}", bucket.name(), e);
-            throw new BusinessException(CloudErrorCode.CLOUD_METADATA_SERIALIZATION_FAILED, 
-                    "S3 버킷 설정 직렬화에 실패했습니다: " + bucket.name());
-        }
-    }
 
     /**
-     * 버킷의 메타데이터를 JSON 문자열로 구성
+     * Map을 JSON 문자열로 변환합니다.
      * 
-     * @param bucket AWS S3 버킷
-     * @param versioningStatus 버전 관리 상태
-     * @param lifecycleConfig 라이프사이클 설정
-     * @param tags 태그 정보
-     * @return 메타데이터 JSON 문자열
+     * @param map 변환할 Map
+     * @return JSON 문자열 (실패 시 null)
      */
-    private String buildMetadata(Bucket bucket, 
-                               GetBucketVersioningResponse versioningStatus,
-                               BucketLifecycleConfiguration lifecycleConfig,
-                               List<Tag> tags) {
-        
+    private String toJson(Map<String, ?> map) {
+        if (map == null || map.isEmpty()) {
+            return null;
+        }
         try {
-            Map<String, Object> metadata = new HashMap<>();
-            
-            // 기본 버킷 정보
-            metadata.put("bucketName", bucket.name());
-            metadata.put("creationDate", bucket.creationDate() != null ? 
-                        bucket.creationDate().atZone(ZoneId.systemDefault()).toLocalDateTime() : null);
-            
-            // 버전 관리 정보
-            if (versioningStatus != null) {
-                metadata.put("versioningStatus", versioningStatus.status() != null ? 
-                            versioningStatus.status().toString() : "Disabled");
-                metadata.put("mfaDelete", versioningStatus.mfaDelete() != null ? 
-                            versioningStatus.mfaDelete().toString() : "Disabled");
-            }
-            
-            // 라이프사이클 설정 정보
-            if (lifecycleConfig != null && lifecycleConfig.rules() != null) {
-                metadata.put("lifecycleRules", lifecycleConfig.rules().size());
-                metadata.put("hasLifecycleRules", !lifecycleConfig.rules().isEmpty());
-            }
-            
-            // 태그 정보
-            if (tags != null && !tags.isEmpty()) {
-                Map<String, String> tagMap = tags.stream()
-                        .collect(Collectors.toMap(
-                                Tag::key,
-                                Tag::value,
-                                (existing, replacement) -> replacement
-                        ));
-                metadata.put("tags", tagMap);
-                metadata.put("tagCount", tags.size());
-            }
-            
-            // S3 특화 정보
-            metadata.put("serviceType", "S3");
-            metadata.put("storageClass", "STANDARD");
-            metadata.put("encryptionEnabled", false); // 기본값, 실제로는 버킷 암호화 설정 확인 필요
-            
-            return objectMapper.writeValueAsString(metadata);
+            return objectMapper.writeValueAsString(map);
         } catch (Exception e) {
-            log.warn("Failed to serialize metadata for bucket: {}", bucket.name(), e);
-            throw new BusinessException(CloudErrorCode.CLOUD_METADATA_SERIALIZATION_FAILED, 
-                    "S3 버킷 메타데이터 직렬화에 실패했습니다: " + bucket.name());
+            log.warn("[AwsS3BucketMapper] Failed to serialize to JSON: {}", e.getMessage());
+            return null;
         }
     }
 

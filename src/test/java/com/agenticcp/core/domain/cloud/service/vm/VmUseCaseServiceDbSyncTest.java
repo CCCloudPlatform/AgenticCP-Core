@@ -8,7 +8,7 @@ import com.agenticcp.core.domain.cloud.dto.VmCreateRequest;
 import com.agenticcp.core.domain.cloud.dto.VmDeleteRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
+// LifecycleState removed - using JSON status field instead
 import com.agenticcp.core.domain.cloud.exception.CloudErrorCode;
 import com.agenticcp.core.domain.cloud.port.model.account.CloudSessionCredential;
 import com.agenticcp.core.domain.cloud.port.outbound.account.AccountCredentialManagementPort;
@@ -122,7 +122,10 @@ class VmUseCaseServiceDbSyncTest {
 
             CloudResource mockCloudResource = CloudResource.builder()
                     .resourceId(INSTANCE_ID)
-                    .resourceName("test-instance")
+                    .name("test-instance")
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("INSTANCE")
                     .build();
 
             when(vmLifecyclePort.createInstance(any())).thenReturn(INSTANCE_ID);
@@ -139,7 +142,7 @@ class VmUseCaseServiceDbSyncTest {
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getResourceId()).isEqualTo(INSTANCE_ID);
-            assertThat(result.getResourceName()).isEqualTo("test-instance");
+            assertThat(result.getName()).isEqualTo("test-instance");
             
             verify(resourceHelper).registerResource(
                     eq(PROVIDER_TYPE),
@@ -193,7 +196,7 @@ class VmUseCaseServiceDbSyncTest {
 
             // Then
             verify(vmLifecyclePort).startInstance(eq(INSTANCE_ID), any());
-            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.RUNNING));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq("running"));
         }
 
         @Test
@@ -207,7 +210,7 @@ class VmUseCaseServiceDbSyncTest {
 
             // Then
             verify(vmLifecyclePort).stopInstance(eq(INSTANCE_ID), any());
-            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.STOPPED));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq("stopped"));
         }
 
         @Test
@@ -221,7 +224,7 @@ class VmUseCaseServiceDbSyncTest {
 
             // Then
             verify(vmLifecyclePort).rebootInstance(eq(INSTANCE_ID), any());
-            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.RUNNING));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq("running"));
         }
 
         @Test
@@ -235,7 +238,7 @@ class VmUseCaseServiceDbSyncTest {
 
             // Then
             verify(vmLifecyclePort).terminateInstance(eq(INSTANCE_ID), any());
-            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.TERMINATED));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq("terminated"));
         }
 
         @Test
@@ -250,7 +253,7 @@ class VmUseCaseServiceDbSyncTest {
 
             // Then
             verify(vmLifecyclePort).startInstance(eq(INSTANCE_ID), any()); // CSP 작업 성공
-            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq(LifecycleState.RUNNING));
+            verify(resourceHelper).updateLifecycleState(eq(INSTANCE_ID), eq("running"));
         }
     }
 

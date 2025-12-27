@@ -47,19 +47,30 @@ public class AwsVmMapper {
         try {
             log.debug("[AwsVmMapper] Converting AWS Instance to CloudResource: {}", awsInstance.instanceId());
             
+            // 쿠버네티스 스타일: properties (Spec) 구성
+            Map<String, Object> properties = new HashMap<>();
+            properties.put("instanceType", awsInstance.instanceTypeAsString());
+            properties.put("cpuCores", getCpuCores(awsInstance.instanceTypeAsString()));
+            properties.put("memoryGb", getMemoryGb(awsInstance.instanceTypeAsString()));
+            properties.put("architecture", awsInstance.architectureAsString());
+            properties.put("platform", awsInstance.platformAsString());
+            
+            // 쿠버네티스 스타일: status (Status) 구성
+            Map<String, Object> status = new HashMap<>();
+            status.put("state", awsInstance.state().nameAsString().toLowerCase());
+            status.put("publicIpAddress", awsInstance.publicIpAddress());
+            status.put("privateIpAddress", awsInstance.privateIpAddress());
+            status.put("launchTime", awsInstance.launchTime() != null ? awsInstance.launchTime().toString() : null);
+            
             return CloudResource.builder()
                 .resourceId(awsInstance.instanceId())
-                .resourceName(getInstanceName(awsInstance))
-                .displayName(getInstanceName(awsInstance))
-                .lifecycleState(mapInstanceState(awsInstance.state().nameAsString()))
-                .instanceType(awsInstance.instanceTypeAsString())
-                .cpuCores(getCpuCores(awsInstance.instanceTypeAsString()))
-                .memoryGb(getMemoryGb(awsInstance.instanceTypeAsString()))
-                .publicIpAddress(awsInstance.publicIpAddress())
-                .privateIpAddress(awsInstance.privateIpAddress())
-                .tags(mapTags(awsInstance.tags()))
-                .configuration(toJson(awsInstance))
-                .metadata(buildMetadata(awsInstance))
+                .name(getInstanceName(awsInstance))
+                .provider("AWS")
+                .region(awsInstance.placement() != null ? awsInstance.placement().availabilityZone() : null)
+                .type("INSTANCE")
+                .properties(toJson(properties))
+                .status(toJson(status))
+                .labels(toJson(mapTags(awsInstance.tags())))
                 .build();
                 
         } catch (Exception e) {
@@ -268,18 +279,13 @@ public class AwsVmMapper {
     }
     
     /**
-     * AWS Instance 상태를 도메인 LifecycleState로 매핑합니다.
+     * AWS Instance 상태를 JSON status로 매핑합니다.
+     * 쿠버네티스 스타일: status 필드에 JSON으로 저장됩니다.
      */
-    private CloudResource.LifecycleState mapInstanceState(String awsState) {
-        return switch (awsState.toLowerCase()) {
-            case "running" -> CloudResource.LifecycleState.RUNNING;
-            case "stopped" -> CloudResource.LifecycleState.STOPPED;
-            case "stopping" -> CloudResource.LifecycleState.STOPPING;
-            case "pending" -> CloudResource.LifecycleState.PENDING;
-            case "terminated" -> CloudResource.LifecycleState.TERMINATED;
-            case "terminating" -> CloudResource.LifecycleState.TERMINATING;
-            default -> CloudResource.LifecycleState.UNKNOWN;
-        };
+    private String mapInstanceStateToJson(String awsState) {
+        Map<String, Object> status = new HashMap<>();
+        status.put("state", awsState.toLowerCase());
+        return toJson(status);
     }
     
     /**

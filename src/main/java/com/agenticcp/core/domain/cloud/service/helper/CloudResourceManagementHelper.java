@@ -5,8 +5,8 @@ import com.agenticcp.core.domain.cloud.dto.ResourceRegistrationRequest;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider;
 import com.agenticcp.core.domain.cloud.entity.CloudProvider.ProviderType;
 import com.agenticcp.core.domain.cloud.entity.CloudResource;
-import com.agenticcp.core.domain.cloud.entity.CloudResource.LifecycleState;
 import com.agenticcp.core.domain.cloud.entity.CloudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.agenticcp.core.domain.cloud.repository.CloudProviderRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudResourceRepository;
 import com.agenticcp.core.domain.cloud.repository.CloudServiceRepository;
@@ -64,11 +64,47 @@ public class CloudResourceManagementHelper {
             String serviceKey,
             ResourceRegistrationRequest request
     ) {
-        CloudProvider provider = findProvider(providerType);
-        CloudService service = findServiceOrCreate(providerType, serviceKey, provider);
         Tenant tenant = findCurrentTenant();
 
-        CloudResource cloudResource = CloudResource.create(request, provider, service, tenant);
+        // 쿠버네티스 스타일: CloudResource 직접 생성
+        CloudResource cloudResource = CloudResource.builder()
+                .resourceId(request.getResourceId())
+                .name(request.getResourceName())
+                .provider(providerType.name())
+                .region("us-east-1") // TODO: request에서 region 추출
+                .type(request.getResourceType())
+                .tenant(tenant)
+                .build();
+
+        // properties (Spec) 구성
+        if (!request.getAttributes().isEmpty()) {
+            try {
+                String propertiesJson = objectMapper.writeValueAsString(request.getAttributes());
+                cloudResource.setProperties(propertiesJson);
+            } catch (Exception e) {
+                log.warn("[CloudResourceManagementHelper] properties JSON 변환 실패: {}", e.getMessage());
+            }
+        }
+
+        // status (Status) 구성
+        if (!request.getInitialStatus().isEmpty()) {
+            try {
+                String statusJson = objectMapper.writeValueAsString(request.getInitialStatus());
+                cloudResource.setStatus(statusJson);
+            } catch (Exception e) {
+                log.warn("[CloudResourceManagementHelper] status JSON 변환 실패: {}", e.getMessage());
+            }
+        }
+
+        // labels 구성
+        if (!request.getTags().isEmpty()) {
+            try {
+                String labelsJson = objectMapper.writeValueAsString(request.getTags());
+                cloudResource.setLabels(labelsJson);
+            } catch (Exception e) {
+                log.warn("[CloudResourceManagementHelper] labels JSON 변환 실패: {}", e.getMessage());
+            }
+        }
 
         CloudResource savedResource = cloudResourceRepository.save(cloudResource);
         log.debug("[CloudResourceManagementHelper] 리소스 등록 완료: resourceType={}, resourceId={}", 
@@ -78,27 +114,48 @@ public class CloudResourceManagementHelper {
 
     // ==================== 공통 작업 ====================
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     /**
-     * 리소스의 생명주기 상태를 업데이트합니다.
-     *
-     * @param resourceId     리소스 ID
-     * @param lifecycleState 새로운 생명주기 상태
+     * 리소스의 상태를 업데이트합니다 (쿠버네티스 스타일).
+     * 
+     * @param resourceId 리소스 ID
+     * @param state 상태 값 (예: "running", "stopped", "terminated")
      */
-    public void updateLifecycleState(String resourceId, LifecycleState lifecycleState) {
+    public void updateLifecycleState(String resourceId, String state) {
         try {
-            int updatedCount = cloudResourceRepository.updateLifecycleState(
-                    resourceId, lifecycleState, LocalDateTime.now());
+            // 쿠버네티스 스타일: status 필드에 JSON으로 저장
+            Map<String, Object> statusMap = Map.of("state", state);
+            String statusJson;
+            try {
+                statusJson = objectMapper.writeValueAsString(statusMap);
+            } catch (Exception e) {
+                log.warn("[CloudResourceManagementHelper] JSON 변환 실패: resourceId={}, error={}", resourceId, e.getMessage());
+                return;
+            }
+
+            int updatedCount = cloudResourceRepository.updateStatus(resourceId, statusJson);
 
             if (updatedCount > 0) {
-                log.debug("[CloudResourceManagementHelper] 생명주기 상태 업데이트 완료: resourceId={}, state={}",
-                        resourceId, lifecycleState);
+                log.debug("[CloudResourceManagementHelper] 상태 업데이트 완료: resourceId={}, state={}",
+                        resourceId, state);
             } else {
                 log.debug("[CloudResourceManagementHelper] DB에 리소스가 없어 상태 업데이트 스킵: resourceId={}", resourceId);
             }
         } catch (Exception e) {
-            log.warn("[CloudResourceManagementHelper] 생명주기 상태 업데이트 실패: resourceId={}, error={}",
+            log.warn("[CloudResourceManagementHelper] 상태 업데이트 실패: resourceId={}, error={}",
                     resourceId, e.getMessage());
         }
+    }
+
+    /**
+     * 리소스의 상태를 업데이트합니다 (LifecycleState enum 사용).
+     * 
+     * @param resourceId 리소스 ID
+     * @param lifecycleState 생명주기 상태 enum
+     */
+    public void updateLifecycleState(String resourceId, CloudResource.LifecycleState lifecycleState) {
+        updateLifecycleState(resourceId, lifecycleState.toLowerCase());
     }
 
     /**

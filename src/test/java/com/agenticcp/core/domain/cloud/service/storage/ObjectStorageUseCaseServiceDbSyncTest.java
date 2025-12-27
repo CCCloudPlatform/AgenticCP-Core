@@ -115,7 +115,7 @@ class ObjectStorageUseCaseServiceDbSyncTest {
 
             CloudResource mockCreatedContainer = CloudResource.builder()
                     .resourceId(CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
+                    .name(CONTAINER_NAME)
                     .build();
 
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
@@ -146,7 +146,7 @@ class ObjectStorageUseCaseServiceDbSyncTest {
 
             CloudResource mockCreatedContainer = CloudResource.builder()
                     .resourceId(CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
+                    .name(CONTAINER_NAME)
                     .build();
 
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);
@@ -179,7 +179,7 @@ class ObjectStorageUseCaseServiceDbSyncTest {
 
             CloudResource mockCreatedContainer = CloudResource.builder()
                     .resourceId(CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
+                    .name(CONTAINER_NAME)
                     .build();
 
             when(managementPort.createContainer(any())).thenReturn(mockCreatedContainer);

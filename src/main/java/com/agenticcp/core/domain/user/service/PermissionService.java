@@ -11,15 +11,19 @@ import com.agenticcp.core.domain.user.dto.CreatePermissionRequest;
 import com.agenticcp.core.domain.user.dto.PermissionResponse;
 import com.agenticcp.core.domain.user.dto.UpdatePermissionRequest;
 import com.agenticcp.core.domain.user.entity.Permission;
+import com.agenticcp.core.domain.user.entity.Role;
 import com.agenticcp.core.domain.user.repository.PermissionRepository;
 import com.agenticcp.core.domain.user.repository.RoleRepository;
+import com.agenticcp.core.domain.user.repository.WorkerRoleAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +41,7 @@ public class PermissionService {
     
     private final PermissionRepository permissionRepository;
     private final RoleRepository roleRepository;
+    private final WorkerRoleAssignmentRepository workerRoleAssignmentRepository;
     
     /**
      * 모든 권한 조회 (현재 테넌트)
@@ -358,6 +363,152 @@ public class PermissionService {
                 .createdBy(permission.getCreatedBy())
                 .updatedBy(permission.getUpdatedBy())
                 .build();
+    }
+
+    /**
+     * 권한 체크 메서드
+     * 
+     * <p>Worker가 특정 리소스에 대해 특정 액션을 수행할 권한이 있는지 확인합니다.</p>
+     * 
+     * <p>권한 체크 흐름:</p>
+     * <ol>
+     *   <li>Tenant 격리 확인: resource.tenantId == tenantId</li>
+     *   <li>Worker의 Role 조회 (WorkerRoleAssignment)</li>
+     *   <li>Role의 Permission 확인 (Role.permissions)</li>
+     *   <li>resourceType과 action에 대한 권한 확인</li>
+     * </ol>
+     * 
+     * @param workerId Worker ID (null이면 TenantContextHolder에서 가져옴)
+     * @param tenantId Tenant ID (null이면 TenantContextHolder에서 가져옴)
+     * @param action 액션 (예: "START", "STOP", "DELETE")
+     * @param resource 리소스 객체 (tenantId, type 필드 필요)
+     * @return 권한 있음: true, 권한 없음: false
+     */
+    @Transactional(readOnly = true)
+    public boolean can(Long workerId, Long tenantId, String action, Object resource) {
+        // workerId나 tenantId가 null이면 TenantContextHolder에서 가져오기
+        if (workerId == null || tenantId == null) {
+            TenantContextHolder.TenantWorkerContext context = TenantContextHolder.getCurrentTenantAndWorkerOrThrow();
+            if (workerId == null) {
+                workerId = context.getWorkerId();
+            }
+            if (tenantId == null) {
+                tenantId = context.getTenantId();
+            }
+        }
+        log.debug("Permission check: workerId={}, tenantId={}, action={}", workerId, tenantId, action);
+
+        // 1단계: Tenant 격리 확인
+        Long resourceTenantId = extractTenantId(resource);
+        if (resourceTenantId == null || !resourceTenantId.equals(tenantId)) {
+            log.warn("Tenant isolation violation: resource.tenantId={}, tenantId={}", resourceTenantId, tenantId);
+            return false;
+        }
+
+        // 2단계: Worker의 Role 조회
+        List<Long> roleIds = workerRoleAssignmentRepository.findRoleIdsByTenantIdAndWorkerId(
+            tenantId, workerId, LocalDateTime.now()
+        );
+
+        if (roleIds.isEmpty()) {
+            log.debug("No roles assigned to worker: workerId={}, tenantId={}", workerId, tenantId);
+            return false;
+        }
+
+        // 3단계: Role의 Permission 확인
+        List<Role> roles = roleRepository.findAllById(roleIds);
+        Set<Long> permissionIds = roles.stream()
+            .flatMap(role -> role.getPermissions().stream())
+            .map(Permission::getId)
+            .collect(Collectors.toSet());
+
+        if (permissionIds.isEmpty()) {
+            log.debug("No permissions found for roles: roleIds={}", roleIds);
+            return false;
+        }
+
+        // 4단계: resourceType과 action에 대한 권한 확인
+        String resourceType = extractResourceType(resource);
+        List<Permission> matchingPermissions = permissionRepository.findAllById(permissionIds).stream()
+            .filter(permission -> 
+                resourceType != null && resourceType.equals(permission.getResource()) &&
+                action != null && action.equals(permission.getAction())
+            )
+            .collect(Collectors.toList());
+
+        boolean hasPermission = !matchingPermissions.isEmpty();
+        log.debug("Permission check result: workerId={}, tenantId={}, action={}, resourceType={}, hasPermission={}",
+            workerId, tenantId, action, resourceType, hasPermission);
+
+        return hasPermission;
+    }
+
+    /**
+     * 리소스에서 Tenant ID 추출
+     * 
+     * @param resource 리소스 객체
+     * @return Tenant ID (없으면 null)
+     */
+    private Long extractTenantId(Object resource) {
+        if (resource == null) {
+            return null;
+        }
+
+        try {
+            // 리소스가 tenantId 필드를 가진 경우
+            java.lang.reflect.Field tenantIdField = resource.getClass().getDeclaredField("tenantId");
+            tenantIdField.setAccessible(true);
+            Object tenantId = tenantIdField.get(resource);
+            
+            if (tenantId instanceof Long) {
+                return (Long) tenantId;
+            }
+            
+            // tenant 필드를 가진 경우 (Tenant 엔티티)
+            java.lang.reflect.Field tenantField = resource.getClass().getDeclaredField("tenant");
+            tenantField.setAccessible(true);
+            Object tenant = tenantField.get(resource);
+            
+            if (tenant instanceof Tenant) {
+                return ((Tenant) tenant).getId();
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            log.debug("Failed to extract tenantId from resource: {}", e.getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * 리소스에서 Resource Type 추출
+     * 
+     * @param resource 리소스 객체
+     * @return Resource Type (없으면 null)
+     */
+    private String extractResourceType(Object resource) {
+        if (resource == null) {
+            return null;
+        }
+
+        try {
+            // type 필드 확인
+            java.lang.reflect.Field typeField = resource.getClass().getDeclaredField("type");
+            typeField.setAccessible(true);
+            Object type = typeField.get(resource);
+            
+            if (type instanceof String) {
+                return (String) type;
+            }
+            
+            // Enum인 경우
+            if (type instanceof Enum) {
+                return ((Enum<?>) type).name();
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            log.debug("Failed to extract type from resource: {}", e.getMessage());
+        }
+
+        return null;
     }
     
 }

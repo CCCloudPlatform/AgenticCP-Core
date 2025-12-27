@@ -848,9 +848,12 @@ class VpcUseCaseServiceTest {
     private CloudResource createMockVpcResource() {
         CloudResource resource = CloudResource.builder()
             .resourceId("vpc-12345678")
-            .resourceName("test-vpc")
-            .resourceType(CloudResource.ResourceType.NETWORK)
-            .lifecycleState(CloudResource.LifecycleState.RUNNING)
+            .name("test-vpc")
+            .provider("AWS")
+            .region("us-east-1")
+            .type("VPC")
+            
+            
             .build();
         return resource;
     }

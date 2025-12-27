@@ -213,7 +213,7 @@ class MultiCloudEnvironmentServiceTest {
         String tenantId = "tenant-no-provider";
         CloudResource resourceWithoutProvider = CloudResource.builder()
                 .resourceId("resource-no-provider")
-                .resourceName("Resource Without Provider")
+                .name("Resource Without Provider")
                 .provider(null)  // Provider 없음
                 .build();
         
@@ -239,13 +239,15 @@ class MultiCloudEnvironmentServiceTest {
         
         CloudResource validResource = CloudResource.builder()
                 .resourceId("valid-resource")
-                .resourceName("Valid Resource")
-                .provider(awsProvider)
+                .name("Valid Resource")
+                .provider("AWS")
+                .region("us-east-1")
+                .type("INSTANCE")
                 .build();
         
         CloudResource invalidResource = CloudResource.builder()
                 .resourceId("invalid-resource")
-                .resourceName("Invalid Resource")
+                .name("Invalid Resource")
                 .provider(null)  // Provider 없음
                 .build();
         
@@ -273,8 +275,8 @@ class MultiCloudEnvironmentServiceTest {
                     
                     return CloudResource.builder()
                             .resourceId("resource-" + providerType.name())
-                            .resourceName(providerType.name() + " Resource")
-                            .provider(provider)
+                            .name(providerType.name() + " Resource")
+                            .provider("AWS")
                             .build();
                 })
                 .toList();

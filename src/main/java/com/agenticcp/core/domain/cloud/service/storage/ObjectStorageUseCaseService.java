@@ -96,7 +96,7 @@ public class ObjectStorageUseCaseService {
             ResourceRegistrationRequest registrationRequest = ResourceRegistrationRequest.builder()
                     .resourceId(request.getContainerName())
                     .resourceName(request.getContainerName())
-                    .resourceType(CloudResource.ResourceType.BUCKET)
+                    .resourceType("BUCKET")
                     .tags(request.getTags())
                     .build();
             

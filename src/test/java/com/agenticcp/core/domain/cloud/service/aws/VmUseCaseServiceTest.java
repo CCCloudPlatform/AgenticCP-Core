@@ -100,7 +100,7 @@ class VmUseCaseServiceTest {
 
         CloudResource resource = CloudResource.builder()
             .resourceId("i-1234567890abcdef0")
-            .resourceName("test-instance")
+            .name("test-instance")
             .build();
 
         Page<CloudResource> expectedPage = new PageImpl<>(
@@ -128,7 +128,7 @@ class VmUseCaseServiceTest {
         
         CloudResource resource = CloudResource.builder()
             .resourceId(instanceId)
-            .resourceName("test-instance")
+            .name("test-instance")
             .build();
 
         when(vmDiscoveryPort.getInstance(eq(instanceId), any(CloudSessionCredential.class))).thenReturn(Optional.of(resource));
