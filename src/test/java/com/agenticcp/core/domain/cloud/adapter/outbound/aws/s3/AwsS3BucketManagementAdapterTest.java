@@ -95,7 +95,10 @@ class AwsS3BucketManagementAdapterTest {
 
             CloudResource mockResource = CloudResource.builder()
                     .resourceId(CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
+                    .name(CONTAINER_NAME)
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("BUCKET")
                     .build();
             when(mapper.toCloudResource(any(Bucket.class), any(CloudProvider.class))).thenReturn(mockResource);
 
@@ -108,7 +111,7 @@ class AwsS3BucketManagementAdapterTest {
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
+            assertThat(result.getName()).isEqualTo(CONTAINER_NAME);
 
             verify(awsS3Config).createS3Client(eq(mockSession), eq("us-east-1"));
             verify(s3Client).createBucket(any(CreateBucketRequest.class));
@@ -237,7 +240,10 @@ class AwsS3BucketManagementAdapterTest {
 
             CloudResource mockResource = CloudResource.builder()
                     .resourceId(CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
+                    .name(CONTAINER_NAME)
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("BUCKET")
                     .build();
             when(mapper.toCloudResource(any(Bucket.class), any(CloudProvider.class))).thenReturn(mockResource);
 
@@ -251,7 +257,7 @@ class AwsS3BucketManagementAdapterTest {
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
+            assertThat(result.getName()).isEqualTo(CONTAINER_NAME);
 
             verify(awsS3Config).createS3Client(eq(mockSession), isNull());
             verify(s3Client).headBucket(any(HeadBucketRequest.class));

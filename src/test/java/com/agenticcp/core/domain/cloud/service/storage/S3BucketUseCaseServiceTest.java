@@ -115,8 +115,10 @@ class S3BucketUseCaseServiceTest {
 
             expectedContainer = CloudResource.builder()
                     .resourceId("container-" + CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
-                    .displayName("Test Container")
+                    .name(CONTAINER_NAME)
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("BUCKET")
                     .build();
         }
 
@@ -135,7 +137,7 @@ class S3BucketUseCaseServiceTest {
 
                 // Then
                 assertThat(result).isNotNull();
-                assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
+                assertThat(result.getName()).isEqualTo(CONTAINER_NAME);
                 assertThat(result.getResourceId()).isEqualTo("container-" + CONTAINER_NAME);
 
                 verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TAGGING);
@@ -206,8 +208,10 @@ class S3BucketUseCaseServiceTest {
 
             expectedContainer = CloudResource.builder()
                     .resourceId("container-" + CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
-                    .displayName("Updated Test Container")
+                    .name(CONTAINER_NAME)
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("BUCKET")
                     .build();
         }
 
@@ -225,8 +229,7 @@ class S3BucketUseCaseServiceTest {
 
                 // Then
                 assertThat(result).isNotNull();
-                assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
-                assertThat(result.getDisplayName()).isEqualTo("Updated Test Container");
+                assertThat(result.getName()).isEqualTo(CONTAINER_NAME);
 
                 verify(accountCredentialManagementPort).getSession(TENANT_KEY, ACCOUNT_SCOPE, AWS);
                 verify(capabilityGuard).ensureSupported(AWS, "S3", "BUCKET", CapabilityGuard.Operation.TAGGING);
@@ -256,12 +259,18 @@ class S3BucketUseCaseServiceTest {
 
             CloudResource container1 = CloudResource.builder()
                     .resourceId("container-1")
-                    .resourceName("test-container-1")
+                    .name("test-container-1")
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("BUCKET")
                     .build();
 
             CloudResource container2 = CloudResource.builder()
                     .resourceId("container-2")
-                    .resourceName("test-container-2")
+                    .name("test-container-2")
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("BUCKET")
                     .build();
 
             expectedPage = new PageImpl<>(List.of(container1, container2), PageRequest.of(0, 10), 2);
@@ -280,7 +289,7 @@ class S3BucketUseCaseServiceTest {
             assertThat(result).isNotNull();
             assertThat(result.getTotalElements()).isEqualTo(2);
             assertThat(result.getContent()).hasSize(2);
-            assertThat(result.getContent().get(0).getResourceName()).isEqualTo("test-container-1");
+            assertThat(result.getContent().get(0).getName()).isEqualTo("test-container-1");
 
             verify(discoveryPort).listContainers(query);
         }
@@ -314,8 +323,10 @@ class S3BucketUseCaseServiceTest {
         void setUp() {
             expectedContainer = CloudResource.builder()
                     .resourceId("container-" + CONTAINER_NAME)
-                    .resourceName(CONTAINER_NAME)
-                    .displayName("Test Container")
+                    .name(CONTAINER_NAME)
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("BUCKET")
                     .build();
         }
 
@@ -330,7 +341,7 @@ class S3BucketUseCaseServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            assertThat(result.getResourceName()).isEqualTo(CONTAINER_NAME);
+            assertThat(result.getName()).isEqualTo(CONTAINER_NAME);
             assertThat(result.getResourceId()).isEqualTo("container-" + CONTAINER_NAME);
 
             verify(discoveryPort).getContainer(ACCOUNT_SCOPE, CONTAINER_NAME);

@@ -114,7 +114,10 @@ class VpcUseCaseServiceDbSyncTest {
 
             CloudResource mockCreatedVpc = CloudResource.builder()
                     .resourceId(VPC_ID)
-                    .resourceName(VPC_NAME)
+                    .name(VPC_NAME)
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("VPC")
                     .build();
 
             when(vpcManagementPort.createVpc(any())).thenReturn(mockCreatedVpc);
@@ -147,7 +150,10 @@ class VpcUseCaseServiceDbSyncTest {
 
             CloudResource mockCreatedVpc = CloudResource.builder()
                     .resourceId(VPC_ID)
-                    .resourceName(VPC_NAME)
+                    .name(VPC_NAME)
+                    .provider("AWS")
+                    .region("us-east-1")
+                    .type("VPC")
                     .build();
 
             when(vpcManagementPort.createVpc(any())).thenReturn(mockCreatedVpc);
@@ -181,7 +187,7 @@ class VpcUseCaseServiceDbSyncTest {
 
             CloudResource mockCreatedVpc = CloudResource.builder()
                     .resourceId(VPC_ID)
-                    .resourceName(VPC_ID)
+                    .name(VPC_ID)
                     .build();
 
             when(vpcManagementPort.createVpc(any())).thenReturn(mockCreatedVpc);

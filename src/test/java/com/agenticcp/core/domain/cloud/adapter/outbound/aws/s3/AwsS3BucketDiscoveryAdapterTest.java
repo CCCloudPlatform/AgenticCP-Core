@@ -104,7 +104,7 @@ class AwsS3BucketDiscoveryAdapterTest {
 
             CloudResource mockResource = CloudResource.builder()
                     .resourceId("bucket-" + BUCKET_NAME)
-                    .resourceName(BUCKET_NAME)
+                    .name(BUCKET_NAME)
                     .build();
             when(mapper.toCloudResource(any(), any())).thenReturn(mockResource);
 
@@ -127,7 +127,7 @@ class AwsS3BucketDiscoveryAdapterTest {
             Page<CloudResource> result = adapter.listContainers(query);
 
             assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().get(0).getResourceName()).isEqualTo(BUCKET_NAME);
+            assertThat(result.getContent().get(0).getName()).isEqualTo(BUCKET_NAME);
             verify(accountCredentialManagementPort).getSession(eq(TENANT_KEY), eq(ACCOUNT_SCOPE), eq(CloudProvider.ProviderType.AWS));
             verify(taggingClient).getResources(any(GetResourcesRequest.class));
         }

@@ -56,8 +56,10 @@ class VmManagementContractTest {
     void setUp() {
         testInstance = CloudResource.builder()
             .resourceId("i-1234567890abcdef0")
-            .resourceName("test-instance")
-            .displayName("Test Instance")
+            .name("test-instance")
+            .provider("AWS")
+            .region("us-east-1")
+            .type("INSTANCE")
             .build();
 
         testQuery = VmQuery.builder()

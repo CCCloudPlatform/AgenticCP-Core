@@ -63,8 +63,10 @@ class VmControllerTest {
         
         testInstance = CloudResource.builder()
             .resourceId("i-1234567890abcdef0")
-            .resourceName("test-instance")
-            .displayName("Test Instance")
+            .name("test-instance")
+            .provider("AWS")
+            .region("us-east-1")
+            .type("INSTANCE")
             .build();
     }
 
@@ -98,7 +100,7 @@ class VmControllerTest {
         mockMvc.perform(get(BASE_URL + "/{instanceId}", "AWS", "123456789012", "i-1234567890abcdef0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.resourceId").value("i-1234567890abcdef0"))
-                .andExpect(jsonPath("$.data.resourceName").value("test-instance"));
+                .andExpect(jsonPath("$.data.name").value("test-instance"));
     }
 
     @Test
@@ -131,7 +133,7 @@ class VmControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.resourceId").value("i-1234567890abcdef0"))
-                .andExpect(jsonPath("$.data.resourceName").value("test-instance"));
+                .andExpect(jsonPath("$.data.name").value("test-instance"));
     }
 
     @Test
