@@ -48,7 +48,11 @@ public enum CloudErrorCode implements BaseErrorCode {
     
     // 리소스 생성/동기화 관련 (4040-4049)
     RESOURCE_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4040, "클라우드 리소스 생성 후 DB 저장에 실패하여 롤백되었습니다."),
-    RESOURCE_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4041, "클라우드 리소스 동기화에 실패했습니다.");
+    RESOURCE_SYNC_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4041, "클라우드 리소스 동기화에 실패했습니다."),
+    
+    // 암호화/복호화 관련 (4050-4059)
+    ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4050, "암호화에 실패했습니다."),
+    DECRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 4051, "복호화에 실패했습니다.");
     
     private final HttpStatus httpStatus;
     private final int codeNumber;
