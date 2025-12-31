@@ -28,7 +28,7 @@ public class Tenant extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    // Organization과의 관계 (1:1)
+    /** 조직 (1:1 관계) */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id", nullable = false, unique = true)
     private Organization organization;
@@ -78,9 +78,7 @@ public class Tenant extends BaseEntity {
     private LocalDateTime trialEndDate;
 
     public enum TenantType {
-        INDIVIDUAL,
-        SMALL_BUSINESS,
-        ENTERPRISE,
-        GOVERNMENT
+        DEDICATED,  // 전용 테넌트
+        SHARED      // 공유 테넌트
     }
 }

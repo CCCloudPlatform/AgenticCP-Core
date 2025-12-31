@@ -137,33 +137,13 @@ public class OrganizationResponse {
     public static OrganizationResponse from(Organization organization) {
         OrganizationResponseBuilder builder = OrganizationResponse.builder()
                 .id(organization.getId())
-                // ERD 기준 필드
-                .name(organization.getName() != null ? organization.getName() : organization.getOrgName())
-                // [DEPRECATED] 호환성 유지
-                .orgKey(organization.getOrgKey())
-                .orgName(organization.getOrgName())
-                .description(organization.getDescription())
-                .parentOrgId(organization.getParentOrganization() != null ? 
-                    organization.getParentOrganization().getId() : null)
-                .status(organization.getStatus() != null ? organization.getStatus().name() : null)
-                .orgType(organization.getOrgType() != null ? organization.getOrgType().name() : null)
-                .contactEmail(organization.getContactEmail())
-                .contactPhone(organization.getContactPhone())
-                .address(organization.getAddress())
-                .website(organization.getWebsite())
-                .maxUsers(organization.getMaxUsers())
-                .settings(organization.getSettings())
-                .establishedDate(organization.getEstablishedDate())
+                // ERD 기준 필드 (설계 B: name만 존재)
+                .name(organization.getName())
                 .createdAt(organization.getCreatedAt())
                 .updatedAt(organization.getUpdatedAt());
         
-        // 테넌트 정보 (1:1 관계)
-        if (organization.getTenant() != null) {
-            builder.tenantId(organization.getTenant().getId())
-                   .tenantKey(organization.getTenant().getTenantKey())
-                   .tenantType(organization.getTenant().getTenantType() != null ? 
-                       organization.getTenant().getTenantType().name() : null);
-        }
+        // 설계 B: Organization은 tenant 필드가 없음
+        // 테넌트 정보는 별도로 조회 필요
         
         return builder.build();
     }

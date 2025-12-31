@@ -99,6 +99,7 @@ public class AuthenticationService {
             boolean twoFactorRequired = true; // 기본값: 2FA 필수
             Status initialStatus = twoFactorRequired ? Status.PENDING : Status.ACTIVE;
             
+            // 설계 B: User는 전역 계정이므로 tenant 필드 제거
             User newUser = User.builder()
                     .username(request.getUsername())
                     .email(request.getEmail())
@@ -106,8 +107,12 @@ public class AuthenticationService {
                     .name(request.getName())
                     .role(UserRole.VIEWER) // 기본 역할 부여
                     .status(initialStatus) // 2FA 정책에 따라 PENDING 또는 ACTIVE
-                    .tenant(tenant)
                     .build();
+            
+            // TODO: 설계 B - 테넌트가 제공된 경우 Worker를 생성해야 함
+            // if (tenant != null) {
+            //     workerService.createWorker(newUser.getId(), tenant.getId());
+            // }
 
             savedUser = userService.saveUser(newUser);
             log.info("[AuthenticationService] register - User registered successfully: {}", savedUser.getUsername());
@@ -363,13 +368,15 @@ public class AuthenticationService {
             // 권한 목록 추출 (임시로 빈 리스트)
             List<String> permissions = List.of();
             
+            // 설계 B: User는 전역 계정이므로 tenant 정보는 Worker를 통해 가져와야 함
+            // TODO: 현재 활성 테넌트 컨텍스트에서 가져오거나 Worker 목록에서 선택
             return UserInfoResponse.builder()
                     .username(user.getUsername())
                     .email(user.getEmail())
                     .name(user.getName())
                     .role(user.getRole().name())
-                    .tenantId(user.getTenant() != null ? user.getTenant().getId() : null)
-                    .tenantKey(user.getTenant() != null ? user.getTenant().getTenantKey() : null)
+                    .tenantId(null) // TODO: Worker를 통해 현재 테넌트 정보 가져오기
+                    .tenantKey(null) // TODO: Worker를 통해 현재 테넌트 정보 가져오기
                     .permissions(permissions)
                     .lastLogin(user.getLastLogin())
                     .twoFactorEnabled(user.getTwoFactorEnabled())
