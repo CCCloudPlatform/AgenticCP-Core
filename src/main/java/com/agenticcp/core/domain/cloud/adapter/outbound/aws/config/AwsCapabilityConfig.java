@@ -89,6 +89,28 @@ public class AwsCapabilityConfig {
     }
 
     @PostConstruct
+    public void initializeDnsCapabilities() {
+        log.info("Registering AWS DNS capabilities...");
+
+        CspCapability awsDnsCapability = CspCapability.builder()
+                .supportsStart(false)      // DNS 호스팅 존은 start/stop 개념이 없음
+                .supportsStop(false)
+                .supportsTerminate(true)   // DNS 호스팅 존 삭제 지원
+                .supportsTagging(true)     // AWS Route53 호스팅 존 태그 지원
+                .supportsListByTag(true)   // 태그 기반 목록 조회 지원
+                .build();
+
+        capabilityRegistry.register(
+                CloudProvider.ProviderType.AWS,
+                "ROUTE53",      // 서비스 키
+                "DNS_ZONE",     // 리소스 타입
+                awsDnsCapability
+        );
+  
+        log.info("AWS DNS capabilities registered successfully - AWS|ROUTE53|DNS_ZONE");
+    }
+  
+    @PostConstruct
     public void initializeCloudFrontCapabilities() {
         log.info("Registering AWS CloudFront capabilities...");
 

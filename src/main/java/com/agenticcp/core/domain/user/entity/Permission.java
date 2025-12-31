@@ -12,13 +12,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Entity
-@Table(name = "permissions", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_permission_tenant_action_resource", columnNames = {"tenant_id", "action", "resource"})
-}, indexes = {
-    @Index(name = "idx_permission_tenant", columnList = "tenant_id"),
-    @Index(name = "idx_permission_action", columnList = "action"),
-    @Index(name = "idx_permission_resource", columnList = "resource")
-})
+@Table(name = "permissions")
 @Data
 @Builder
 @NoArgsConstructor

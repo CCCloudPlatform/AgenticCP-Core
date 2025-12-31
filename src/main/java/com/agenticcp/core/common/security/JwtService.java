@@ -51,10 +51,8 @@ public class JwtService {
         claims.put(CLAIM_USERNAME, user.getUsername());
         claims.put(CLAIM_EMAIL, user.getEmail());
         claims.put(CLAIM_ROLE, user.getRole().name());
-        // 설계 B: User는 전역 계정이므로 tenant 정보는 Worker를 통해 가져와야 함
-        // TODO: 현재 활성 테넌트 컨텍스트에서 가져오거나 Worker 목록에서 선택
-        claims.put(CLAIM_TENANT_ID, null); // TODO: Worker를 통해 현재 테넌트 정보 가져오기
-        claims.put(CLAIM_TENANT_KEY, null); // TODO: Worker를 통해 현재 테넌트 정보 가져오기
+        claims.put(CLAIM_TENANT_ID, user.getTenant() != null ? user.getTenant().getId() : null);
+        claims.put(CLAIM_TENANT_KEY, user.getTenant() != null ? user.getTenant().getTenantKey() : null);
         
         List<String> permissions = getUserPermissions(user);
         if (!permissions.isEmpty()) {

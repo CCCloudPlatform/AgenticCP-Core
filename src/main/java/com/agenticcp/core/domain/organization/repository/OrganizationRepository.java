@@ -23,58 +23,45 @@ import java.util.Optional;
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
     
     /**
-     * 조직명 중복 검사 (설계 B: name 필드 사용)
-     * @param name 조직명
+     * 조직명 중복 검사
+     * @param orgName 조직명
      * @return 중복 여부
      */
-    boolean existsByName(String name);
+    boolean existsByOrgName(String orgName);
     
     /**
-     * 조직명 중복 검사 (Deprecated - 호환성 유지)
-     * @deprecated existsByName 사용 권장
+     * 조직 키 중복 검사
+     * @param orgKey 조직 키
+     * @return 중복 여부
      */
-    @Deprecated
-    @Query("SELECT COUNT(o) > 0 FROM Organization o WHERE o.name = :orgName")
-    boolean existsByOrgName(@Param("orgName") String orgName);
-    
-    /**
-     * 조직 키 중복 검사 (Deprecated - 설계 B에 없음)
-     * @deprecated 설계 B에는 orgKey 필드가 없음
-     */
-    @Deprecated
-    @Query("SELECT false FROM Organization o WHERE 1=0")
     boolean existsByOrgKey(String orgKey);
     
     /**
-     * 하위 조직 존재 여부 확인 (Deprecated - 설계 B에 계층 구조 없음)
-     * @deprecated 설계 B에는 계층 구조가 없음
+     * 하위 조직 존재 여부 확인
+     * @param parentOrgId 상위 조직 ID
+     * @return 하위 조직 존재 여부
      */
-    @Deprecated
-    @Query("SELECT false FROM Organization o WHERE 1=0")
     boolean existsByParentOrganizationId(Long parentOrgId);
     
     /**
-     * 활성 조직 목록 조회 (Deprecated - 설계 B에 status 필드 없음)
-     * @deprecated 설계 B에는 status 필드가 없음
+     * 활성 조직 목록 조회
+     * @return 활성 조직 목록
      */
-    @Deprecated
-    @Query("SELECT o FROM Organization o")
+    @Query("SELECT o FROM Organization o WHERE o.status = 'ACTIVE'")
     List<Organization> findActiveOrganizations();
     
     /**
-     * 특정 조직의 하위 조직 목록 조회 (Deprecated - 설계 B에 계층 구조 없음)
-     * @deprecated 설계 B에는 계층 구조가 없음
+     * 특정 조직의 하위 조직 목록 조회
+     * @param parentOrgId 상위 조직 ID
+     * @return 하위 조직 목록
      */
-    @Deprecated
-    @Query("SELECT o FROM Organization o WHERE 1=0")
     List<Organization> findByParentOrganizationId(Long parentOrgId);
     
     /**
-     * 루트 조직 목록 조회 (Deprecated - 설계 B에 계층 구조 없음)
-     * @deprecated 설계 B에는 계층 구조가 없음
+     * 루트 조직 목록 조회 (상위 조직이 없는 조직들)
+     * @return 루트 조직 목록
      */
-    @Deprecated
-    @Query("SELECT o FROM Organization o")
+    @Query("SELECT o FROM Organization o WHERE o.parentOrganization IS NULL")
     List<Organization> findRootOrganizations();
     
     /**
@@ -92,7 +79,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     Optional<Tenant> findTenantByOrganizationId(@Param("organizationId") Long organizationId);
     
     /**
-     * 조직에 테넌트가 존재하는지 확인 (1:1 관계)
+     * 조직에 테넌트가 존재하는지 확인
      * @param organizationId 조직 ID
      * @return 테넌트 존재 여부
      */
