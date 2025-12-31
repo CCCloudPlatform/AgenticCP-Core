@@ -5,7 +5,9 @@ import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationStatsResponse;
+import com.agenticcp.core.domain.organization.dto.WorkerResponse;
 import com.agenticcp.core.domain.organization.service.OrganizationService;
+import com.agenticcp.core.domain.organization.service.WorkerService;
 import com.agenticcp.core.domain.tenant.entity.Tenant;
 // [DEPRECATED imports - 주석처리된 API에서 사용]
 // import com.agenticcp.core.domain.organization.dto.AddUserToOrganizationRequest;
@@ -47,6 +49,7 @@ import java.util.Map;
 public class OrganizationController {
     
     private final OrganizationService organizationService;
+    private final WorkerService workerService;
     
     /**
      * 조직 생성
@@ -292,10 +295,10 @@ public class OrganizationController {
     }
     
     // ========== [DEPRECATED] 조직-사용자 관계 API ==========
-    // TODO: #163 ERD에 따라 OrganizationMember를 통해 관리되도록 변경 예정
-    // - User → Worker 엔티티로 변경
-    // - OrganizationMember 테이블을 통한 관계 관리
-    // - #163 구현 완료 후 아래 API들 제거 예정
+    // ✅ 완료: #172에 따라 OrganizationMember API로 대체 완료
+    // - OrganizationMemberController: /api/v1/organizations/{organizationId}/members
+    // - UserOrganizationController: /api/v1/users/{userId}/organizations
+    // - 아래 API들은 주석 처리되어 있으며, OrganizationMember API 사용 권장
 
     /*
     @GetMapping("/{id}/users")
@@ -417,5 +420,35 @@ public class OrganizationController {
         Map<String, Object> info = organizationService.getOrganizationTenantInfo(id);
 
         return ResponseEntity.ok(ApiResponse.success(info, "조직 테넌트 정보를 성공적으로 조회했습니다."));
+    }
+    
+    /**
+     * Worker 생성 (Organization 기반)
+     * 
+     * @param id 조직 ID
+     * @return 생성된 Worker 정보
+     */
+    @PostMapping("/{id}/workers")
+    @Operation(
+        summary = "Worker 생성 (Organization 기반)",
+        description = "Organization 기반으로 Worker를 생성합니다. 설계 C 기준: Worker는 테넌트 독립적입니다."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Worker 생성 성공",
+                     content = @Content(schema = @Schema(implementation = WorkerResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "이미 존재하는 Worker")
+    })
+    public ResponseEntity<ApiResponse<WorkerResponse>> createWorkerFromOrganization(
+            @Parameter(description = "조직 ID", required = true, example = "1")
+            @PathVariable @Positive Long id) {
+        log.info("[OrganizationController] createWorkerFromOrganization - organizationId={}", id);
+        
+        WorkerResponse response = WorkerResponse.from(
+                workerService.createWorkerFromOrganization(id));
+        
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Worker가 성공적으로 생성되었습니다."));
     }
 }
