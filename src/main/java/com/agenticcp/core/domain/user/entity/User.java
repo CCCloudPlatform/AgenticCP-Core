@@ -3,6 +3,8 @@ package com.agenticcp.core.domain.user.entity;
 import com.agenticcp.core.common.entity.BaseEntity;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.UserRole;
+import com.agenticcp.core.domain.tenant.entity.Tenant;
+import com.agenticcp.core.domain.organization.entity.Organization;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -26,6 +28,7 @@ import java.util.List;
 @Table(name = "users", indexes = {
     @Index(name = "idx_users_username", columnList = "username"),
     @Index(name = "idx_users_email", columnList = "email"),
+    @Index(name = "idx_users_tenant", columnList = "tenant_id"),
     @Index(name = "idx_users_active", columnList = "status")
 })
 @Data
@@ -51,6 +54,14 @@ public class User extends BaseEntity {
 
     @Column(name = "password_hash")
     private String passwordHash;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role")

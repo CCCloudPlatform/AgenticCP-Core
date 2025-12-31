@@ -1,7 +1,6 @@
 package com.agenticcp.core.domain.organization.service;
 
 import com.agenticcp.core.domain.organization.entity.Organization;
-import com.agenticcp.core.domain.organization.entity.OrganizationMember;
 import com.agenticcp.core.domain.organization.entity.OrganizationRole;
 import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
 import com.agenticcp.core.domain.user.entity.User;
@@ -10,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -30,7 +28,6 @@ public class OrganizationAwareAuthorizationService {
     private final OrganizationRepository organizationRepository;
     private final UserService userService;
     private final OrganizationRoleService organizationRoleService;
-    private final OrganizationMemberService organizationMemberService;
 
     /**
      * 사용자가 해당 조직에서 주어진 roleKey를 보유하는지 확인
@@ -47,18 +44,13 @@ public class OrganizationAwareAuthorizationService {
         User user = userService.getUserByUsernameOrThrow(username);
         Organization organization = organizationRepository.findById(organizationId)
                 .orElse(null);
-        if (organization == null) {
-            log.debug("[OrganizationAwareAuthorizationService] hasRoleInOrganization - organization is null");
+        if (organization == null || user.getOrganization() == null) {
+            log.debug("[OrganizationAwareAuthorizationService] hasRoleInOrganization - organization or user organization is null");
             return false;
         }
 
-        // OrganizationMember를 통해 User-Organization 관계 확인
-        List<OrganizationMember> members = organizationMemberService.getOrganizationsByUserId(user.getId());
-        boolean isMember = members.stream()
-                .anyMatch(member -> Objects.equals(member.getOrganization().getId(), organizationId));
-        
-        if (!isMember) {
-            log.debug("[OrganizationAwareAuthorizationService] hasRoleInOrganization - user is not a member of organization");
+        if (!Objects.equals(organization.getId(), user.getOrganization().getId())) {
+            log.debug("[OrganizationAwareAuthorizationService] hasRoleInOrganization - organization mismatch");
             return false;
         }
 
@@ -87,18 +79,12 @@ public class OrganizationAwareAuthorizationService {
         User user = userService.getUserByUsernameOrThrow(username);
         Organization organization = organizationRepository.findById(organizationId)
                 .orElse(null);
-        if (organization == null) {
-            log.debug("[OrganizationAwareAuthorizationService] hasPermissionInOrganization - organization is null");
+        if (organization == null || user.getOrganization() == null) {
+            log.debug("[OrganizationAwareAuthorizationService] hasPermissionInOrganization - organization or user organization is null");
             return false;
         }
-
-        // OrganizationMember를 통해 User-Organization 관계 확인
-        List<OrganizationMember> members = organizationMemberService.getOrganizationsByUserId(user.getId());
-        boolean isMember = members.stream()
-                .anyMatch(member -> Objects.equals(member.getOrganization().getId(), organizationId));
-        
-        if (!isMember) {
-            log.debug("[OrganizationAwareAuthorizationService] hasPermissionInOrganization - user is not a member of organization");
+        if (!Objects.equals(organization.getId(), user.getOrganization().getId())) {
+            log.debug("[OrganizationAwareAuthorizationService] hasPermissionInOrganization - organization mismatch");
             return false;
         }
 
