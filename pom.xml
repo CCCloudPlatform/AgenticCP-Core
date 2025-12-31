@@ -287,6 +287,16 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>route53</artifactId>
         </dependency>
+      
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>cloudfront</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>rds</artifactId>
+        </dependency>
 
         <!-- AWS SDK v2 for Java - EC2 only -->
         <dependency>

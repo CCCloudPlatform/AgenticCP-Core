@@ -80,18 +80,22 @@ public class UserService {
         return result;
     }
 
+    // 설계 B: User는 전역 계정이므로 tenant 필드 제거됨
+    // Worker를 통해 테넌트별 사용자 조회 필요
+    @Deprecated
     public List<User> getUsersByTenant(Tenant tenant) {
-        log.info("[UserService] getUsersByTenant - tenantKey={}", maskingService.maskTenantKey(tenant.getTenantKey()));
-        List<User> result = userRepository.findByTenant(tenant);
-        log.info("[UserService] getUsersByTenant - success count={} tenantKey={}", result.size(), maskingService.maskTenantKey(tenant.getTenantKey()));
-        return result;
+        log.warn("[UserService] getUsersByTenant - Deprecated: Worker를 통해 조회해야 함");
+        // TODO: Worker를 통해 테넌트별 사용자 조회 구현
+        return List.of();
     }
 
+    // 설계 B: User는 전역 계정이므로 tenant 필드 제거됨
+    // Worker를 통해 테넌트별 사용자 조회 필요
+    @Deprecated
     public List<User> getActiveUsersByTenant(Tenant tenant) {
-        log.info("[UserService] getActiveUsersByTenant - tenantKey={}", maskingService.maskTenantKey(tenant.getTenantKey()));
-        List<User> result = userRepository.findActiveUsersByTenant(tenant, Status.ACTIVE);
-        log.info("[UserService] getActiveUsersByTenant - success count={} tenantKey={}", result.size(), maskingService.maskTenantKey(tenant.getTenantKey()));
-        return result;
+        log.warn("[UserService] getActiveUsersByTenant - Deprecated: Worker를 통해 조회해야 함");
+        // TODO: Worker를 통해 테넌트별 활성 사용자 조회 구현
+        return List.of();
     }
 
     public List<User> getUsersByRole(UserRole role) {
@@ -116,11 +120,13 @@ public class UserService {
         return result;
     }
 
+    // 설계 B: User는 전역 계정이므로 tenant 필드 제거됨
+    // Worker를 통해 테넌트별 사용자 수 조회 필요
+    @Deprecated
     public Long getActiveUserCountByTenant(Tenant tenant) {
-        log.info("[UserService] getActiveUserCountByTenant - tenantKey={}", maskingService.maskTenantKey(tenant.getTenantKey()));
-        Long count = userRepository.countActiveUsersByTenant(tenant, Status.ACTIVE);
-        log.info("[UserService] getActiveUserCountByTenant - success count={} tenantKey={}", count, maskingService.maskTenantKey(tenant.getTenantKey()));
-        return count;
+        log.warn("[UserService] getActiveUserCountByTenant - Deprecated: Worker를 통해 조회해야 함");
+        // TODO: Worker를 통해 테넌트별 활성 사용자 수 조회 구현
+        return 0L;
     }
 
     public List<User> searchUsers(String keyword) {
@@ -153,8 +159,9 @@ public class UserService {
         existingUser.setEmail(updatedUser.getEmail());
         existingUser.setRole(updatedUser.getRole());
         existingUser.setStatus(updatedUser.getStatus());
-        existingUser.setTenant(updatedUser.getTenant());
-        existingUser.setOrganization(updatedUser.getOrganization());
+        // 설계 B: User는 전역 계정이므로 tenant, organization 필드 제거됨
+        // existingUser.setTenant(updatedUser.getTenant());
+        // existingUser.setOrganization(updatedUser.getOrganization());
         existingUser.setPhoneNumber(updatedUser.getPhoneNumber());
         existingUser.setDepartment(updatedUser.getDepartment());
         existingUser.setJobTitle(updatedUser.getJobTitle());

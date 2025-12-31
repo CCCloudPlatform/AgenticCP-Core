@@ -106,7 +106,49 @@ public class AwsCapabilityConfig {
                 "DNS_ZONE",     // 리소스 타입
                 awsDnsCapability
         );
-
+  
         log.info("AWS DNS capabilities registered successfully - AWS|ROUTE53|DNS_ZONE");
+    }
+  
+    @PostConstruct
+    public void initializeCloudFrontCapabilities() {
+        log.info("Registering AWS CloudFront capabilities...");
+
+        CspCapability awsCloudFrontCapability = CspCapability.builder()
+                .supportsStart(false)      // CloudFront Distribution은 start/stop 개념이 없음
+                .supportsStop(false)
+                .supportsTerminate(true)   // Distribution 삭제 지원
+                .supportsTagging(true)     // AWS CloudFront Distribution 태그 지원
+                .supportsListByTag(true)   // 태그 기반 목록 조회 지원
+                .build();
+        capabilityRegistry.register(
+                CloudProvider.ProviderType.AWS,
+                "CloudFront",           // 서비스 타입
+                "CDN_DISTRIBUTION",     // 리소스 타입
+                awsCloudFrontCapability
+        );
+        log.info("AWS CloudFront capabilities registered successfully - AWS|CloudFront|CDN_DISTRIBUTION");
+    }
+  
+    @PostConstruct
+    public void initializeRdsCapabilities() {
+        log.info("Registering AWS RDS capabilities...");
+
+        CspCapability awsRdsCapability = CspCapability.builder()
+                .supportsStart(true)      // RDS 인스턴스 시작 지원 (일부 엔진만 지원)
+                .supportsStop(true)       // RDS 인스턴스 중지 지원 (일부 엔진만 지원)
+                .supportsTerminate(true)  // RDS 인스턴스 삭제 지원
+                .supportsTagging(true)    // AWS RDS 인스턴스 태그 지원
+                .supportsListByTag(true)  // 태그 기반 목록 조회 지원
+                .build();
+
+        capabilityRegistry.register(
+                CloudProvider.ProviderType.AWS,
+                "RDS",  // 서비스 타입
+                "DATABASE",       // 리소스 타입
+                awsRdsCapability
+        );
+
+        log.info("AWS RDS capabilities registered successfully - AWS|RDS|DATABASE");
     }
 }

@@ -481,8 +481,10 @@ public class MonitoringNotificationService {
         Tenant tenant = tenantOpt.get();
         
         // 2. 테넌트의 관리자 조회 (TENANT_ADMIN 역할)
-        Optional<User> adminOpt = userRepository
-                .findActiveUsersByTenant(tenant, Status.ACTIVE)
+        // 설계 B: User는 전역 계정이므로 tenant 필드 제거됨
+        // Worker를 통해 테넌트별 사용자 조회 필요
+        // TODO: Worker를 통해 테넌트별 활성 사용자 조회 구현
+        Optional<User> adminOpt = java.util.List.<User>of() // 임시로 빈 리스트 반환
                 .stream()
                 .filter(user -> user.getRole() == UserRole.TENANT_ADMIN)
                 .findFirst();
