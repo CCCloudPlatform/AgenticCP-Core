@@ -13,6 +13,7 @@ import com.agenticcp.core.domain.organization.dto.MoveOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.AddUserToOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.UserResponse;
 import com.agenticcp.core.domain.organization.entity.Organization;
+import com.agenticcp.core.domain.organization.entity.OrganizationMember;
 import com.agenticcp.core.domain.organization.repository.OrganizationRepository;
 import com.agenticcp.core.domain.user.entity.User;
 import com.agenticcp.core.domain.user.repository.UserRepository;
@@ -44,6 +45,7 @@ public class OrganizationService {
     
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
+    private final OrganizationMemberService organizationMemberService;
     
     /**
      * 조직 생성
@@ -54,40 +56,19 @@ public class OrganizationService {
      */
     @Transactional
     public OrganizationResponse createOrganization(CreateOrganizationRequest request) {
-        log.info("[OrganizationService] createOrganization - orgName={}", request.getOrgName());
+        log.info("[OrganizationService] createOrganization - name={}", request.getOrgName());
         
-        // 조직명 중복 검사
+        // 조직명 중복 검사 (설계 B: name 필드만 사용)
         validateOrgNameUnique(request.getOrgName());
         
-        // 조직 키 생성 (orgName 기반)
-        String orgKey = generateOrgKey(request.getOrgName());
-        
-        // 조직 생성
+        // 조직 생성 (설계 B: name 필드만 사용)
         Organization organization = Organization.builder()
-                .orgKey(orgKey)
-                .orgName(request.getOrgName())
-                .description(request.getDescription())
-                .status(Status.ACTIVE)
-                .orgType(request.getOrgType() != null ? 
-                    Organization.OrganizationType.valueOf(request.getOrgType()) : null)
-                .contactEmail(request.getContactEmail())
-                .contactPhone(request.getContactPhone())
-                .address(request.getAddress())
-                .website(request.getWebsite())
-                .maxUsers(request.getMaxUsers())
-                .settings(request.getSettings())
+                .name(request.getOrgName())
                 .build();
         
-        // 상위 조직 설정
-        if (request.getParentOrganizationId() != null) {
-            Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
-                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
-            organization.setParentOrganization(parentOrg);
-        }
-        
         Organization savedOrganization = organizationRepository.save(organization);
-        log.info("[OrganizationService] createOrganization - success id={}, orgName={}", 
-                savedOrganization.getId(), savedOrganization.getOrgName());
+        log.info("[OrganizationService] createOrganization - success id={}, name={}", 
+                savedOrganization.getId(), savedOrganization.getName());
         
         return OrganizationResponse.from(savedOrganization);
     }
@@ -136,41 +117,23 @@ public class OrganizationService {
      */
     @Transactional
     public OrganizationResponse updateOrganization(Long id, UpdateOrganizationRequest request) {
-        log.info("[OrganizationService] updateOrganization - id={}, orgName={}", id, request.getOrgName());
+        log.info("[OrganizationService] updateOrganization - id={}, name={}", id, request.getOrgName());
         
         // 조직 존재 여부 확인
         Organization organization = organizationRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + id));
         
-        // 조직명 중복 검사 (자신 제외)
-        if (!organization.getOrgName().equals(request.getOrgName())) {
+        // 조직명 중복 검사 (자신 제외) - 설계 B: name 필드만 사용
+        if (!organization.getName().equals(request.getOrgName())) {
             validateOrgNameUnique(request.getOrgName());
         }
         
-        // 조직 정보 수정
-        organization.setOrgName(request.getOrgName());
-        organization.setDescription(request.getDescription());
-        organization.setOrgType(request.getOrgType() != null ? 
-            Organization.OrganizationType.valueOf(request.getOrgType()) : null);
-        organization.setContactEmail(request.getContactEmail());
-        organization.setContactPhone(request.getContactPhone());
-        organization.setAddress(request.getAddress());
-        organization.setWebsite(request.getWebsite());
-        organization.setMaxUsers(request.getMaxUsers());
-        organization.setSettings(request.getSettings());
-        
-        // 상위 조직 변경
-        if (request.getParentOrganizationId() != null) {
-            Organization parentOrg = organizationRepository.findById(request.getParentOrganizationId())
-                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + request.getParentOrganizationId()));
-            organization.setParentOrganization(parentOrg);
-        } else {
-            organization.setParentOrganization(null);
-        }
+        // 조직 정보 수정 (설계 B: name 필드만 사용)
+        organization.setName(request.getOrgName());
         
         Organization updatedOrganization = organizationRepository.save(organization);
-        log.info("[OrganizationService] updateOrganization - success id={}, orgName={}", 
-                updatedOrganization.getId(), updatedOrganization.getOrgName());
+        log.info("[OrganizationService] updateOrganization - success id={}, name={}", 
+                updatedOrganization.getId(), updatedOrganization.getName());
         
         return OrganizationResponse.from(updatedOrganization);
     }
@@ -189,47 +152,29 @@ public class OrganizationService {
         Organization organization = organizationRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + id));
         
-        // 하위 조직 존재 여부 확인
-        if (organizationRepository.existsByParentOrganizationId(id)) {
-            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "하위 조직이 존재하는 조직은 삭제할 수 없습니다: " + id);
-        }
+        // 설계 B: Organization에 계층 구조가 없으므로 하위 조직 확인 불필요
         
         // 조직 삭제
         organizationRepository.delete(organization);
-        log.info("[OrganizationService] deleteOrganization - success id={}, orgName={}", 
-                id, organization.getOrgName());
+        log.info("[OrganizationService] deleteOrganization - success id={}, name={}", 
+                id, organization.getName());
     }
     
     /**
-     * 조직명 중복 검증
+     * 조직명 중복 검증 (설계 B: name 필드만 사용)
      * 
-     * @param orgName 조직명
+     * @param name 조직명
      * @throws BusinessException 조직명이 중복되는 경우
      */
-    private void validateOrgNameUnique(String orgName) {
-        if (organizationRepository.existsByOrgName(orgName)) {
-            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "이미 존재하는 조직명입니다: " + orgName);
+    private void validateOrgNameUnique(String name) {
+        // 설계 B: name 필드 기반으로 중복 검사
+        // Repository에 existsByName 메서드가 필요하거나, findAll로 확인
+        List<Organization> existing = organizationRepository.findAll();
+        boolean exists = existing.stream()
+                .anyMatch(org -> name.equals(org.getName()));
+        if (exists) {
+            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "이미 존재하는 조직명입니다: " + name);
         }
-    }
-    
-    /**
-     * 조직 키 생성
-     */
-    private String generateOrgKey(String orgName) {
-        String baseKey = orgName.toUpperCase()
-                .replaceAll("[^A-Z0-9]", "_")
-                .replaceAll("_+", "_")
-                .replaceAll("^_|_$", "");
-        
-        String orgKey = baseKey;
-        int counter = 1;
-        
-        while (organizationRepository.existsByOrgKey(orgKey)) {
-            orgKey = baseKey + "_" + counter;
-            counter++;
-        }
-        
-        return orgKey;
     }
     
     /**
@@ -247,71 +192,52 @@ public class OrganizationService {
     /**
      * 특정 조직의 하위 조직 목록 조회
      * 
+     * @deprecated 설계 B: Organization에 계층 구조가 없으므로 빈 리스트 반환
      * @param parentOrgId 상위 조직 ID
-     * @return 하위 조직 목록
-     * @throws BusinessException 상위 조직을 찾을 수 없는 경우
+     * @return 하위 조직 목록 (항상 빈 리스트)
      */
+    @Deprecated
     public List<OrganizationResponse> getChildOrganizations(Long parentOrgId) {
-        log.info("[OrganizationService] getChildOrganizations - parentOrgId={}", parentOrgId);
-        
-        // 상위 조직 존재 여부 확인
-        organizationRepository.findById(parentOrgId)
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + parentOrgId));
-        
-        List<Organization> childOrganizations = organizationRepository.findByParentOrganizationId(parentOrgId);
-        List<OrganizationResponse> result = childOrganizations.stream()
-                .map(OrganizationResponse::from)
-                .collect(Collectors.toList());
-        
-        log.info("[OrganizationService] getChildOrganizations - success parentOrgId={}, count={}", 
-                parentOrgId, result.size());
-        return result;
+        log.warn("[OrganizationService] getChildOrganizations - Deprecated: 설계 B에는 계층 구조가 없습니다");
+        return List.of();
     }
     
     /**
      * 전체 조직 트리 조회
      * 
-     * @return 조직 계층 구조 목록
+     * @deprecated 설계 B: Organization에 계층 구조가 없으므로 단순 목록 반환
+     * @return 조직 목록
      */
+    @Deprecated
     public List<OrganizationHierarchyResponse> getOrganizationTree() {
-        log.info("[OrganizationService] getOrganizationTree");
-        
+        log.warn("[OrganizationService] getOrganizationTree - Deprecated: 설계 B에는 계층 구조가 없습니다. 단순 목록 반환");
         List<Organization> organizations = organizationRepository.findAll();
-        Map<Long, List<Organization>> childrenMap = organizations.stream()
-                .filter(org -> org.getParentOrganization() != null)
-                .collect(Collectors.groupingBy(org -> org.getParentOrganization().getId()));
-        
-        List<Organization> rootOrganizations = organizationRepository.findRootOrganizations();
-        
-        List<OrganizationHierarchyResponse> result = rootOrganizations.stream()
-                .map(org -> buildHierarchyResponse(org, childrenMap, 0, org.getOrgName()))
+        return organizations.stream()
+                .map(org -> {
+                    OrganizationHierarchyResponse response = OrganizationHierarchyResponse.from(
+                            OrganizationResponse.from(org), 0, org.getName());
+                    response.setChildren(List.of());
+                    response.setChildrenCount(0);
+                    return response;
+                })
                 .collect(Collectors.toList());
-        
-        log.info("[OrganizationService] getOrganizationTree - success count={}", result.size());
-        return result;
     }
     
     /**
      * 조직 경로 조회
      * 
+     * @deprecated 설계 B: Organization에 계층 구조가 없으므로 단일 조직만 반환
      * @param orgId 조직 ID
-     * @return 조직 경로 정보
+     * @return 조직 경로 정보 (단일 조직만 포함)
      * @throws BusinessException 조직을 찾을 수 없는 경우
      */
+    @Deprecated
     public OrganizationPathResponse getOrganizationPath(Long orgId) {
-        log.info("[OrganizationService] getOrganizationPath - orgId={}", orgId);
-        
+        log.warn("[OrganizationService] getOrganizationPath - Deprecated: 설계 B에는 계층 구조가 없습니다");
         Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
         
-        List<OrganizationResponse> path = new ArrayList<>();
-        Organization current = organization;
-        
-        while (current != null) {
-            path.add(0, OrganizationResponse.from(current));
-            current = current.getParentOrganization();
-        }
-        
+        List<OrganizationResponse> path = List.of(OrganizationResponse.from(organization));
         OrganizationPathResponse result = OrganizationPathResponse.from(path);
         log.info("[OrganizationService] getOrganizationPath - success orgId={}, path={}", 
                 orgId, result.getFullPath());
@@ -321,177 +247,73 @@ public class OrganizationService {
     /**
      * 상위 조직 목록 조회
      * 
+     * @deprecated 설계 B: Organization에 계층 구조가 없으므로 빈 리스트 반환
      * @param orgId 조직 ID
-     * @return 상위 조직 목록
-     * @throws BusinessException 조직을 찾을 수 없는 경우
+     * @return 상위 조직 목록 (항상 빈 리스트)
      */
+    @Deprecated
     public List<OrganizationResponse> getAncestors(Long orgId) {
-        log.info("[OrganizationService] getAncestors - orgId={}", orgId);
-        
-        Organization organization = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
-        
-        List<OrganizationResponse> ancestors = new ArrayList<>();
-        Organization current = organization.getParentOrganization();
-        
-        while (current != null) {
-            ancestors.add(0, OrganizationResponse.from(current));
-            current = current.getParentOrganization();
-        }
-        
-        log.info("[OrganizationService] getAncestors - success orgId={}, count={}", 
-                orgId, ancestors.size());
-        return ancestors;
+        log.warn("[OrganizationService] getAncestors - Deprecated: 설계 B에는 계층 구조가 없습니다");
+        return List.of();
     }
     
     /**
      * 하위 조직 목록 조회 (모든 레벨)
      * 
+     * @deprecated 설계 B: Organization에 계층 구조가 없으므로 빈 리스트 반환
      * @param orgId 조직 ID
-     * @return 하위 조직 목록
-     * @throws BusinessException 조직을 찾을 수 없는 경우
+     * @return 하위 조직 목록 (항상 빈 리스트)
      */
+    @Deprecated
     public List<OrganizationResponse> getDescendants(Long orgId) {
-        log.info("[OrganizationService] getDescendants - orgId={}", orgId);
-        
-        Organization organization = organizationRepository.findById(orgId)
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
-        
-        List<OrganizationResponse> descendants = new ArrayList<>();
-        collectDescendants(organization, descendants);
-        
-        log.info("[OrganizationService] getDescendants - success orgId={}, count={}", 
-                orgId, descendants.size());
-        return descendants;
+        log.warn("[OrganizationService] getDescendants - Deprecated: 설계 B에는 계층 구조가 없습니다");
+        return List.of();
     }
     
     /**
      * 조직 이동
      * 
+     * @deprecated 설계 B: Organization에 계층 구조가 없으므로 동작하지 않음
      * @param orgId 조직 ID
      * @param request 조직 이동 요청 정보
-     * @return 이동된 조직 정보
-     * @throws BusinessException 조직을 찾을 수 없거나 순환 참조가 발생하는 경우
+     * @return 조직 정보 (변경 없음)
+     * @throws BusinessException 조직을 찾을 수 없는 경우
      */
+    @Deprecated
     @Transactional
     public OrganizationResponse moveOrganization(Long orgId, MoveOrganizationRequest request) {
-        log.info("[OrganizationService] moveOrganization - orgId={}, newParentId={}", 
-                orgId, request.getNewParentId());
-        
+        log.warn("[OrganizationService] moveOrganization - Deprecated: 설계 B에는 계층 구조가 없습니다");
         Organization organization = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + orgId));
-        
-        // 새로운 상위 조직 검증
-        Organization newParent = null;
-        if (request.getNewParentId() != null) {
-            newParent = organizationRepository.findById(request.getNewParentId())
-                    .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 상위 조직입니다: " + request.getNewParentId()));
-            
-            // 순환 참조 방지
-            validateNoCircularReference(organization, newParent);
-        }
-        
-        organization.setParentOrganization(newParent);
-        Organization savedOrganization = organizationRepository.save(organization);
-        
-        log.info("[OrganizationService] moveOrganization - success orgId={}, newParentId={}", 
-                savedOrganization.getId(), newParent != null ? newParent.getId() : null);
-        return OrganizationResponse.from(savedOrganization);
+        return OrganizationResponse.from(organization);
     }
     
     /**
      * 조직 통계 조회
      * 
+     * @deprecated 설계 B: Organization에 status 필드가 없으므로 단순 통계만 반환
      * @return 조직 통계 정보
      */
+    @Deprecated
     public OrganizationStatsResponse getOrganizationStats() {
-        log.info("[OrganizationService] getOrganizationStats");
-        
+        log.warn("[OrganizationService] getOrganizationStats - Deprecated: 설계 B에는 status 필드가 없습니다");
         List<Organization> organizations = organizationRepository.findAll();
         
         long totalOrganizations = organizations.size();
-        long activeOrganizations = organizations.stream()
-                .filter(org -> Status.ACTIVE.equals(org.getStatus()))
-                .count();
-        long inactiveOrganizations = totalOrganizations - activeOrganizations;
-        
-        // 계층별 통계
-        Map<Integer, Long> levelStats = new HashMap<>();
-        int maxDepth = 0;
-        
-        for (Organization org : organizations) {
-            int level = calculateLevel(org);
-            levelStats.merge(level, 1L, Long::sum);
-            maxDepth = Math.max(maxDepth, level);
-        }
-        
-        List<OrganizationStatsResponse.LevelStats> levelStatsList = levelStats.entrySet().stream()
-                .map(entry -> OrganizationStatsResponse.LevelStats.builder()
-                        .level(entry.getKey())
-                        .count(entry.getValue())
-                        .description("Level " + entry.getKey())
-                        .build())
-                .sorted(Comparator.comparing(OrganizationStatsResponse.LevelStats::getLevel))
-                .collect(Collectors.toList());
         
         OrganizationStatsResponse result = OrganizationStatsResponse.builder()
                 .totalOrganizations(totalOrganizations)
-                .activeOrganizations(activeOrganizations)
-                .inactiveOrganizations(inactiveOrganizations)
-                .maxDepth(maxDepth)
-                .levelStats(levelStatsList)
+                .activeOrganizations(totalOrganizations) // status 필드가 없으므로 모두 active로 간주
+                .inactiveOrganizations(0L)
+                .maxDepth(0) // 계층 구조 없음
+                .levelStats(List.of())
                 .build();
         
-        log.info("[OrganizationService] getOrganizationStats - success total={}, active={}, maxDepth={}", 
-                totalOrganizations, activeOrganizations, maxDepth);
+        log.info("[OrganizationService] getOrganizationStats - success total={}", totalOrganizations);
         return result;
     }
     
-    // Helper methods
-    private OrganizationHierarchyResponse buildHierarchyResponse(Organization org, 
-                                                               Map<Long, List<Organization>> childrenMap, 
-                                                               int level, 
-                                                               String path) {
-        List<Organization> children = childrenMap.getOrDefault(org.getId(), List.of());
-        List<OrganizationHierarchyResponse> childResponses = children.stream()
-                .map(child -> buildHierarchyResponse(child, childrenMap, level + 1, path + " > " + child.getOrgName()))
-                .collect(Collectors.toList());
-        
-        OrganizationHierarchyResponse response = OrganizationHierarchyResponse.from(
-                OrganizationResponse.from(org), level, path);
-        response.setChildren(childResponses);
-        response.setChildrenCount(childResponses.size());
-        
-        return response;
-    }
-    
-    private void collectDescendants(Organization parent, List<OrganizationResponse> descendants) {
-        List<Organization> children = organizationRepository.findByParentOrganizationId(parent.getId());
-        for (Organization child : children) {
-            descendants.add(OrganizationResponse.from(child));
-            collectDescendants(child, descendants);
-        }
-    }
-    
-    private void validateNoCircularReference(Organization org, Organization newParent) {
-        Organization current = newParent;
-        while (current != null) {
-            if (current.getId().equals(org.getId())) {
-                throw new BusinessException(CommonErrorCode.BAD_REQUEST, "순환 참조가 발생합니다: " + org.getOrgName());
-            }
-            current = current.getParentOrganization();
-        }
-    }
-    
-    private int calculateLevel(Organization org) {
-        int level = 0;
-        Organization current = org.getParentOrganization();
-        while (current != null) {
-            level++;
-            current = current.getParentOrganization();
-        }
-        return level;
-    }
+    // Helper methods - 설계 B에서는 계층 구조가 없으므로 사용되지 않음
     
     /**
      * 조직별 사용자 목록 조회
@@ -507,10 +329,10 @@ public class OrganizationService {
         organizationRepository.findById(organizationId)
             .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
         
-        // 조직의 사용자 목록 조회
-        List<User> users = userRepository.findByOrganizationId(organizationId);
-        List<UserResponse> result = users.stream()
-            .map(this::convertToUserResponse)
+        // OrganizationMember를 통해 사용자 목록 조회
+        List<OrganizationMember> members = organizationMemberService.getMembers(organizationId);
+        List<UserResponse> result = members.stream()
+            .map(member -> convertToUserResponse(member.getUser()))
             .collect(Collectors.toList());
         
         log.info("[OrganizationService] getOrganizationUsers - success organizationId={}, count={}", 
@@ -520,6 +342,8 @@ public class OrganizationService {
     
     /**
      * 사용자를 조직에 추가
+     * 
+     * <p>설계 B: OrganizationMemberService를 통해 User-Organization 관계를 관리합니다.</p>
      * 
      * @param organizationId 조직 ID
      * @param request 사용자 추가 요청 정보
@@ -531,31 +355,20 @@ public class OrganizationService {
         log.info("[OrganizationService] addUserToOrganization - organizationId={}, userId={}", 
                 organizationId, request.getUserId());
         
-        // 조직 존재 확인
-        Organization organization = organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
-        
-        // 사용자 존재 확인
-        User user = userRepository.findById(request.getUserId())
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 사용자입니다: " + request.getUserId()));
-        
-        // 이미 조직에 속한 사용자인지 확인
-        if (user.getOrganization() != null && user.getOrganization().getId().equals(organizationId)) {
-            throw new BusinessException(CommonErrorCode.BAD_REQUEST, "이미 해당 조직에 속한 사용자입니다.");
-        }
-        
-        // 사용자를 조직에 추가
-        user.setOrganization(organization);
-        User savedUser = userRepository.save(user);
+        // OrganizationMemberService를 통해 멤버 추가
+        OrganizationMember member = organizationMemberService.addMember(
+                organizationId, request.getUserId(), null); // role은 선택적이므로 null 전달
         
         log.info("[OrganizationService] addUserToOrganization - success userId={}, organizationId={}", 
-                savedUser.getId(), organizationId);
+                request.getUserId(), organizationId);
         
-        return convertToUserResponse(savedUser);
+        return convertToUserResponse(member.getUser());
     }
     
     /**
      * 사용자를 조직에서 제거
+     * 
+     * <p>설계 B: OrganizationMemberService를 통해 User-Organization 관계를 관리합니다.</p>
      * 
      * @param organizationId 조직 ID
      * @param userId 사용자 ID
@@ -566,22 +379,8 @@ public class OrganizationService {
         log.info("[OrganizationService] removeUserFromOrganization - organizationId={}, userId={}", 
                 organizationId, userId);
         
-        // 조직 존재 확인
-        organizationRepository.findById(organizationId)
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 조직입니다: " + organizationId));
-        
-        // 사용자 존재 확인
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND, "존재하지 않는 사용자입니다: " + userId));
-        
-        // 사용자가 해당 조직에 속하는지 확인
-        if (user.getOrganization() == null || !user.getOrganization().getId().equals(organizationId)) {
-            throw new BusinessException(CommonErrorCode.NOT_FOUND, "사용자가 해당 조직에 속하지 않습니다: userId=" + userId + ", organizationId=" + organizationId);
-        }
-        
-        // 사용자를 조직에서 제거
-        user.setOrganization(null);
-        userRepository.save(user);
+        // OrganizationMemberService를 통해 멤버 제거
+        organizationMemberService.removeMember(organizationId, userId);
         
         log.info("[OrganizationService] removeUserFromOrganization - success userId={}, organizationId={}", 
                 userId, organizationId);
@@ -698,7 +497,7 @@ public class OrganizationService {
 
         Map<String, Object> info = new HashMap<>();
         info.put("organizationId", organizationId);
-        info.put("organizationName", organization.getOrgName());
+        info.put("organizationName", organization.getName()); // 설계 B: name 필드 사용
         info.put("hasTenant", tenant != null);
         
         if (tenant != null) {
