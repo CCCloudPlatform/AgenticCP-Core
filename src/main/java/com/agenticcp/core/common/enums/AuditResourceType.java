@@ -27,6 +27,7 @@ public enum AuditResourceType {
     PLATFORM_CONFIG("플랫폼설정"),
     S3_BUCKET("S3버킷"),
     OBJECT_STORAGE_CONTAINER("오브젝트스토리지컨테이너"),
+    CDN_DISTRIBUTION("CDN배포"),
     UI("사용자인터페이스");
     
     private final String description;

@@ -175,8 +175,10 @@ public class HealthCheckService {
             }
             
             // 첫 번째 시스템 관리자의 테넌트 ID 사용
+            // 설계 B: User는 전역 계정이므로 tenant 필드 제거됨
+            // TODO: Worker를 통해 테넌트 정보 가져오기
             User systemAdmin = systemAdmins.get(0);
-            String tenantId = systemAdmin.getTenant().getTenantKey();
+            String tenantId = null; // 임시로 null 반환 (Worker를 통해 가져와야 함)
             
             log.info("[HealthCheckService] sendSystemLevelAlert - 시스템 장애 이벤트 발행: serviceName={}, status={}->{}, admin={}", 
                 serviceName, previousStatus, currentStatus, systemAdmin.getName());
