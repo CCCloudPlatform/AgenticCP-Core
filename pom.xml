@@ -286,6 +286,7 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>cloudfront</artifactId>
+            <artifactId>rds</artifactId>
         </dependency>
 
         <!-- AWS SDK v2 for Java - EC2 only -->

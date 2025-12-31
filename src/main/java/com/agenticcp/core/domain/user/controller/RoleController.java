@@ -6,13 +6,16 @@ import com.agenticcp.core.domain.user.dto.RoleResponse;
 import com.agenticcp.core.domain.user.dto.UpdateRoleRequest;
 import com.agenticcp.core.domain.user.entity.Role;
 import com.agenticcp.core.domain.user.service.RoleService;
+import com.agenticcp.core.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,6 +35,7 @@ import java.util.stream.Collectors;
 public class RoleController {
     
     private final RoleService roleService;
+    private final UserService userService;
     
     @GetMapping
     @Operation(summary = "모든 역할 조회", description = "현재 테넌트의 모든 역할을 조회합니다")
@@ -146,5 +150,48 @@ public class RoleController {
             @Parameter(description = "권한 키") @PathVariable String permissionKey) {
         roleService.removePermissionFromRole(roleId, permissionKey);
         return ResponseEntity.ok(ApiResponse.success(null, "권한이 제거되었습니다"));
+    }
+
+    @PostMapping("/users/{username}")
+    @PreAuthorize("hasAuthority('USER_UPDATE') or hasRole('SUPER_ADMIN')")
+    @Operation(
+            summary = "사용자에게 역할 할당",
+            description = "사용자에게 역할을 할당합니다. 여러 역할을 동시에 할당할 수 있습니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "역할 할당 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (역할을 찾을 수 없음 등)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음 (USER_UPDATE 권한 또는 SUPER_ADMIN 역할 필요)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ApiResponse<Void>> assignRolesToUser(
+            @Parameter(description = "사용자명", required = true, example = "testuser")
+            @PathVariable String username,
+            @Parameter(description = "역할 키 목록", required = true)
+            @RequestBody List<String> roleKeys) {
+        userService.assignRolesToUser(username, roleKeys);
+        return ResponseEntity.ok(ApiResponse.success(null, "역할이 할당되었습니다."));
+    }
+
+    @DeleteMapping("/users/{username}/{roleKey}")
+    @PreAuthorize("hasAuthority('USER_UPDATE') or hasRole('SUPER_ADMIN')")
+    @Operation(
+            summary = "사용자에서 역할 제거",
+            description = "사용자에서 특정 역할을 제거합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "역할 제거 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<ApiResponse<Void>> removeRoleFromUser(
+            @Parameter(description = "사용자명", required = true, example = "testuser")
+            @PathVariable String username,
+            @Parameter(description = "역할 키", required = true, example = "OBJECT_STORAGE_ADMIN")
+            @PathVariable String roleKey) {
+        userService.removeRoleFromUser(username, roleKey);
+        return ResponseEntity.ok(ApiResponse.success(null, "역할이 제거되었습니다."));
     }
 }
