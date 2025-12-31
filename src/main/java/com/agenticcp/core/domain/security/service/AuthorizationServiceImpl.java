@@ -72,11 +72,10 @@ public class AuthorizationServiceImpl implements AuthorizationService {
 
     @Override
     public void validateTenantAccess(String username, String tenantKey) {
-        // TODO: 설계 B - User는 전역 계정이므로 Worker를 통해 테넌트 정보를 가져와야 함
-        // 현재는 임시로 예외를 발생시키지 않음 (나중에 Worker 기반으로 구현 필요)
-        // var user = userService.getUserByUsernameOrThrow(username);
-        // Worker를 통해 사용자의 테넌트 멤버십 확인 필요
-        throw new AccessDeniedException("테넌트 접근 검증은 Worker 기반으로 구현 필요: " + tenantKey);
+        var user = userService.getUserByUsernameOrThrow(username);
+        if (!user.getTenant().getTenantKey().equals(tenantKey)) {
+            throw new AccessDeniedException("해당 테넌트에 대한 접근 권한이 없습니다");
+        }
     }
 
     @Override
