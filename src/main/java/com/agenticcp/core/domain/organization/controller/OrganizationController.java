@@ -352,7 +352,7 @@ public class OrganizationController {
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직을 찾을 수 없음")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "조직 또는 테넌트를 찾을 수 없음")
     })
     public ResponseEntity<ApiResponse<Tenant>> getOrganizationTenant(
             @Parameter(description = "조직 ID", required = true, example = "1")

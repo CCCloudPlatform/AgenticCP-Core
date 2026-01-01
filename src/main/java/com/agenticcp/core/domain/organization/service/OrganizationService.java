@@ -3,6 +3,7 @@ package com.agenticcp.core.domain.organization.service;
 import com.agenticcp.core.common.enums.Status;
 import com.agenticcp.core.common.enums.CommonErrorCode;
 import com.agenticcp.core.common.exception.BusinessException;
+import com.agenticcp.core.common.exception.ResourceNotFoundException;
 import com.agenticcp.core.domain.organization.dto.CreateOrganizationRequest;
 import com.agenticcp.core.domain.organization.dto.OrganizationResponse;
 import com.agenticcp.core.domain.organization.dto.UpdateOrganizationRequest;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -629,6 +631,29 @@ public class OrganizationService {
 
         log.info("[OrganizationService] getOrganizationTenant - success organizationId={}, hasTenant={}", 
                 organizationId, tenant != null);
+        return tenant;
+    }
+
+    /**
+     * 조직에 속한 테넌트 조회 (1:1 관계, 없으면 예외)
+     * 
+     * @param organizationId 조직 ID
+     * @return 조직에 속한 테넌트
+     * @throws ResourceNotFoundException 조직 또는 테넌트를 찾을 수 없는 경우
+     */
+    public Tenant getOrganizationTenantOrThrow(Long organizationId) {
+        log.info("[OrganizationService] getOrganizationTenantOrThrow - organizationId={}", organizationId);
+
+        // 조직 존재 확인
+        organizationRepository.findById(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId.toString()));
+
+        // 조직의 테넌트 조회 (1:1 관계)
+        Tenant tenant = organizationRepository.findTenantByOrganizationId(organizationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Tenant", "organizationId", organizationId.toString()));
+
+        log.info("[OrganizationService] getOrganizationTenantOrThrow - success organizationId={}, tenantId={}", 
+                organizationId, tenant.getId());
         return tenant;
     }
 

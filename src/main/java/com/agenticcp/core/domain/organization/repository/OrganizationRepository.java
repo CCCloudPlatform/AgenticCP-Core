@@ -85,4 +85,4 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
      */
     @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Tenant t WHERE t.organization.id = :organizationId")
     boolean existsTenantByOrganizationId(@Param("organizationId") Long organizationId);
-}
+    }
